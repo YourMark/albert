@@ -1,0 +1,44 @@
+{
+    "name": "extended-abilities/extended-abilities",
+    "description": "Extend the abilities of WordPress, WooCommerce and other plugins with the abilities API",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Mark Jansen - Your Mark Media",
+            "email": "info@yourmark.nl",
+            "homepage": "https://yourmark.nl"
+        }
+    ],
+    "require": {
+        "php": ">=7.4",
+        "wordpress/mcp-adapter": "^0.3.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0",
+        "squizlabs/php_codesniffer": "^3.7",
+        "wp-coding-standards/wpcs": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "ExtendedAbilities\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ExtendedAbilities\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "phpcs": "phpcs --standard=WordPress src/",
+        "phpcbf": "phpcbf --standard=WordPress src/",
+        "test": "phpunit"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    }
+}
