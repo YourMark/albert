@@ -211,53 +211,53 @@ class Settings implements Hookable {
 		$options           = get_option( $this->option_name, [] );
 
 		?>
-        <div class="wrap extended-abilities-settings">
-            <h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
+		<div class="wrap extended-abilities-settings">
+			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 
-            <p class="description extended-abilities-description">
+			<p class="description extended-abilities-description">
 				<?php esc_html_e( 'Configure which abilities are available to AI assistants. Enable only the abilities you trust AI assistants to use on your site.', 'extended-abilities' ); ?>
-            </p>
+			</p>
 
 			<?php settings_errors(); ?>
 
-            <form method="post" action="options.php" aria-label="<?php esc_attr_e( 'Extended Abilities Settings', 'extended-abilities' ); ?>">
+			<form method="post" action="options.php" aria-label="<?php esc_attr_e( 'Extended Abilities Settings', 'extended-abilities' ); ?>">
 				<?php settings_fields( $this->option_group ); ?>
 
 				<?php foreach ( $grouped_abilities as $category => $data ) : ?>
-                    <section class="ability-group" aria-labelledby="<?php echo esc_attr( 'group-title-' . $category ); ?>">
-                        <div class="ability-group-header">
-                            <div class="ability-group-title-wrapper">
-                                <button
-                                        type="button"
-                                        class="ability-group-collapse-toggle"
-                                        aria-expanded="true"
-                                        aria-controls="<?php echo esc_attr( 'group-items-' . $category ); ?>"
-                                >
-                                    <span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span>
-                                </button>
-                                <h2 class="ability-group-title" id="<?php echo esc_attr( 'group-title-' . $category ); ?>">
+					<section class="ability-group" aria-labelledby="<?php echo esc_attr( 'group-title-' . $category ); ?>">
+						<div class="ability-group-header">
+							<div class="ability-group-title-wrapper">
+								<button
+										type="button"
+										class="ability-group-collapse-toggle"
+										aria-expanded="true"
+										aria-controls="<?php echo esc_attr( 'group-items-' . $category ); ?>"
+								>
+									<span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span>
+								</button>
+								<h2 class="ability-group-title" id="<?php echo esc_attr( 'group-title-' . $category ); ?>">
 									<?php echo esc_html( $data['title'] ); ?>
-                                </h2>
-                            </div>
-                            <div class="ability-group-toggle-all">
+								</h2>
+							</div>
+							<div class="ability-group-toggle-all">
 								<?php $toggle_all_id = 'toggle-all-' . esc_attr( $category ); ?>
-                                <label class="extended-abilities-toggle" for="<?php echo esc_attr( $toggle_all_id ); ?>">
-                                    <input
-                                            type="checkbox"
-                                            id="<?php echo esc_attr( $toggle_all_id ); ?>"
-                                            class="toggle-all-abilities"
-                                            data-group="<?php echo esc_attr( $category ); ?>"
-                                            aria-label="<?php echo esc_attr( sprintf( __( 'Enable all %s abilities', 'extended-abilities' ), $data['title'] ) ); ?>"
-                                    />
-                                    <span class="extended-abilities-toggle-slider" aria-hidden="true"></span>
-                                </label>
-                                <label for="<?php echo esc_attr( $toggle_all_id ); ?>">
+								<label class="extended-abilities-toggle" for="<?php echo esc_attr( $toggle_all_id ); ?>">
+									<input
+											type="checkbox"
+											id="<?php echo esc_attr( $toggle_all_id ); ?>"
+											class="toggle-all-abilities"
+											data-group="<?php echo esc_attr( $category ); ?>"
+											aria-label="<?php echo esc_attr( sprintf( __( 'Enable all %s abilities', 'extended-abilities' ), $data['title'] ) ); ?>"
+									/>
+									<span class="extended-abilities-toggle-slider" aria-hidden="true"></span>
+								</label>
+								<label for="<?php echo esc_attr( $toggle_all_id ); ?>">
 									<?php esc_html_e( 'Enable All', 'extended-abilities' ); ?>
-                                </label>
-                            </div>
-                        </div>
+								</label>
+							</div>
+						</div>
 
-                        <div class="ability-group-items" id="<?php echo esc_attr( 'group-items-' . $category ); ?>" role="group" aria-labelledby="<?php echo esc_attr( 'group-title-' . $category ); ?>">
+						<div class="ability-group-items" id="<?php echo esc_attr( 'group-items-' . $category ); ?>" role="group" aria-labelledby="<?php echo esc_attr( 'group-title-' . $category ); ?>">
 							<?php
 							// Render ungrouped abilities first.
 							if ( ! empty( $data['abilities']['ungrouped'] ) ) {
@@ -273,25 +273,25 @@ class Settings implements Hookable {
 								}
 							}
 							?>
-                        </div>
-                    </section>
+						</div>
+					</section>
 				<?php endforeach; ?>
 
 				<?php if ( empty( $grouped_abilities ) ) : ?>
-                    <div class="notice notice-info">
-                        <p>
+					<div class="notice notice-info">
+						<p>
 							<?php esc_html_e( 'No abilities are currently registered. Abilities will appear here once they are registered by this plugin or other installed plugins.', 'extended-abilities' ); ?>
-                        </p>
-                    </div>
+						</p>
+					</div>
 				<?php endif; ?>
 
-                <div class="submit">
+				<div class="submit">
 					<?php submit_button( null, 'primary', 'submit', false ); ?>
-                </div>
-            </form>
+				</div>
+			</form>
 
-            <div class="extended-abilities-footer">
-                <p>
+			<div class="extended-abilities-footer">
+				<p>
 					<?php
 					printf(
 					/* translators: %s: plugin documentation URL */
@@ -299,9 +299,9 @@ class Settings implements Hookable {
 						'<a href="https://github.com/yourmark/extended-abilities" target="_blank">' . esc_html__( 'documentation', 'extended-abilities' ) . '</a>'
 					);
 					?>
-                </p>
-            </div>
-        </div>
+				</p>
+			</div>
+		</div>
 		<?php
 	}
 
@@ -309,9 +309,9 @@ class Settings implements Hookable {
 	 * Render an ability subgroup with toggle all functionality.
 	 *
 	 * @param string $group_id Group identifier.
-	 * @param array $group_data Group data including label and abilities.
+	 * @param array  $group_data Group data including label and abilities.
 	 * @param string $category Parent category.
-	 * @param array $options Current options.
+	 * @param array  $options Current options.
 	 *
 	 * @return void
 	 * @since 1.0.0
@@ -321,31 +321,31 @@ class Settings implements Hookable {
 		$subgroup_class     = 'subgroup-' . esc_attr( $category . '-' . $group_id );
 		$subgroup_items_id  = 'subgroup-items-' . esc_attr( $category . '-' . $group_id );
 		?>
-        <div class="ability-subgroup">
-            <div class="ability-subgroup-header">
-                <div class="ability-subgroup-title-wrapper">
-                    <button
-                            type="button"
-                            class="ability-subgroup-collapse-toggle"
-                            aria-expanded="true"
-                            aria-controls="<?php echo esc_attr( $subgroup_items_id ); ?>"
-                    >
-                        <span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>
-                    </button>
-                    <h3 class="ability-subgroup-title"><?php echo esc_html( $group_data['label'] ); ?></h3>
-                </div>
-                <div class="ability-subgroup-toggle-all">
-                    <label class="extended-abilities-toggle" for="<?php echo esc_attr( $subgroup_toggle_id ); ?>">
-                        <input
-                                type="checkbox"
-                                id="<?php echo esc_attr( $subgroup_toggle_id ); ?>"
-                                class="toggle-subgroup-abilities"
-                                data-subgroup="<?php echo esc_attr( $subgroup_class ); ?>"
-                                aria-label="<?php echo esc_attr( sprintf( __( 'Enable all %s abilities', 'extended-abilities' ), $group_data['label'] ) ); ?>"
-                        />
-                        <span class="extended-abilities-toggle-slider" aria-hidden="true"></span>
-                    </label>
-                    <label for="<?php echo esc_attr( $subgroup_toggle_id ); ?>">
+		<div class="ability-subgroup">
+			<div class="ability-subgroup-header">
+				<div class="ability-subgroup-title-wrapper">
+					<button
+							type="button"
+							class="ability-subgroup-collapse-toggle"
+							aria-expanded="true"
+							aria-controls="<?php echo esc_attr( $subgroup_items_id ); ?>"
+					>
+						<span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>
+					</button>
+					<h3 class="ability-subgroup-title"><?php echo esc_html( $group_data['label'] ); ?></h3>
+				</div>
+				<div class="ability-subgroup-toggle-all">
+					<label class="extended-abilities-toggle" for="<?php echo esc_attr( $subgroup_toggle_id ); ?>">
+						<input
+								type="checkbox"
+								id="<?php echo esc_attr( $subgroup_toggle_id ); ?>"
+								class="toggle-subgroup-abilities"
+								data-subgroup="<?php echo esc_attr( $subgroup_class ); ?>"
+								aria-label="<?php echo esc_attr( sprintf( __( 'Enable all %s abilities', 'extended-abilities' ), $group_data['label'] ) ); ?>"
+						/>
+						<span class="extended-abilities-toggle-slider" aria-hidden="true"></span>
+					</label>
+					<label for="<?php echo esc_attr( $subgroup_toggle_id ); ?>">
 						<?php
 						printf(
 							/* translators: %s: group name */
@@ -353,17 +353,17 @@ class Settings implements Hookable {
 							esc_html( $group_data['label'] )
 						);
 						?>
-                    </label>
-                </div>
-            </div>
-            <div class="ability-subgroup-items" id="<?php echo esc_attr( $subgroup_items_id ); ?>">
+					</label>
+				</div>
+			</div>
+			<div class="ability-subgroup-items" id="<?php echo esc_attr( $subgroup_items_id ); ?>">
 				<?php
 				foreach ( $group_data['abilities'] as $ability_id => $ability ) {
 					$this->render_ability_item( $ability_id, $ability, $category, $options, $subgroup_class );
 				}
 				?>
-            </div>
-        </div>
+			</div>
+		</div>
 		<?php
 	}
 
@@ -371,9 +371,9 @@ class Settings implements Hookable {
 	 * Render a single ability item.
 	 *
 	 * @param string $ability_id Ability ID.
-	 * @param array $ability Ability data.
+	 * @param array  $ability Ability data.
 	 * @param string $category Parent category.
-	 * @param array $options Current options.
+	 * @param array  $options Current options.
 	 * @param string $subgroup_class Optional subgroup class for grouped abilities.
 	 *
 	 * @return void
@@ -390,35 +390,35 @@ class Settings implements Hookable {
 			$checkbox_class .= ' ability-checkbox-subgroup ' . esc_attr( $subgroup_class );
 		}
 		?>
-        <div class="ability-item">
-            <div class="ability-item-toggle">
-                <label class="extended-abilities-toggle" for="<?php echo esc_attr( $field_id ); ?>">
-                    <input
-                            type="checkbox"
-                            id="<?php echo esc_attr( $field_id ); ?>"
-                            name="<?php echo esc_attr( $field_name ); ?>"
-                            value="1"
-                            class="<?php echo esc_attr( $checkbox_class ); ?>"
-                            data-group="<?php echo esc_attr( $category ); ?>"
+		<div class="ability-item">
+			<div class="ability-item-toggle">
+				<label class="extended-abilities-toggle" for="<?php echo esc_attr( $field_id ); ?>">
+					<input
+							type="checkbox"
+							id="<?php echo esc_attr( $field_id ); ?>"
+							name="<?php echo esc_attr( $field_name ); ?>"
+							value="1"
+							class="<?php echo esc_attr( $checkbox_class ); ?>"
+							data-group="<?php echo esc_attr( $category ); ?>"
 						<?php if ( $has_description ) : ?>
-                            aria-describedby="<?php echo esc_attr( $field_id . '-description' ); ?>"
+							aria-describedby="<?php echo esc_attr( $field_id . '-description' ); ?>"
 						<?php endif; ?>
 						<?php checked( $checked ); ?>
-                    />
-                    <span class="extended-abilities-toggle-slider" aria-hidden="true"></span>
-                </label>
-            </div>
-            <div class="ability-item-content">
-                <label class="ability-item-label" for="<?php echo esc_attr( $field_id ); ?>">
+					/>
+					<span class="extended-abilities-toggle-slider" aria-hidden="true"></span>
+				</label>
+			</div>
+			<div class="ability-item-content">
+				<label class="ability-item-label" for="<?php echo esc_attr( $field_id ); ?>">
 					<?php echo esc_html( $ability['label'] ); ?>
-                </label>
+				</label>
 				<?php if ( $has_description ) : ?>
-                    <p class="ability-item-description" id="<?php echo esc_attr( $field_id . '-description' ); ?>">
+					<p class="ability-item-description" id="<?php echo esc_attr( $field_id . '-description' ); ?>">
 						<?php echo esc_html( $ability['description'] ); ?>
-                    </p>
+					</p>
 				<?php endif; ?>
-            </div>
-        </div>
+			</div>
+		</div>
 		<?php
 	}
 
