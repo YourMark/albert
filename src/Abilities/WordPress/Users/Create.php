@@ -28,8 +28,8 @@ class Create extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'wordpress/create-user';
-		$this->label       = __( 'Create User', '' );
-		$this->description = __( 'Create a new WordPress user with specified username, email, and role.', '' );
+		$this->label       = __( 'Create User', 'extended-abilities' );
+		$this->description = __( 'Create a new WordPress user with specified username, email, and role.', 'extended-abilities' );
 		$this->category    = 'wp-extended-abilities-wp-core';
 		$this->group       = 'users';
 
@@ -198,7 +198,7 @@ class Create extends BaseAbility {
 		if ( empty( $args['username'] ) ) {
 			return new WP_Error(
 				'missing_username',
-				__( 'Username is required.', '' ),
+				__( 'Username is required.', 'extended-abilities' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -206,7 +206,7 @@ class Create extends BaseAbility {
 		if ( empty( $args['email'] ) ) {
 			return new WP_Error(
 				'missing_email',
-				__( 'Email is required.', '' ),
+				__( 'Email is required.', 'extended-abilities' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -214,7 +214,7 @@ class Create extends BaseAbility {
 		if ( empty( $args['password'] ) ) {
 			return new WP_Error(
 				'missing_password',
-				__( 'Password is required.', '' ),
+				__( 'Password is required.', 'extended-abilities' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -250,7 +250,7 @@ class Create extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while creating the user.', '' ),
+				$data['message'] ?? __( 'An error occurred while creating the user.', 'extended-abilities' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

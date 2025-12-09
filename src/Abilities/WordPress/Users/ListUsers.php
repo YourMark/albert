@@ -29,8 +29,8 @@ class ListUsers extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'wordpress/list-users';
-		$this->label       = __( 'List Users', '' );
-		$this->description = __( 'Retrieve a list of WordPress users with optional filtering and pagination.', '' );
+		$this->label       = __( 'List Users', 'extended-abilities' );
+		$this->description = __( 'Retrieve a list of WordPress users with optional filtering and pagination.', 'extended-abilities' );
 		$this->category    = 'wp-extended-abilities-wp-core';
 		$this->group       = 'users';
 
@@ -60,8 +60,8 @@ class ListUsers extends BaseAbility {
 		return [
 			'type'       => 'object',
 			'properties' => [
-				'id' => [
-					'type' => 'integer',
+				'id'       => [
+					'type'        => 'integer',
 					'description' => 'User id for direct querying.',
 				],
 				'page'     => [
@@ -190,7 +190,7 @@ class ListUsers extends BaseAbility {
 
 		$route = '/wp/v2/users';
 
-		if( isset( $args['id'] ) && ! empty( $args['id'] ) ) {
+		if ( isset( $args['id'] ) && ! empty( $args['id'] ) ) {
 			$route .= '/' . $args['id'];
 		}
 
@@ -223,7 +223,7 @@ class ListUsers extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while retrieving users.', '' ),
+				$data['message'] ?? __( 'An error occurred while retrieving users.', 'extended-abilities' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

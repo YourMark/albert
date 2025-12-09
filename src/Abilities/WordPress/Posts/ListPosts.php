@@ -28,8 +28,8 @@ class ListPosts extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'wordpress/list-posts';
-		$this->label       = __( 'List Posts', '' );
-		$this->description = __( 'Retrieve a list of WordPress posts with optional filtering and pagination.', '' );
+		$this->label       = __( 'List Posts', 'extended-abilities' );
+		$this->description = __( 'Retrieve a list of WordPress posts with optional filtering and pagination.', 'extended-abilities' );
 		$this->category    = 'wp-extended-abilities-wp-core';
 		$this->group       = 'posts';
 
@@ -251,7 +251,7 @@ class ListPosts extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while retrieving posts.', '' ),
+				$data['message'] ?? __( 'An error occurred while retrieving posts.', 'extended-abilities' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

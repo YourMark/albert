@@ -28,8 +28,8 @@ class Create extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'wordpress/create-post';
-		$this->label       = __( 'Create Post', '' );
-		$this->description = __( 'Create a new WordPress post with specified title, content, and metadata.', '' );
+		$this->label       = __( 'Create Post', 'extended-abilities' );
+		$this->description = __( 'Create a new WordPress post with specified title, content, and metadata.', 'extended-abilities' );
 		$this->category    = 'wp-extended-abilities-wp-core';
 		$this->group       = 'posts';
 
@@ -181,7 +181,7 @@ class Create extends BaseAbility {
 		if ( empty( $args['title'] ) ) {
 			return new WP_Error(
 				'missing_title',
-				__( 'Post title is required.', '' ),
+				__( 'Post title is required.', 'extended-abilities' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -237,7 +237,7 @@ class Create extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while creating the post.', '' ),
+				$data['message'] ?? __( 'An error occurred while creating the post.', 'extended-abilities' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

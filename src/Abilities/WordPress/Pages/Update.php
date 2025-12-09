@@ -28,8 +28,8 @@ class Update extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'wordpress/update-page';
-		$this->label       = __( 'Update Page', '' );
-		$this->description = __( 'Update an existing WordPress page with new title and content.', '' );
+		$this->label       = __( 'Update Page', 'extended-abilities' );
+		$this->description = __( 'Update an existing WordPress page with new title and content.', 'extended-abilities' );
 		$this->category    = 'wp-extended-abilities-wp-core';
 		$this->group       = 'pages';
 
@@ -174,7 +174,7 @@ class Update extends BaseAbility {
 		if ( empty( $args['id'] ) ) {
 			return new WP_Error(
 				'missing_id',
-				__( 'Page ID is required.', '' ),
+				__( 'Page ID is required.', 'extended-abilities' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -185,7 +185,7 @@ class Update extends BaseAbility {
 		if ( ! get_post( $page_id ) ) {
 			return new WP_Error(
 				'page_not_found',
-				__( 'Page not found.', '' ),
+				__( 'Page not found.', 'extended-abilities' ),
 				[ 'status' => 404 ]
 			);
 		}
@@ -232,7 +232,7 @@ class Update extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while updating the page.', '' ),
+				$data['message'] ?? __( 'An error occurred while updating the page.', 'extended-abilities' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

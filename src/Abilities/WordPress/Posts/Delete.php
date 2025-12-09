@@ -28,8 +28,8 @@ class Delete extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'wordpress/delete-post';
-		$this->label       = __( 'Delete Post', '' );
-		$this->description = __( 'Delete a WordPress post permanently or move it to trash.', '' );
+		$this->label       = __( 'Delete Post', 'extended-abilities' );
+		$this->description = __( 'Delete a WordPress post permanently or move it to trash.', 'extended-abilities' );
 		$this->category    = 'wp-extended-abilities-wp-core';
 		$this->group       = 'posts';
 
@@ -149,7 +149,7 @@ class Delete extends BaseAbility {
 		if ( empty( $args['id'] ) ) {
 			return new WP_Error(
 				'missing_id',
-				__( 'Post ID is required.', '' ),
+				__( 'Post ID is required.', 'extended-abilities' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -161,7 +161,7 @@ class Delete extends BaseAbility {
 		if ( ! $post ) {
 			return new WP_Error(
 				'post_not_found',
-				__( 'Post not found.', '' ),
+				__( 'Post not found.', 'extended-abilities' ),
 				[ 'status' => 404 ]
 			);
 		}
@@ -185,7 +185,7 @@ class Delete extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while deleting the post.', '' ),
+				$data['message'] ?? __( 'An error occurred while deleting the post.', 'extended-abilities' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

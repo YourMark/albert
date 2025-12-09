@@ -28,8 +28,8 @@ class ListPages extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'wordpress/list-pages';
-		$this->label       = __( 'List Pages', '' );
-		$this->description = __( 'Retrieve a list of WordPress pages with optional filtering and pagination.', '' );
+		$this->label       = __( 'List Pages', 'extended-abilities' );
+		$this->description = __( 'Retrieve a list of WordPress pages with optional filtering and pagination.', 'extended-abilities' );
 		$this->category    = 'wp-extended-abilities-wp-core';
 		$this->group       = 'pages';
 
@@ -244,7 +244,7 @@ class ListPages extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while retrieving pages.', '' ),
+				$data['message'] ?? __( 'An error occurred while retrieving pages.', 'extended-abilities' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

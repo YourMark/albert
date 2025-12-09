@@ -28,8 +28,8 @@ class Delete extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'wordpress/delete-user';
-		$this->label       = __( 'Delete User', '' );
-		$this->description = __( 'Delete a WordPress user and optionally reassign their content.', '' );
+		$this->label       = __( 'Delete User', 'extended-abilities' );
+		$this->description = __( 'Delete a WordPress user and optionally reassign their content.', 'extended-abilities' );
 		$this->category    = 'wp-extended-abilities-wp-core';
 		$this->group       = 'users';
 
@@ -148,7 +148,7 @@ class Delete extends BaseAbility {
 		if ( empty( $args['id'] ) ) {
 			return new WP_Error(
 				'missing_id',
-				__( 'User ID is required.', '' ),
+				__( 'User ID is required.', 'extended-abilities' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -160,7 +160,7 @@ class Delete extends BaseAbility {
 		if ( ! $user ) {
 			return new WP_Error(
 				'user_not_found',
-				__( 'User not found.', '' ),
+				__( 'User not found.', 'extended-abilities' ),
 				[ 'status' => 404 ]
 			);
 		}
@@ -187,7 +187,7 @@ class Delete extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while deleting the user.', '' ),
+				$data['message'] ?? __( 'An error occurred while deleting the user.', 'extended-abilities' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

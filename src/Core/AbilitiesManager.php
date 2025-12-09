@@ -65,8 +65,8 @@ class AbilitiesManager implements Hookable {
 			wp_register_ability_category(
 				'wp-extended-abilities-wp-core',
 				[
-					'label'       => __( 'WordPress', '' ),
-					'description' => __( 'WordPress core functionality abilities.', '' ),
+					'label'       => __( 'WordPress', 'extended-abilities' ),
+					'description' => __( 'WordPress core functionality abilities.', 'extended-abilities' ),
 				]
 			);
 		}
