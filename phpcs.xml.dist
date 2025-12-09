@@ -15,6 +15,10 @@
 		<!-- Allow short array syntax [] instead of array() -->
 		<exclude name="Generic.Arrays.DisallowShortArraySyntax"/>
 		<exclude name="Universal.Arrays.DisallowShortArraySyntax"/>
+
+		<!-- Allow PascalCase filenames (Plugin.php, Ability.php, etc.) -->
+		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
 	</rule>
 
 	<!-- Enforce short array syntax. -->
