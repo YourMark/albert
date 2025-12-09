@@ -59,15 +59,6 @@ class Plugin {
 	private ?AbilitiesManager $abilities_manager = null;
 
 	/**
-	 * Private constructor to prevent direct instantiation.
-	 *
-	 * @since 1.0.0
-	 */
-	private function __construct() {
-		// Private constructor for singleton pattern.
-	}
-
-	/**
 	 * Get the singleton instance of the plugin.
 	 *
 	 * @return Plugin The plugin instance.
@@ -138,32 +129,6 @@ class Plugin {
 			false,
 			dirname( plugin_basename( EXTENDED_ABILITIES_PLUGIN_FILE ) ) . '/languages'
 		);
-	}
-
-	/**
-	 * Register all plugin components.
-	 *
-	 * Components are classes that implement the Hookable interface
-	 * and provide specific functionality for the plugin.
-	 *
-	 * @return void
-	 * @since 1.0.0
-	 */
-	public function register_components(): void {
-		// Register admin components only in admin area.
-		if ( is_admin() ) {
-			$settings = new Settings();
-			$settings->register_hooks();
-		}
-
-		/**
-		 * Allows additional components to be registered.
-		 *
-		 * @param Plugin $plugin The plugin instance.
-		 *
-		 * @since 1.0.0
-		 */
-		do_action( 'extended_abilities_register_components', $this );
 	}
 
 	/**
@@ -249,26 +214,5 @@ class Plugin {
 		 * @since 1.0.0
 		 */
 		do_action( 'extended_abilities_deactivated' );
-	}
-
-	/**
-	 * Prevent cloning of the instance.
-	 *
-	 * @return void
-	 * @since 1.0.0
-	 */
-	private function __clone() {
-		// Prevent cloning.
-	}
-
-	/**
-	 * Prevent unserialization of the instance.
-	 *
-	 * @return void
-	 * @since 1.0.0
-	 */
-	public function __wakeup() {
-		// Prevent unserialization.
-		throw new \Exception( 'Cannot unserialize singleton' );
 	}
 }
