@@ -1,0 +1,328 @@
+# Copyright (C) 2025 Mark Jansen - Your Mark Media
+# This file is distributed under the GPL v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Extended Abilities 1.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/extended-abilities\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2025-12-09T20:14:25+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.11.0\n"
+"X-Domain: extended-abilities\n"
+
+#. Plugin Name of the plugin
+#: extended-abilities.php
+#: src/Admin/Settings.php:67
+#: src/Admin/Settings.php:68
+msgid "Extended Abilities"
+msgstr ""
+
+#. Plugin URI of the plugin
+#. Author URI of the plugin
+#: extended-abilities.php
+msgid "https://yourmark.nl"
+msgstr ""
+
+#. Description of the plugin
+#: extended-abilities.php
+msgid "Extend the abilities of WordPress, WooCommerce and other plugins with the abilities API"
+msgstr ""
+
+#. Author of the plugin
+#: extended-abilities.php
+msgid "Mark Jansen - Your Mark Media"
+msgstr ""
+
+#. translators: %s: error message
+#: extended-abilities.php:59
+msgid "Extended Abilities Plugin Error: %s"
+msgstr ""
+
+#: src/Abilities/WordPress/Pages/Create.php:31
+msgid "Create Page"
+msgstr ""
+
+#: src/Abilities/WordPress/Pages/Create.php:32
+msgid "Create a new WordPress page with specified title and content."
+msgstr ""
+
+#: src/Abilities/WordPress/Pages/Create.php:176
+msgid "Page title is required."
+msgstr ""
+
+#: src/Abilities/WordPress/Pages/Create.php:213
+msgid "An error occurred while creating the page."
+msgstr ""
+
+#: src/Abilities/WordPress/Pages/Delete.php:31
+msgid "Delete Page"
+msgstr ""
+
+#: src/Abilities/WordPress/Pages/Delete.php:32
+msgid "Delete a WordPress page permanently or move it to trash."
+msgstr ""
+
+#: src/Abilities/WordPress/Pages/Delete.php:152
+#: src/Abilities/WordPress/Pages/Update.php:177
+msgid "Page ID is required."
+msgstr ""
+
+#: src/Abilities/WordPress/Pages/Delete.php:164
+#: src/Abilities/WordPress/Pages/Update.php:188
+msgid "Page not found."
+msgstr ""
+
+#: src/Abilities/WordPress/Pages/Delete.php:188
+msgid "An error occurred while deleting the page."
+msgstr ""
+
+#: src/Abilities/WordPress/Pages/ListPages.php:31
+msgid "List Pages"
+msgstr ""
+
+#: src/Abilities/WordPress/Pages/ListPages.php:32
+msgid "Retrieve a list of WordPress pages with optional filtering and pagination."
+msgstr ""
+
+#: src/Abilities/WordPress/Pages/ListPages.php:247
+msgid "An error occurred while retrieving pages."
+msgstr ""
+
+#: src/Abilities/WordPress/Pages/Update.php:31
+msgid "Update Page"
+msgstr ""
+
+#: src/Abilities/WordPress/Pages/Update.php:32
+msgid "Update an existing WordPress page with new title and content."
+msgstr ""
+
+#: src/Abilities/WordPress/Pages/Update.php:235
+msgid "An error occurred while updating the page."
+msgstr ""
+
+#: src/Abilities/WordPress/Posts/Create.php:31
+msgid "Create Post"
+msgstr ""
+
+#: src/Abilities/WordPress/Posts/Create.php:32
+msgid "Create a new WordPress post with specified title, content, and metadata."
+msgstr ""
+
+#: src/Abilities/WordPress/Posts/Create.php:184
+msgid "Post title is required."
+msgstr ""
+
+#: src/Abilities/WordPress/Posts/Create.php:240
+msgid "An error occurred while creating the post."
+msgstr ""
+
+#: src/Abilities/WordPress/Posts/Delete.php:31
+msgid "Delete Post"
+msgstr ""
+
+#: src/Abilities/WordPress/Posts/Delete.php:32
+msgid "Delete a WordPress post permanently or move it to trash."
+msgstr ""
+
+#: src/Abilities/WordPress/Posts/Delete.php:152
+#: src/Abilities/WordPress/Posts/Update.php:184
+msgid "Post ID is required."
+msgstr ""
+
+#: src/Abilities/WordPress/Posts/Delete.php:164
+#: src/Abilities/WordPress/Posts/Update.php:195
+msgid "Post not found."
+msgstr ""
+
+#: src/Abilities/WordPress/Posts/Delete.php:188
+msgid "An error occurred while deleting the post."
+msgstr ""
+
+#: src/Abilities/WordPress/Posts/ListPosts.php:31
+msgid "List Posts"
+msgstr ""
+
+#: src/Abilities/WordPress/Posts/ListPosts.php:32
+msgid "Retrieve a list of WordPress posts with optional filtering and pagination."
+msgstr ""
+
+#: src/Abilities/WordPress/Posts/ListPosts.php:254
+msgid "An error occurred while retrieving posts."
+msgstr ""
+
+#: src/Abilities/WordPress/Posts/Update.php:31
+msgid "Update Post"
+msgstr ""
+
+#: src/Abilities/WordPress/Posts/Update.php:32
+msgid "Update an existing WordPress post with new title, content, and metadata."
+msgstr ""
+
+#: src/Abilities/WordPress/Posts/Update.php:262
+msgid "An error occurred while updating the post."
+msgstr ""
+
+#: src/Abilities/WordPress/Users/Create.php:31
+msgid "Create User"
+msgstr ""
+
+#: src/Abilities/WordPress/Users/Create.php:32
+msgid "Create a new WordPress user with specified username, email, and role."
+msgstr ""
+
+#: src/Abilities/WordPress/Users/Create.php:201
+msgid "Username is required."
+msgstr ""
+
+#: src/Abilities/WordPress/Users/Create.php:209
+msgid "Email is required."
+msgstr ""
+
+#: src/Abilities/WordPress/Users/Create.php:217
+msgid "Password is required."
+msgstr ""
+
+#: src/Abilities/WordPress/Users/Create.php:253
+msgid "An error occurred while creating the user."
+msgstr ""
+
+#: src/Abilities/WordPress/Users/Delete.php:31
+msgid "Delete User"
+msgstr ""
+
+#: src/Abilities/WordPress/Users/Delete.php:32
+msgid "Delete a WordPress user and optionally reassign their content."
+msgstr ""
+
+#: src/Abilities/WordPress/Users/Delete.php:151
+#: src/Abilities/WordPress/Users/Update.php:196
+msgid "User ID is required."
+msgstr ""
+
+#: src/Abilities/WordPress/Users/Delete.php:163
+#: src/Abilities/WordPress/Users/Update.php:207
+msgid "User not found."
+msgstr ""
+
+#: src/Abilities/WordPress/Users/Delete.php:190
+msgid "An error occurred while deleting the user."
+msgstr ""
+
+#: src/Abilities/WordPress/Users/ListUsers.php:32
+msgid "List Users"
+msgstr ""
+
+#: src/Abilities/WordPress/Users/ListUsers.php:33
+msgid "Retrieve a list of WordPress users with optional filtering and pagination."
+msgstr ""
+
+#: src/Abilities/WordPress/Users/ListUsers.php:226
+msgid "An error occurred while retrieving users."
+msgstr ""
+
+#: src/Abilities/WordPress/Users/Update.php:31
+msgid "Update User"
+msgstr ""
+
+#: src/Abilities/WordPress/Users/Update.php:32
+msgid "Update an existing WordPress user with new information."
+msgstr ""
+
+#: src/Abilities/WordPress/Users/Update.php:262
+msgid "An error occurred while updating the user."
+msgstr ""
+
+#: src/Admin/Settings.php:109
+msgid "WordPress Abilities"
+msgstr ""
+
+#: src/Admin/Settings.php:116
+msgid "WooCommerce Abilities"
+msgstr ""
+
+#: src/Admin/Settings.php:123
+msgid "Plugin Integrations"
+msgstr ""
+
+#: src/Admin/Settings.php:176
+msgid "Posts"
+msgstr ""
+
+#: src/Admin/Settings.php:177
+msgid "Pages"
+msgstr ""
+
+#: src/Admin/Settings.php:178
+msgid "Media"
+msgstr ""
+
+#: src/Admin/Settings.php:179
+msgid "Users"
+msgstr ""
+
+#: src/Admin/Settings.php:180
+msgid "Comments"
+msgstr ""
+
+#: src/Admin/Settings.php:181
+msgid "Plugins"
+msgstr ""
+
+#: src/Admin/Settings.php:182
+msgid "Themes"
+msgstr ""
+
+#: src/Admin/Settings.php:206
+msgid "You do not have sufficient permissions to access this page."
+msgstr ""
+
+#: src/Admin/Settings.php:221
+msgid "Settings Tabs"
+msgstr ""
+
+#: src/Admin/Settings.php:238
+msgid "Extended Abilities Settings"
+msgstr ""
+
+#: src/Admin/Settings.php:242
+msgid "Configure which abilities are available to AI assistants. Enable only the abilities you trust AI assistants to use on your site."
+msgstr ""
+
+#: src/Admin/Settings.php:270
+#: src/Admin/Settings.php:364
+msgid "Enable all %s abilities"
+msgstr ""
+
+#: src/Admin/Settings.php:275
+msgid "Enable All"
+msgstr ""
+
+#: src/Admin/Settings.php:303
+msgid "No abilities are currently registered. Abilities will appear here once they are registered by this plugin or other installed plugins."
+msgstr ""
+
+#. translators: %s: plugin documentation URL
+#: src/Admin/Settings.php:318
+msgid "Need help? Check out the %s."
+msgstr ""
+
+#: src/Admin/Settings.php:319
+msgid "documentation"
+msgstr ""
+
+#. translators: %s: group name
+#: src/Admin/Settings.php:372
+msgid "Enable All %s"
+msgstr ""
+
+#: src/Core/AbilitiesManager.php:68
+msgid "WordPress"
+msgstr ""
+
+#: src/Core/AbilitiesManager.php:69
+msgid "WordPress core functionality abilities."
+msgstr ""
