@@ -330,7 +330,7 @@ class Settings implements Hookable {
 							aria-expanded="true"
 							aria-controls="<?php echo esc_attr( $subgroup_items_id ); ?>"
 					>
-						<span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>
+						<span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span>
 					</button>
 					<h3 class="ability-subgroup-title"><?php echo esc_html( $group_data['label'] ); ?></h3>
 				</div>
