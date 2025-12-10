@@ -90,9 +90,11 @@ Website: https://yourmark.nl
 
 ## Changelog
 
-### 1.0.0 - 2025-12-02
-- Initial release
+### 0.0.1 - 2025-12-10
+- Initial alpha release
 - Core abilities API
+- WordPress core abilities (Posts, Pages, Users, Media)
+- Settings page with tab navigation
 - Hookable interface pattern
 - Component system
 - Composer support
