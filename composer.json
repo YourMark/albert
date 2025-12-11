@@ -12,6 +12,7 @@
     ],
     "require": {
         "php": ">=7.4",
+        "alleyinteractive/wp-block-converter": "^1.7",
         "wordpress/mcp-adapter": "^0.3.0"
     },
     "require-dev": {
@@ -38,6 +39,7 @@
         "optimize-autoloader": true,
         "sort-packages": true,
         "allow-plugins": {
+            "alleyinteractive/composer-wordpress-autoloader": true,
             "dealerdirect/phpcodesniffer-composer-installer": true
         }
     }
