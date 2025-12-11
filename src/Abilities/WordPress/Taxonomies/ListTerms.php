@@ -1,0 +1,233 @@
+<?php
+/**
+ * List Terms Ability
+ *
+ * @package    ExtendedAbilities
+ * @subpackage Abilities\WordPress\Taxonomies
+ * @since      1.0.0
+ */
+
+namespace ExtendedAbilities\Abilities\WordPress\Taxonomies;
+
+use ExtendedAbilities\Abstracts\BaseAbility;
+use WP_Error;
+use WP_REST_Request;
+
+/**
+ * List Terms Ability class
+ *
+ * Allows AI assistants to list terms from a taxonomy via the abilities API.
+ *
+ * @since 1.0.0
+ */
+class ListTerms extends BaseAbility {
+	/**
+	 * Constructor.
+	 *
+	 * @since 1.0.0
+	 */
+	public function __construct() {
+		$this->id          = 'wordpress/list-terms';
+		$this->label       = __( 'List Terms', 'extended-abilities' );
+		$this->description = __( 'Retrieve a list of terms from a specific taxonomy (categories, tags, etc).', 'extended-abilities' );
+		$this->category    = 'wp-extended-abilities-wp-core';
+		$this->group       = 'taxonomies';
+
+		$this->input_schema  = $this->get_input_schema();
+		$this->output_schema = $this->get_output_schema();
+
+		$this->meta = [
+			'mcp' => [
+				'public' => true,
+			],
+		];
+
+		parent::__construct();
+	}
+
+	/**
+	 * Get the input schema for this ability.
+	 *
+	 * @return array Input schema.
+	 * @since 1.0.0
+	 */
+	protected function get_input_schema(): array {
+		return [
+			'type'       => 'object',
+			'properties' => [
+				'taxonomy' => [
+					'type'        => 'string',
+					'description' => 'Taxonomy slug (e.g., "category", "post_tag")',
+					'default'     => 'category',
+				],
+				'per_page' => [
+					'type'        => 'integer',
+					'description' => 'Maximum number of items to return (1-100)',
+					'default'     => 10,
+				],
+				'page'     => [
+					'type'        => 'integer',
+					'description' => 'Current page of the collection',
+					'default'     => 1,
+				],
+				'search'   => [
+					'type'        => 'string',
+					'description' => 'Search terms',
+					'default'     => '',
+				],
+				'parent'   => [
+					'type'        => 'integer',
+					'description' => 'Limit result set to terms with a specific parent',
+					'default'     => 0,
+				],
+			],
+			'required'   => [],
+		];
+	}
+
+	/**
+	 * Get the output schema for this ability.
+	 *
+	 * @return array Output schema.
+	 * @since 1.0.0
+	 */
+	protected function get_output_schema(): array {
+		return [
+			'type'  => 'array',
+			'items' => [
+				'type'       => 'object',
+				'properties' => [
+					'id'          => [ 'type' => 'integer' ],
+					'name'        => [ 'type' => 'string' ],
+					'slug'        => [ 'type' => 'string' ],
+					'description' => [ 'type' => 'string' ],
+					'parent'      => [ 'type' => 'integer' ],
+					'count'       => [ 'type' => 'integer' ],
+				],
+			],
+		];
+	}
+
+	/**
+	 * Check if current user has permission to execute this ability.
+	 *
+	 * @return bool Whether user has permission.
+	 * @since 1.0.0
+	 */
+	public function check_permission(): bool {
+		return current_user_can( 'manage_categories' );
+	}
+
+	/**
+	 * Execute the ability - list terms using WordPress REST API.
+	 *
+	 * @param array $args {
+	 *     Input parameters.
+	 *
+	 * @type string $taxonomy Taxonomy slug.
+	 * @type int    $per_page Number of items per page.
+	 * @type int    $page     Page number.
+	 * @type string $search   Search query.
+	 * @type int    $parent   Parent term ID.
+	 * }
+	 * @return array|WP_Error Terms data on success, WP_Error on failure.
+	 * @since 1.0.0
+	 */
+	public function execute( array $args ): array|WP_Error {
+		$taxonomy = $args['taxonomy'] ?? 'category';
+
+		// Determine REST base for taxonomy.
+		$rest_base = $this->get_taxonomy_rest_base( $taxonomy );
+		if ( is_wp_error( $rest_base ) ) {
+			return $rest_base;
+		}
+
+		// Create REST request.
+		$request = new WP_REST_Request( 'GET', '/wp/v2/' . $rest_base );
+
+		// Set parameters.
+		$request->set_param( 'per_page', min( absint( $args['per_page'] ?? 10 ), 100 ) );
+		$request->set_param( 'page', absint( $args['page'] ?? 1 ) );
+
+		if ( ! empty( $args['search'] ) ) {
+			$request->set_param( 'search', sanitize_text_field( $args['search'] ) );
+		}
+
+		if ( ! empty( $args['parent'] ) ) {
+			$request->set_param( 'parent', absint( $args['parent'] ) );
+		}
+
+		// Execute the request.
+		$response = rest_do_request( $request );
+		$server   = rest_get_server();
+		$data     = $server->response_to_data( $response, false );
+
+		// Check for errors.
+		if ( is_wp_error( $data ) ) {
+			return $data;
+		}
+
+		if ( $response->is_error() ) {
+			return new WP_Error(
+				$data['code'] ?? 'rest_error',
+				$data['message'] ?? __( 'An error occurred while retrieving terms.', 'extended-abilities' ),
+				[ 'status' => $response->get_status() ]
+			);
+		}
+
+		// Format the response.
+		$terms = [];
+		foreach ( $data as $term_data ) {
+			$terms[] = [
+				'id'          => $term_data['id'] ?? 0,
+				'name'        => $term_data['name'] ?? '',
+				'slug'        => $term_data['slug'] ?? '',
+				'description' => $term_data['description'] ?? '',
+				'parent'      => $term_data['parent'] ?? 0,
+				'count'       => $term_data['count'] ?? 0,
+			];
+		}
+
+		return $terms;
+	}
+
+	/**
+	 * Get the REST base for a taxonomy.
+	 *
+	 * @param string $taxonomy Taxonomy slug.
+	 * @return string|WP_Error REST base or error.
+	 * @since 1.0.0
+	 */
+	private function get_taxonomy_rest_base( string $taxonomy ): string|WP_Error {
+		// Map common taxonomies to their REST bases.
+		$rest_bases = [
+			'category'  => 'categories',
+			'post_tag'  => 'tags',
+			'post_tags' => 'tags',
+		];
+
+		if ( isset( $rest_bases[ $taxonomy ] ) ) {
+			return $rest_bases[ $taxonomy ];
+		}
+
+		// Get taxonomy object.
+		$taxonomy_obj = get_taxonomy( $taxonomy );
+		if ( ! $taxonomy_obj ) {
+			return new WP_Error(
+				'invalid_taxonomy',
+				__( 'Invalid taxonomy.', 'extended-abilities' ),
+				[ 'status' => 404 ]
+			);
+		}
+
+		if ( empty( $taxonomy_obj->rest_base ) ) {
+			return new WP_Error(
+				'taxonomy_not_rest_enabled',
+				__( 'This taxonomy is not available via REST API.', 'extended-abilities' ),
+				[ 'status' => 400 ]
+			);
+		}
+
+		return $taxonomy_obj->rest_base;
+	}
+}

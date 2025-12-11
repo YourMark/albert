@@ -209,7 +209,7 @@ class Update extends BaseAbility {
 		}
 
 		if ( isset( $args['content'] ) ) {
-			$request_data['content'] = ( new Block_Converter( $args['content'] ) )->convert();;
+			$request_data['content'] = ( new Block_Converter( $args['content'] ) )->convert();
 		}
 
 		if ( isset( $args['status'] ) ) {
