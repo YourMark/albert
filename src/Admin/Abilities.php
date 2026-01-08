@@ -78,18 +78,11 @@ class Abilities implements Hookable {
 				'core' => __( 'Core', 'extended-abilities' ),
 			];
 
-			// Add WooCommerce tab if WooCommerce is active.
-			if ( class_exists( 'WooCommerce' ) ) {
-				$this->tabs['woocommerce'] = __( 'WooCommerce', 'extended-abilities' );
-			}
-
-			// Add ACF tab if ACF is active.
-			if ( class_exists( 'ACF' ) ) {
-				$this->tabs['acf'] = __( 'ACF', 'extended-abilities' );
-			}
-
 			/**
 			 * Filter the available abilities tabs.
+			 *
+			 * Use this filter to add custom tabs for plugin integrations.
+			 * Example: $tabs['woocommerce'] = __( 'WooCommerce', 'my-plugin' );
 			 *
 			 * @param array $tabs Array of tab slug => label pairs.
 			 *
@@ -330,46 +323,32 @@ class Abilities implements Hookable {
 	private function get_abilities_for_tab( string $tab ): array {
 		$grouped = [];
 
-		switch ( $tab ) {
-			case 'core':
-				$wordpress_abilities = apply_filters( 'extended_abilities/abilities/wordpress', [] );
-				if ( ! empty( $wordpress_abilities ) ) {
-					$grouped['wordpress'] = [
-						'title'     => __( 'WordPress Abilities', 'extended-abilities' ),
-						'abilities' => $this->organize_abilities_by_group( $wordpress_abilities ),
-					];
-				}
-				break;
-
-			case 'woocommerce':
-				$woocommerce_abilities = apply_filters( 'extended_abilities/abilities/woocommerce', [] );
-				if ( ! empty( $woocommerce_abilities ) ) {
-					$grouped['woocommerce'] = [
-						'title'     => __( 'WooCommerce Abilities', 'extended-abilities' ),
-						'abilities' => $this->organize_abilities_by_group( $woocommerce_abilities ),
-					];
-				}
-				break;
-
-			case 'acf':
-				$acf_abilities = apply_filters( 'extended_abilities/abilities/acf', [] );
-				if ( ! empty( $acf_abilities ) ) {
-					$grouped['acf'] = [
-						'title'     => __( 'ACF Abilities', 'extended-abilities' ),
-						'abilities' => $this->organize_abilities_by_group( $acf_abilities ),
-					];
-				}
-				break;
-
-			default:
-				$plugin_abilities = apply_filters( 'extended_abilities/abilities/plugins', [] );
-				if ( ! empty( $plugin_abilities ) ) {
-					$grouped['plugins'] = [
-						'title'     => __( 'Plugin Integrations', 'extended-abilities' ),
-						'abilities' => $this->organize_abilities_by_group( $plugin_abilities ),
-					];
-				}
-				break;
+		if ( 'core' === $tab ) {
+			$wordpress_abilities = apply_filters( 'extended_abilities/abilities/wordpress', [] );
+			if ( ! empty( $wordpress_abilities ) ) {
+				$grouped['wordpress'] = [
+					'title'     => __( 'WordPress Abilities', 'extended-abilities' ),
+					'abilities' => $this->organize_abilities_by_group( $wordpress_abilities ),
+				];
+			}
+		} else {
+			/**
+			 * Filter to provide abilities for a custom tab.
+			 *
+			 * Use this filter to add abilities to your custom tab.
+			 * The dynamic portion of the hook name, `$tab`, refers to the tab slug.
+			 *
+			 * @param array $abilities Array of ability data.
+			 *
+			 * @since 1.0.0
+			 */
+			$tab_abilities = apply_filters( "extended_abilities/abilities/{$tab}", [] );
+			if ( ! empty( $tab_abilities ) ) {
+				$grouped[ $tab ] = [
+					'title'     => $this->get_tabs()[ $tab ] ?? ucfirst( $tab ),
+					'abilities' => $this->organize_abilities_by_group( $tab_abilities ),
+				];
+			}
 		}
 
 		return $grouped;
@@ -601,17 +580,16 @@ class Abilities implements Hookable {
 	 * @since 1.0.0
 	 */
 	private function is_valid_ability_id( string $ability_id ): bool {
-		$wordpress_abilities   = apply_filters( 'extended_abilities/abilities/wordpress', [] );
-		$woocommerce_abilities = apply_filters( 'extended_abilities/abilities/woocommerce', [] );
-		$acf_abilities         = apply_filters( 'extended_abilities/abilities/acf', [] );
-		$plugin_abilities      = apply_filters( 'extended_abilities/abilities/plugins', [] );
+		$all_abilities = apply_filters( 'extended_abilities/abilities/wordpress', [] );
 
-		$all_abilities = array_merge(
-			$wordpress_abilities,
-			$woocommerce_abilities,
-			$acf_abilities,
-			$plugin_abilities
-		);
+		// Include abilities from all registered tabs.
+		$tabs = $this->get_tabs();
+		foreach ( array_keys( $tabs ) as $tab_slug ) {
+			if ( 'core' !== $tab_slug ) {
+				$tab_abilities = apply_filters( "extended_abilities/abilities/{$tab_slug}", [] );
+				$all_abilities = array_merge( $all_abilities, $tab_abilities );
+			}
+		}
 
 		return array_key_exists( $ability_id, $all_abilities );
 	}

@@ -45,8 +45,6 @@ class AbilitiesManager implements Hookable {
 
 		// Add abilities to settings page filters.
 		add_filter( 'extended_abilities/abilities/wordpress', [ $this, 'add_wordpress_abilities_to_settings' ] );
-		add_filter( 'extended_abilities/abilities/woocommerce', [ $this, 'add_woocommerce_abilities_to_settings' ] );
-		add_filter( 'extended_abilities/abilities/plugins', [ $this, 'add_plugin_abilities_to_settings' ] );
 	}
 
 
@@ -136,41 +134,6 @@ class AbilitiesManager implements Hookable {
 		return $abilities;
 	}
 
-	/**
-	 * Add WooCommerce abilities to settings page.
-	 *
-	 * @param array $abilities Existing abilities.
-	 *
-	 * @return array Modified abilities.
-	 * @since 1.0.0
-	 */
-	public function add_woocommerce_abilities_to_settings( array $abilities ): array {
-		$woocommerce_abilities = $this->get_abilities_by_category( 'woocommerce-rest' );
-
-		foreach ( $woocommerce_abilities as $ability ) {
-			$abilities[ $ability->get_id() ] = $ability->get_settings_data();
-		}
-
-		return $abilities;
-	}
-
-	/**
-	 * Add plugin abilities to settings page.
-	 *
-	 * @param array $abilities Existing abilities.
-	 *
-	 * @return array Modified abilities.
-	 * @since 1.0.0
-	 */
-	public function add_plugin_abilities_to_settings( array $abilities ): array {
-		$plugin_abilities = $this->get_abilities_by_category( 'plugins' );
-
-		foreach ( $plugin_abilities as $ability ) {
-			$abilities[ $ability->get_id() ] = $ability->get_settings_data();
-		}
-
-		return $abilities;
-	}
 
 	/**
 	 * Get all registered abilities.
