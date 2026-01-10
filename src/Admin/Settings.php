@@ -276,7 +276,7 @@ class Settings implements Hookable {
 											printf(
 												/* translators: %d: number of sessions */
 												esc_html( _n( '%d session', '%d sessions', $session_count, 'extended-abilities' ) ),
-												esc_html( $session_count )
+												(int) $session_count
 											);
 											?>
 										</a>

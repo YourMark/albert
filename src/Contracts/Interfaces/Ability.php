@@ -37,8 +37,8 @@ interface Ability {
 	 *
 	 * @param array $args Arguments passed to the ability.
 	 *
-	 * @return aray|WP_error The result of the ability execution.
+	 * @return array|WP_Error The result of the ability execution.
 	 * @since 1.0.0
 	 */
-	public function execute( array $args ): array|WP_error;
+	public function execute( array $args ): array|WP_Error;
 }
