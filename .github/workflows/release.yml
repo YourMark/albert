@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Check if pre-release
+        id: prerelease
+        run: |
+          if [[ "${{ steps.version.outputs.version }}" =~ (alpha|beta|rc|dev) ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          tools: composer:v2
+          coverage: none
+
+      - name: Install production dependencies
+        run: composer install --no-dev --prefer-dist --optimize-autoloader --no-progress
+
+      - name: Create plugin directory
+        run: mkdir -p build/extended-abilities
+
+      - name: Copy plugin files
+        run: |
+          # Core plugin files
+          cp extended-abilities.php build/extended-abilities/
+          cp readme.txt build/extended-abilities/
+          cp LICENSE build/extended-abilities/
+
+          # Directories
+          cp -r src build/extended-abilities/
+          cp -r vendor build/extended-abilities/
+
+          # Optional directories (copy if they exist)
+          [ -d "assets" ] && cp -r assets build/extended-abilities/ || true
+          [ -d "languages" ] && cp -r languages build/extended-abilities/ || true
+
+      - name: Create zip file
+        working-directory: build
+        run: zip -r extended-abilities-${{ steps.version.outputs.version }}.zip extended-abilities
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get commits since last tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREVIOUS_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s" $PREVIOUS_TAG..HEAD --no-merges)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s" --no-merges -20)
+          fi
+
+          # Save to file for multiline output
+          echo "$CHANGELOG" > changelog.txt
+          echo "changelog_file=changelog.txt" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.prerelease.outputs.is_prerelease == 'true' && format('Pre-release {0}', steps.version.outputs.version) || format('Release {0}', steps.version.outputs.version) }}
+          body_path: changelog.txt
+          prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
+          files: build/extended-abilities-${{ steps.version.outputs.version }}.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
