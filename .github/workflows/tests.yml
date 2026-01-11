@@ -17,6 +17,8 @@ on:
       - 'composer.json'
       - 'composer.lock'
       - 'phpunit.xml.dist'
+  release:
+    types: [published]
 
 jobs:
   unit:
