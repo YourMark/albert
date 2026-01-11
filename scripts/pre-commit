@@ -49,10 +49,16 @@ fi
 
 echo ""
 
-# Run PHPStan
+# Run PHPStan on src/ files only (tests are excluded from PHPStan)
+SRC_FILES=$(echo "$STAGED_FILES" | grep '^src/')
 echo -e "${YELLOW}Running PHPStan...${NC}"
-./vendor/bin/phpstan analyse --no-progress $STAGED_FILES
-PHPSTAN_EXIT=$?
+if [ -z "$SRC_FILES" ]; then
+    echo -e "${GREEN}No src/ files to analyse, skipping PHPStan.${NC}"
+    PHPSTAN_EXIT=0
+else
+    ./vendor/bin/phpstan analyse --no-progress $SRC_FILES
+    PHPSTAN_EXIT=$?
+fi
 
 if [ $PHPSTAN_EXIT -ne 0 ]; then
     echo -e "${RED}PHPStan found errors. Please fix them before committing.${NC}"

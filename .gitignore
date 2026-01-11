@@ -89,7 +89,6 @@ debug.log
 ## Temp files
 ############
 
-bin/
 tmp/
 temp/
 .tmp

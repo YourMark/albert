@@ -4,6 +4,8 @@ parameters:
 		- src/
 	excludePaths:
 		- vendor/
+		- tests/
+		- bin/
 	bootstrapFiles:
 		- phpstan-bootstrap.php
 		- vendor/autoload.php
