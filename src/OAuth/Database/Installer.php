@@ -219,7 +219,7 @@ class Installer {
 		$tables = self::get_table_names();
 
 		foreach ( $tables as $table ) {
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is from internal source.
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Table name is from internal source, schema change required for uninstall.
 			$wpdb->query( "DROP TABLE IF EXISTS {$table}" );
 		}
 

@@ -426,6 +426,7 @@ class UploadMedia extends BaseAbility {
 		}
 
 		// Decode base64 data.
+		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- Required for handling base64-encoded file uploads from API.
 		$file_data = base64_decode( $base64, true );
 
 		if ( $file_data === false ) {
