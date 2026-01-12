@@ -111,7 +111,7 @@ register_deactivation_hook( __FILE__, 'deactivate_extended_abilities' );
 function extended_abilities_plugin_action_links( array $links ): array {
 	$settings_link = sprintf(
 		'<a href="%s">%s</a>',
-		esc_url( admin_url( 'admin.php?page=ea-settings' ) ),
+		esc_url( admin_url( 'admin.php?page=extended-abilities-settings' ) ),
 		esc_html__( 'Settings', 'extended-abilities' )
 	);
 

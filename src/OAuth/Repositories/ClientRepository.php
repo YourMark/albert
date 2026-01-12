@@ -241,7 +241,7 @@ class ClientRepository implements ClientRepositoryInterface {
 	 * @since 1.0.0
 	 */
 	private function generate_client_id(): string {
-		return 'ea_' . bin2hex( random_bytes( 16 ) );
+		return 'extended_abilities_' . bin2hex( random_bytes( 16 ) );
 	}
 
 	/**

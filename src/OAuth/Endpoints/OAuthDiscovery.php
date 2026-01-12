@@ -50,7 +50,7 @@ class OAuthDiscovery implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function prevent_canonical_redirect( string $redirect_url, string $requested_url ): string|false {
-		$discovery = get_query_var( 'ea_oauth_discovery' );
+		$discovery = get_query_var( 'extended_abilities_oauth_discovery' );
 
 		if ( $discovery ) {
 			return false;
@@ -66,12 +66,12 @@ class OAuthDiscovery implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function maybe_flush_rewrite_rules(): void {
-		$rules_version = get_option( 'ea_oauth_rewrite_rules_version', '' );
+		$rules_version = get_option( 'extended_abilities_rewrite_version', '' );
 
 		// Flush rules if version doesn't match (new install or update).
 		if ( EXTENDED_ABILITIES_VERSION !== $rules_version ) {
 			flush_rewrite_rules();
-			update_option( 'ea_oauth_rewrite_rules_version', EXTENDED_ABILITIES_VERSION );
+			update_option( 'extended_abilities_rewrite_version', EXTENDED_ABILITIES_VERSION );
 		}
 	}
 
@@ -85,14 +85,14 @@ class OAuthDiscovery implements Hookable {
 		// OAuth Authorization Server Metadata (RFC 8414).
 		add_rewrite_rule(
 			'^\.well-known/oauth-authorization-server/?$',
-			'index.php?ea_oauth_discovery=authorization-server',
+			'index.php?extended_abilities_oauth_discovery=authorization-server',
 			'top'
 		);
 
 		// OAuth Protected Resource Metadata (RFC 9728 / MCP spec).
 		add_rewrite_rule(
 			'^\.well-known/oauth-protected-resource/?$',
-			'index.php?ea_oauth_discovery=protected-resource',
+			'index.php?extended_abilities_oauth_discovery=protected-resource',
 			'top'
 		);
 	}
@@ -106,7 +106,7 @@ class OAuthDiscovery implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function add_query_vars( array $vars ): array {
-		$vars[] = 'ea_oauth_discovery';
+		$vars[] = 'extended_abilities_oauth_discovery';
 		return $vars;
 	}
 
@@ -117,7 +117,7 @@ class OAuthDiscovery implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function handle_discovery_request(): void {
-		$discovery = get_query_var( 'ea_oauth_discovery' );
+		$discovery = get_query_var( 'extended_abilities_oauth_discovery' );
 
 		if ( ! $discovery ) {
 			return;
@@ -159,7 +159,7 @@ class OAuthDiscovery implements Hookable {
 
 		// Only use external URL if developer settings are enabled.
 		if ( $show_developer_settings ) {
-			$external_url = get_option( 'ea_external_url', '' );
+			$external_url = get_option( 'extended_abilities_external_url', '' );
 
 			if ( ! empty( $external_url ) ) {
 				return $external_url;
@@ -246,7 +246,7 @@ class OAuthDiscovery implements Hookable {
 	 * @since 1.0.0
 	 */
 	public static function deactivate(): void {
-		delete_option( 'ea_oauth_rewrite_rules_version' );
+		delete_option( 'extended_abilities_rewrite_version' );
 		flush_rewrite_rules();
 	}
 }

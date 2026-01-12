@@ -33,7 +33,7 @@ class AuthorizationPage implements Hookable {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	const QUERY_VAR = 'ea_oauth_authorize';
+	const QUERY_VAR = 'extended_abilities_oauth_authorize';
 
 	/**
 	 * Register WordPress hooks.
@@ -159,7 +159,7 @@ class AuthorizationPage implements Hookable {
 		}
 
 		// Check if user is allowed to access MCP.
-		$allowed_users = get_option( 'ea_mcp_allowed_users', [] );
+		$allowed_users = get_option( 'extended_abilities_allowed_users', [] );
 		$current_user  = wp_get_current_user();
 
 		if ( ! in_array( $current_user->ID, $allowed_users, true ) ) {

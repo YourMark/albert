@@ -28,7 +28,7 @@ class UserSessions implements Hookable {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	private string $page_slug = 'ea-my-sessions';
+	private string $page_slug = 'extended-abilities-my-sessions';
 
 	/**
 	 * Register WordPress hooks.
@@ -50,7 +50,7 @@ class UserSessions implements Hookable {
 	 */
 	public function add_menu_page(): void {
 		// Only show for users who have MCP access.
-		$allowed_users = get_option( 'ea_mcp_allowed_users', [] );
+		$allowed_users = get_option( 'extended_abilities_allowed_users', [] );
 
 		if ( ! in_array( get_current_user_id(), $allowed_users, true ) ) {
 			return;
@@ -112,7 +112,7 @@ class UserSessions implements Hookable {
 		}
 
 		global $wpdb;
-		$table       = $wpdb->prefix . 'ea_oauth_access_tokens';
+		$table       = $wpdb->prefix . 'extended_abilities_oauth_access_tokens';
 		$current_uid = get_current_user_id();
 
 		// Only revoke if it belongs to the current user.
@@ -129,7 +129,7 @@ class UserSessions implements Hookable {
 		);
 
 		add_settings_error(
-			'ea_user_sessions',
+			'extended_abilities_user_sessions',
 			'session_revoked',
 			__( 'Session revoked successfully.', 'extended-abilities' ),
 			'success'
@@ -164,7 +164,7 @@ class UserSessions implements Hookable {
 		Settings::revoke_user_tokens( get_current_user_id() );
 
 		add_settings_error(
-			'ea_user_sessions',
+			'extended_abilities_user_sessions',
 			'all_sessions_revoked',
 			__( 'All sessions revoked successfully.', 'extended-abilities' ),
 			'success'
@@ -193,8 +193,8 @@ class UserSessions implements Hookable {
 		global $wpdb;
 
 		$current_uid   = get_current_user_id();
-		$tokens_table  = $wpdb->prefix . 'ea_oauth_access_tokens';
-		$clients_table = $wpdb->prefix . 'ea_oauth_clients';
+		$tokens_table  = $wpdb->prefix . 'extended_abilities_oauth_access_tokens';
+		$clients_table = $wpdb->prefix . 'extended_abilities_oauth_clients';
 
 		// Get active sessions grouped by client, with first connection time.
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -219,7 +219,7 @@ class UserSessions implements Hookable {
 		echo '<div class="wrap ea-user-sessions">';
 		echo '<h1>' . esc_html__( 'My AI Sessions', 'extended-abilities' ) . '</h1>';
 
-		settings_errors( 'ea_user_sessions' );
+		settings_errors( 'extended_abilities_user_sessions' );
 
 		echo '<p class="description">';
 		esc_html_e( 'These are your active AI tool connections. Each session represents an AI assistant that can access this site on your behalf.', 'extended-abilities' );
