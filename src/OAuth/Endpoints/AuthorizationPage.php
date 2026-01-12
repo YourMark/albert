@@ -248,9 +248,8 @@ class AuthorizationPage implements Hookable {
 			// Get redirect location from response.
 			$location = $psr_response->getHeader( 'Location' );
 			if ( ! empty( $location[0] ) ) {
-				// phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- OAuth requires external redirects.
-				wp_redirect( $location[0] );
-				exit;
+				$this->render_success_page( $location[0], $client->getName() );
+				return;
 			}
 		} catch ( OAuthServerException $e ) {
 			$error_params = [
@@ -584,6 +583,141 @@ class AuthorizationPage implements Hookable {
 			<?php esc_html_e( 'Please contact your site administrator to request access.', 'extended-abilities' ); ?>
 		</p>
 	</div>
+</body>
+</html>
+		<?php
+		exit;
+	}
+
+	/**
+	 * Render the success page after authorization.
+	 *
+	 * Completes the OAuth callback and shows a success message.
+	 *
+	 * @param string $redirect_url The OAuth callback URL with authorization code.
+	 * @param string $client_name  The name of the authorized client.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private function render_success_page( string $redirect_url, string $client_name ): void {
+		nocache_headers();
+		header( 'Content-Type: text/html; charset=utf-8' );
+
+		$site_name = get_bloginfo( 'name' );
+
+		?>
+<!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+	<meta charset="<?php bloginfo( 'charset' ); ?>">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title><?php esc_html_e( 'Authorization Successful', 'extended-abilities' ); ?> - <?php echo esc_html( $site_name ); ?></title>
+	<style>
+		* { box-sizing: border-box; margin: 0; padding: 0; }
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+			background: #f0f0f1;
+			min-height: 100vh;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 20px;
+		}
+		.success-container {
+			background: #fff;
+			border-radius: 8px;
+			box-shadow: 0 1px 3px rgba(0,0,0,0.13);
+			max-width: 400px;
+			width: 100%;
+			padding: 40px;
+			text-align: center;
+		}
+		.success-icon {
+			width: 64px;
+			height: 64px;
+			background: #00a32a;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			margin: 0 auto 20px;
+		}
+		.success-icon svg {
+			width: 32px;
+			height: 32px;
+			fill: #fff;
+		}
+		h1 {
+			font-size: 24px;
+			color: #1d2327;
+			margin-bottom: 15px;
+		}
+		p {
+			color: #50575e;
+			font-size: 14px;
+			line-height: 1.6;
+		}
+		.client-name {
+			font-weight: 600;
+			color: #1d2327;
+		}
+		.close-message {
+			margin-top: 20px;
+			font-size: 14px;
+			color: #1d2327;
+		}
+		.fallback-message {
+			margin-top: 10px;
+			font-size: 13px;
+			color: #646970;
+		}
+		.button {
+			display: inline-block;
+			margin-top: 20px;
+			padding: 10px 20px;
+			background: #2271b1;
+			color: #fff;
+			text-decoration: none;
+			border-radius: 4px;
+			font-size: 14px;
+		}
+		.button:hover {
+			background: #135e96;
+		}
+	</style>
+</head>
+<body>
+	<div class="success-container">
+		<div class="success-icon">
+			<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+				<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+			</svg>
+		</div>
+		<h1><?php esc_html_e( 'Authorization Successful', 'extended-abilities' ); ?></h1>
+		<p>
+			<?php
+			printf(
+				/* translators: %s: client/application name */
+				esc_html__( '%s has been authorized to access your site.', 'extended-abilities' ),
+				'<span class="client-name">' . esc_html( $client_name ) . '</span>'
+			);
+			?>
+		</p>
+		<p class="close-message">
+			<?php esc_html_e( 'Redirecting back to the application...', 'extended-abilities' ); ?>
+		</p>
+		<p class="fallback-message">
+			<?php esc_html_e( "If the application doesn't open automatically, please click the button below.", 'extended-abilities' ); ?>
+		</p>
+		<a href="<?php echo esc_url( $redirect_url ); ?>" class="button"><?php esc_html_e( 'Return to Application', 'extended-abilities' ); ?></a>
+	</div>
+	<script>
+		// Redirect to complete the OAuth callback after a brief delay.
+		setTimeout(function() {
+			window.location.href = <?php echo wp_json_encode( $redirect_url ); ?>;
+		}, 1500);
+	</script>
 </body>
 </html>
 		<?php
