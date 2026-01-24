@@ -41,26 +41,26 @@ jobs:
         run: composer install --no-dev --prefer-dist --optimize-autoloader --no-progress
 
       - name: Create plugin directory
-        run: mkdir -p build/extended-abilities
+        run: mkdir -p build/ai-bridge
 
       - name: Copy plugin files
         run: |
           # Core plugin files
-          cp extended-abilities.php build/extended-abilities/
-          cp readme.txt build/extended-abilities/
-          cp LICENSE build/extended-abilities/
+          cp ai-bridge.php build/ai-bridge/
+          cp readme.txt build/ai-bridge/
+          cp LICENSE build/ai-bridge/
 
           # Directories
-          cp -r src build/extended-abilities/
-          cp -r vendor build/extended-abilities/
+          cp -r src build/ai-bridge/
+          cp -r vendor build/ai-bridge/
 
           # Optional directories (copy if they exist)
-          [ -d "assets" ] && cp -r assets build/extended-abilities/ || true
-          [ -d "languages" ] && cp -r languages build/extended-abilities/ || true
+          [ -d "assets" ] && cp -r assets build/ai-bridge/ || true
+          [ -d "languages" ] && cp -r languages build/ai-bridge/ || true
 
       - name: Create zip file
         working-directory: build
-        run: zip -r extended-abilities-${{ steps.version.outputs.version }}.zip extended-abilities
+        run: zip -r ai-bridge-${{ steps.version.outputs.version }}.zip ai-bridge
 
       - name: Generate changelog
         id: changelog
@@ -83,7 +83,7 @@ jobs:
           name: ${{ steps.prerelease.outputs.is_prerelease == 'true' && format('Pre-release {0}', steps.version.outputs.version) || format('Release {0}', steps.version.outputs.version) }}
           body_path: changelog.txt
           prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
-          files: build/extended-abilities-${{ steps.version.outputs.version }}.zip
+          files: build/ai-bridge-${{ steps.version.outputs.version }}.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
