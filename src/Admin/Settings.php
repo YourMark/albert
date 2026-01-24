@@ -826,7 +826,8 @@ class Settings implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function enqueue_assets( string $hook ): void {
-		if ( 'abilities_page_' . $this->page_slug !== $hook ) {
+		// Hook format for submenu is: {parent_slug}_page_{menu_slug}.
+		if ( 'ai-bridge_page_' . $this->page_slug !== $hook ) {
 			return;
 		}
 

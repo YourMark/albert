@@ -207,93 +207,137 @@ class Connections implements Hookable {
 				t.user_id,
 				t.token_id,
 				t.created_at,
-				t.expiry_datetime,
+				t.expires_at,
 				COALESCE(c.name, 'Unknown Client') as client_name
 			FROM {$tokens_table} t
 			LEFT JOIN {$clients_table} c ON t.client_id = c.client_id
-			WHERE t.revoked = 0 AND t.expiry_datetime > NOW()
+			WHERE t.revoked = 0 AND t.expires_at > NOW()
 			ORDER BY t.created_at DESC"
 		);
 		// phpcs:enable
 
-		echo '<div class="wrap aibridge-settings">';
-		echo '<h1>' . esc_html__( 'AI Assistant Connections', 'ai-bridge' ) . '</h1>';
+		?>
+		<div class="wrap aibridge-settings">
+			<h1><?php echo esc_html__( 'AI Assistant Connections', 'ai-bridge' ); ?></h1>
+			<p class="description">
+				<?php esc_html_e( 'Active AI assistant connections to your WordPress site. Each connection represents an authorized AI tool that can interact with your site via the MCP protocol.', 'ai-bridge' ); ?>
+			</p>
 
-		settings_errors( 'aibridge_connections' );
+			<?php settings_errors( 'aibridge_connections' ); ?>
 
-		echo '<p class="description">';
-		esc_html_e( 'Active AI assistant connections to your WordPress site. Each connection represents an authorized AI tool that can interact with your site via the MCP protocol.', 'ai-bridge' );
-		echo '</p>';
+			<?php if ( empty( $sessions ) ) : ?>
+				<div class="aibridge-card" style="margin-top: 20px;">
+					<div class="aibridge-empty-connections">
+						<span class="dashicons dashicons-networking"></span>
+						<h3><?php esc_html_e( 'No Active Connections', 'ai-bridge' ); ?></h3>
+						<p><?php esc_html_e( 'When you authorize an AI assistant to access this site, it will appear here.', 'ai-bridge' ); ?></p>
+						<p>
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=ai-bridge' ) ); ?>" class="button button-primary">
+								<?php esc_html_e( 'View Setup Instructions', 'ai-bridge' ); ?>
+							</a>
+						</p>
+					</div>
+				</div>
+			<?php else : ?>
+				<div class="aibridge-connections-grid">
+					<?php foreach ( $sessions as $session ) : ?>
+						<?php
+						$app_name     = ! empty( $session->client_name ) ? $session->client_name : __( 'Unknown Client', 'ai-bridge' );
+						$user         = get_userdata( $session->user_id );
+						$connected_at = strtotime( $session->created_at );
+						$expires_at   = strtotime( $session->expires_at );
+						$is_expiring  = ( $expires_at - time() ) < DAY_IN_SECONDS;
 
-		if ( empty( $sessions ) ) {
-			echo '<div class="notice notice-info">';
-			echo '<p>' . esc_html__( 'You have no active AI sessions. When you authorize an AI tool to access this site, it will appear here.', 'ai-bridge' ) . '</p>';
-			echo '</div>';
-		} else {
-			echo '<table class="wp-list-table widefat fixed striped">';
-			echo '<thead><tr>';
-			echo '<th>' . esc_html__( 'App', 'ai-bridge' ) . '</th>';
-			echo '<th>' . esc_html__( 'Session', 'ai-bridge' ) . '</th>';
-			echo '<th>' . esc_html__( 'Connected', 'ai-bridge' ) . '</th>';
-			echo '<th>' . esc_html__( 'Actions', 'ai-bridge' ) . '</th>';
-			echo '</tr></thead>';
-			echo '<tbody>';
+						$revoke_url = wp_nonce_url(
+							add_query_arg(
+								[
+									'page'     => $this->page_slug,
+									'action'   => 'revoke',
+									'token_id' => $session->id,
+								],
+								admin_url( 'admin.php' )
+							),
+							'revoke_my_session_' . $session->id
+						);
+						?>
+						<div class="aibridge-card aibridge-connection-card">
+							<div class="aibridge-connection-header">
+								<div class="aibridge-connection-icon">
+									<span class="dashicons dashicons-admin-plugins"></span>
+								</div>
+								<div class="aibridge-connection-title">
+									<h3><?php echo esc_html( $app_name ); ?></h3>
+									<span class="aibridge-connection-session"><?php echo esc_html( substr( $session->token_id, 0, 12 ) . '...' ); ?></span>
+								</div>
+							</div>
+							<div class="aibridge-connection-body">
+								<div class="aibridge-connection-meta">
+									<div class="aibridge-connection-meta-item">
+										<span class="dashicons dashicons-admin-users"></span>
+										<div>
+											<strong><?php esc_html_e( 'User:', 'ai-bridge' ); ?></strong>
+											<span><?php echo $user ? esc_html( $user->display_name ) : esc_html__( 'Unknown', 'ai-bridge' ); ?></span>
+										</div>
+									</div>
+									<div class="aibridge-connection-meta-item">
+										<span class="dashicons dashicons-calendar-alt"></span>
+										<div>
+											<strong><?php esc_html_e( 'Connected:', 'ai-bridge' ); ?></strong>
+											<span><?php echo esc_html( human_time_diff( $connected_at, time() ) . ' ' . __( 'ago', 'ai-bridge' ) ); ?></span>
+										</div>
+									</div>
+									<div class="aibridge-connection-meta-item">
+										<span class="dashicons dashicons-clock"></span>
+										<div>
+											<strong><?php esc_html_e( 'Expires:', 'ai-bridge' ); ?></strong>
+											<span class="<?php echo $is_expiring ? 'aibridge-expiring' : ''; ?>">
+												<?php
+												if ( $expires_at > time() ) {
+													echo esc_html( human_time_diff( time(), $expires_at ) . ' ' . __( 'from now', 'ai-bridge' ) );
+												} else {
+													echo esc_html__( 'Expired', 'ai-bridge' );
+												}
+												?>
+											</span>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="aibridge-connection-footer">
+								<a href="<?php echo esc_url( $revoke_url ); ?>"
+									class="button button-secondary button-small aibridge-disconnect-btn"
+									onclick="return confirm('<?php echo esc_js( __( 'Disconnect this AI assistant?', 'ai-bridge' ) ); ?>');">
+									<span class="dashicons dashicons-dismiss"></span>
+									<?php esc_html_e( 'Disconnect', 'ai-bridge' ); ?>
+								</a>
+							</div>
+						</div>
+					<?php endforeach; ?>
+				</div>
 
-			foreach ( $sessions as $session ) {
-				$app_name        = ! empty( $session->client_name ) ? $session->client_name : __( 'Unknown', 'ai-bridge' );
-				$first_connected = $session->first_connected ?? $session->created_at;
-				echo '<tr>';
-				echo '<td><strong>' . esc_html( $app_name ) . '</strong></td>';
-				echo '<td><code>' . esc_html( substr( $session->token_id, 0, 16 ) . '...' ) . '</code></td>';
-				echo '<td>';
-				printf(
-					/* translators: %s: human-readable time difference */
-					esc_html__( '%s ago', 'ai-bridge' ),
-					esc_html( human_time_diff( strtotime( $first_connected ), time() ) )
-				);
-				echo '</td>';
-				echo '<td>';
-
-				$revoke_url = wp_nonce_url(
+				<?php
+				$revoke_all_url = wp_nonce_url(
 					add_query_arg(
 						[
-							'page'     => $this->page_slug,
-							'action'   => 'revoke',
-							'token_id' => $session->id,
+							'page'   => $this->page_slug,
+							'action' => 'revoke_all',
 						],
 						admin_url( 'admin.php' )
 					),
-					'revoke_my_session_' . $session->id
+					'revoke_all_my_sessions'
 				);
-
-				echo '<a href="' . esc_url( $revoke_url ) . '" class="button button-small" onclick="return confirm(\'' . esc_js( __( 'Disconnect this AI tool?', 'ai-bridge' ) ) . '\');">';
-				esc_html_e( 'Disconnect', 'ai-bridge' );
-				echo '</a>';
-				echo '</td>';
-				echo '</tr>';
-			}
-
-			echo '</tbody></table>';
-
-			$revoke_all_url = wp_nonce_url(
-				add_query_arg(
-					[
-						'page'   => $this->page_slug,
-						'action' => 'revoke_all',
-					],
-					admin_url( 'admin.php' )
-				),
-				'revoke_all_my_sessions'
-			);
-
-			echo '<p style="margin-top: 15px;">';
-			echo '<a href="' . esc_url( $revoke_all_url ) . '" class="button" onclick="return confirm(\'' . esc_js( __( 'Disconnect ALL your AI tools?', 'ai-bridge' ) ) . '\');">';
-			esc_html_e( 'Disconnect All', 'ai-bridge' );
-			echo '</a>';
-			echo '</p>';
-		}
-
-		echo '</div>';
+				?>
+				<div class="aibridge-connections-actions">
+					<a href="<?php echo esc_url( $revoke_all_url ); ?>"
+						class="button aibridge-disconnect-all-btn"
+						onclick="return confirm('<?php echo esc_js( __( 'Disconnect ALL AI assistants? This action cannot be undone.', 'ai-bridge' ) ); ?>');">
+						<span class="dashicons dashicons-dismiss"></span>
+						<?php esc_html_e( 'Disconnect All', 'ai-bridge' ); ?>
+					</a>
+				</div>
+			<?php endif; ?>
+		</div>
+		<?php
 	}
 
 	/**
@@ -305,7 +349,8 @@ class Connections implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function enqueue_assets( string $hook ): void {
-		if ( 'dashboard_page_' . $this->page_slug !== $hook ) {
+		// Hook format for submenu is: {parent_slug}_page_{menu_slug}.
+		if ( 'ai-bridge_page_' . $this->page_slug !== $hook ) {
 			return;
 		}
 

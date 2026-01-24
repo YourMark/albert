@@ -1126,3 +1126,518 @@
 		font-size: 11px;
 	}
 }
+
+/* Dashboard Styles */
+.aibridge-dashboard-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 20px;
+	margin-top: 20px;
+}
+
+.aibridge-card {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 8px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+	overflow: hidden;
+	transition: box-shadow 0.2s ease;
+}
+
+.aibridge-card:hover {
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.aibridge-card h2 {
+	font-size: 16px;
+	font-weight: 600;
+	margin: 0;
+	padding: 16px 20px;
+	background: #f6f7f7;
+	border-bottom: 1px solid #dcdcde;
+	color: #1d2327;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.aibridge-card .description {
+	font-size: 13px;
+	color: #646970;
+	margin: 0;
+	line-height: 1.6;
+}
+
+/* Endpoint Card */
+.aibridge-endpoint-card {
+	grid-column: 1 / -1;
+}
+
+.aibridge-endpoint-card p.description {
+	padding: 16px 20px 0;
+}
+
+.aibridge-endpoint-box {
+	display: flex;
+	align-items: stretch;
+	gap: 10px;
+	padding: 16px 20px 20px;
+}
+
+.aibridge-endpoint-url {
+	flex: 1;
+	padding: 10px 14px;
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	font-family: 'Courier New', Courier, monospace;
+	font-size: 13px;
+	color: #1d2327;
+	line-height: 1.4;
+}
+
+.aibridge-copy-btn {
+	flex-shrink: 0;
+	min-width: 80px;
+	height: auto;
+	padding: 10px 16px;
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.aibridge-copy-success {
+	background-color: #00a32a !important;
+	border-color: #00a32a !important;
+	color: #fff !important;
+}
+
+.aibridge-copy-error {
+	background-color: #d63638 !important;
+	border-color: #d63638 !important;
+	color: #fff !important;
+}
+
+/* Setup Card */
+.aibridge-setup-card ol.aibridge-setup-steps {
+	margin: 0;
+	padding: 16px 20px 16px 44px;
+	list-style-position: outside;
+}
+
+.aibridge-setup-steps li {
+	font-size: 13px;
+	line-height: 1.8;
+	color: #1d2327;
+	margin-bottom: 8px;
+}
+
+.aibridge-setup-steps li:last-child {
+	margin-bottom: 0;
+}
+
+.aibridge-setup-card > p {
+	padding: 0 20px 20px;
+	margin: 0;
+	border-top: 1px solid #dcdcde;
+	padding-top: 16px;
+}
+
+.aibridge-setup-card .button {
+	font-size: 13px;
+}
+
+/* Status Card */
+.aibridge-status-list {
+	list-style: none;
+	margin: 0;
+	padding: 16px 20px;
+}
+
+.aibridge-status-list li {
+	display: grid;
+	grid-template-columns: 12px 160px 1fr;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 0;
+	font-size: 13px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.aibridge-status-list li:last-child {
+	border-bottom: none;
+	padding-bottom: 0;
+}
+
+.aibridge-status-list li:first-child {
+	padding-top: 0;
+}
+
+.aibridge-status-indicator {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08);
+}
+
+.aibridge-status-active {
+	background-color: #00a32a;
+}
+
+.aibridge-status-inactive {
+	background-color: #d63638;
+}
+
+.aibridge-status-info {
+	background-color: #2271b1;
+}
+
+.aibridge-status-list strong {
+	color: #50575e;
+	font-weight: 500;
+	font-size: 13px;
+}
+
+.aibridge-status-value {
+	color: #1d2327;
+	font-weight: 600;
+	font-size: 14px;
+	text-align: right;
+}
+
+.aibridge-status-card > p {
+	padding: 16px 20px 20px;
+	margin: 0;
+	display: flex;
+	gap: 8px;
+	border-top: 1px solid #dcdcde;
+}
+
+.aibridge-status-card .button {
+	font-size: 13px;
+	padding: 6px 12px;
+	height: auto;
+	line-height: 1.4;
+}
+
+/* Activity Card */
+.aibridge-activity-card {
+	grid-column: 1 / -1;
+}
+
+.aibridge-activity-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.aibridge-activity-list li {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 14px 20px;
+	font-size: 13px;
+	border-bottom: 1px solid #f0f0f1;
+	transition: background-color 0.15s ease;
+}
+
+.aibridge-activity-list li:hover {
+	background-color: #f6f7f7;
+}
+
+.aibridge-activity-list li:last-child {
+	border-bottom: none;
+}
+
+.aibridge-activity-icon {
+	font-size: 18px;
+	flex-shrink: 0;
+	line-height: 1;
+}
+
+.aibridge-activity-text {
+	flex: 1;
+	color: #1d2327;
+	line-height: 1.5;
+}
+
+.aibridge-activity-time {
+	flex-shrink: 0;
+	font-size: 12px;
+	color: #646970;
+	font-weight: 500;
+}
+
+.aibridge-activity-card p.description {
+	padding: 16px 20px;
+	margin: 0;
+	text-align: center;
+	color: #646970;
+	font-style: italic;
+}
+
+/* Dashboard Responsive */
+@media screen and (max-width: 1280px) {
+	.aibridge-dashboard-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.aibridge-endpoint-card,
+	.aibridge-activity-card {
+		grid-column: 1;
+	}
+}
+
+@media screen and (max-width: 782px) {
+	.aibridge-endpoint-box {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.aibridge-copy-btn {
+		width: 100%;
+	}
+
+	.aibridge-status-list li {
+		grid-template-columns: 12px 1fr;
+		gap: 8px;
+	}
+
+	.aibridge-status-list strong {
+		grid-column: 2;
+	}
+
+	.aibridge-status-list .aibridge-status-value {
+		grid-column: 2;
+		text-align: left;
+		margin-top: 4px;
+	}
+
+	.aibridge-status-card > p {
+		flex-direction: column;
+	}
+
+	.aibridge-status-card .button {
+		width: 100%;
+		text-align: center;
+	}
+}
+
+/* Connections Page Styles */
+.aibridge-connections-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+	gap: 20px;
+	margin-top: 20px;
+}
+
+.aibridge-connection-card {
+	display: flex;
+	flex-direction: column;
+}
+
+.aibridge-connection-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 16px 20px;
+	background: #f6f7f7;
+	border-bottom: 1px solid #dcdcde;
+}
+
+.aibridge-connection-icon {
+	width: 48px;
+	height: 48px;
+	background: #2271b1;
+	border-radius: 8px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.aibridge-connection-icon .dashicons {
+	font-size: 24px;
+	width: 24px;
+	height: 24px;
+	color: #fff;
+}
+
+.aibridge-connection-title {
+	flex: 1;
+	min-width: 0;
+}
+
+.aibridge-connection-title h3 {
+	margin: 0 0 4px 0;
+	font-size: 15px;
+	font-weight: 600;
+	color: #1d2327;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.aibridge-connection-session {
+	font-size: 11px;
+	color: #646970;
+	font-family: 'Courier New', Courier, monospace;
+	background: rgba(0, 0, 0, 0.05);
+	padding: 2px 6px;
+	border-radius: 3px;
+	display: inline-block;
+}
+
+.aibridge-connection-body {
+	padding: 16px 20px;
+	flex: 1;
+}
+
+.aibridge-connection-meta {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.aibridge-connection-meta-item {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+}
+
+.aibridge-connection-meta-item .dashicons {
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+	color: #646970;
+	flex-shrink: 0;
+	margin-top: 2px;
+}
+
+.aibridge-connection-meta-item > div {
+	flex: 1;
+	min-width: 0;
+}
+
+.aibridge-connection-meta-item strong {
+	display: block;
+	font-size: 12px;
+	color: #646970;
+	font-weight: 500;
+	margin-bottom: 2px;
+}
+
+.aibridge-connection-meta-item span {
+	display: block;
+	font-size: 13px;
+	color: #1d2327;
+}
+
+.aibridge-connection-meta-item .aibridge-expiring {
+	color: #d63638;
+	font-weight: 500;
+}
+
+.aibridge-connection-footer {
+	padding: 12px 20px;
+	border-top: 1px solid #f0f0f1;
+	display: flex;
+	justify-content: flex-end;
+}
+
+.aibridge-disconnect-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	padding: 6px 12px;
+	height: auto;
+	line-height: 1.4;
+}
+
+.aibridge-disconnect-btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+.aibridge-disconnect-btn:hover {
+	color: #d63638;
+	border-color: #d63638;
+}
+
+.aibridge-connections-actions {
+	margin-top: 20px;
+	padding-top: 20px;
+	border-top: 2px solid #dcdcde;
+	text-align: center;
+}
+
+.aibridge-disconnect-all-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	padding: 8px 16px;
+	height: auto;
+	line-height: 1.4;
+	color: #d63638;
+	border-color: #d63638;
+}
+
+.aibridge-disconnect-all-btn:hover {
+	background: #d63638;
+	color: #fff;
+	border-color: #d63638;
+}
+
+.aibridge-disconnect-all-btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+/* Empty connections state */
+.aibridge-empty-connections {
+	text-align: center;
+	padding: 60px 40px;
+}
+
+.aibridge-empty-connections .dashicons {
+	font-size: 64px;
+	width: 64px;
+	height: 64px;
+	color: #646970;
+	opacity: 0.3;
+	margin-bottom: 16px;
+}
+
+.aibridge-empty-connections h3 {
+	font-size: 18px;
+	margin: 0 0 8px 0;
+	color: #1d2327;
+}
+
+.aibridge-empty-connections p {
+	font-size: 14px;
+	color: #646970;
+	margin: 0 0 20px 0;
+	line-height: 1.6;
+}
+
+/* Connections Responsive */
+@media screen and (max-width: 960px) {
+	.aibridge-connections-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media screen and (max-width: 782px) {
+	.aibridge-connection-meta {
+		gap: 14px;
+	}
+
+	.aibridge-empty-connections {
+		padding: 40px 20px;
+	}
+}

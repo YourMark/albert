@@ -43,17 +43,32 @@ class Dashboard implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function register_hooks(): void {
-		add_action( 'admin_menu', [ $this, 'add_dashboard_page' ] );
+		add_action( 'admin_menu', [ $this, 'add_menu_pages' ], 9 ); // Priority 9 to run before Abilities at 10.
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 	}
 
 	/**
-	 * Add dashboard page to WordPress admin menu.
+	 * Add top-level menu and dashboard page.
+	 *
+	 * Creates the top-level "AI Bridge" menu with Dashboard as the default page,
+	 * then adds "Dashboard" as the first submenu (which replaces the auto-generated one).
 	 *
 	 * @return void
 	 * @since 1.0.0
 	 */
-	public function add_dashboard_page(): void {
+	public function add_menu_pages(): void {
+		// Add top-level menu (shows Dashboard by default).
+		add_menu_page(
+			__( 'AI Bridge Dashboard', 'ai-bridge' ),
+			__( 'AI Bridge', 'ai-bridge' ),
+			'manage_options',
+			$this->page_slug,
+			[ $this, 'render_dashboard_page' ],
+			'dashicons-networking',
+			80
+		);
+
+		// Add Dashboard submenu (replaces auto-generated first submenu).
 		add_submenu_page(
 			$this->parent_slug,
 			__( 'Dashboard', 'ai-bridge' ),
@@ -241,7 +256,7 @@ class Dashboard implements Hookable {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$count = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(DISTINCT client_id) FROM {$table_name} WHERE expiry_datetime > %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT COUNT(DISTINCT client_id) FROM {$table_name} WHERE expires_at > %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				gmdate( 'Y-m-d H:i:s' )
 			)
 		);
@@ -290,7 +305,7 @@ class Dashboard implements Hookable {
 			$wpdb->prepare(
 				"SELECT t.client_id, t.user_id, t.created_at, c.name
 				FROM {$access_tokens_table} t
-				LEFT JOIN {$clients_table} c ON t.client_id = c.identifier
+				LEFT JOIN {$clients_table} c ON t.client_id = c.client_id
 				ORDER BY t.created_at DESC
 				LIMIT %d",
 				5

@@ -26,7 +26,7 @@ class Abilities implements Hookable {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	private string $page_slug = 'ai-bridge';
+	private string $page_slug = 'ai-bridge-abilities';
 
 	/**
 	 * Option group name.
@@ -121,20 +121,9 @@ class Abilities implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function add_menu_pages(): void {
-		// Add top-level menu.
-		add_menu_page(
-			__( 'AI Bridge', 'ai-bridge' ),
-			__( 'AI Bridge', 'ai-bridge' ),
-			'manage_options',
-			$this->page_slug,
-			[ $this, 'render_page' ],
-			'dashicons-networking',
-			80
-		);
-
-		// Add Abilities submenu (points to parent).
+		// Add Abilities submenu under AI Bridge (created by Dashboard).
 		add_submenu_page(
-			$this->page_slug,
+			'ai-bridge', // Parent slug.
 			__( 'Abilities', 'ai-bridge' ),
 			__( 'Abilities', 'ai-bridge' ),
 			'manage_options',
@@ -784,7 +773,8 @@ class Abilities implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function enqueue_assets( string $hook ): void {
-		if ( 'toplevel_page_' . $this->page_slug !== $hook ) {
+		// Hook format for submenu is: {parent_slug}_page_{menu_slug}.
+		if ( 'ai-bridge_page_' . $this->page_slug !== $hook ) {
 			return;
 		}
 
