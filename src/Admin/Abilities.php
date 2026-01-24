@@ -124,12 +124,12 @@ class Abilities implements Hookable {
 		// Add top-level menu.
 		add_menu_page(
 			__( 'AI Bridge', 'ai-bridge' ),
-			__( 'Abilities', 'ai-bridge' ),
+			__( 'AI Bridge', 'ai-bridge' ),
 			'manage_options',
 			$this->page_slug,
 			[ $this, 'render_page' ],
-			'dashicons-superhero-alt',
-			30
+			'dashicons-networking',
+			80
 		);
 
 		// Add Abilities submenu (points to parent).

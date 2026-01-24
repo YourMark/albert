@@ -29,8 +29,9 @@ use AIBridge\Abilities\WordPress\Taxonomies\CreateTerm;
 use AIBridge\Abilities\WordPress\Taxonomies\UpdateTerm;
 use AIBridge\Abilities\WordPress\Taxonomies\DeleteTerm;
 use AIBridge\Admin\Abilities;
+use AIBridge\Admin\Connections;
+use AIBridge\Admin\Dashboard;
 use AIBridge\Admin\Settings;
-use AIBridge\Admin\UserSessions;
 use AIBridge\Contracts\Interfaces\Hookable;
 use AIBridge\MCP\Server as McpServer;
 use AIBridge\OAuth\Database\Installer as OAuthInstaller;
@@ -99,17 +100,21 @@ class Plugin {
 
 		// Register admin components.
 		if ( is_admin() ) {
-			// Abilities page (creates top-level menu).
+			// Dashboard page (creates top-level menu and first submenu).
+			$dashboard = new Dashboard();
+			$dashboard->register_hooks();
+
+			// Abilities page (creates top-level menu at position 80).
 			$abilities = new Abilities();
 			$abilities->register_hooks();
 
-			// Settings page (adds submenu under Abilities).
+			// Connections page (adds submenu under AI Bridge).
+			$connections = new Connections();
+			$connections->register_hooks();
+
+			// Settings page (adds submenu under AI Bridge).
 			$settings = new Settings();
 			$settings->register_hooks();
-
-			// User sessions page (dashboard submenu for users).
-			$user_sessions = new UserSessions();
-			$user_sessions->register_hooks();
 		}
 
 		// Register OAuth controller (REST API endpoints for token exchange).

@@ -1,0 +1,324 @@
+<?php
+/**
+ * Dashboard Admin Page
+ *
+ * @package    AIBridge
+ * @subpackage Admin
+ * @since      1.0.0
+ */
+
+namespace AIBridge\Admin;
+
+use AIBridge\Contracts\Interfaces\Hookable;
+
+/**
+ * Dashboard class
+ *
+ * Manages the plugin dashboard page - primary landing page for AI Bridge.
+ *
+ * @since 1.0.0
+ */
+class Dashboard implements Hookable {
+
+	/**
+	 * Parent menu slug.
+	 *
+	 * @since 1.0.0
+	 * @var string
+	 */
+	private string $parent_slug = 'ai-bridge';
+
+	/**
+	 * Dashboard page slug (same as parent to make it the first submenu).
+	 *
+	 * @since 1.0.0
+	 * @var string
+	 */
+	private string $page_slug = 'ai-bridge';
+
+	/**
+	 * Register WordPress hooks.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	public function register_hooks(): void {
+		add_action( 'admin_menu', [ $this, 'add_dashboard_page' ] );
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+	}
+
+	/**
+	 * Add dashboard page to WordPress admin menu.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	public function add_dashboard_page(): void {
+		add_submenu_page(
+			$this->parent_slug,
+			__( 'Dashboard', 'ai-bridge' ),
+			__( 'Dashboard', 'ai-bridge' ),
+			'manage_options',
+			$this->page_slug,
+			[ $this, 'render_dashboard_page' ]
+		);
+	}
+
+	/**
+	 * Enqueue dashboard assets.
+	 *
+	 * @param string $hook Current admin page hook.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	public function enqueue_assets( string $hook ): void {
+		// Only load on our dashboard page.
+		if ( 'toplevel_page_ai-bridge' !== $hook ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'aibridge-admin',
+			AIBRIDGE_PLUGIN_URL . 'assets/css/admin-settings.css',
+			[],
+			AIBRIDGE_VERSION
+		);
+
+		wp_enqueue_script(
+			'aibridge-dashboard',
+			AIBRIDGE_PLUGIN_URL . 'assets/js/admin-dashboard.js',
+			[],
+			AIBRIDGE_VERSION,
+			true
+		);
+	}
+
+	/**
+	 * Render dashboard page.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	public function render_dashboard_page(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'ai-bridge' ) );
+		}
+
+		// Get MCP endpoint URL.
+		$mcp_endpoint = rest_url( 'ai-bridge/v1/mcp' );
+
+		// Get OAuth discovery URL.
+		$oauth_discovery = home_url( '/.well-known/oauth-authorization-server' );
+
+		// Count active connections.
+		$active_connections = $this->get_active_connections_count();
+
+		// Count enabled abilities.
+		$enabled_abilities = $this->get_enabled_abilities_count();
+
+		?>
+		<div class="wrap aibridge-settings">
+			<h1><?php echo esc_html__( 'AI Bridge Dashboard', 'ai-bridge' ); ?></h1>
+			<p class="description">
+				<?php echo esc_html__( 'Connect your WordPress site to AI assistants like Claude and ChatGPT.', 'ai-bridge' ); ?>
+			</p>
+
+			<div class="aibridge-dashboard-grid">
+				<!-- MCP Endpoint Section -->
+				<div class="aibridge-card aibridge-endpoint-card">
+					<h2><?php echo esc_html__( '🔗 Your MCP Endpoint', 'ai-bridge' ); ?></h2>
+					<p class="description">
+						<?php echo esc_html__( 'Use this URL to connect AI assistants to your WordPress site:', 'ai-bridge' ); ?>
+					</p>
+					<div class="aibridge-endpoint-box">
+						<input
+							type="text"
+							id="aibridge-mcp-endpoint"
+							class="aibridge-endpoint-url"
+							value="<?php echo esc_url( $mcp_endpoint ); ?>"
+							readonly
+						/>
+						<button
+							type="button"
+							class="button button-secondary aibridge-copy-btn"
+							data-clipboard-target="#aibridge-mcp-endpoint"
+						>
+							<?php echo esc_html__( 'Copy', 'ai-bridge' ); ?>
+						</button>
+					</div>
+				</div>
+
+				<!-- Quick Setup Guide -->
+				<div class="aibridge-card aibridge-setup-card">
+					<h2><?php echo esc_html__( '🚀 Quick Setup Guide', 'ai-bridge' ); ?></h2>
+					<ol class="aibridge-setup-steps">
+						<li><?php echo esc_html__( 'Copy the MCP endpoint URL above', 'ai-bridge' ); ?></li>
+						<li><?php echo esc_html__( 'Add it to Claude Desktop or ChatGPT as an MCP connector', 'ai-bridge' ); ?></li>
+						<li><?php echo esc_html__( 'Authorize when prompted (you\'ll be redirected to WordPress)', 'ai-bridge' ); ?></li>
+						<li><?php echo esc_html__( 'Start managing your site with AI!', 'ai-bridge' ); ?></li>
+					</ol>
+					<p>
+						<a href="https://aibridgewp.com/docs/setup" target="_blank" class="button button-secondary">
+							<?php echo esc_html__( 'View Full Documentation', 'ai-bridge' ); ?>
+						</a>
+					</p>
+				</div>
+
+				<!-- Status Overview -->
+				<div class="aibridge-card aibridge-status-card">
+					<h2><?php echo esc_html__( '📊 Status', 'ai-bridge' ); ?></h2>
+					<ul class="aibridge-status-list">
+						<li>
+							<span class="aibridge-status-indicator aibridge-status-active"></span>
+							<strong><?php echo esc_html__( 'OAuth Server:', 'ai-bridge' ); ?></strong>
+							<span class="aibridge-status-value"><?php echo esc_html__( 'Active', 'ai-bridge' ); ?></span>
+						</li>
+						<li>
+							<span class="aibridge-status-indicator aibridge-status-active"></span>
+							<strong><?php echo esc_html__( 'MCP Endpoint:', 'ai-bridge' ); ?></strong>
+							<span class="aibridge-status-value"><?php echo esc_html__( 'Active', 'ai-bridge' ); ?></span>
+						</li>
+						<li>
+							<span class="aibridge-status-indicator aibridge-status-info"></span>
+							<strong><?php echo esc_html__( 'Active Connections:', 'ai-bridge' ); ?></strong>
+							<span class="aibridge-status-value"><?php echo esc_html( $active_connections ); ?></span>
+						</li>
+						<li>
+							<span class="aibridge-status-indicator aibridge-status-info"></span>
+							<strong><?php echo esc_html__( 'Enabled Abilities:', 'ai-bridge' ); ?></strong>
+							<span class="aibridge-status-value"><?php echo esc_html( $enabled_abilities ); ?></span>
+						</li>
+					</ul>
+					<p>
+						<a href="<?php echo esc_url( admin_url( 'admin.php?page=ai-bridge-connections' ) ); ?>" class="button button-secondary">
+							<?php echo esc_html__( 'View Connections', 'ai-bridge' ); ?>
+						</a>
+						<a href="<?php echo esc_url( admin_url( 'admin.php?page=ai-bridge' ) ); ?>" class="button button-secondary">
+							<?php echo esc_html__( 'Manage Abilities', 'ai-bridge' ); ?>
+						</a>
+					</p>
+				</div>
+
+				<!-- Recent Activity -->
+				<div class="aibridge-card aibridge-activity-card">
+					<h2><?php echo esc_html__( '📝 Recent Activity', 'ai-bridge' ); ?></h2>
+					<?php
+					$recent_activity = $this->get_recent_activity();
+					if ( ! empty( $recent_activity ) ) :
+						?>
+						<ul class="aibridge-activity-list">
+							<?php foreach ( $recent_activity as $activity ) : ?>
+								<li>
+									<span class="aibridge-activity-icon"><?php echo esc_html( $activity['icon'] ); ?></span>
+									<span class="aibridge-activity-text"><?php echo esc_html( $activity['text'] ); ?></span>
+									<span class="aibridge-activity-time"><?php echo esc_html( $activity['time'] ); ?></span>
+								</li>
+							<?php endforeach; ?>
+						</ul>
+					<?php else : ?>
+						<p class="description">
+							<?php echo esc_html__( 'No recent activity. Connect an AI assistant to get started!', 'ai-bridge' ); ?>
+						</p>
+					<?php endif; ?>
+				</div>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Get count of active OAuth connections.
+	 *
+	 * @return int Number of active connections.
+	 * @since 1.0.0
+	 */
+	private function get_active_connections_count(): int {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aibridge_oauth_access_tokens';
+
+		// Count non-expired tokens.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$count = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(DISTINCT client_id) FROM {$table_name} WHERE expiry_datetime > %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				gmdate( 'Y-m-d H:i:s' )
+			)
+		);
+
+		return (int) $count;
+	}
+
+	/**
+	 * Get count of enabled abilities.
+	 *
+	 * @return string Enabled/Total abilities count.
+	 * @since 1.0.0
+	 */
+	private function get_enabled_abilities_count(): string {
+		$options       = get_option( 'aibridge_options', [] );
+		$all_abilities = wp_get_abilities();
+
+		$enabled_count = 0;
+		$total_count   = count( $all_abilities );
+
+		foreach ( $all_abilities as $ability_id => $ability_data ) {
+			// Check if ability is enabled (default is enabled).
+			$is_enabled = isset( $options[ $ability_id ] ) ? (bool) $options[ $ability_id ] : true;
+			if ( $is_enabled ) {
+				++$enabled_count;
+			}
+		}
+
+		return sprintf( '%d/%d', $enabled_count, $total_count );
+	}
+
+	/**
+	 * Get recent activity from OAuth sessions.
+	 *
+	 * @return array Recent activity items.
+	 * @since 1.0.0
+	 */
+	private function get_recent_activity(): array {
+		global $wpdb;
+		$access_tokens_table = $wpdb->prefix . 'aibridge_oauth_access_tokens';
+		$clients_table       = $wpdb->prefix . 'aibridge_oauth_clients';
+
+		// Get most recent token creations.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$results = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT t.client_id, t.user_id, t.created_at, c.name
+				FROM {$access_tokens_table} t
+				LEFT JOIN {$clients_table} c ON t.client_id = c.identifier
+				ORDER BY t.created_at DESC
+				LIMIT %d",
+				5
+			)
+		);
+		// phpcs:enable
+
+		$activity = [];
+		foreach ( $results as $result ) {
+			$user        = get_userdata( $result->user_id );
+			$client_name = $result->name ?? __( 'Unknown Client', 'ai-bridge' );
+			$time_diff   = human_time_diff( strtotime( $result->created_at ), time() );
+			$activity[]  = [
+				'icon' => '🔗',
+				'text' => sprintf(
+					/* translators: 1: Client name, 2: Username */
+					__( '%1$s connected by %2$s', 'ai-bridge' ),
+					$client_name,
+					$user ? $user->display_name : __( 'Unknown', 'ai-bridge' )
+				),
+				'time' => sprintf(
+					/* translators: %s: Time difference */
+					__( '%s ago', 'ai-bridge' ),
+					$time_diff
+				),
+			];
+		}
+
+		return $activity;
+	}
+}

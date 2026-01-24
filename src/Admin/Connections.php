@@ -1,8 +1,8 @@
 <?php
 /**
- * User Sessions Page
+ * Connections Page
  *
- * Allows users to view and revoke their own MCP sessions.
+ * Allows admins to view and manage all AI assistant connections (OAuth sessions).
  *
  * @package    AIBridge
  * @subpackage Admin
@@ -14,13 +14,21 @@ namespace AIBridge\Admin;
 use AIBridge\Contracts\Interfaces\Hookable;
 
 /**
- * UserSessions class
+ * Connections class
  *
- * Provides a page for users to manage their own MCP sessions.
+ * Provides a page for admins to manage AI assistant OAuth connections.
  *
  * @since 1.0.0
  */
-class UserSessions implements Hookable {
+class Connections implements Hookable {
+
+	/**
+	 * Parent menu slug.
+	 *
+	 * @since 1.0.0
+	 * @var string
+	 */
+	private string $parent_slug = 'ai-bridge';
 
 	/**
 	 * Page slug.
@@ -28,7 +36,7 @@ class UserSessions implements Hookable {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	private string $page_slug = 'ai-bridge-my-sessions';
+	private string $page_slug = 'ai-bridge-connections';
 
 	/**
 	 * Register WordPress hooks.
@@ -43,23 +51,17 @@ class UserSessions implements Hookable {
 	}
 
 	/**
-	 * Add the menu page.
+	 * Add the connections page to admin menu.
 	 *
 	 * @return void
 	 * @since 1.0.0
 	 */
 	public function add_menu_page(): void {
-		// Only show for users who have MCP access.
-		$allowed_users = get_option( 'aibridge_allowed_users', [] );
-
-		if ( ! in_array( get_current_user_id(), $allowed_users, true ) ) {
-			return;
-		}
-
-		add_dashboard_page(
-			__( 'My AI Sessions', 'ai-bridge' ),
-			__( 'My AI Sessions', 'ai-bridge' ),
-			'read',
+		add_submenu_page(
+			$this->parent_slug,
+			__( 'Connections', 'ai-bridge' ),
+			__( 'Connections', 'ai-bridge' ),
+			'manage_options',
 			$this->page_slug,
 			[ $this, 'render_page' ]
 		);
@@ -115,21 +117,18 @@ class UserSessions implements Hookable {
 		$table       = $wpdb->prefix . 'aibridge_oauth_access_tokens';
 		$current_uid = get_current_user_id();
 
-		// Only revoke if it belongs to the current user.
+		// Admins can revoke any connection.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->update(
 			$table,
 			[ 'revoked' => 1 ],
-			[
-				'id'      => $token_id,
-				'user_id' => $current_uid,
-			],
+			[ 'id' => $token_id ],
 			[ '%d' ],
-			[ '%d', '%d' ]
+			[ '%d' ]
 		);
 
 		add_settings_error(
-			'aibridge_user_sessions',
+			'aibridge_connections',
 			'session_revoked',
 			__( 'Session revoked successfully.', 'ai-bridge' ),
 			'success'
@@ -142,7 +141,7 @@ class UserSessions implements Hookable {
 					'page'             => $this->page_slug,
 					'settings-updated' => 'true',
 				],
-				admin_url( 'index.php' )
+				admin_url( 'admin.php' )
 			)
 		);
 		exit;
@@ -164,7 +163,7 @@ class UserSessions implements Hookable {
 		Settings::revoke_user_tokens( get_current_user_id() );
 
 		add_settings_error(
-			'aibridge_user_sessions',
+			'aibridge_connections',
 			'all_sessions_revoked',
 			__( 'All sessions revoked successfully.', 'ai-bridge' ),
 			'success'
@@ -177,7 +176,7 @@ class UserSessions implements Hookable {
 					'page'             => $this->page_slug,
 					'settings-updated' => 'true',
 				],
-				admin_url( 'index.php' )
+				admin_url( 'admin.php' )
 			)
 		);
 		exit;
@@ -190,39 +189,40 @@ class UserSessions implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function render_page(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'ai-bridge' ) );
+		}
+
 		global $wpdb;
 
-		$current_uid   = get_current_user_id();
 		$tokens_table  = $wpdb->prefix . 'aibridge_oauth_access_tokens';
 		$clients_table = $wpdb->prefix . 'aibridge_oauth_clients';
 
-		// Get active sessions grouped by client, with first connection time.
+		// Get all active connections (all users) grouped by client.
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$sessions = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT
-					t.client_id,
-					MAX(t.id) as id,
-					MAX(t.token_id) as token_id,
-					COALESCE(c.name, 'Unknown') as client_name,
-					MIN(t.created_at) as first_connected
-				FROM {$tokens_table} t
-				LEFT JOIN {$clients_table} c ON t.client_id = c.client_id
-				WHERE t.user_id = %d AND t.revoked = 0
-				GROUP BY t.client_id
-				ORDER BY first_connected DESC",
-				$current_uid
-			)
+			"SELECT
+				t.id,
+				t.client_id,
+				t.user_id,
+				t.token_id,
+				t.created_at,
+				t.expiry_datetime,
+				COALESCE(c.name, 'Unknown Client') as client_name
+			FROM {$tokens_table} t
+			LEFT JOIN {$clients_table} c ON t.client_id = c.client_id
+			WHERE t.revoked = 0 AND t.expiry_datetime > NOW()
+			ORDER BY t.created_at DESC"
 		);
 		// phpcs:enable
 
-		echo '<div class="wrap ea-user-sessions">';
-		echo '<h1>' . esc_html__( 'My AI Sessions', 'ai-bridge' ) . '</h1>';
+		echo '<div class="wrap aibridge-settings">';
+		echo '<h1>' . esc_html__( 'AI Assistant Connections', 'ai-bridge' ) . '</h1>';
 
-		settings_errors( 'aibridge_user_sessions' );
+		settings_errors( 'aibridge_connections' );
 
 		echo '<p class="description">';
-		esc_html_e( 'These are your active AI tool connections. Each session represents an AI assistant that can access this site on your behalf.', 'ai-bridge' );
+		esc_html_e( 'Active AI assistant connections to your WordPress site. Each connection represents an authorized AI tool that can interact with your site via the MCP protocol.', 'ai-bridge' );
 		echo '</p>';
 
 		if ( empty( $sessions ) ) {
@@ -261,7 +261,7 @@ class UserSessions implements Hookable {
 							'action'   => 'revoke',
 							'token_id' => $session->id,
 						],
-						admin_url( 'index.php' )
+						admin_url( 'admin.php' )
 					),
 					'revoke_my_session_' . $session->id
 				);
@@ -281,7 +281,7 @@ class UserSessions implements Hookable {
 						'page'   => $this->page_slug,
 						'action' => 'revoke_all',
 					],
-					admin_url( 'index.php' )
+					admin_url( 'admin.php' )
 				),
 				'revoke_all_my_sessions'
 			);
