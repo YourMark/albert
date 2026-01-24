@@ -12,7 +12,7 @@ AI Bridge for WordPress is a WordPress plugin that exposes WordPress functionali
 
 ## System Requirements
 
-- **PHP**: 7.4+ (8.1+ recommended)
+- **PHP**: 8.2+ (8.3+ recommended)
 - **WordPress**: 6.9+
 - **Database**: MySQL 8.0+ or MariaDB 10.5+
 - **HTTPS**: Required for OAuth

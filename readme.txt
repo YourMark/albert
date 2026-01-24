@@ -3,7 +3,7 @@ Contributors: markjansen
 Tags: ai, mcp, oauth, claude, automation, api
 Requires at least: 6.9
 Tested up to: 6.9
-Requires PHP: 7.4
+Requires PHP: 8.2
 Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -141,7 +141,7 @@ AI Bridge is primarily designed for single-site installations. Multisite support
 = What are the system requirements? =
 
 * WordPress 6.9 or higher
-* PHP 7.4 or higher (8.1+ recommended)
+* PHP 8.2 or higher (8.3+ recommended)
 * MySQL 8.0+ or MariaDB 10.5+
 * HTTPS (required for OAuth 2.0)
 
