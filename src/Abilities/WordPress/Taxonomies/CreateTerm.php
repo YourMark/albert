@@ -27,7 +27,7 @@ class CreateTerm extends BaseAbility {
 	 * @since 1.0.0
 	 */
 	public function __construct() {
-		$this->id          = 'core/terms/create';
+		$this->id          = 'core/terms-create';
 		$this->label       = __( 'Create Term', 'ai-bridge' );
 		$this->description = __( 'Create a new term in a taxonomy (category, tag, etc).', 'ai-bridge' );
 		$this->category    = 'core';

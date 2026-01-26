@@ -27,7 +27,7 @@ class Delete extends BaseAbility {
 	 * @since 1.0.0
 	 */
 	public function __construct() {
-		$this->id          = 'core/users/delete';
+		$this->id          = 'core/users-delete';
 		$this->label       = __( 'Delete User', 'ai-bridge' );
 		$this->description = __( 'Delete a WordPress user and optionally reassign their content.', 'ai-bridge' );
 		$this->category    = 'core';

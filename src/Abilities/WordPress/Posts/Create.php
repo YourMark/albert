@@ -28,7 +28,7 @@ class Create extends BaseAbility {
 	 * @since 1.0.0
 	 */
 	public function __construct() {
-		$this->id          = 'core/posts/create';
+		$this->id          = 'core/posts-create';
 		$this->label       = __( 'Create Post', 'ai-bridge' );
 		$this->description = __( 'Create a new WordPress post with specified title, content, and metadata.', 'ai-bridge' );
 		$this->category    = 'core';

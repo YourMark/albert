@@ -1,6 +1,6 @@
 <?php
 /**
- * List Taxonomies Ability
+ * Find Taxonomies Ability
  *
  * @package    AIBridge
  * @subpackage Abilities\WordPress\Taxonomies
@@ -14,22 +14,22 @@ use WP_Error;
 use WP_REST_Request;
 
 /**
- * List Taxonomies Ability class
+ * Find Taxonomies Ability class
  *
- * Allows AI assistants to list available taxonomies via the abilities API.
+ * Allows AI assistants to find available taxonomies via the abilities API.
  *
  * @since 1.0.0
  */
-class ListTaxonomies extends BaseAbility {
+class FindTaxonomies extends BaseAbility {
 	/**
 	 * Constructor.
 	 *
 	 * @since 1.0.0
 	 */
 	public function __construct() {
-		$this->id          = 'core/taxonomies/list';
-		$this->label       = __( 'List Taxonomies', 'ai-bridge' );
-		$this->description = __( 'Retrieve a list of all registered taxonomies.', 'ai-bridge' );
+		$this->id          = 'core/taxonomies-find';
+		$this->label       = __( 'Find Taxonomies', 'ai-bridge' );
+		$this->description = __( 'Find all registered taxonomies (categories, tags, custom taxonomies).', 'ai-bridge' );
 		$this->category    = 'core';
 		$this->group       = 'taxonomies';
 

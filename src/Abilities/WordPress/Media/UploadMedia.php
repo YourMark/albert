@@ -28,7 +28,7 @@ class UploadMedia extends BaseAbility {
 	 * @since 1.0.0
 	 */
 	public function __construct() {
-		$this->id          = 'core/media/upload';
+		$this->id          = 'core/media-upload';
 		$this->label       = __( 'Upload Media', 'ai-bridge' );
 		$this->description = __( 'Upload media to WordPress by sideloading from a URL.', 'ai-bridge' );
 		$this->category    = 'core';

@@ -27,7 +27,7 @@ class Create extends BaseAbility {
 	 * @since 1.0.0
 	 */
 	public function __construct() {
-		$this->id          = 'core/users/create';
+		$this->id          = 'core/users-create';
 		$this->label       = __( 'Create User', 'ai-bridge' );
 		$this->description = __( 'Create a new WordPress user with specified username, email, and role.', 'ai-bridge' );
 		$this->category    = 'core';

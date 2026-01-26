@@ -1,6 +1,6 @@
 <?php
 /**
- * List Terms Ability
+ * Find Terms Ability
  *
  * @package    AIBridge
  * @subpackage Abilities\WordPress\Taxonomies
@@ -14,22 +14,22 @@ use WP_Error;
 use WP_REST_Request;
 
 /**
- * List Terms Ability class
+ * Find Terms Ability class
  *
- * Allows AI assistants to list terms from a taxonomy via the abilities API.
+ * Allows AI assistants to find terms from a taxonomy via the abilities API.
  *
  * @since 1.0.0
  */
-class ListTerms extends BaseAbility {
+class FindTerms extends BaseAbility {
 	/**
 	 * Constructor.
 	 *
 	 * @since 1.0.0
 	 */
 	public function __construct() {
-		$this->id          = 'core/terms/list';
-		$this->label       = __( 'List Terms', 'ai-bridge' );
-		$this->description = __( 'Retrieve a list of terms from a specific taxonomy (categories, tags, etc).', 'ai-bridge' );
+		$this->id          = 'core/terms-find';
+		$this->label       = __( 'Find Terms', 'ai-bridge' );
+		$this->description = __( 'Find terms from a specific taxonomy (categories, tags, custom terms).', 'ai-bridge' );
 		$this->category    = 'core';
 		$this->group       = 'terms';
 

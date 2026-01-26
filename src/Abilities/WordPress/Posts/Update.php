@@ -28,7 +28,7 @@ class Update extends BaseAbility {
 	 * @since 1.0.0
 	 */
 	public function __construct() {
-		$this->id          = 'core/posts/update';
+		$this->id          = 'core/posts-update';
 		$this->label       = __( 'Update Post', 'ai-bridge' );
 		$this->description = __( 'Update an existing WordPress post with new title, content, and metadata.', 'ai-bridge' );
 		$this->category    = 'core';

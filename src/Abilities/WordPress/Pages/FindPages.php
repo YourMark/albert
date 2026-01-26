@@ -1,37 +1,37 @@
 <?php
 /**
- * List Posts Ability
+ * Find Pages Ability
  *
  * @package    AIBridge
- * @subpackage Abilities\WordPress\Posts
+ * @subpackage Abilities\WordPress\Pages
  * @since      1.0.0
  */
 
-namespace AIBridge\Abilities\WordPress\Posts;
+namespace AIBridge\Abilities\WordPress\Pages;
 
 use AIBridge\Abstracts\BaseAbility;
 use WP_Error;
 use WP_REST_Request;
 
 /**
- * List Posts Ability class
+ * Find Pages Ability class
  *
- * Allows AI assistants to list WordPress posts via the abilities API.
+ * Allows AI assistants to find and search WordPress pages via the abilities API.
  *
  * @since 1.0.0
  */
-class ListPosts extends BaseAbility {
+class FindPages extends BaseAbility {
 	/**
 	 * Constructor.
 	 *
 	 * @since 1.0.0
 	 */
 	public function __construct() {
-		$this->id          = 'core/posts/list';
-		$this->label       = __( 'List Posts', 'ai-bridge' );
-		$this->description = __( 'Retrieve a list of WordPress posts with optional filtering and pagination.', 'ai-bridge' );
+		$this->id          = 'core/pages-find';
+		$this->label       = __( 'Find Pages', 'ai-bridge' );
+		$this->description = __( 'Find and search WordPress pages with optional filtering and pagination.', 'ai-bridge' );
 		$this->category    = 'core';
-		$this->group       = 'posts';
+		$this->group       = 'pages';
 
 		$this->input_schema  = $this->get_input_schema();
 		$this->output_schema = $this->get_output_schema();
@@ -58,44 +58,43 @@ class ListPosts extends BaseAbility {
 		return [
 			'type'       => 'object',
 			'properties' => [
-				'page'       => [
+				'page'     => [
 					'type'        => 'integer',
 					'description' => 'Page number for pagination',
 					'default'     => 1,
 					'minimum'     => 1,
 				],
-				'per_page'   => [
+				'per_page' => [
 					'type'        => 'integer',
-					'description' => 'Number of posts per page',
+					'description' => 'Number of pages per page',
 					'default'     => 10,
 					'minimum'     => 1,
 					'maximum'     => 100,
 				],
-				'search'     => [
+				'search'   => [
 					'type'        => 'string',
-					'description' => 'Search posts by title or content',
+					'description' => 'Search pages by title or content',
 					'default'     => '',
 				],
-				'status'     => [
+				'status'   => [
 					'type'        => 'string',
-					'description' => 'Filter posts by status',
+					'description' => 'Filter pages by status',
 					'enum'        => $post_statuses,
 				],
-				'categories' => [
-					'type'        => 'array',
-					'items'       => [ 'type' => 'integer' ],
-					'description' => 'Filter by category IDs',
+				'parent'   => [
+					'type'        => 'integer',
+					'description' => 'Filter by parent page ID (0 for top-level pages)',
 				],
-				'order'      => [
+				'order'    => [
 					'type'        => 'string',
 					'description' => 'Order direction',
 					'enum'        => [ 'asc', 'desc' ],
 					'default'     => 'desc',
 				],
-				'orderby'    => [
+				'orderby'  => [
 					'type'        => 'string',
 					'description' => 'Sort by field',
-					'enum'        => [ 'date', 'modified', 'title', 'id' ],
+					'enum'        => [ 'date', 'modified', 'title', 'id', 'menu_order' ],
 					'default'     => 'date',
 				],
 			],
@@ -112,7 +111,7 @@ class ListPosts extends BaseAbility {
 		return [
 			'type'       => 'object',
 			'properties' => [
-				'posts'       => [
+				'pages'       => [
 					'type'  => 'array',
 					'items' => [
 						'type'       => 'object',
@@ -125,22 +124,16 @@ class ListPosts extends BaseAbility {
 							'date'       => [ 'type' => 'string' ],
 							'modified'   => [ 'type' => 'string' ],
 							'author'     => [ 'type' => 'integer' ],
+							'parent'     => [ 'type' => 'integer' ],
+							'menu_order' => [ 'type' => 'integer' ],
 							'permalink'  => [ 'type' => 'string' ],
-							'categories' => [
-								'type'  => 'array',
-								'items' => [ 'type' => 'integer' ],
-							],
-							'tags'       => [
-								'type'  => 'array',
-								'items' => [ 'type' => 'integer' ],
-							],
 						],
 					],
 				],
 				'total'       => [ 'type' => 'integer' ],
 				'total_pages' => [ 'type' => 'integer' ],
 			],
-			'required'   => [ 'posts', 'total' ],
+			'required'   => [ 'pages', 'total' ],
 		];
 	}
 
@@ -156,8 +149,8 @@ class ListPosts extends BaseAbility {
 		$server = rest_get_server();
 		$routes = $server->get_routes();
 
-		// Get the route for listing posts.
-		$route = '/wp/v2/posts';
+		// Get the route for listing pages.
+		$route = '/wp/v2/pages';
 
 		if ( ! isset( $routes[ $route ] ) ) {
 			return false;
@@ -186,29 +179,29 @@ class ListPosts extends BaseAbility {
 		}
 
 		// Fallback to basic capability check.
-		return current_user_can( 'edit_posts' );
+		return current_user_can( 'edit_pages' );
 	}
 
 	/**
-	 * Execute the ability - list posts using WordPress REST API.
+	 * Execute the ability - list pages using WordPress REST API.
 	 *
 	 * @param array<string, mixed> $args {
 	 *     Input parameters.
 	 *
-	 *     @type int    $page       Page number for pagination.
-	 *     @type int    $per_page   Number of posts per page.
-	 *     @type string $search     Search query.
-	 *     @type string $status     Filter by status.
-	 *     @type array  $categories Filter by category IDs.
-	 *     @type string $order      Order direction.
-	 *     @type string $orderby    Sort by field.
+	 *     @type int    $page     Page number for pagination.
+	 *     @type int    $per_page Number of pages per result page.
+	 *     @type string $search   Search query.
+	 *     @type string $status   Filter by status.
+	 *     @type int    $parent   Filter by parent page ID.
+	 *     @type string $order    Order direction.
+	 *     @type string $orderby  Sort by field.
 	 * }
-	 * @return array<string, mixed>|WP_Error Posts list on success, WP_Error on failure.
+	 * @return array<string, mixed>|WP_Error Pages list on success, WP_Error on failure.
 	 * @since 1.0.0
 	 */
 	public function execute( array $args ): array|WP_Error {
 		// Create REST request.
-		$request = new WP_REST_Request( 'GET', '/wp/v2/posts' );
+		$request = new WP_REST_Request( 'GET', '/wp/v2/pages' );
 
 		// Set pagination parameters.
 		$request->set_param( 'page', absint( $args['page'] ?? 1 ) );
@@ -224,9 +217,9 @@ class ListPosts extends BaseAbility {
 			$request->set_param( 'status', sanitize_key( $args['status'] ) );
 		}
 
-		// Set categories filter if provided.
-		if ( ! empty( $args['categories'] ) && is_array( $args['categories'] ) ) {
-			$request->set_param( 'categories', array_map( 'absint', $args['categories'] ) );
+		// Set parent filter if provided.
+		if ( isset( $args['parent'] ) ) {
+			$request->set_param( 'parent', absint( $args['parent'] ) );
 		}
 
 		// Set order parameters.
@@ -251,36 +244,36 @@ class ListPosts extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while retrieving posts.', 'ai-bridge' ),
+				$data['message'] ?? __( 'An error occurred while retrieving pages.', 'ai-bridge' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}
 
-		// Format posts data.
-		$posts = [];
-		foreach ( $data as $post_data ) {
-			$posts[] = [
-				'id'         => $post_data['id'],
-				'title'      => $post_data['title']['rendered'] ?? '',
-				'content'    => $post_data['content']['rendered'] ?? '',
-				'excerpt'    => $post_data['excerpt']['rendered'] ?? '',
-				'status'     => $post_data['status'] ?? '',
-				'date'       => $post_data['date'] ?? '',
-				'modified'   => $post_data['modified'] ?? '',
-				'author'     => $post_data['author'] ?? 0,
-				'permalink'  => $post_data['link'] ?? '',
-				'categories' => $post_data['categories'] ?? [],
-				'tags'       => $post_data['tags'] ?? [],
+		// Format pages data.
+		$pages = [];
+		foreach ( $data as $page_data ) {
+			$pages[] = [
+				'id'         => $page_data['id'],
+				'title'      => $page_data['title']['rendered'] ?? '',
+				'content'    => $page_data['content']['rendered'] ?? '',
+				'excerpt'    => $page_data['excerpt']['rendered'] ?? '',
+				'status'     => $page_data['status'] ?? '',
+				'date'       => $page_data['date'] ?? '',
+				'modified'   => $page_data['modified'] ?? '',
+				'author'     => $page_data['author'] ?? 0,
+				'parent'     => $page_data['parent'] ?? 0,
+				'menu_order' => $page_data['menu_order'] ?? 0,
+				'permalink'  => $page_data['link'] ?? '',
 			];
 		}
 
 		// Get pagination headers.
 		$headers     = $response->get_headers();
-		$total       = isset( $headers['X-WP-Total'] ) ? (int) $headers['X-WP-Total'] : count( $posts );
+		$total       = isset( $headers['X-WP-Total'] ) ? (int) $headers['X-WP-Total'] : count( $pages );
 		$total_pages = isset( $headers['X-WP-TotalPages'] ) ? (int) $headers['X-WP-TotalPages'] : 1;
 
 		return [
-			'posts'       => $posts,
+			'pages'       => $pages,
 			'total'       => $total,
 			'total_pages' => $total_pages,
 		];

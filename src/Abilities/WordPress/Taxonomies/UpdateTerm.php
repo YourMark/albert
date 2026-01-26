@@ -27,7 +27,7 @@ class UpdateTerm extends BaseAbility {
 	 * @since 1.0.0
 	 */
 	public function __construct() {
-		$this->id          = 'core/terms/update';
+		$this->id          = 'core/terms-update';
 		$this->label       = __( 'Update Term', 'ai-bridge' );
 		$this->description = __( 'Update an existing term in a taxonomy (category, tag, etc).', 'ai-bridge' );
 		$this->category    = 'core';
