@@ -85,14 +85,14 @@ class OAuthDiscovery implements Hookable {
 		// OAuth Authorization Server Metadata (RFC 8414).
 		add_rewrite_rule(
 			'^\.well-known/oauth-authorization-server/?$',
-			'index.php?aibridge_oauth_discovery=authorization-server',
+			'index.php?albert_oauth_discovery=authorization-server',
 			'top'
 		);
 
 		// OAuth Protected Resource Metadata (RFC 9728 / MCP spec).
 		add_rewrite_rule(
 			'^\.well-known/oauth-protected-resource/?$',
-			'index.php?aibridge_oauth_discovery=protected-resource',
+			'index.php?albert_oauth_discovery=protected-resource',
 			'top'
 		);
 	}
