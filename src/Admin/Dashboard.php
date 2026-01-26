@@ -14,7 +14,7 @@ use Albert\Contracts\Interfaces\Hookable;
 /**
  * Dashboard class
  *
- * Manages the plugin dashboard page - primary landing page for AI Bridge.
+ * Manages the plugin dashboard page - primary landing page for Albert.
  *
  * @since 1.0.0
  */
@@ -50,7 +50,7 @@ class Dashboard implements Hookable {
 	/**
 	 * Add top-level menu and dashboard page.
 	 *
-	 * Creates the top-level "AI Bridge" menu with Dashboard as the default page,
+	 * Creates the top-level "Albert" menu with Dashboard as the default page,
 	 * then adds "Dashboard" as the first submenu (which replaces the auto-generated one).
 	 *
 	 * @return void
@@ -59,8 +59,8 @@ class Dashboard implements Hookable {
 	public function add_menu_pages(): void {
 		// Add top-level menu (shows Dashboard by default).
 		add_menu_page(
-			__( 'AI Bridge Dashboard', 'albert' ),
-			__( 'AI Bridge', 'albert' ),
+			__( 'Albert Dashboard', 'albert' ),
+			__( 'Albert', 'albert' ),
 			'manage_options',
 			$this->page_slug,
 			[ $this, 'render_dashboard_page' ],
@@ -89,19 +89,19 @@ class Dashboard implements Hookable {
 	 */
 	public function enqueue_assets( string $hook ): void {
 		// Only load on our dashboard page.
-		if ( 'toplevel_page_ai-bridge' !== $hook ) {
+		if ( 'toplevel_page_albert' !== $hook ) {
 			return;
 		}
 
 		wp_enqueue_style(
-			'aibridge-admin',
+			'albert-admin',
 			AIBRIDGE_PLUGIN_URL . 'assets/css/admin-settings.css',
 			[],
 			AIBRIDGE_VERSION
 		);
 
 		wp_enqueue_script(
-			'aibridge-dashboard',
+			'albert-dashboard',
 			AIBRIDGE_PLUGIN_URL . 'assets/js/admin-dashboard.js',
 			[],
 			AIBRIDGE_VERSION,
@@ -133,31 +133,31 @@ class Dashboard implements Hookable {
 		$enabled_abilities = $this->get_enabled_abilities_count();
 
 		?>
-		<div class="wrap aibridge-settings">
-			<h1><?php echo esc_html__( 'AI Bridge Dashboard', 'albert' ); ?></h1>
+		<div class="wrap albert-settings">
+			<h1><?php echo esc_html__( 'Albert Dashboard', 'albert' ); ?></h1>
 			<p class="description">
 				<?php echo esc_html__( 'Connect your WordPress site to AI assistants like Claude and ChatGPT.', 'albert' ); ?>
 			</p>
 
-			<div class="aibridge-dashboard-grid">
+			<div class="albert-dashboard-grid">
 				<!-- MCP Endpoint Section -->
-				<div class="aibridge-card aibridge-endpoint-card">
+				<div class="albert-card albert-endpoint-card">
 					<h2><?php echo esc_html__( '🔗 Your MCP Endpoint', 'albert' ); ?></h2>
 					<p class="description">
 						<?php echo esc_html__( 'Use this URL to connect AI assistants to your WordPress site:', 'albert' ); ?>
 					</p>
-					<div class="aibridge-endpoint-box">
+					<div class="albert-endpoint-box">
 						<input
 							type="text"
-							id="aibridge-mcp-endpoint"
-							class="aibridge-endpoint-url"
+							id="albert-mcp-endpoint"
+							class="albert-endpoint-url"
 							value="<?php echo esc_url( $mcp_endpoint ); ?>"
 							readonly
 						/>
 						<button
 							type="button"
-							class="button button-secondary aibridge-copy-btn"
-							data-clipboard-target="#aibridge-mcp-endpoint"
+							class="button button-secondary albert-copy-btn"
+							data-clipboard-target="#albert-mcp-endpoint"
 						>
 							<?php echo esc_html__( 'Copy', 'albert' ); ?>
 						</button>
@@ -165,9 +165,9 @@ class Dashboard implements Hookable {
 				</div>
 
 				<!-- Quick Setup Guide -->
-				<div class="aibridge-card aibridge-setup-card">
+				<div class="albert-card albert-setup-card">
 					<h2><?php echo esc_html__( '🚀 Quick Setup Guide', 'albert' ); ?></h2>
-					<ol class="aibridge-setup-steps">
+					<ol class="albert-setup-steps">
 						<li><?php echo esc_html__( 'Copy the MCP endpoint URL above', 'albert' ); ?></li>
 						<li><?php echo esc_html__( 'Add it to Claude Desktop or ChatGPT as an MCP connector', 'albert' ); ?></li>
 						<li><?php echo esc_html__( 'Authorize when prompted (you\'ll be redirected to WordPress)', 'albert' ); ?></li>
@@ -181,53 +181,53 @@ class Dashboard implements Hookable {
 				</div>
 
 				<!-- Status Overview -->
-				<div class="aibridge-card aibridge-status-card">
+				<div class="albert-card albert-status-card">
 					<h2><?php echo esc_html__( '📊 Status', 'albert' ); ?></h2>
-					<ul class="aibridge-status-list">
+					<ul class="albert-status-list">
 						<li>
-							<span class="aibridge-status-indicator aibridge-status-active"></span>
+							<span class="albert-status-indicator albert-status-active"></span>
 							<strong><?php echo esc_html__( 'OAuth Server:', 'albert' ); ?></strong>
-							<span class="aibridge-status-value"><?php echo esc_html__( 'Active', 'albert' ); ?></span>
+							<span class="albert-status-value"><?php echo esc_html__( 'Active', 'albert' ); ?></span>
 						</li>
 						<li>
-							<span class="aibridge-status-indicator aibridge-status-active"></span>
+							<span class="albert-status-indicator albert-status-active"></span>
 							<strong><?php echo esc_html__( 'MCP Endpoint:', 'albert' ); ?></strong>
-							<span class="aibridge-status-value"><?php echo esc_html__( 'Active', 'albert' ); ?></span>
+							<span class="albert-status-value"><?php echo esc_html__( 'Active', 'albert' ); ?></span>
 						</li>
 						<li>
-							<span class="aibridge-status-indicator aibridge-status-info"></span>
+							<span class="albert-status-indicator albert-status-info"></span>
 							<strong><?php echo esc_html__( 'Active Connections:', 'albert' ); ?></strong>
-							<span class="aibridge-status-value"><?php echo esc_html( (string) $active_connections ); ?></span>
+							<span class="albert-status-value"><?php echo esc_html( (string) $active_connections ); ?></span>
 						</li>
 						<li>
-							<span class="aibridge-status-indicator aibridge-status-info"></span>
+							<span class="albert-status-indicator albert-status-info"></span>
 							<strong><?php echo esc_html__( 'Enabled Abilities:', 'albert' ); ?></strong>
-							<span class="aibridge-status-value"><?php echo esc_html( $enabled_abilities ); ?></span>
+							<span class="albert-status-value"><?php echo esc_html( $enabled_abilities ); ?></span>
 						</li>
 					</ul>
 					<p>
-						<a href="<?php echo esc_url( admin_url( 'admin.php?page=ai-bridge-connections' ) ); ?>" class="button button-secondary">
+						<a href="<?php echo esc_url( admin_url( 'admin.php?page=albert-connections' ) ); ?>" class="button button-secondary">
 							<?php echo esc_html__( 'View Connections', 'albert' ); ?>
 						</a>
-						<a href="<?php echo esc_url( admin_url( 'admin.php?page=ai-bridge' ) ); ?>" class="button button-secondary">
+						<a href="<?php echo esc_url( admin_url( 'admin.php?page=albert' ) ); ?>" class="button button-secondary">
 							<?php echo esc_html__( 'Manage Abilities', 'albert' ); ?>
 						</a>
 					</p>
 				</div>
 
 				<!-- Recent Activity -->
-				<div class="aibridge-card aibridge-activity-card">
+				<div class="albert-card albert-activity-card">
 					<h2><?php echo esc_html__( '📝 Recent Activity', 'albert' ); ?></h2>
 					<?php
 					$recent_activity = $this->get_recent_activity();
 					if ( ! empty( $recent_activity ) ) :
 						?>
-						<ul class="aibridge-activity-list">
+						<ul class="albert-activity-list">
 							<?php foreach ( $recent_activity as $activity ) : ?>
 								<li>
-									<span class="aibridge-activity-icon"><?php echo esc_html( $activity['icon'] ); ?></span>
-									<span class="aibridge-activity-text"><?php echo esc_html( $activity['text'] ); ?></span>
-									<span class="aibridge-activity-time"><?php echo esc_html( $activity['time'] ); ?></span>
+									<span class="albert-activity-icon"><?php echo esc_html( $activity['icon'] ); ?></span>
+									<span class="albert-activity-text"><?php echo esc_html( $activity['text'] ); ?></span>
+									<span class="albert-activity-time"><?php echo esc_html( $activity['time'] ); ?></span>
 								</li>
 							<?php endforeach; ?>
 						</ul>

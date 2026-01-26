@@ -36,7 +36,7 @@ class Connections implements Hookable {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	private string $page_slug = 'ai-bridge-connections';
+	private string $page_slug = 'albert-connections';
 
 	/**
 	 * Register WordPress hooks.
@@ -217,7 +217,7 @@ class Connections implements Hookable {
 		// phpcs:enable
 
 		?>
-		<div class="wrap aibridge-settings">
+		<div class="wrap albert-settings">
 			<h1><?php echo esc_html__( 'AI Assistant Connections', 'albert' ); ?></h1>
 			<p class="description">
 				<?php esc_html_e( 'Active AI assistant connections to your WordPress site. Each connection represents an authorized AI tool that can interact with your site via the MCP protocol.', 'albert' ); ?>
@@ -226,20 +226,20 @@ class Connections implements Hookable {
 			<?php settings_errors( 'albert_connections' ); ?>
 
 			<?php if ( empty( $sessions ) ) : ?>
-				<div class="aibridge-card" style="margin-top: 20px;">
-					<div class="aibridge-empty-connections">
+				<div class="albert-card" style="margin-top: 20px;">
+					<div class="albert-empty-connections">
 						<span class="dashicons dashicons-networking"></span>
 						<h3><?php esc_html_e( 'No Active Connections', 'albert' ); ?></h3>
 						<p><?php esc_html_e( 'When you authorize an AI assistant to access this site, it will appear here.', 'albert' ); ?></p>
 						<p>
-							<a href="<?php echo esc_url( admin_url( 'admin.php?page=ai-bridge' ) ); ?>" class="button button-primary">
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=albert' ) ); ?>" class="button button-primary">
 								<?php esc_html_e( 'View Setup Instructions', 'albert' ); ?>
 							</a>
 						</p>
 					</div>
 				</div>
 			<?php else : ?>
-				<div class="aibridge-connections-grid">
+				<div class="albert-connections-grid">
 					<?php foreach ( $sessions as $session ) : ?>
 						<?php
 						$app_name     = ! empty( $session->client_name ) ? $session->client_name : __( 'Unknown Client', 'albert' );
@@ -260,37 +260,37 @@ class Connections implements Hookable {
 							'revoke_my_session_' . $session->id
 						);
 						?>
-						<div class="aibridge-card aibridge-connection-card">
-							<div class="aibridge-connection-header">
-								<div class="aibridge-connection-icon">
+						<div class="albert-card albert-connection-card">
+							<div class="albert-connection-header">
+								<div class="albert-connection-icon">
 									<span class="dashicons dashicons-admin-plugins"></span>
 								</div>
-								<div class="aibridge-connection-title">
+								<div class="albert-connection-title">
 									<h3><?php echo esc_html( $app_name ); ?></h3>
-									<span class="aibridge-connection-session"><?php echo esc_html( substr( $session->token_id, 0, 12 ) . '...' ); ?></span>
+									<span class="albert-connection-session"><?php echo esc_html( substr( $session->token_id, 0, 12 ) . '...' ); ?></span>
 								</div>
 							</div>
-							<div class="aibridge-connection-body">
-								<div class="aibridge-connection-meta">
-									<div class="aibridge-connection-meta-item">
+							<div class="albert-connection-body">
+								<div class="albert-connection-meta">
+									<div class="albert-connection-meta-item">
 										<span class="dashicons dashicons-admin-users"></span>
 										<div>
 											<strong><?php esc_html_e( 'User:', 'albert' ); ?></strong>
 											<span><?php echo $user ? esc_html( $user->display_name ) : esc_html__( 'Unknown', 'albert' ); ?></span>
 										</div>
 									</div>
-									<div class="aibridge-connection-meta-item">
+									<div class="albert-connection-meta-item">
 										<span class="dashicons dashicons-calendar-alt"></span>
 										<div>
 											<strong><?php esc_html_e( 'Connected:', 'albert' ); ?></strong>
 											<span><?php echo esc_html( human_time_diff( $connected_at, time() ) . ' ' . __( 'ago', 'albert' ) ); ?></span>
 										</div>
 									</div>
-									<div class="aibridge-connection-meta-item">
+									<div class="albert-connection-meta-item">
 										<span class="dashicons dashicons-clock"></span>
 										<div>
 											<strong><?php esc_html_e( 'Expires:', 'albert' ); ?></strong>
-											<span class="<?php echo $is_expiring ? 'aibridge-expiring' : ''; ?>">
+											<span class="<?php echo $is_expiring ? 'albert-expiring' : ''; ?>">
 												<?php
 												if ( $expires_at > time() ) {
 													echo esc_html( human_time_diff( time(), $expires_at ) . ' ' . __( 'from now', 'albert' ) );
@@ -303,9 +303,9 @@ class Connections implements Hookable {
 									</div>
 								</div>
 							</div>
-							<div class="aibridge-connection-footer">
+							<div class="albert-connection-footer">
 								<a href="<?php echo esc_url( $revoke_url ); ?>"
-									class="button button-secondary button-small aibridge-disconnect-btn"
+									class="button button-secondary button-small albert-disconnect-btn"
 									onclick="return confirm('<?php echo esc_js( __( 'Disconnect this AI assistant?', 'albert' ) ); ?>');">
 									<span class="dashicons dashicons-dismiss"></span>
 									<?php esc_html_e( 'Disconnect', 'albert' ); ?>
@@ -327,9 +327,9 @@ class Connections implements Hookable {
 					'revoke_all_my_sessions'
 				);
 				?>
-				<div class="aibridge-connections-actions">
+				<div class="albert-connections-actions">
 					<a href="<?php echo esc_url( $revoke_all_url ); ?>"
-						class="button aibridge-disconnect-all-btn"
+						class="button albert-disconnect-all-btn"
 						onclick="return confirm('<?php echo esc_js( __( 'Disconnect ALL AI assistants? This action cannot be undone.', 'albert' ) ); ?>');">
 						<span class="dashicons dashicons-dismiss"></span>
 						<?php esc_html_e( 'Disconnect All', 'albert' ); ?>
@@ -350,12 +350,12 @@ class Connections implements Hookable {
 	 */
 	public function enqueue_assets( string $hook ): void {
 		// Hook format for submenu is: {parent_slug}_page_{menu_slug}.
-		if ( 'ai-bridge_page_' . $this->page_slug !== $hook ) {
+		if ( 'albert_page_' . $this->page_slug !== $hook ) {
 			return;
 		}
 
 		wp_enqueue_style(
-			'aibridge-user-sessions',
+			'albert-user-sessions',
 			AIBRIDGE_PLUGIN_URL . 'assets/css/admin-settings.css',
 			[],
 			AIBRIDGE_VERSION

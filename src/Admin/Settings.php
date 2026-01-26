@@ -35,7 +35,7 @@ class Settings implements Hookable {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	private string $page_slug = 'ai-bridge-settings';
+	private string $page_slug = 'albert-settings';
 
 	/**
 	 * Register WordPress hooks.
@@ -48,8 +48,8 @@ class Settings implements Hookable {
 		add_action( 'admin_init', [ $this, 'handle_oauth_actions' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'admin_notices', [ $this, 'display_admin_notices' ] );
-		add_action( 'admin_post_aibridge_save_external_url', [ $this, 'handle_save_external_url' ] );
-		add_action( 'admin_post_aibridge_add_allowed_user', [ $this, 'handle_add_allowed_user' ] );
+		add_action( 'admin_post_albert_save_external_url', [ $this, 'handle_save_external_url' ] );
+		add_action( 'admin_post_albert_add_allowed_user', [ $this, 'handle_add_allowed_user' ] );
 	}
 
 	/**
@@ -91,7 +91,7 @@ class Settings implements Hookable {
 			return;
 		}
 		?>
-		<div class="wrap aibridge-settings">
+		<div class="wrap albert-settings">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 
 			<?php settings_errors(); ?>
@@ -411,7 +411,7 @@ class Settings implements Hookable {
 			admin_url( 'admin.php' )
 		);
 		?>
-		<div class="wrap aibridge-settings">
+		<div class="wrap albert-settings">
 			<h1><?php esc_html_e( 'User Sessions', 'albert' ); ?></h1>
 
 			<?php settings_errors(); ?>
@@ -644,7 +644,7 @@ class Settings implements Hookable {
 		self::revoke_user_tokens( $user_id );
 
 		add_settings_error(
-			'aibridge',
+			'albert',
 			'user_removed',
 			__( 'User removed and all their sessions revoked.', 'albert' ),
 			'success'
@@ -702,7 +702,7 @@ class Settings implements Hookable {
 		);
 
 		add_settings_error(
-			'aibridge',
+			'albert',
 			'session_revoked',
 			__( 'Session revoked successfully.', 'albert' ),
 			'success'
@@ -750,7 +750,7 @@ class Settings implements Hookable {
 		self::revoke_user_tokens( $user_id );
 
 		add_settings_error(
-			'aibridge',
+			'albert',
 			'all_sessions_revoked',
 			__( 'All sessions revoked successfully.', 'albert' ),
 			'success'
@@ -827,19 +827,19 @@ class Settings implements Hookable {
 	 */
 	public function enqueue_assets( string $hook ): void {
 		// Hook format for submenu is: {parent_slug}_page_{menu_slug}.
-		if ( 'ai-bridge_page_' . $this->page_slug !== $hook ) {
+		if ( 'albert_page_' . $this->page_slug !== $hook ) {
 			return;
 		}
 
 		wp_enqueue_style(
-			'aibridge-admin',
+			'albert-admin',
 			AIBRIDGE_PLUGIN_URL . 'assets/css/admin-settings.css',
 			[],
 			AIBRIDGE_VERSION
 		);
 
 		wp_enqueue_script(
-			'aibridge-admin',
+			'albert-admin',
 			AIBRIDGE_PLUGIN_URL . 'assets/js/admin-settings.js',
 			[],
 			AIBRIDGE_VERSION,
@@ -847,8 +847,8 @@ class Settings implements Hookable {
 		);
 
 		wp_localize_script(
-			'aibridge-admin',
-			'aibridgeAdmin',
+			'albert-admin',
+			'albertAdmin',
 			[
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce'   => wp_create_nonce( 'albert_oauth_nonce' ),

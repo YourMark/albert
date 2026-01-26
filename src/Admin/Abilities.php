@@ -27,7 +27,7 @@ class Abilities implements Hookable {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	private string $page_slug = 'ai-bridge-abilities';
+	private string $page_slug = 'albert-abilities';
 
 	/**
 	 * Option group name.
@@ -191,7 +191,7 @@ class Abilities implements Hookable {
 		$current_tab       = $this->get_current_tab();
 		$grouped_abilities = $this->get_abilities_for_tab( $current_tab );
 		?>
-		<div class="wrap aibridge-settings">
+		<div class="wrap albert-settings">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 
 			<div class="notice notice-warning">
@@ -209,7 +209,7 @@ class Abilities implements Hookable {
 				<?php $this->render_sidebar( $grouped_abilities ); ?>
 
 				<div class="ea-main-content">
-					<div class="aibridge-tab-content">
+					<div class="albert-tab-content">
 						<?php $this->render_abilities_content( $current_tab, $grouped_abilities ); ?>
 					</div>
 				</div>
@@ -235,7 +235,7 @@ class Abilities implements Hookable {
 		?>
 		<aside class="ea-sidebar" aria-label="<?php esc_attr_e( 'Abilities navigation', 'albert' ); ?>">
 			<div class="ea-sidebar-save">
-				<?php submit_button( __( 'Save Changes', 'albert' ), 'primary', 'submit', false, [ 'form' => 'aibridge-form' ] ); ?>
+				<?php submit_button( __( 'Save Changes', 'albert' ), 'primary', 'submit', false, [ 'form' => 'albert-form' ] ); ?>
 			</div>
 			<h2 class="ea-sidebar-title"><?php esc_html_e( 'Quick Nav', 'albert' ); ?></h2>
 			<nav>
@@ -328,7 +328,7 @@ class Abilities implements Hookable {
 	private function render_abilities_content( string $tab, array $grouped_abilities ): void {
 		$options = get_option( $this->option_name, [] );
 		?>
-		<form method="post" action="options.php" id="aibridge-form" aria-label="<?php esc_attr_e( 'AI Bridge Settings', 'albert' ); ?>">
+		<form method="post" action="options.php" id="albert-form" aria-label="<?php esc_attr_e( 'AI Bridge Settings', 'albert' ); ?>">
 			<?php settings_fields( $this->option_group ); ?>
 
 			<div class="ea-content-header">
@@ -417,7 +417,7 @@ class Abilities implements Hookable {
 					</h2>
 				</div>
 				<div class="ability-group-toggle-all">
-					<label class="aibridge-toggle" for="<?php echo esc_attr( $toggle_all_id ); ?>">
+					<label class="albert-toggle" for="<?php echo esc_attr( $toggle_all_id ); ?>">
 						<input
 								type="checkbox"
 								id="<?php echo esc_attr( $toggle_all_id ); ?>"
@@ -426,7 +426,7 @@ class Abilities implements Hookable {
 								<?php /* translators: %s: content type name */ ?>
 								aria-label="<?php echo esc_attr( sprintf( __( 'Enable all %s permissions', 'albert' ), $type_data['label'] ) ); ?>"
 						/>
-						<span class="aibridge-toggle-slider" aria-hidden="true"></span>
+						<span class="albert-toggle-slider" aria-hidden="true"></span>
 					</label>
 					<label for="<?php echo esc_attr( $toggle_all_id ); ?>">
 						<?php esc_html_e( 'Enable All', 'albert' ); ?>
@@ -476,7 +476,7 @@ class Abilities implements Hookable {
 		?>
 		<div class="ability-item">
 			<div class="ability-item-toggle">
-				<label class="aibridge-toggle" for="<?php echo esc_attr( $field_id ); ?>">
+				<label class="albert-toggle" for="<?php echo esc_attr( $field_id ); ?>">
 					<input
 							type="checkbox"
 							id="<?php echo esc_attr( $field_id ); ?>"
@@ -488,7 +488,7 @@ class Abilities implements Hookable {
 						<?php endif; ?>
 						<?php checked( $enabled ); ?>
 					/>
-					<span class="aibridge-toggle-slider" aria-hidden="true"></span>
+					<span class="albert-toggle-slider" aria-hidden="true"></span>
 				</label>
 			</div>
 			<div class="ability-item-content">
@@ -623,19 +623,19 @@ class Abilities implements Hookable {
 	 */
 	public function enqueue_assets( string $hook ): void {
 		// Hook format for submenu is: {parent_slug}_page_{menu_slug}.
-		if ( 'ai-bridge_page_' . $this->page_slug !== $hook ) {
+		if ( 'albert_page_' . $this->page_slug !== $hook ) {
 			return;
 		}
 
 		wp_enqueue_style(
-			'aibridge-admin',
+			'albert-admin',
 			AIBRIDGE_PLUGIN_URL . 'assets/css/admin-settings.css',
 			[],
 			AIBRIDGE_VERSION
 		);
 
 		wp_enqueue_script(
-			'aibridge-admin',
+			'albert-admin',
 			AIBRIDGE_PLUGIN_URL . 'assets/js/admin-settings.js',
 			[],
 			AIBRIDGE_VERSION,
