@@ -32,7 +32,7 @@ class ClientRegistration implements Hookable {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	const NAMESPACE = 'ai-bridge/v1';
+	const NAMESPACE = 'albert/v1';
 
 	/**
 	 * Register WordPress hooks.

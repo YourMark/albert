@@ -42,7 +42,7 @@ class Server implements Hookable {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	const ROUTE_NAMESPACE = 'ai-bridge/v1';
+	const ROUTE_NAMESPACE = 'albert/v1';
 
 	/**
 	 * Server route.
@@ -88,7 +88,7 @@ class Server implements Hookable {
 		if ( empty( $token ) ) {
 			// Send headers for OAuth discovery per MCP spec (RFC 6750).
 			// Point to REST API resource endpoint for OAuth discovery.
-			$resource_url = self::get_base_url() . '/wp-json/ai-bridge/v1/oauth/resource';
+			$resource_url = self::get_base_url() . '/wp-json/albert/v1/oauth/resource';
 			header( 'WWW-Authenticate: Bearer realm="MCP", resource="' . $resource_url . '"' );
 		}
 

@@ -194,7 +194,7 @@ class OAuthDiscovery implements Hookable {
 		$base_url = $this->get_base_url();
 
 		return [
-			'resource'              => $this->get_rest_url( 'ai-bridge/v1/mcp' ),
+			'resource'              => $this->get_rest_url( 'albert/v1/mcp' ),
 			'authorization_servers' => [ $base_url ],
 			'scopes_supported'      => [ 'default' ],
 		];
@@ -213,8 +213,8 @@ class OAuthDiscovery implements Hookable {
 			// Required fields.
 			'issuer'                                => $base_url,
 			'authorization_endpoint'                => $base_url . '/oauth/authorize',
-			'token_endpoint'                        => $this->get_rest_url( 'ai-bridge/v1/oauth/token' ),
-			'registration_endpoint'                 => $this->get_rest_url( 'ai-bridge/v1/oauth/register' ),
+			'token_endpoint'                        => $this->get_rest_url( 'albert/v1/oauth/token' ),
+			'registration_endpoint'                 => $this->get_rest_url( 'albert/v1/oauth/register' ),
 
 			// Recommended fields.
 			'response_types_supported'              => [ 'code' ],

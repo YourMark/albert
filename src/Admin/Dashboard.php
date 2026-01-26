@@ -121,7 +121,7 @@ class Dashboard implements Hookable {
 		}
 
 		// Get MCP endpoint URL.
-		$mcp_endpoint = rest_url( 'ai-bridge/v1/mcp' );
+		$mcp_endpoint = rest_url( 'albert/v1/mcp' );
 
 		// Get OAuth discovery URL.
 		$oauth_discovery = home_url( '/.well-known/oauth-authorization-server' );

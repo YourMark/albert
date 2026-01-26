@@ -35,7 +35,7 @@ class OAuthController implements Hookable {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	const NAMESPACE = 'ai-bridge/v1';
+	const NAMESPACE = 'albert/v1';
 
 	/**
 	 * Transient prefix for authorization requests.
@@ -448,8 +448,8 @@ class OAuthController implements Hookable {
 		$metadata = [
 			'issuer'                                => $base_url,
 			'authorization_endpoint'                => $base_url . '/oauth/authorize',
-			'token_endpoint'                        => $this->get_rest_url( 'ai-bridge/v1/oauth/token' ),
-			'registration_endpoint'                 => $this->get_rest_url( 'ai-bridge/v1/oauth/register' ),
+			'token_endpoint'                        => $this->get_rest_url( 'albert/v1/oauth/token' ),
+			'registration_endpoint'                 => $this->get_rest_url( 'albert/v1/oauth/register' ),
 			'response_types_supported'              => [ 'code' ],
 			'grant_types_supported'                 => [ 'authorization_code', 'refresh_token' ],
 			'token_endpoint_auth_methods_supported' => [ 'client_secret_post', 'client_secret_basic' ],
@@ -475,8 +475,8 @@ class OAuthController implements Hookable {
 		$base_url = $this->get_base_url();
 
 		$metadata = [
-			'resource'              => $this->get_rest_url( 'ai-bridge/v1/mcp' ),
-			'authorization_servers' => [ $this->get_rest_url( 'ai-bridge/v1/oauth/metadata' ) ],
+			'resource'              => $this->get_rest_url( 'albert/v1/mcp' ),
+			'authorization_servers' => [ $this->get_rest_url( 'albert/v1/oauth/metadata' ) ],
 			'scopes_supported'      => [ 'default' ],
 		];
 
