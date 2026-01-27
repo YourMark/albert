@@ -11,7 +11,7 @@
 
 namespace Albert\Core;
 
-use Albert\Admin\Abilities;
+use Albert\Core\AbilitiesRegistry;
 
 /**
  * Settings Migration class
@@ -101,7 +101,7 @@ class SettingsMigration {
 
 		// If no permissions were migrated, use defaults.
 		if ( empty( $permissions ) ) {
-			$permissions = Abilities::get_default_permissions();
+			$permissions = AbilitiesRegistry::get_default_permissions();
 		}
 
 		// Save new settings.
