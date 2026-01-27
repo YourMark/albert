@@ -6,25 +6,70 @@
  */
 
 :root {
-	--albert-primary: #2271b1;
-	--albert-primary-hover: #135e96;
-	--albert-border: #c3c4c7;
-	--albert-border-light: #dcdcde;
-	--albert-bg-white: #fff;
-	--albert-bg-light: #f6f7f7;
-	--albert-text-primary: #1d2327;
-	--albert-text-secondary: #646970;
-	--albert-toggle-inactive: #8c8f94;
+	/* Colors - OKLCH */
+	--albert-primary: oklch(0.49 0.12 248);
+	--albert-primary-hover: oklch(0.42 0.11 248);
+	--albert-border: oklch(0.81 0.005 265);
+	--albert-border-light: oklch(0.89 0.003 265);
+	--albert-bg-white: oklch(1 0 0);
+	--albert-bg-light: oklch(0.97 0.002 210);
+	--albert-text-primary: oklch(0.22 0.01 240);
+	--albert-text-secondary: oklch(0.49 0.015 250);
+	--albert-toggle-inactive: oklch(0.63 0.01 255);
+	--albert-toggle-track: oklch(0.90 0 0);
+	--albert-success: oklch(0.55 0.17 145);
+	--albert-error: oklch(0.52 0.18 25);
+	--albert-error-hover: oklch(0.44 0.18 25);
+	--albert-warning: oklch(0.50 0.12 75);
+	--albert-success-bg: oklch(0.97 0.03 150);
+	--albert-copy-hover-bg: oklch(0.92 0 0);
+	--albert-source-core-bg: oklch(0.95 0.002 265);
+	--albert-source-core-text: oklch(0.42 0.01 250);
+	--albert-premium-text: oklch(0.48 0.11 75);
+	--albert-third-party-text: oklch(0.43 0.14 150);
+	--albert-modal-backdrop: oklch(0 0 0 / 0.7);
+
+	/* Derived alpha colors */
+	--albert-primary-8: oklch(0.49 0.12 248 / 0.08);
+	--albert-primary-10: oklch(0.49 0.12 248 / 0.1);
+	--albert-primary-20: oklch(0.49 0.12 248 / 0.2);
+	--albert-primary-40: oklch(0.49 0.12 248 / 0.4);
+	--albert-primary-60: oklch(0.49 0.12 248 / 0.6);
+	--albert-warning-10: oklch(0.50 0.12 75 / 0.1);
+	--albert-warning-20: oklch(0.50 0.12 75 / 0.2);
+	--albert-success-10: oklch(0.55 0.17 145 / 0.1);
+	--albert-success-20: oklch(0.55 0.17 145 / 0.2);
+	--albert-black-5: oklch(0 0 0 / 0.05);
+	--albert-black-8: oklch(0 0 0 / 0.08);
+	--albert-black-10: oklch(0 0 0 / 0.1);
+	--albert-black-30: oklch(0 0 0 / 0.3);
+
+	/* Font sizes */
+	--albert-font-2xs: 9px;
+	--albert-font-xs: 11px;
+	--albert-font-sm: 12px;
+	--albert-font-base: 13px;
+	--albert-font-md: 14px;
+	--albert-font-lg: 15px;
+	--albert-font-xl: 16px;
+	--albert-font-2xl: 18px;
+	--albert-font-3xl: 24px;
+	--albert-font-4xl: 32px;
+	--albert-font-5xl: 64px;
+
+	/* Spacing */
 	--albert-spacing-xs: 6px;
 	--albert-spacing-sm: 8px;
 	--albert-spacing-md: 12px;
 	--albert-spacing-lg: 16px;
 	--albert-spacing-xl: 24px;
+
+	/* Other */
 	--albert-border-radius: 4px;
 	--albert-border-radius-lg: 8px;
 	--albert-transition: 0.2s;
-	--albert-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-	--albert-shadow-md: 0 1px 3px rgba(0, 0, 0, 0.1);
+	--albert-shadow-sm: 0 1px 2px var(--albert-black-5);
+	--albert-shadow-md: 0 1px 3px var(--albert-black-10);
 	--albert-sidebar-width: 200px;
 }
 
@@ -46,7 +91,7 @@
 
 .albert-settings > .notice p {
 	margin: 0;
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 }
 
 /* Page layout with sidebar */
@@ -69,7 +114,7 @@
 }
 
 .albert-sidebar-title {
-	font-size: 11px;
+	font-size: var(--albert-font-xs);
 	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
@@ -95,7 +140,7 @@
 	padding: var(--albert-spacing-sm) var(--albert-spacing-sm);
 	color: var(--albert-text-primary);
 	text-decoration: none;
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 	border-radius: var(--albert-border-radius);
 	transition: background-color var(--albert-transition), color var(--albert-transition);
 }
@@ -106,7 +151,7 @@
 }
 
 .albert-sidebar-nav a.active {
-	background: rgba(34, 113, 177, 0.1);
+	background: var(--albert-primary-10);
 	color: var(--albert-primary);
 	font-weight: 500;
 }
@@ -143,7 +188,7 @@
 		border-radius: 20px;
 		color: var(--albert-text-primary);
 		text-decoration: none;
-		font-size: 13px;
+		font-size: var(--albert-font-base);
 		transition: background-color var(--albert-transition), border-color var(--albert-transition);
 	}
 
@@ -153,26 +198,26 @@
 	}
 
 	.albert-sidebar-mobile-nav .dashicons {
-		font-size: 14px;
+		font-size: var(--albert-font-md);
 		width: 14px;
 		height: 14px;
 	}
 
 	.albert-sidebar-mobile-nav .albert-nav-count {
-		font-size: 11px;
+		font-size: var(--albert-font-xs);
 		color: var(--albert-text-secondary);
 	}
 }
 
 .albert-sidebar-nav .dashicons {
-	font-size: 16px;
+	font-size: var(--albert-font-xl);
 	width: 16px;
 	height: 16px;
 }
 
 .albert-sidebar-nav .albert-nav-count {
 	margin-left: auto;
-	font-size: 11px;
+	font-size: var(--albert-font-xs);
 	color: var(--albert-text-secondary);
 	background: var(--albert-bg-light);
 	padding: 2px 6px;
@@ -209,7 +254,7 @@
 	margin-left: 0;
 	margin-right: 4px;
 	padding: 8px 12px;
-	font-size: 14px;
+	font-size: var(--albert-font-md);
 	line-height: 1.4;
 	color: var(--albert-text-secondary);
 }
@@ -267,7 +312,7 @@
 .albert-content-description {
 	margin: 0;
 	color: var(--albert-text-secondary);
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 	line-height: 1.5;
 }
 
@@ -283,7 +328,7 @@
 	border: none;
 	padding: 0;
 	margin: 0;
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 	color: var(--albert-primary);
 	cursor: pointer;
 	text-decoration: none;
@@ -350,13 +395,13 @@
 
 .ability-group-collapse-toggle .dashicons {
 	transition: transform 0.2s ease-out;
-	font-size: 18px;
+	font-size: var(--albert-font-2xl);
 	width: 18px;
 	height: 18px;
 }
 
 .ability-group-collapse-toggle:hover {
-	background: rgba(0, 0, 0, 0.05);
+	background: var(--albert-black-5);
 	color: var(--albert-primary);
 }
 
@@ -365,7 +410,7 @@
 }
 
 .ability-group-title {
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 	font-weight: 600;
 	color: var(--albert-text-primary);
 	margin: 0;
@@ -397,7 +442,7 @@
 	display: flex;
 	align-items: center;
 	gap: var(--albert-spacing-xs);
-	font-size: 11px;
+	font-size: var(--albert-font-xs);
 	color: var(--albert-text-secondary);
 }
 
@@ -422,27 +467,27 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 5px;
-	font-size: 11px;
+	font-size: var(--albert-font-xs);
 	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
 	color: var(--albert-primary);
-	background: rgba(34, 113, 177, 0.08);
+	background: var(--albert-primary-8);
 	padding: 3px 10px 3px 7px;
 	border-radius: 4px;
 	line-height: 1.4;
 }
 
 .ability-subgroup-label .dashicons {
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 	width: 13px;
 	height: 13px;
 }
 
 /* Write subgroup label variant */
 .ability-subgroup[data-subgroup="write"] .ability-subgroup-label {
-	color: #9a6700;
-	background: rgba(196, 146, 46, 0.1);
+	color: var(--albert-warning);
+	background: var(--albert-warning-10);
 }
 
 .ability-subgroup-toggle {
@@ -471,7 +516,7 @@
 }
 
 .ability-item:active {
-	background: rgba(34, 113, 177, 0.08);
+	background: var(--albert-primary-8);
 }
 
 .ability-item-toggle {
@@ -489,13 +534,13 @@
 	color: var(--albert-text-primary);
 	margin: 0;
 	display: block;
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 	line-height: 1.3;
 	cursor: pointer;
 }
 
 .ability-item-description {
-	font-size: 12px;
+	font-size: var(--albert-font-sm);
 	color: var(--albert-text-secondary);
 	line-height: 1.4;
 	margin: 2px 0 0 0;
@@ -531,7 +576,7 @@
 .albert-toggle-slider {
 	position: absolute;
 	inset: 0;
-	background-color: #e0e0e0;
+	background-color: var(--albert-toggle-track);
 	border-radius: 16px;
 	transition: background-color var(--albert-transition);
 }
@@ -546,11 +591,11 @@
 	background-color: var(--albert-bg-white);
 	border-radius: 50%;
 	transition: transform var(--albert-transition);
-	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 1px 1px var(--albert-black-10);
 }
 
 .albert-toggle input:checked + .albert-toggle-slider {
-	background-color: #2271b1;
+	background-color: var(--albert-primary);
 }
 
 .albert-toggle input:focus-visible + .albert-toggle-slider {
@@ -565,7 +610,7 @@
 
 /* Category description in header */
 .ability-group-description {
-	font-size: 12px;
+	font-size: var(--albert-font-sm);
 	color: var(--albert-text-secondary);
 	margin: 2px 0 0 0;
 	line-height: 1.4;
@@ -583,7 +628,7 @@
 /* Source badges */
 .albert-source-badge {
 	display: inline-block;
-	font-size: 9px;
+	font-size: var(--albert-font-2xs);
 	font-weight: 700;
 	letter-spacing: 0.5px;
 	text-transform: uppercase;
@@ -595,35 +640,35 @@
 }
 
 .albert-source-core {
-	background: #f0f0f1;
-	color: #50575e;
-	border: 1px solid #dcdcde;
+	background: var(--albert-source-core-bg);
+	color: var(--albert-source-core-text);
+	border: 1px solid var(--albert-border-light);
 }
 
 .albert-source-albert {
-	background: rgba(34, 113, 177, 0.1);
-	color: #135e96;
-	border: 1px solid rgba(34, 113, 177, 0.2);
+	background: var(--albert-primary-10);
+	color: var(--albert-primary-hover);
+	border: 1px solid var(--albert-primary-20);
 }
 
 .albert-source-premium {
-	background: rgba(196, 146, 46, 0.1);
-	color: #8a6914;
-	border: 1px solid rgba(196, 146, 46, 0.2);
+	background: var(--albert-warning-10);
+	color: var(--albert-premium-text);
+	border: 1px solid var(--albert-warning-20);
 }
 
 .albert-source-third-party {
-	background: rgba(0, 163, 42, 0.1);
-	color: #007017;
-	border: 1px solid rgba(0, 163, 42, 0.2);
+	background: var(--albert-success-10);
+	color: var(--albert-third-party-text);
+	border: 1px solid var(--albert-success-20);
 }
 
 /* Premium lock */
 .albert-premium-lock {
-	font-size: 14px;
+	font-size: var(--albert-font-md);
 	width: 14px;
 	height: 14px;
-	color: #8a6914;
+	color: var(--albert-premium-text);
 	opacity: 0.7;
 }
 
@@ -675,7 +720,7 @@
 .albert-footer p {
 	margin: 0;
 	color: var(--albert-text-secondary);
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 }
 
 .albert-footer a {
@@ -729,13 +774,13 @@
 
 .ability-subgroup-collapse-toggle .dashicons {
 	transition: transform 0.2s ease-out;
-	font-size: 16px;
+	font-size: var(--albert-font-xl);
 	width: 16px;
 	height: 16px;
 }
 
 .ability-subgroup-collapse-toggle:hover {
-	background: rgba(0, 0, 0, 0.05);
+	background: var(--albert-black-5);
 	color: var(--albert-primary);
 }
 
@@ -744,7 +789,7 @@
 }
 
 .ability-subgroup-title {
-	font-size: 12px;
+	font-size: var(--albert-font-sm);
 	font-weight: 600;
 	color: var(--albert-text-primary);
 	margin: 0;
@@ -765,7 +810,7 @@
 	display: flex;
 	align-items: center;
 	gap: var(--albert-spacing-xs);
-	font-size: 11px;
+	font-size: var(--albert-font-xs);
 	color: var(--albert-text-secondary);
 }
 
@@ -801,13 +846,13 @@
 
 .albert-settings-card-header .dashicons {
 	color: var(--albert-text-secondary);
-	font-size: 18px;
+	font-size: var(--albert-font-2xl);
 	width: 18px;
 	height: 18px;
 }
 
 .albert-settings-card-header h2 {
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 	font-weight: 600;
 	color: var(--albert-text-primary);
 	margin: 0;
@@ -831,13 +876,13 @@
 .albert-field-label {
 	display: block;
 	font-weight: 600;
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 	color: var(--albert-text-primary);
 	margin-bottom: var(--albert-spacing-xs);
 }
 
 .albert-field-description {
-	font-size: 12px;
+	font-size: var(--albert-font-sm);
 	color: var(--albert-text-secondary);
 	margin: 0 0 var(--albert-spacing-sm) 0;
 	line-height: 1.5;
@@ -856,7 +901,7 @@
 	background: var(--albert-bg-light);
 	border: 1px solid var(--albert-border-light);
 	border-radius: var(--albert-border-radius);
-	font-size: 12px;
+	font-size: var(--albert-font-sm);
 	word-break: break-all;
 	line-height: 1.4;
 }
@@ -875,7 +920,7 @@
 	padding: var(--albert-spacing-xs) var(--albert-spacing-sm);
 	border: 1px solid var(--albert-border);
 	border-radius: var(--albert-border-radius);
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 }
 
 .albert-select-input {
@@ -883,7 +928,7 @@
 	padding: var(--albert-spacing-xs) var(--albert-spacing-sm);
 	border: 1px solid var(--albert-border);
 	border-radius: var(--albert-border-radius);
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 	background: var(--albert-bg-white);
 }
 
@@ -895,7 +940,7 @@
 }
 
 .albert-empty-state .dashicons {
-	font-size: 32px;
+	font-size: var(--albert-font-4xl);
 	width: 32px;
 	height: 32px;
 	margin-bottom: var(--albert-spacing-sm);
@@ -904,7 +949,7 @@
 
 .albert-empty-state p {
 	margin: 0;
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 }
 
 /* Users list */
@@ -951,7 +996,7 @@
 
 .albert-user-name {
 	display: block;
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 	color: var(--albert-text-primary);
 	white-space: nowrap;
 	overflow: hidden;
@@ -960,7 +1005,7 @@
 
 .albert-user-email {
 	display: block;
-	font-size: 11px;
+	font-size: var(--albert-font-xs);
 	color: var(--albert-text-secondary);
 	white-space: nowrap;
 	overflow: hidden;
@@ -972,7 +1017,7 @@
 }
 
 .albert-sessions-link {
-	font-size: 12px;
+	font-size: var(--albert-font-sm);
 	color: var(--albert-primary);
 	text-decoration: none;
 }
@@ -982,7 +1027,7 @@
 }
 
 .albert-no-sessions {
-	font-size: 12px;
+	font-size: var(--albert-font-sm);
 	color: var(--albert-text-secondary);
 }
 
@@ -991,14 +1036,14 @@
 }
 
 .albert-remove-link {
-	font-size: 12px;
-	color: #b32d2e;
+	font-size: var(--albert-font-sm);
+	color: var(--albert-error);
 	text-decoration: none;
 }
 
 .albert-remove-link:hover {
 	text-decoration: underline;
-	color: #a00;
+	color: var(--albert-error-hover);
 }
 
 /* Legacy settings sections (keep for compatibility) */
@@ -1007,7 +1052,7 @@
 }
 
 .albert-settings-section h2 {
-	font-size: 18px;
+	font-size: var(--albert-font-2xl);
 	font-weight: 600;
 	margin: 0 0 var(--albert-spacing-lg) 0;
 	padding-bottom: var(--albert-spacing-sm);
@@ -1016,7 +1061,7 @@
 
 /* OAuth Info Box (legacy) */
 .albert-oauth-info-box {
-	background: #f6f7f7;
+	background: var(--albert-bg-light);
 	border: 1px solid var(--albert-border);
 	border-radius: var(--albert-border-radius);
 	padding: var(--albert-spacing-md);
@@ -1029,7 +1074,7 @@
 
 .albert-oauth-info-box h3 {
 	margin: 0 0 var(--albert-spacing-md) 0;
-	font-size: 14px;
+	font-size: var(--albert-font-md);
 }
 
 .albert-oauth-info-box .form-table {
@@ -1052,7 +1097,7 @@
 }
 
 .albert-copy-button.copied {
-	color: #00a32a;
+	color: var(--albert-success);
 }
 
 /* Copy text (inline) */
@@ -1064,7 +1109,7 @@
 }
 
 .albert-copy-text:hover {
-	background: #e5e5e5;
+	background: var(--albert-copy-hover-bg);
 	border-radius: 2px;
 }
 
@@ -1074,11 +1119,11 @@
 	top: -28px;
 	left: 50%;
 	transform: translateX(-50%);
-	background: #1d2327;
-	color: #fff;
+	background: var(--albert-text-primary);
+	color: var(--albert-bg-white);
 	padding: 4px 8px;
 	border-radius: 3px;
-	font-size: 11px;
+	font-size: var(--albert-font-xs);
 	white-space: nowrap;
 }
 
@@ -1113,13 +1158,13 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: rgba(0, 0, 0, 0.7);
+	background: var(--albert-modal-backdrop);
 }
 
 .albert-modal-content {
 	background: var(--albert-bg-white);
 	border-radius: var(--albert-border-radius);
-	box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+	box-shadow: 0 5px 15px var(--albert-black-30);
 	max-width: 500px;
 	width: 90%;
 	max-height: 90vh;
@@ -1136,7 +1181,7 @@
 
 .albert-modal-header h2 {
 	margin: 0;
-	font-size: 18px;
+	font-size: var(--albert-font-2xl);
 }
 
 .albert-modal-close {
@@ -1175,7 +1220,7 @@
 	display: block;
 	margin-top: 4px;
 	color: var(--albert-text-secondary);
-	font-size: 12px;
+	font-size: var(--albert-font-sm);
 }
 
 .albert-modal-body .submit {
@@ -1314,20 +1359,20 @@
 /* Save button dirty state highlight */
 .albert-save-dirty {
 	animation: albert-pulse 1.5s ease-in-out;
-	box-shadow: 0 0 0 3px rgba(34, 113, 177, 0.4);
+	box-shadow: 0 0 0 3px var(--albert-primary-40);
 }
 
 @keyframes albert-pulse {
-	0% { box-shadow: 0 0 0 0 rgba(34, 113, 177, 0.6); }
-	70% { box-shadow: 0 0 0 6px rgba(34, 113, 177, 0); }
-	100% { box-shadow: 0 0 0 3px rgba(34, 113, 177, 0.4); }
+	0% { box-shadow: 0 0 0 0 var(--albert-primary-60); }
+	70% { box-shadow: 0 0 0 6px oklch(0.49 0.12 248 / 0); }
+	100% { box-shadow: 0 0 0 3px var(--albert-primary-40); }
 }
 
 /* Save success notice prominence */
 .albert-settings .notice-success {
-	border-left-color: #00a32a;
+	border-left-color: var(--albert-success);
 	border-left-width: 4px;
-	background: #edfaef;
+	background: var(--albert-success-bg);
 	animation: albert-fade-in 0.3s ease-out;
 }
 
@@ -1341,15 +1386,15 @@
 /* Responsive - Small screens */
 @media screen and (max-width: 480px) {
 	.ability-group-title {
-		font-size: 12px;
+		font-size: var(--albert-font-sm);
 	}
 
 	.ability-item-label {
-		font-size: 12px;
+		font-size: var(--albert-font-sm);
 	}
 
 	.ability-item-description {
-		font-size: 11px;
+		font-size: var(--albert-font-xs);
 	}
 }
 
@@ -1362,34 +1407,34 @@
 }
 
 .albert-card {
-	background: #fff;
-	border: 1px solid #c3c4c7;
-	border-radius: 8px;
-	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+	background: var(--albert-bg-white);
+	border: 1px solid var(--albert-border);
+	border-radius: var(--albert-border-radius-lg);
+	box-shadow: 0 1px 1px oklch(0 0 0 / 0.04);
 	overflow: hidden;
 	transition: box-shadow 0.2s ease;
 }
 
 .albert-card:hover {
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+	box-shadow: 0 2px 4px var(--albert-black-8);
 }
 
 .albert-card h2 {
-	font-size: 16px;
+	font-size: var(--albert-font-xl);
 	font-weight: 600;
 	margin: 0;
-	padding: 16px 20px;
-	background: #f6f7f7;
-	border-bottom: 1px solid #dcdcde;
-	color: #1d2327;
+	padding: var(--albert-spacing-lg) 20px;
+	background: var(--albert-bg-light);
+	border-bottom: 1px solid var(--albert-border-light);
+	color: var(--albert-text-primary);
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: var(--albert-spacing-sm);
 }
 
 .albert-card .description {
-	font-size: 13px;
-	color: #646970;
+	font-size: var(--albert-font-base);
+	color: var(--albert-text-secondary);
 	margin: 0;
 	line-height: 1.6;
 }
@@ -1400,25 +1445,25 @@
 }
 
 .albert-endpoint-card p.description {
-	padding: 16px 20px 0;
+	padding: var(--albert-spacing-lg) 20px 0;
 }
 
 .albert-endpoint-box {
 	display: flex;
 	align-items: stretch;
 	gap: 10px;
-	padding: 16px 20px 20px;
+	padding: var(--albert-spacing-lg) 20px 20px;
 }
 
 .albert-endpoint-url {
 	flex: 1;
 	padding: 10px 14px;
-	background: #f6f7f7;
-	border: 1px solid #c3c4c7;
-	border-radius: 4px;
+	background: var(--albert-bg-light);
+	border: 1px solid var(--albert-border);
+	border-radius: var(--albert-border-radius);
 	font-family: 'Courier New', Courier, monospace;
-	font-size: 13px;
-	color: #1d2327;
+	font-size: var(--albert-font-base);
+	color: var(--albert-text-primary);
 	line-height: 1.4;
 }
 
@@ -1426,35 +1471,35 @@
 	flex-shrink: 0;
 	min-width: 80px;
 	height: auto;
-	padding: 10px 16px;
-	font-size: 13px;
+	padding: 10px var(--albert-spacing-lg);
+	font-size: var(--albert-font-base);
 	font-weight: 500;
 }
 
 .albert-copy-success {
-	background-color: #00a32a !important;
-	border-color: #00a32a !important;
-	color: #fff !important;
+	background-color: var(--albert-success) !important;
+	border-color: var(--albert-success) !important;
+	color: var(--albert-bg-white) !important;
 }
 
 .albert-copy-error {
-	background-color: #d63638 !important;
-	border-color: #d63638 !important;
-	color: #fff !important;
+	background-color: var(--albert-error) !important;
+	border-color: var(--albert-error) !important;
+	color: var(--albert-bg-white) !important;
 }
 
 /* Setup Card */
 .albert-setup-card ol.albert-setup-steps {
 	margin: 0;
-	padding: 16px 20px 16px 44px;
+	padding: var(--albert-spacing-lg) 20px var(--albert-spacing-lg) 44px;
 	list-style-position: outside;
 }
 
 .albert-setup-steps li {
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 	line-height: 1.8;
-	color: #1d2327;
-	margin-bottom: 8px;
+	color: var(--albert-text-primary);
+	margin-bottom: var(--albert-spacing-sm);
 }
 
 .albert-setup-steps li:last-child {
@@ -1464,29 +1509,29 @@
 .albert-setup-card > p {
 	padding: 0 20px 20px;
 	margin: 0;
-	border-top: 1px solid #dcdcde;
-	padding-top: 16px;
+	border-top: 1px solid var(--albert-border-light);
+	padding-top: var(--albert-spacing-lg);
 }
 
 .albert-setup-card .button {
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 }
 
 /* Status Card */
 .albert-status-list {
 	list-style: none;
 	margin: 0;
-	padding: 16px 20px;
+	padding: var(--albert-spacing-lg) 20px;
 }
 
 .albert-status-list li {
 	display: grid;
 	grid-template-columns: 12px 160px 1fr;
 	align-items: center;
-	gap: 12px;
+	gap: var(--albert-spacing-md);
 	padding: 10px 0;
-	font-size: 13px;
-	border-bottom: 1px solid #f0f0f1;
+	font-size: var(--albert-font-base);
+	border-bottom: 1px solid var(--albert-source-core-bg);
 }
 
 .albert-status-list li:last-child {
@@ -1503,44 +1548,44 @@
 	height: 10px;
 	border-radius: 50%;
 	flex-shrink: 0;
-	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08);
+	box-shadow: 0 0 0 2px var(--albert-black-8);
 }
 
 .albert-status-active {
-	background-color: #00a32a;
+	background-color: var(--albert-success);
 }
 
 .albert-status-inactive {
-	background-color: #d63638;
+	background-color: var(--albert-error);
 }
 
 .albert-status-info {
-	background-color: #2271b1;
+	background-color: var(--albert-primary);
 }
 
 .albert-status-list strong {
-	color: #50575e;
+	color: var(--albert-source-core-text);
 	font-weight: 500;
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 }
 
 .albert-status-value {
-	color: #1d2327;
+	color: var(--albert-text-primary);
 	font-weight: 600;
-	font-size: 14px;
+	font-size: var(--albert-font-md);
 	text-align: right;
 }
 
 .albert-status-card > p {
-	padding: 16px 20px 20px;
+	padding: var(--albert-spacing-lg) 20px 20px;
 	margin: 0;
 	display: flex;
-	gap: 8px;
-	border-top: 1px solid #dcdcde;
+	gap: var(--albert-spacing-sm);
+	border-top: 1px solid var(--albert-border-light);
 }
 
 .albert-status-card .button {
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 	padding: 6px 12px;
 	height: auto;
 	line-height: 1.4;
@@ -1560,15 +1605,15 @@
 .albert-activity-list li {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: var(--albert-spacing-md);
 	padding: 14px 20px;
-	font-size: 13px;
-	border-bottom: 1px solid #f0f0f1;
+	font-size: var(--albert-font-base);
+	border-bottom: 1px solid var(--albert-source-core-bg);
 	transition: background-color 0.15s ease;
 }
 
 .albert-activity-list li:hover {
-	background-color: #f6f7f7;
+	background-color: var(--albert-bg-light);
 }
 
 .albert-activity-list li:last-child {
@@ -1576,29 +1621,29 @@
 }
 
 .albert-activity-icon {
-	font-size: 18px;
+	font-size: var(--albert-font-2xl);
 	flex-shrink: 0;
 	line-height: 1;
 }
 
 .albert-activity-text {
 	flex: 1;
-	color: #1d2327;
+	color: var(--albert-text-primary);
 	line-height: 1.5;
 }
 
 .albert-activity-time {
 	flex-shrink: 0;
-	font-size: 12px;
-	color: #646970;
+	font-size: var(--albert-font-sm);
+	color: var(--albert-text-secondary);
 	font-weight: 500;
 }
 
 .albert-activity-card p.description {
-	padding: 16px 20px;
+	padding: var(--albert-spacing-lg) 20px;
 	margin: 0;
 	text-align: center;
-	color: #646970;
+	color: var(--albert-text-secondary);
 	font-style: italic;
 }
 
@@ -1626,7 +1671,7 @@
 
 	.albert-status-list li {
 		grid-template-columns: 12px 1fr;
-		gap: 8px;
+		gap: var(--albert-spacing-sm);
 	}
 
 	.albert-status-list strong {
@@ -1665,17 +1710,17 @@
 .albert-connection-header {
 	display: flex;
 	align-items: center;
-	gap: 12px;
-	padding: 16px 20px;
-	background: #f6f7f7;
-	border-bottom: 1px solid #dcdcde;
+	gap: var(--albert-spacing-md);
+	padding: var(--albert-spacing-lg) 20px;
+	background: var(--albert-bg-light);
+	border-bottom: 1px solid var(--albert-border-light);
 }
 
 .albert-connection-icon {
 	width: 48px;
 	height: 48px;
-	background: #2271b1;
-	border-radius: 8px;
+	background: var(--albert-primary);
+	border-radius: var(--albert-border-radius-lg);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1683,10 +1728,10 @@
 }
 
 .albert-connection-icon .dashicons {
-	font-size: 24px;
+	font-size: var(--albert-font-3xl);
 	width: 24px;
 	height: 24px;
-	color: #fff;
+	color: var(--albert-bg-white);
 }
 
 .albert-connection-title {
@@ -1696,33 +1741,33 @@
 
 .albert-connection-title h3 {
 	margin: 0 0 4px 0;
-	font-size: 15px;
+	font-size: var(--albert-font-lg);
 	font-weight: 600;
-	color: #1d2327;
+	color: var(--albert-text-primary);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
 
 .albert-connection-session {
-	font-size: 11px;
-	color: #646970;
+	font-size: var(--albert-font-xs);
+	color: var(--albert-text-secondary);
 	font-family: 'Courier New', Courier, monospace;
-	background: rgba(0, 0, 0, 0.05);
+	background: var(--albert-black-5);
 	padding: 2px 6px;
 	border-radius: 3px;
 	display: inline-block;
 }
 
 .albert-connection-body {
-	padding: 16px 20px;
+	padding: var(--albert-spacing-lg) 20px;
 	flex: 1;
 }
 
 .albert-connection-meta {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: var(--albert-spacing-md);
 }
 
 .albert-connection-meta-item {
@@ -1732,10 +1777,10 @@
 }
 
 .albert-connection-meta-item .dashicons {
-	font-size: 18px;
+	font-size: var(--albert-font-2xl);
 	width: 18px;
 	height: 18px;
-	color: #646970;
+	color: var(--albert-text-secondary);
 	flex-shrink: 0;
 	margin-top: 2px;
 }
@@ -1747,26 +1792,26 @@
 
 .albert-connection-meta-item strong {
 	display: block;
-	font-size: 12px;
-	color: #646970;
+	font-size: var(--albert-font-sm);
+	color: var(--albert-text-secondary);
 	font-weight: 500;
 	margin-bottom: 2px;
 }
 
 .albert-connection-meta-item span {
 	display: block;
-	font-size: 13px;
-	color: #1d2327;
+	font-size: var(--albert-font-base);
+	color: var(--albert-text-primary);
 }
 
 .albert-connection-meta-item .albert-expiring {
-	color: #d63638;
+	color: var(--albert-error);
 	font-weight: 500;
 }
 
 .albert-connection-footer {
-	padding: 12px 20px;
-	border-top: 1px solid #f0f0f1;
+	padding: var(--albert-spacing-md) 20px;
+	border-top: 1px solid var(--albert-source-core-bg);
 	display: flex;
 	justify-content: flex-end;
 }
@@ -1775,50 +1820,50 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 13px;
+	font-size: var(--albert-font-base);
 	padding: 6px 12px;
 	height: auto;
 	line-height: 1.4;
 }
 
 .albert-disconnect-btn .dashicons {
-	font-size: 16px;
+	font-size: var(--albert-font-xl);
 	width: 16px;
 	height: 16px;
 }
 
 .albert-disconnect-btn:hover {
-	color: #d63638;
-	border-color: #d63638;
+	color: var(--albert-error);
+	border-color: var(--albert-error);
 }
 
 .albert-connections-actions {
 	margin-top: 20px;
 	padding-top: 20px;
-	border-top: 2px solid #dcdcde;
+	border-top: 2px solid var(--albert-border-light);
 	text-align: center;
 }
 
 .albert-disconnect-all-btn {
 	display: inline-flex;
 	align-items: center;
-	gap: 8px;
-	font-size: 13px;
-	padding: 8px 16px;
+	gap: var(--albert-spacing-sm);
+	font-size: var(--albert-font-base);
+	padding: var(--albert-spacing-sm) var(--albert-spacing-lg);
 	height: auto;
 	line-height: 1.4;
-	color: #d63638;
-	border-color: #d63638;
+	color: var(--albert-error);
+	border-color: var(--albert-error);
 }
 
 .albert-disconnect-all-btn:hover {
-	background: #d63638;
-	color: #fff;
-	border-color: #d63638;
+	background: var(--albert-error);
+	color: var(--albert-bg-white);
+	border-color: var(--albert-error);
 }
 
 .albert-disconnect-all-btn .dashicons {
-	font-size: 16px;
+	font-size: var(--albert-font-xl);
 	width: 16px;
 	height: 16px;
 }
@@ -1830,23 +1875,23 @@
 }
 
 .albert-empty-connections .dashicons {
-	font-size: 64px;
+	font-size: var(--albert-font-5xl);
 	width: 64px;
 	height: 64px;
-	color: #646970;
+	color: var(--albert-text-secondary);
 	opacity: 0.3;
-	margin-bottom: 16px;
+	margin-bottom: var(--albert-spacing-lg);
 }
 
 .albert-empty-connections h3 {
-	font-size: 18px;
-	margin: 0 0 8px 0;
-	color: #1d2327;
+	font-size: var(--albert-font-2xl);
+	margin: 0 0 var(--albert-spacing-sm) 0;
+	color: var(--albert-text-primary);
 }
 
 .albert-empty-connections p {
-	font-size: 14px;
-	color: #646970;
+	font-size: var(--albert-font-md);
+	color: var(--albert-text-secondary);
 	margin: 0 0 20px 0;
 	line-height: 1.6;
 }
