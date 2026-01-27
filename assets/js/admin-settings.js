@@ -394,7 +394,7 @@ const ClipboardModule = {
 				return;
 			}
 
-			const text = target.textContent.trim();
+			const text = target.value !== undefined ? target.value : target.textContent.trim();
 			const originalText = button.textContent;
 
 			await this.copyToClipboard( text );

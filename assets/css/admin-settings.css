@@ -823,7 +823,6 @@
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
 	gap: var(--albert-spacing-lg);
-	align-items: start;
 }
 
 /* Settings card */
@@ -1593,7 +1592,6 @@
 
 /* Activity Card */
 .albert-activity-card {
-	grid-column: 1 / -1;
 }
 
 .albert-activity-list {
@@ -1642,9 +1640,7 @@
 .albert-activity-card p.description {
 	padding: var(--albert-spacing-lg) 20px;
 	margin: 0;
-	text-align: center;
 	color: var(--albert-text-secondary);
-	font-style: italic;
 }
 
 /* Dashboard Responsive */
@@ -1653,11 +1649,11 @@
 		grid-template-columns: 1fr;
 	}
 
-	.albert-endpoint-card,
-	.albert-activity-card {
+	.albert-endpoint-card {
 		grid-column: 1;
 	}
 }
+
 
 @media screen and (max-width: 782px) {
 	.albert-endpoint-box {
@@ -1896,6 +1892,174 @@
 	line-height: 1.6;
 }
 
+/* Endpoint Bar (compact, for Connections page) */
+.albert-endpoint-bar {
+	display: flex;
+	flex-direction: column;
+	gap: var(--albert-spacing-xs);
+	padding: var(--albert-spacing-md);
+	background: var(--albert-bg-light);
+	border: 1px solid var(--albert-border-light);
+	border-radius: var(--albert-border-radius);
+	margin: var(--albert-spacing-lg) 0;
+}
+
+.albert-endpoint-bar-header {
+	display: flex;
+	align-items: baseline;
+	gap: var(--albert-spacing-sm);
+	flex-wrap: wrap;
+}
+
+.albert-endpoint-bar-label {
+	font-size: var(--albert-font-sm);
+	font-weight: 600;
+	color: var(--albert-text-primary);
+	white-space: nowrap;
+}
+
+.albert-endpoint-bar-helper {
+	font-size: var(--albert-font-sm);
+	color: var(--albert-text-secondary);
+}
+
+.albert-endpoint-bar-field {
+	display: flex;
+	align-items: center;
+	gap: var(--albert-spacing-sm);
+}
+
+.albert-endpoint-bar-field .albert-endpoint-url {
+	min-width: 0;
+}
+
+.albert-endpoint-bar-field .albert-copy-button {
+	flex-shrink: 0;
+}
+
+/* Setup Checklist Card */
+
+/* Resources List */
+.albert-resources-list {
+	list-style: none;
+	margin: 0;
+	padding: var(--albert-spacing-lg) 20px;
+}
+
+.albert-resources-list li {
+	display: flex;
+	align-items: center;
+	gap: var(--albert-spacing-md);
+	padding: 10px 0;
+	border-bottom: 1px solid var(--albert-source-core-bg);
+}
+
+.albert-resources-list li:last-child {
+	border-bottom: none;
+	padding-bottom: 0;
+}
+
+.albert-resources-list li:first-child {
+	padding-top: 0;
+}
+
+.albert-resources-list li .dashicons {
+	color: var(--albert-text-secondary);
+	font-size: var(--albert-font-lg);
+	width: 20px;
+	height: 20px;
+	flex-shrink: 0;
+}
+
+.albert-resources-list a {
+	text-decoration: none;
+	color: var(--albert-primary);
+	font-size: var(--albert-font-base);
+}
+
+.albert-resources-list a:hover {
+	text-decoration: underline;
+	color: var(--albert-primary-dark);
+}
+
+.albert-setup-complete-bar {
+	display: flex;
+	align-items: center;
+	gap: var(--albert-spacing-sm);
+	padding: var(--albert-spacing-md) 20px;
+	font-size: var(--albert-font-base);
+	font-weight: 500;
+	color: var(--albert-success);
+}
+
+.albert-setup-complete-bar .dashicons {
+	font-size: var(--albert-font-2xl);
+	width: 18px;
+	height: 18px;
+}
+
+.albert-checklist {
+	list-style: none;
+	margin: 0;
+	padding: var(--albert-spacing-lg) 20px 20px;
+	counter-reset: none;
+}
+
+.albert-checklist-item {
+	display: flex;
+	align-items: center;
+	gap: var(--albert-spacing-md);
+	padding: var(--albert-spacing-sm) 0;
+	font-size: var(--albert-font-base);
+	color: var(--albert-text-primary);
+}
+
+.albert-checklist-icon {
+	flex-shrink: 0;
+	font-size: var(--albert-font-2xl);
+	width: 18px;
+	height: 18px;
+}
+
+.albert-checklist-done .albert-checklist-icon {
+	color: var(--albert-success);
+}
+
+.albert-checklist-current .albert-checklist-icon {
+	color: var(--albert-primary);
+}
+
+.albert-checklist-pending .albert-checklist-icon {
+	color: var(--albert-text-secondary);
+	opacity: 0.4;
+}
+
+.albert-checklist-pending .albert-checklist-text {
+	opacity: 0.5;
+}
+
+.albert-checklist-done .albert-checklist-text {
+	color: var(--albert-text-secondary);
+}
+
+.albert-checklist-endpoint {
+	list-style: none;
+	margin-top: var(--albert-spacing-md);
+	padding: var(--albert-spacing-md);
+	background: var(--albert-bg-light);
+	border: 1px solid var(--albert-border-light);
+	border-radius: var(--albert-border-radius);
+}
+
+.albert-checklist-endpoint .albert-field-label {
+	margin-bottom: var(--albert-spacing-xs);
+}
+
+.albert-checklist-endpoint .albert-endpoint-box {
+	padding: 0;
+	margin-top: var(--albert-spacing-sm);
+}
+
 /* Connections Responsive */
 @media screen and (max-width: 960px) {
 	.albert-connections-grid {
@@ -1910,5 +2074,9 @@
 
 	.albert-empty-connections {
 		padding: 40px 20px;
+	}
+
+	.albert-endpoint-bar {
+		flex-wrap: wrap;
 	}
 }
