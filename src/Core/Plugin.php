@@ -114,15 +114,15 @@ class Plugin {
 			$dashboard = new Dashboard();
 			$dashboard->register_hooks();
 
-			// Abilities page (creates top-level menu at position 80).
-			$abilities = new Abilities();
-			$abilities->register_hooks();
-
-			// Connections page (adds submenu under Albert).
+			// Connections page (allowed users + active sessions).
 			$connections = new Connections();
 			$connections->register_hooks();
 
-			// Settings page (adds submenu under Albert).
+			// Abilities page (toggle abilities on/off).
+			$abilities = new Abilities();
+			$abilities->register_hooks();
+
+			// Settings page (API key, MCP endpoint, developer options).
 			$settings = new Settings();
 			$settings->register_hooks();
 		}

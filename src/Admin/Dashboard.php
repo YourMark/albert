@@ -10,12 +10,14 @@
 namespace Albert\Admin;
 
 use Albert\Contracts\Interfaces\Hookable;
+use Albert\MCP\Server as McpServer;
 use Albert\OAuth\Database\Installer;
 
 /**
  * Dashboard class
  *
  * Manages the plugin dashboard page - primary landing page for Albert.
+ * Shows a contextual setup checklist for new users and status for returning users.
  *
  * @since 1.0.0
  */
@@ -121,17 +123,13 @@ class Dashboard implements Hookable {
 			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'albert' ) );
 		}
 
-		// Get MCP endpoint URL.
-		$mcp_endpoint = rest_url( 'albert/v1/mcp' );
-
-		// Get OAuth discovery URL.
-		$oauth_discovery = home_url( '/.well-known/oauth-authorization-server' );
-
-		// Count active connections.
+		// Gather setup state.
+		$has_allowed_users  = ! empty( get_option( 'albert_allowed_users', [] ) );
 		$active_connections = $this->get_active_connections_count();
-
-		// Count enabled abilities.
-		$enabled_abilities = $this->get_enabled_abilities_count();
+		$has_connections    = $active_connections > 0;
+		$setup_complete     = $has_allowed_users && $has_connections;
+		$enabled_abilities  = $this->get_enabled_abilities_count();
+		$mcp_endpoint       = McpServer::get_endpoint_url();
 
 		?>
 		<div class="wrap albert-settings">
@@ -141,49 +139,75 @@ class Dashboard implements Hookable {
 			</p>
 
 			<div class="albert-dashboard-grid">
-				<!-- MCP Endpoint Section -->
-				<div class="albert-card albert-endpoint-card">
-					<h2><?php echo esc_html__( '🔗 Your MCP Endpoint', 'albert' ); ?></h2>
-					<p class="description">
-						<?php echo esc_html__( 'Use this URL to connect AI assistants to your WordPress site:', 'albert' ); ?>
-					</p>
-					<div class="albert-endpoint-box">
-						<input
-							type="text"
-							id="albert-mcp-endpoint"
-							class="albert-endpoint-url"
-							value="<?php echo esc_url( $mcp_endpoint ); ?>"
-							readonly
-						/>
-						<button
-							type="button"
-							class="button button-secondary albert-copy-btn"
-							data-clipboard-target="#albert-mcp-endpoint"
-						>
-							<?php echo esc_html__( 'Copy', 'albert' ); ?>
-						</button>
-					</div>
-				</div>
-
-				<!-- Quick Setup Guide -->
-				<div class="albert-card albert-setup-card">
-					<h2><?php echo esc_html__( '🚀 Quick Setup Guide', 'albert' ); ?></h2>
-					<ol class="albert-setup-steps">
-						<li><?php echo esc_html__( 'Copy the MCP endpoint URL above', 'albert' ); ?></li>
-						<li><?php echo esc_html__( 'Add it to Claude Desktop or ChatGPT as an MCP connector', 'albert' ); ?></li>
-						<li><?php echo esc_html__( 'Authorize when prompted (you\'ll be redirected to WordPress)', 'albert' ); ?></li>
-						<li><?php echo esc_html__( 'Start managing your site with AI!', 'albert' ); ?></li>
-					</ol>
-					<p>
-						<a href="https://albertwp.com/docs/setup" target="_blank" class="button button-secondary">
-							<?php echo esc_html__( 'View Full Documentation', 'albert' ); ?>
-						</a>
-					</p>
+				<!-- Setup Checklist -->
+				<div class="albert-card albert-setup-checklist-card">
+					<?php if ( $setup_complete ) : ?>
+						<div class="albert-setup-complete-bar">
+							<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
+							<?php esc_html_e( 'Setup complete', 'albert' ); ?>
+						</div>
+					<?php else : ?>
+						<h2><?php echo esc_html__( 'Get Started', 'albert' ); ?></h2>
+						<ol class="albert-checklist">
+							<li class="albert-checklist-item albert-checklist-done">
+								<span class="albert-checklist-icon dashicons dashicons-yes-alt" aria-hidden="true"></span>
+								<span class="albert-checklist-text"><?php esc_html_e( 'Plugin installed', 'albert' ); ?></span>
+							</li>
+							<li class="albert-checklist-item <?php echo $has_allowed_users ? 'albert-checklist-done' : 'albert-checklist-current'; ?>">
+								<span class="albert-checklist-icon dashicons <?php echo $has_allowed_users ? 'dashicons-yes-alt' : 'dashicons-marker'; ?>" aria-hidden="true"></span>
+								<span class="albert-checklist-text">
+									<?php if ( $has_allowed_users ) : ?>
+										<?php esc_html_e( 'Allowed user added', 'albert' ); ?>
+									<?php else : ?>
+										<a href="<?php echo esc_url( admin_url( 'admin.php?page=albert-connections' ) ); ?>">
+											<?php esc_html_e( 'Add an allowed user', 'albert' ); ?>
+										</a>
+									<?php endif; ?>
+								</span>
+							</li>
+							<li class="albert-checklist-item <?php echo $has_allowed_users ? ( $has_connections ? 'albert-checklist-done' : 'albert-checklist-current' ) : 'albert-checklist-pending'; ?>">
+								<span class="albert-checklist-icon dashicons <?php echo $has_connections ? 'dashicons-yes-alt' : ( $has_allowed_users ? 'dashicons-marker' : 'dashicons-marker' ); ?>" aria-hidden="true"></span>
+								<span class="albert-checklist-text">
+									<?php if ( $has_connections ) : ?>
+										<?php esc_html_e( 'AI assistant connected', 'albert' ); ?>
+									<?php elseif ( $has_allowed_users ) : ?>
+										<?php esc_html_e( 'Connect an AI assistant', 'albert' ); ?>
+									<?php else : ?>
+										<?php esc_html_e( 'Connect an AI assistant', 'albert' ); ?>
+									<?php endif; ?>
+								</span>
+							</li>
+							<?php if ( $has_allowed_users && ! $has_connections ) : ?>
+								<li class="albert-checklist-endpoint">
+									<label class="albert-field-label"><?php esc_html_e( 'MCP Endpoint URL', 'albert' ); ?></label>
+									<p class="albert-field-description">
+										<?php esc_html_e( 'Add this URL to Claude Desktop or ChatGPT as an MCP connector:', 'albert' ); ?>
+									</p>
+									<div class="albert-endpoint-box">
+										<input
+											type="text"
+											id="albert-mcp-endpoint"
+											class="albert-endpoint-url"
+											value="<?php echo esc_url( $mcp_endpoint ); ?>"
+											readonly
+										/>
+										<button
+											type="button"
+											class="button button-secondary albert-copy-btn"
+											data-clipboard-target="#albert-mcp-endpoint"
+										>
+											<?php echo esc_html__( 'Copy', 'albert' ); ?>
+										</button>
+									</div>
+								</li>
+							<?php endif; ?>
+						</ol>
+					<?php endif; ?>
 				</div>
 
 				<!-- Status Overview -->
 				<div class="albert-card albert-status-card">
-					<h2><?php echo esc_html__( '📊 Status', 'albert' ); ?></h2>
+					<h2><?php echo esc_html__( 'Status', 'albert' ); ?></h2>
 					<ul class="albert-status-list">
 						<li>
 							<span class="albert-status-indicator albert-status-active"></span>
@@ -210,15 +234,31 @@ class Dashboard implements Hookable {
 						<a href="<?php echo esc_url( admin_url( 'admin.php?page=albert-connections' ) ); ?>" class="button button-secondary">
 							<?php echo esc_html__( 'View Connections', 'albert' ); ?>
 						</a>
-						<a href="<?php echo esc_url( admin_url( 'admin.php?page=albert' ) ); ?>" class="button button-secondary">
-							<?php echo esc_html__( 'Manage Abilities', 'albert' ); ?>
-						</a>
 					</p>
+				</div>
+
+				<!-- Resources -->
+				<div class="albert-card albert-resources-card">
+					<h2><?php esc_html_e( 'Resources', 'albert' ); ?></h2>
+					<ul class="albert-resources-list">
+						<li>
+							<span class="dashicons dashicons-book" aria-hidden="true"></span>
+							<a href="https://wordpress.org/plugins/albert/" target="_blank" rel="noopener noreferrer">
+								<?php esc_html_e( 'Documentation', 'albert' ); ?>
+							</a>
+						</li>
+						<li>
+							<span class="dashicons dashicons-sos" aria-hidden="true"></span>
+							<a href="https://github.com/WordPress/albert/issues" target="_blank" rel="noopener noreferrer">
+								<?php esc_html_e( 'Report an Issue', 'albert' ); ?>
+							</a>
+						</li>
+					</ul>
 				</div>
 
 				<!-- Recent Activity -->
 				<div class="albert-card albert-activity-card">
-					<h2><?php echo esc_html__( '📝 Recent Activity', 'albert' ); ?></h2>
+					<h2><?php echo esc_html__( 'Recent Activity', 'albert' ); ?></h2>
 					<?php
 					$recent_activity = $this->get_recent_activity();
 					if ( ! empty( $recent_activity ) ) :
