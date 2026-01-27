@@ -103,41 +103,32 @@ class Plugin {
 		// Register admin components.
 		if ( is_admin() ) {
 			// Dashboard page (creates top-level menu and first submenu).
-			$dashboard = new Dashboard();
-			$dashboard->register_hooks();
+			( new Dashboard() )->register_hooks();
 
 			// Connections page (allowed users + active sessions).
-			$connections = new Connections();
-			$connections->register_hooks();
+			( new Connections() )->register_hooks();
 
 			// Abilities page (toggle abilities on/off).
-			$abilities = new Abilities();
-			$abilities->register_hooks();
+			( new Abilities() )->register_hooks();
 
 			// Settings page (API key, MCP endpoint, developer options).
-			$settings = new Settings();
-			$settings->register_hooks();
+			( new Settings() )->register_hooks();
 		}
 
 		// Register OAuth controller (REST API endpoints for token exchange).
-		$oauth_controller = new OAuthController();
-		$oauth_controller->register_hooks();
+		( new OAuthController() )->register_hooks();
 
 		// Register OAuth authorization page (HTML-based consent flow).
-		$authorization_page = new AuthorizationPage();
-		$authorization_page->register_hooks();
+		( new AuthorizationPage() )->register_hooks();
 
 		// Register OAuth dynamic client registration (RFC 7591).
-		$client_registration = new ClientRegistration();
-		$client_registration->register_hooks();
+		( new ClientRegistration() )->register_hooks();
 
 		// Register OAuth discovery endpoint (.well-known/oauth-authorization-server).
-		$oauth_discovery = new OAuthDiscovery();
-		$oauth_discovery->register_hooks();
+		( new OAuthDiscovery() )->register_hooks();
 
 		// Register MCP server (uses OAuth for authentication).
-		$mcp_server = new McpServer();
-		$mcp_server->register_hooks();
+		( new McpServer() )->register_hooks();
 
 		// Try and run the McpAdapter. Without this, it's useless.
 		if ( ! class_exists( McpAdapter::class ) ) {
