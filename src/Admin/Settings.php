@@ -97,13 +97,13 @@ class Settings implements Hookable {
 
 			<?php settings_errors(); ?>
 
-			<div class="ea-content-header">
-				<p class="ea-content-description">
+			<div class="albert-content-header">
+				<p class="albert-content-description">
 					<?php esc_html_e( 'Configure how AI tools connect to your site and manage user access.', 'albert' ); ?>
 				</p>
 			</div>
 
-			<div class="ea-settings-grid">
+			<div class="albert-settings-grid">
 				<?php $this->render_mcp_server_section(); ?>
 				<?php $this->render_authentication_section(); ?>
 			</div>
@@ -131,41 +131,41 @@ class Settings implements Hookable {
 		$external_url = $show_developer_settings ? get_option( 'albert_external_url', '' ) : '';
 		$mcp_endpoint = McpServer::get_endpoint_url( $external_url );
 		?>
-		<section class="ea-settings-card">
-			<div class="ea-settings-card-header">
+		<section class="albert-settings-card">
+			<div class="albert-settings-card-header">
 				<span class="dashicons dashicons-cloud" aria-hidden="true"></span>
 				<h2><?php esc_html_e( 'MCP Server', 'albert' ); ?></h2>
 			</div>
-			<div class="ea-settings-card-body">
-				<div class="ea-field-group">
-					<label class="ea-field-label"><?php esc_html_e( 'Connection URL', 'albert' ); ?></label>
-					<p class="ea-field-description">
+			<div class="albert-settings-card-body">
+				<div class="albert-field-group">
+					<label class="albert-field-label"><?php esc_html_e( 'Connection URL', 'albert' ); ?></label>
+					<p class="albert-field-description">
 						<?php esc_html_e( 'Use this URL to connect AI tools (Claude Desktop, ChatGPT, etc.) to your site.', 'albert' ); ?>
 					</p>
-					<div class="ea-url-field">
-						<code class="ea-url-value" id="mcp-endpoint-url"><?php echo esc_html( $mcp_endpoint ); ?></code>
-						<button type="button" class="button ea-copy-button" data-copy-target="mcp-endpoint-url">
+					<div class="albert-url-field">
+						<code class="albert-url-value" id="mcp-endpoint-url"><?php echo esc_html( $mcp_endpoint ); ?></code>
+						<button type="button" class="button albert-copy-button" data-copy-target="mcp-endpoint-url">
 							<?php esc_html_e( 'Copy', 'albert' ); ?>
 						</button>
 					</div>
 				</div>
 
 				<?php if ( $show_developer_settings ) : ?>
-					<div class="ea-field-group">
-						<label class="ea-field-label" for="ea-external-url"><?php esc_html_e( 'External URL', 'albert' ); ?></label>
-						<p class="ea-field-description">
+					<div class="albert-field-group">
+						<label class="albert-field-label" for="albert-external-url"><?php esc_html_e( 'External URL', 'albert' ); ?></label>
+						<p class="albert-field-description">
 							<?php esc_html_e( 'If your site is behind a tunnel or reverse proxy, enter the public URL here.', 'albert' ); ?>
 						</p>
-						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ea-inline-form">
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="albert-inline-form">
 							<?php wp_nonce_field( 'albert_save_external_url', 'albert_external_url_nonce' ); ?>
 							<input type="hidden" name="action" value="albert_save_external_url" />
 							<input
 								type="url"
 								name="albert_external_url"
-								id="ea-external-url"
+								id="albert-external-url"
 								value="<?php echo esc_attr( $external_url ); ?>"
 								placeholder="<?php esc_attr_e( 'https://your-tunnel-url.example.com', 'albert' ); ?>"
-								class="ea-text-input"
+								class="albert-text-input"
 							/>
 							<button type="submit" class="button"><?php esc_html_e( 'Save', 'albert' ); ?></button>
 							<?php if ( ! empty( $external_url ) ) : ?>
@@ -196,22 +196,22 @@ class Settings implements Hookable {
 			]
 		);
 		?>
-		<section class="ea-settings-card">
-			<div class="ea-settings-card-header">
+		<section class="albert-settings-card">
+			<div class="albert-settings-card-header">
 				<span class="dashicons dashicons-admin-users" aria-hidden="true"></span>
 				<h2><?php esc_html_e( 'Authentication', 'albert' ); ?></h2>
 			</div>
-			<div class="ea-settings-card-body">
-				<div class="ea-field-group">
-					<label class="ea-field-label"><?php esc_html_e( 'Allowed Users', 'albert' ); ?></label>
-					<p class="ea-field-description">
+			<div class="albert-settings-card-body">
+				<div class="albert-field-group">
+					<label class="albert-field-label"><?php esc_html_e( 'Allowed Users', 'albert' ); ?></label>
+					<p class="albert-field-description">
 						<?php esc_html_e( 'Select users who can connect AI tools to your site. Only these users can authorize AI assistants.', 'albert' ); ?>
 					</p>
 
-					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ea-inline-form">
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="albert-inline-form">
 						<?php wp_nonce_field( 'albert_add_allowed_user', 'albert_add_user_nonce' ); ?>
 						<input type="hidden" name="action" value="albert_add_allowed_user" />
-						<select name="albert_user_id" id="ea-add-user-select" class="ea-select-input">
+						<select name="albert_user_id" id="albert-add-user-select" class="albert-select-input">
 							<option value=""><?php esc_html_e( '— Select User —', 'albert' ); ?></option>
 							<?php foreach ( $all_users as $user ) : ?>
 								<?php if ( ! in_array( $user->ID, $allowed_users, true ) ) : ?>
@@ -226,12 +226,12 @@ class Settings implements Hookable {
 				</div>
 
 				<?php if ( empty( $allowed_users ) ) : ?>
-					<div class="ea-empty-state">
+					<div class="albert-empty-state">
 						<span class="dashicons dashicons-groups" aria-hidden="true"></span>
 						<p><?php esc_html_e( 'No users have access yet. Add users above to allow them to connect AI tools.', 'albert' ); ?></p>
 					</div>
 				<?php else : ?>
-					<div class="ea-users-list">
+					<div class="albert-users-list">
 						<?php foreach ( $allowed_users as $user_id ) : ?>
 							<?php
 							$user          = get_user_by( 'id', $user_id );
@@ -262,17 +262,17 @@ class Settings implements Hookable {
 								admin_url( 'admin.php' )
 							);
 							?>
-							<div class="ea-user-row">
-								<div class="ea-user-info">
-									<span class="ea-user-avatar"><?php echo get_avatar( $user_id, 32 ); ?></span>
-									<div class="ea-user-details">
-										<strong class="ea-user-name"><?php echo esc_html( $user->display_name ); ?></strong>
-										<span class="ea-user-email"><?php echo esc_html( $user->user_email ); ?></span>
+							<div class="albert-user-row">
+								<div class="albert-user-info">
+									<span class="albert-user-avatar"><?php echo get_avatar( $user_id, 32 ); ?></span>
+									<div class="albert-user-details">
+										<strong class="albert-user-name"><?php echo esc_html( $user->display_name ); ?></strong>
+										<span class="albert-user-email"><?php echo esc_html( $user->user_email ); ?></span>
 									</div>
 								</div>
-								<div class="ea-user-sessions">
+								<div class="albert-user-sessions">
 									<?php if ( $session_count > 0 ) : ?>
-										<a href="<?php echo esc_url( $sessions_url ); ?>" class="ea-sessions-link">
+										<a href="<?php echo esc_url( $sessions_url ); ?>" class="albert-sessions-link">
 											<?php
 											printf(
 												/* translators: %d: number of sessions */
@@ -282,12 +282,12 @@ class Settings implements Hookable {
 											?>
 										</a>
 									<?php else : ?>
-										<span class="ea-no-sessions"><?php esc_html_e( 'No sessions', 'albert' ); ?></span>
+										<span class="albert-no-sessions"><?php esc_html_e( 'No sessions', 'albert' ); ?></span>
 									<?php endif; ?>
 								</div>
-								<div class="ea-user-actions">
+								<div class="albert-user-actions">
 									<a href="<?php echo esc_url( $remove_url ); ?>"
-										class="ea-remove-link"
+										class="albert-remove-link"
 										onclick="return confirm('<?php echo esc_js( __( 'Remove this user\'s access? All their sessions will be revoked.', 'albert' ) ); ?>');">
 										<?php esc_html_e( 'Remove', 'albert' ); ?>
 									</a>
@@ -424,8 +424,8 @@ class Settings implements Hookable {
 				</a>
 			</p>
 
-			<div class="ea-settings-section">
-				<div class="ea-oauth-info-box">
+			<div class="albert-settings-section">
+				<div class="albert-oauth-info-box">
 					<h3><?php esc_html_e( 'User Details', 'albert' ); ?></h3>
 					<table class="form-table">
 						<tr>

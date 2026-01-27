@@ -44,7 +44,7 @@ const DirtyStateModule = {
 		this.isDirty = true;
 
 		this.saveButtons.forEach( ( btn ) => {
-			btn.classList.add( 'ea-save-dirty' );
+			btn.classList.add( 'albert-save-dirty' );
 		} );
 	},
 };
@@ -254,8 +254,8 @@ const CollapseModule = {
 	},
 
 	handleExpandCollapseAll() {
-		const expandAllBtn = document.getElementById( 'ea-expand-all' );
-		const collapseAllBtn = document.getElementById( 'ea-collapse-all' );
+		const expandAllBtn = document.getElementById( 'albert-expand-all' );
+		const collapseAllBtn = document.getElementById( 'albert-collapse-all' );
 
 		if ( expandAllBtn ) {
 			expandAllBtn.addEventListener( 'click', () => {
@@ -370,7 +370,7 @@ const ClipboardModule = {
 
 	handleCopyText() {
 		document.addEventListener( 'click', async ( e ) => {
-			const copyText = e.target.closest( '.ea-copy-text' );
+			const copyText = e.target.closest( '.albert-copy-text' );
 			if ( ! copyText ) {
 				return;
 			}
@@ -383,7 +383,7 @@ const ClipboardModule = {
 
 	handleCopyButton() {
 		document.addEventListener( 'click', async ( e ) => {
-			const button = e.target.closest( '.ea-copy-button' );
+			const button = e.target.closest( '.albert-copy-button' );
 			if ( ! button ) {
 				return;
 			}
@@ -408,14 +408,14 @@ const ClipboardModule = {
  */
 const ModalModule = {
 	init() {
-		const modal = document.getElementById( 'ea-oauth-client-modal' );
+		const modal = document.getElementById( 'albert-oauth-client-modal' );
 		if ( ! modal ) {
 			return;
 		}
 
 		this.modal = modal;
-		this.form = document.getElementById( 'ea-client-form' );
-		this.created = document.getElementById( 'ea-client-created' );
+		this.form = document.getElementById( 'albert-client-form' );
+		this.created = document.getElementById( 'albert-client-created' );
 		this.spinner = modal.querySelector( '.spinner' );
 
 		this.bindEvents();
@@ -424,7 +424,7 @@ const ModalModule = {
 	bindEvents() {
 		// Open modal.
 		document.addEventListener( 'click', ( e ) => {
-			if ( e.target.closest( '#ea-add-client' ) ) {
+			if ( e.target.closest( '#albert-add-client' ) ) {
 				e.preventDefault();
 				this.openModal();
 			}
@@ -432,14 +432,14 @@ const ModalModule = {
 
 		// Close modal.
 		document.addEventListener( 'click', ( e ) => {
-			if ( e.target.closest( '.ea-modal-close' ) || e.target.closest( '#ea-close-modal-btn' ) ) {
+			if ( e.target.closest( '.albert-modal-close' ) || e.target.closest( '#albert-close-modal-btn' ) ) {
 				this.closeModal();
 			}
 		} );
 
 		// Close on backdrop click.
 		this.modal.addEventListener( 'click', ( e ) => {
-			if ( e.target.classList.contains( 'ea-modal' ) ) {
+			if ( e.target.classList.contains( 'albert-modal' ) ) {
 				this.closeModal();
 			}
 		} );
@@ -453,7 +453,7 @@ const ModalModule = {
 
 		// Create client.
 		document.addEventListener( 'click', ( e ) => {
-			if ( e.target.closest( '#ea-create-client-btn' ) ) {
+			if ( e.target.closest( '#albert-create-client-btn' ) ) {
 				this.createClient();
 			}
 		} );
@@ -467,8 +467,8 @@ const ModalModule = {
 			this.created.style.display = 'none';
 		}
 
-		const userSelect = document.getElementById( 'ea-client-user' );
-		const nameInput = document.getElementById( 'ea-client-name' );
+		const userSelect = document.getElementById( 'albert-client-user' );
+		const nameInput = document.getElementById( 'albert-client-name' );
 
 		if ( userSelect ) {
 			userSelect.value = '';
@@ -490,8 +490,8 @@ const ModalModule = {
 	},
 
 	async createClient() {
-		const userSelect = document.getElementById( 'ea-client-user' );
-		const nameInput = document.getElementById( 'ea-client-name' );
+		const userSelect = document.getElementById( 'albert-client-user' );
+		const nameInput = document.getElementById( 'albert-client-name' );
 		const userId = userSelect?.value;
 		const name = nameInput?.value.trim();
 
@@ -531,8 +531,8 @@ const ModalModule = {
 			}
 
 			if ( data.success ) {
-				const clientIdEl = document.getElementById( 'ea-new-client-id' );
-				const clientSecretEl = document.getElementById( 'ea-new-client-secret' );
+				const clientIdEl = document.getElementById( 'albert-new-client-id' );
+				const clientSecretEl = document.getElementById( 'albert-new-client-secret' );
 
 				if ( clientIdEl ) {
 					clientIdEl.textContent = data.data.client_id;

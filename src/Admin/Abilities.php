@@ -150,10 +150,10 @@ class Abilities implements Hookable {
 
 			<?php $this->render_mobile_nav( $grouped, $disabled_abilities ); ?>
 
-			<div class="ea-page-layout">
+			<div class="albert-page-layout">
 				<?php $this->render_sidebar( $grouped, $disabled_abilities ); ?>
 
-				<div class="ea-main-content">
+				<div class="albert-main-content">
 					<div class="albert-tab-content">
 						<?php $this->render_abilities_content( $grouped, $disabled_abilities ); ?>
 					</div>
@@ -177,13 +177,13 @@ class Abilities implements Hookable {
 			return;
 		}
 		?>
-		<aside class="ea-sidebar" aria-label="<?php esc_attr_e( 'Abilities navigation', 'albert' ); ?>">
-			<div class="ea-sidebar-save">
+		<aside class="albert-sidebar" aria-label="<?php esc_attr_e( 'Abilities navigation', 'albert' ); ?>">
+			<div class="albert-sidebar-save">
 				<?php submit_button( __( 'Save Changes', 'albert' ), 'primary', 'submit', false, [ 'form' => 'albert-form' ] ); ?>
 			</div>
-			<h2 class="ea-sidebar-title"><?php esc_html_e( 'Categories', 'albert' ); ?></h2>
+			<h2 class="albert-sidebar-title"><?php esc_html_e( 'Categories', 'albert' ); ?></h2>
 			<nav>
-				<ul class="ea-sidebar-nav">
+				<ul class="albert-sidebar-nav">
 					<?php foreach ( $grouped as $slug => $data ) : ?>
 						<?php
 						$category  = $data['category'];
@@ -205,7 +205,7 @@ class Abilities implements Hookable {
 							<a href="#category-<?php echo esc_attr( $slug ); ?>">
 								<span class="dashicons <?php echo esc_attr( $icon ); ?>" aria-hidden="true"></span>
 								<?php echo esc_html( $label ); ?>
-								<span class="ea-nav-count"><?php echo esc_html( $enabled . '/' . $total ); ?></span>
+								<span class="albert-nav-count"><?php echo esc_html( $enabled . '/' . $total ); ?></span>
 							</a>
 						</li>
 					<?php endforeach; ?>
@@ -231,8 +231,8 @@ class Abilities implements Hookable {
 			return;
 		}
 		?>
-		<nav class="ea-sidebar-mobile" aria-label="<?php esc_attr_e( 'Abilities categories', 'albert' ); ?>">
-			<ul class="ea-sidebar-mobile-nav">
+		<nav class="albert-sidebar-mobile" aria-label="<?php esc_attr_e( 'Abilities categories', 'albert' ); ?>">
+			<ul class="albert-sidebar-mobile-nav">
 				<?php foreach ( $grouped as $slug => $data ) : ?>
 					<?php
 					$category  = $data['category'];
@@ -253,7 +253,7 @@ class Abilities implements Hookable {
 						<a href="#category-<?php echo esc_attr( $slug ); ?>">
 							<span class="dashicons <?php echo esc_attr( $icon ); ?>" aria-hidden="true"></span>
 							<?php echo esc_html( $label ); ?>
-							<span class="ea-nav-count"><?php echo esc_html( $enabled . '/' . $total ); ?></span>
+							<span class="albert-nav-count"><?php echo esc_html( $enabled . '/' . $total ); ?></span>
 						</a>
 					</li>
 				<?php endforeach; ?>
@@ -336,19 +336,19 @@ class Abilities implements Hookable {
 			?>
 			<input type="hidden" name="<?php echo esc_attr( $this->option_name ); ?>" value="" />
 
-			<div class="ea-content-header">
-				<p class="ea-content-description">
+			<div class="albert-content-header">
+				<p class="albert-content-description">
 					<?php esc_html_e( 'Select which abilities AI assistants can use on your site. Only enable abilities you trust.', 'albert' ); ?>
 				</p>
-				<span class="ea-content-actions">
-					<button type="button" class="ea-action-link" id="ea-expand-all"><?php esc_html_e( 'Expand all', 'albert' ); ?></button>
-					<span class="ea-action-separator" aria-hidden="true">·</span>
-					<button type="button" class="ea-action-link" id="ea-collapse-all"><?php esc_html_e( 'Collapse all', 'albert' ); ?></button>
+				<span class="albert-content-actions">
+					<button type="button" class="albert-action-link" id="albert-expand-all"><?php esc_html_e( 'Expand all', 'albert' ); ?></button>
+					<span class="albert-action-separator" aria-hidden="true">·</span>
+					<button type="button" class="albert-action-link" id="albert-collapse-all"><?php esc_html_e( 'Collapse all', 'albert' ); ?></button>
 				</span>
 			</div>
 
 			<?php if ( ! empty( $grouped ) ) : ?>
-				<div class="ea-groups-grid">
+				<div class="albert-groups-grid">
 					<?php foreach ( $grouped as $slug => $data ) : ?>
 						<?php $this->render_category_section( $slug, $data, $disabled_abilities ); ?>
 					<?php endforeach; ?>
@@ -362,7 +362,7 @@ class Abilities implements Hookable {
 			<?php endif; ?>
 
 			<?php if ( ! empty( $grouped ) ) : ?>
-				<div class="ea-mobile-save">
+				<div class="albert-mobile-save">
 					<?php submit_button( __( 'Save Changes', 'albert' ), 'primary', 'submit-mobile', false ); ?>
 				</div>
 			<?php endif; ?>
@@ -414,7 +414,7 @@ class Abilities implements Hookable {
 					>
 						<span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span>
 					</button>
-					<span class="dashicons <?php echo esc_attr( $icon ); ?>" aria-hidden="true" style="color: var(--ea-text-secondary);"></span>
+					<span class="dashicons <?php echo esc_attr( $icon ); ?>" aria-hidden="true" style="color: var(--albert-text-secondary);"></span>
 					<div>
 						<h2 class="ability-group-title" id="<?php echo esc_attr( 'title-' . $card_id ); ?>">
 							<?php echo esc_html( $label ); ?>
@@ -607,11 +607,11 @@ class Abilities implements Hookable {
 					<label class="ability-item-label" for="<?php echo esc_attr( $field_id ); ?>">
 						<?php echo esc_html( $label ); ?>
 					</label>
-					<span class="ea-source-badge ea-source-<?php echo esc_attr( $source['type'] ); ?>" title="<?php echo esc_attr( $this->get_source_tooltip( $source['type'] ) ); ?>">
+					<span class="albert-source-badge albert-source-<?php echo esc_attr( $source['type'] ); ?>" title="<?php echo esc_attr( $this->get_source_tooltip( $source['type'] ) ); ?>">
 						<?php echo esc_html( $source['label'] ); ?>
 					</span>
 					<?php if ( $is_premium ) : ?>
-						<span class="ea-premium-lock dashicons dashicons-lock" aria-hidden="true"></span>
+						<span class="albert-premium-lock dashicons dashicons-lock" aria-hidden="true"></span>
 					<?php endif; ?>
 				</div>
 				<?php if ( ! empty( $description ) ) : ?>
