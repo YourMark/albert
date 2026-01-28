@@ -210,22 +210,22 @@ class Dashboard implements Hookable {
 					<h2><?php echo esc_html__( 'Status', 'albert' ); ?></h2>
 					<ul class="albert-status-list">
 						<li>
-							<span class="albert-status-indicator albert-status-active"></span>
+							<span class="albert-status-indicator albert-status-active" aria-hidden="true"></span>
 							<strong><?php echo esc_html__( 'OAuth Server:', 'albert' ); ?></strong>
 							<span class="albert-status-value"><?php echo esc_html__( 'Active', 'albert' ); ?></span>
 						</li>
 						<li>
-							<span class="albert-status-indicator albert-status-active"></span>
+							<span class="albert-status-indicator albert-status-active" aria-hidden="true"></span>
 							<strong><?php echo esc_html__( 'MCP Endpoint:', 'albert' ); ?></strong>
 							<span class="albert-status-value"><?php echo esc_html__( 'Active', 'albert' ); ?></span>
 						</li>
 						<li>
-							<span class="albert-status-indicator albert-status-info"></span>
+							<span class="albert-status-indicator albert-status-info" aria-hidden="true"></span>
 							<strong><?php echo esc_html__( 'Active Connections:', 'albert' ); ?></strong>
 							<span class="albert-status-value"><?php echo esc_html( (string) $active_connections ); ?></span>
 						</li>
 						<li>
-							<span class="albert-status-indicator albert-status-info"></span>
+							<span class="albert-status-indicator albert-status-info" aria-hidden="true"></span>
 							<strong><?php echo esc_html__( 'Enabled Abilities:', 'albert' ); ?></strong>
 							<span class="albert-status-value"><?php echo esc_html( $enabled_abilities ); ?></span>
 						</li>
@@ -245,12 +245,14 @@ class Dashboard implements Hookable {
 							<span class="dashicons dashicons-book" aria-hidden="true"></span>
 							<a href="https://wordpress.org/plugins/albert/" target="_blank" rel="noopener noreferrer">
 								<?php esc_html_e( 'Documentation', 'albert' ); ?>
+								<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'albert' ); ?></span>
 							</a>
 						</li>
 						<li>
 							<span class="dashicons dashicons-sos" aria-hidden="true"></span>
 							<a href="https://github.com/WordPress/albert/issues" target="_blank" rel="noopener noreferrer">
 								<?php esc_html_e( 'Report an Issue', 'albert' ); ?>
+								<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'albert' ); ?></span>
 							</a>
 						</li>
 					</ul>

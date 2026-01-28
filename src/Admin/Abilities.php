@@ -607,7 +607,7 @@ class Abilities implements Hookable {
 					<label class="ability-item-label" for="<?php echo esc_attr( $field_id ); ?>">
 						<?php echo esc_html( $label ); ?>
 					</label>
-					<span class="albert-source-badge albert-source-<?php echo esc_attr( $source['type'] ); ?>" title="<?php echo esc_attr( $this->get_source_tooltip( $source['type'] ) ); ?>">
+					<span class="albert-source-badge albert-source-<?php echo esc_attr( $source['type'] ); ?>" aria-label="<?php echo esc_attr( $this->get_source_tooltip( $source['type'] ) ); ?>">
 						<?php echo esc_html( $source['label'] ); ?>
 					</span>
 					<?php if ( $is_premium ) : ?>

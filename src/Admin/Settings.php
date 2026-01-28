@@ -169,7 +169,7 @@ class Settings implements Hookable {
 			</div>
 			<div class="albert-settings-card-body">
 				<div class="albert-field-group">
-					<label class="albert-field-label"><?php esc_html_e( 'Connection URL', 'albert' ); ?></label>
+					<strong class="albert-field-label"><?php esc_html_e( 'Connection URL', 'albert' ); ?></strong>
 					<p class="albert-field-description">
 						<?php esc_html_e( 'Use this URL to connect AI tools (Claude Desktop, ChatGPT, etc.) to your site.', 'albert' ); ?>
 					</p>

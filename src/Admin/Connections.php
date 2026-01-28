@@ -444,7 +444,7 @@ class Connections implements Hookable {
 			<!-- MCP Endpoint Bar -->
 			<div class="albert-endpoint-bar">
 				<div class="albert-endpoint-bar-header">
-					<span class="albert-endpoint-bar-label"><?php esc_html_e( 'MCP Endpoint', 'albert' ); ?></span>
+					<label class="albert-endpoint-bar-label" for="mcp-endpoint-url"><?php esc_html_e( 'MCP Endpoint', 'albert' ); ?></label>
 					<span class="albert-endpoint-bar-helper"><?php esc_html_e( 'Add this URL to your AI assistant as an MCP connector.', 'albert' ); ?></span>
 				</div>
 				<div class="albert-endpoint-bar-field">
@@ -500,6 +500,7 @@ class Connections implements Hookable {
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="albert-inline-form">
 						<?php wp_nonce_field( 'albert_add_allowed_user', 'albert_add_user_nonce' ); ?>
 						<input type="hidden" name="action" value="albert_add_allowed_user" />
+						<label for="albert-add-user-select" class="screen-reader-text"><?php esc_html_e( 'Select user to add', 'albert' ); ?></label>
 						<select name="albert_user_id" id="albert-add-user-select" class="albert-select-input">
 							<option value=""><?php esc_html_e( '— Select User —', 'albert' ); ?></option>
 							<?php foreach ( $all_users as $user ) : ?>
@@ -659,7 +660,7 @@ class Connections implements Hookable {
 							<div class="albert-card albert-connection-card">
 								<div class="albert-connection-header">
 									<div class="albert-connection-icon">
-										<span class="dashicons dashicons-admin-plugins"></span>
+										<span class="dashicons dashicons-admin-plugins" aria-hidden="true"></span>
 									</div>
 									<div class="albert-connection-title">
 										<h3><?php echo esc_html( $app_name ); ?></h3>
@@ -669,21 +670,21 @@ class Connections implements Hookable {
 								<div class="albert-connection-body">
 									<div class="albert-connection-meta">
 										<div class="albert-connection-meta-item">
-											<span class="dashicons dashicons-admin-users"></span>
+											<span class="dashicons dashicons-admin-users" aria-hidden="true"></span>
 											<div>
 												<strong><?php esc_html_e( 'User:', 'albert' ); ?></strong>
 												<span><?php echo $user ? esc_html( $user->display_name ) : esc_html__( 'Unknown', 'albert' ); ?></span>
 											</div>
 										</div>
 										<div class="albert-connection-meta-item">
-											<span class="dashicons dashicons-calendar-alt"></span>
+											<span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
 											<div>
 												<strong><?php esc_html_e( 'Connected:', 'albert' ); ?></strong>
 												<span><?php echo esc_html( human_time_diff( $connected_at, time() ) . ' ' . __( 'ago', 'albert' ) ); ?></span>
 											</div>
 										</div>
 										<div class="albert-connection-meta-item">
-											<span class="dashicons dashicons-clock"></span>
+											<span class="dashicons dashicons-clock" aria-hidden="true"></span>
 											<div>
 												<strong><?php esc_html_e( 'Expires:', 'albert' ); ?></strong>
 												<span class="<?php echo $is_expiring ? 'albert-expiring' : ''; ?>">
@@ -703,7 +704,7 @@ class Connections implements Hookable {
 									<a href="<?php echo esc_url( $revoke_url ); ?>"
 										class="button button-secondary button-small albert-disconnect-btn"
 										onclick="return confirm('<?php echo esc_js( __( 'Disconnect this AI assistant?', 'albert' ) ); ?>');">
-										<span class="dashicons dashicons-dismiss"></span>
+										<span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
 										<?php esc_html_e( 'Disconnect', 'albert' ); ?>
 									</a>
 								</div>
@@ -727,7 +728,7 @@ class Connections implements Hookable {
 						<a href="<?php echo esc_url( $revoke_all_url ); ?>"
 							class="button albert-disconnect-all-btn"
 							onclick="return confirm('<?php echo esc_js( __( 'Disconnect ALL AI assistants? This action cannot be undone.', 'albert' ) ); ?>');">
-							<span class="dashicons dashicons-dismiss"></span>
+							<span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
 							<?php esc_html_e( 'Disconnect All', 'albert' ); ?>
 						</a>
 					</div>

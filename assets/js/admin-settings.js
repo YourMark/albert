@@ -349,6 +349,12 @@ const ClipboardModule = {
 	showCopiedFeedback( element, originalText = null ) {
 		const i18n = window.albertAdmin?.i18n || { copied: 'Copied!' };
 
+		// Announce to screen readers.
+		const liveRegion = document.getElementById( 'albert-copy-status' );
+		if ( liveRegion ) {
+			liveRegion.textContent = i18n.copied;
+		}
+
 		if ( originalText !== null ) {
 			element.textContent = i18n.copied;
 			element.classList.add( 'copied' );
@@ -563,12 +569,29 @@ const ModalModule = {
  * Initialize all modules when DOM is ready.
  */
 function init() {
+	initLiveRegion();
 	ToggleModule.init();
 	CollapseModule.init();
 	AbilityItemModule.init();
 	ClipboardModule.init();
 	ModalModule.init();
 	DirtyStateModule.init();
+}
+
+/**
+ * Initialize a live region for screen reader announcements.
+ */
+function initLiveRegion() {
+	if ( document.getElementById( 'albert-copy-status' ) ) {
+		return;
+	}
+	const liveRegion = document.createElement( 'div' );
+	liveRegion.setAttribute( 'aria-live', 'polite' );
+	liveRegion.setAttribute( 'aria-atomic', 'true' );
+	liveRegion.setAttribute( 'role', 'status' );
+	liveRegion.className = 'screen-reader-text';
+	liveRegion.id = 'albert-copy-status';
+	document.body.appendChild( liveRegion );
 }
 
 if ( document.readyState === 'loading' ) {

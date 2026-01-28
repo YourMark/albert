@@ -339,6 +339,12 @@
 	text-decoration: underline;
 }
 
+.albert-action-link:focus-visible {
+	outline: 2px solid var(--albert-primary);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
 .albert-action-separator {
 	color: var(--albert-text-secondary);
 }
@@ -403,6 +409,11 @@
 .ability-group-collapse-toggle:hover {
 	background: var(--albert-black-5);
 	color: var(--albert-primary);
+}
+
+.ability-group-collapse-toggle:focus-visible {
+	outline: 2px solid var(--albert-primary);
+	outline-offset: 1px;
 }
 
 .ability-group-collapse-toggle[aria-expanded="false"] .dashicons {
@@ -784,6 +795,11 @@
 	color: var(--albert-primary);
 }
 
+.ability-subgroup-collapse-toggle:focus-visible {
+	outline: 2px solid var(--albert-primary);
+	outline-offset: 1px;
+}
+
 .ability-subgroup-collapse-toggle[aria-expanded="false"] .dashicons {
 	transform: rotate(-90deg);
 }
@@ -1045,6 +1061,12 @@
 	color: var(--albert-error-hover);
 }
 
+.albert-remove-link:focus-visible {
+	outline: 2px solid var(--albert-primary);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
 /* Legacy settings sections (keep for compatibility) */
 .albert-settings-section {
 	margin-bottom: var(--albert-spacing-xl);
@@ -1097,6 +1119,11 @@
 
 .albert-copy-button.copied {
 	color: var(--albert-success);
+}
+
+.albert-copy-button:focus-visible {
+	outline: 2px solid var(--albert-primary);
+	outline-offset: 1px;
 }
 
 /* Copy text (inline) */
@@ -1195,6 +1222,11 @@
 
 .albert-modal-close:hover {
 	color: var(--albert-text-primary);
+}
+
+.albert-modal-close:focus-visible {
+	outline: 2px solid var(--albert-primary);
+	outline-offset: 2px;
 }
 
 .albert-modal-body {

@@ -12,8 +12,22 @@
 	 * Initialize when DOM is ready.
 	 */
 	document.addEventListener('DOMContentLoaded', function() {
+		initLiveRegion();
 		initCopyButtons();
 	});
+
+	/**
+	 * Initialize a live region for screen reader announcements.
+	 */
+	function initLiveRegion() {
+		var liveRegion = document.createElement('div');
+		liveRegion.setAttribute('aria-live', 'polite');
+		liveRegion.setAttribute('aria-atomic', 'true');
+		liveRegion.setAttribute('role', 'status');
+		liveRegion.className = 'screen-reader-text';
+		liveRegion.id = 'albert-copy-status';
+		document.body.appendChild(liveRegion);
+	}
 
 	/**
 	 * Initialize copy to clipboard buttons.
@@ -100,6 +114,12 @@
 		button.textContent = feedbackText;
 		button.classList.add(feedbackClass);
 		button.disabled = true;
+
+		// Announce to screen readers
+		var liveRegion = document.getElementById('albert-copy-status');
+		if (liveRegion) {
+			liveRegion.textContent = feedbackText;
+		}
 
 		// Revert after 2 seconds
 		setTimeout(function() {
