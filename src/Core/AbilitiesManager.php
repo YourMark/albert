@@ -45,6 +45,9 @@ class AbilitiesManager implements Hookable {
 
 		// Add abilities to settings page filters.
 		add_filter( 'albert/abilities/wordpress', [ $this, 'add_wordpress_abilities_to_settings' ] );
+
+		// Bridge show_in_rest to mcp.public for MCP adapter compatibility.
+		add_filter( 'wp_register_ability_args', [ $this, 'normalize_mcp_metadata' ], 10, 2 );
 	}
 
 
@@ -170,5 +173,33 @@ class AbilitiesManager implements Hookable {
 	 */
 	public function get_ability( string $id ): ?BaseAbility {
 		return $this->abilities[ $id ] ?? null;
+	}
+
+	/**
+	 * Ensure all abilities are exposed via MCP.
+	 *
+	 * The mcp-adapter checks `meta.mcp.public` to determine if an ability
+	 * should be discoverable. This filter ensures all registered abilities
+	 * are exposed to MCP clients.
+	 *
+	 * Here we expose the registered core abilities too for the MCP so we can use them.
+	 *
+	 * @param array<string, mixed> $args Ability arguments.
+	 * @param string               $name Ability name.
+	 *
+	 * @return array<string, mixed> Modified arguments.
+	 * @since 1.0.0
+	 */
+	public function normalize_mcp_metadata( array $args, string $name ): array {
+		if ( ! str_starts_with( $name, 'core/' ) ) {
+			return $args;
+		}
+
+		if ( ! isset( $args['meta']['mcp'] ) ) {
+			$args['meta']['mcp'] = [];
+		}
+		$args['meta']['mcp']['public'] = true;
+
+		return $args;
 	}
 }
