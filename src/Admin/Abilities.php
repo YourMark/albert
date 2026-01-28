@@ -348,6 +348,7 @@ class Abilities implements Hookable {
 			</div>
 
 			<?php if ( ! empty( $grouped ) ) : ?>
+				<?php $this->render_collapse_preload_script(); ?>
 				<div class="albert-groups-grid">
 					<?php foreach ( $grouped as $slug => $data ) : ?>
 						<?php $this->render_category_section( $slug, $data, $disabled_abilities ); ?>
@@ -367,6 +368,41 @@ class Abilities implements Hookable {
 				</div>
 			<?php endif; ?>
 		</form>
+		<?php
+	}
+
+	/**
+	 * Render an inline script that pre-applies collapsed state before paint.
+	 *
+	 * Reads the same localStorage key used by CollapseModule and injects
+	 * CSS rules to hide collapsed categories immediately, preventing a
+	 * flash of expanded content on page load.
+	 *
+	 * @return void
+	 * @since 1.1.0
+	 */
+	private function render_collapse_preload_script(): void {
+		?>
+		<script>
+		(function() {
+			try {
+				var collapsed = JSON.parse(localStorage.getItem('albert_collapsed_categories') || '[]');
+				if (!collapsed.length) return;
+				var css = '';
+				for (var i = 0; i < collapsed.length; i++) {
+					var id = collapsed[i].replace(/[^a-zA-Z0-9_-]/g, '');
+					css += '#' + id + ' .ability-group-items{display:none}';
+					css += '#' + id + '{align-self:start;border-color:var(--albert-border-light);box-shadow:none}';
+					css += '#' + id + ' .ability-group-header{border-bottom:none}';
+					css += '#' + id + ' .ability-group-collapse-toggle[aria-expanded="true"] .dashicons{transform:rotate(-90deg)}';
+				}
+				var s = document.createElement('style');
+				s.id = 'albert-collapse-preload';
+				s.textContent = css;
+				document.head.appendChild(s);
+			} catch (e) {}
+		})();
+		</script>
 		<?php
 	}
 

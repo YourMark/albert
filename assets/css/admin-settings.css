@@ -443,6 +443,7 @@
 	background: var(--albert-bg-white);
 	border: 1px solid var(--albert-border-light);
 	box-shadow: none;
+	align-self: start;
 }
 
 .ability-group.is-collapsed .ability-group-header {

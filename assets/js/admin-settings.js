@@ -184,8 +184,16 @@ const CollapseModule = {
 
 	init() {
 		this.restoreCollapsedState();
+		this.removePreloadStyle();
 		this.handleGroupCollapse();
 		this.handleExpandCollapseAll();
+	},
+
+	removePreloadStyle() {
+		const preload = document.getElementById( 'albert-collapse-preload' );
+		if ( preload ) {
+			preload.remove();
+		}
 	},
 
 	getCollapsedCategories() {
