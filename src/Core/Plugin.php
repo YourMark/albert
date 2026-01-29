@@ -132,18 +132,20 @@ class Plugin {
 		// Register MCP server (uses OAuth for authentication).
 		( new McpServer() )->register_hooks();
 
-		// Try and run the McpAdapter. Without this, it's useless.
-		if ( ! class_exists( McpAdapter::class ) ) {
-			/**
-			 * Handle missing McpAdapter gracefully.
-			 *
-			 * @todo If the class does not exist, for some reason, we need to handle this gracefully.
-			 */
-			return;
+		// Initialize the MCP adapter, but not on admin pages.
+		//
+		// McpAdapter::instance() hooks the adapter's init() to rest_api_init, which
+		// fires mcp_adapter_init — the hook Albert's Server listens on to create its
+		// MCP server and register REST routes.
+		//
+		// On admin pages, WooCommerce preloads REST data (triggering rest_api_init),
+		// and the adapter's DefaultServerFactory calls wp_get_ability() for tools that
+		// aren't registered yet (wp_abilities_api_init already fired during admin page
+		// render). Skipping initialization on admin pages avoids this timing conflict.
+		// REST API requests (is_admin() === false) are unaffected.
+		if ( class_exists( McpAdapter::class ) && ! is_admin() ) {
+			McpAdapter::instance();
 		}
-
-		// Initialize the adapter.
-		McpAdapter::instance();
 
 		add_action( 'init', [ $this, 'register_abilities' ] );
 	}

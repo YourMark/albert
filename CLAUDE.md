@@ -297,6 +297,20 @@ wp plugin activate albert
 - **Never bump version without approval**
 - Run `composer phpcs` before committing
 
+## Known Compatibility Issues
+
+### WooCommerce mcp-adapter timing bug (admin pages)
+
+**Affected versions:** WooCommerce 10.4+ (ships `wordpress/mcp-adapter`)
+
+**Symptom:** `_doing_it_wrong` notices for `mcp-adapter/discover-abilities`, `mcp-adapter/get-ability-info`, and `mcp-adapter/execute-ability` on Albert admin pages when WooCommerce is active.
+
+**Root cause:** The mcp-adapter's `DefaultServerFactory` hooks `register_default_abilities()` on `wp_abilities_api_init` — a one-shot action. On Albert admin pages, `wp_get_abilities()` fires that action during page render (before `rest_api_init`). WooCommerce then preloads REST data via `Settings::add_component_settings()` → `rest_preload_api_request()`, which triggers `rest_api_init` → `McpAdapter::init()` → `mcp_adapter_init` → `DefaultServerFactory::create()`. The factory calls `wp_get_ability()` for its three tools, but they were never registered because `wp_abilities_api_init` already fired. The upstream fix would be for `maybe_create_default_server()` to check `did_action('wp_abilities_api_init')` and call `register_default_abilities()` directly if the action already fired.
+
+**Our fix:** `Plugin::init()` only calls `McpAdapter::instance()` when `! is_admin()`. REST API requests (`/wp-json/...`) have `is_admin() === false`, so the adapter initializes normally. Admin pages skip initialization entirely, avoiding the timing conflict. The adapter is not needed on admin pages — Albert only needs it for serving MCP REST endpoints.
+
+**If this breaks in the future:** The fix relies on `is_admin()` being `false` for REST API requests. If WordPress changes this behavior, `McpAdapter::instance()` may need to be deferred differently. Check `wp-includes/load.php` for `is_admin()` definition.
+
 ## Plan Limits System
 
 The plugin enforces user and connection limits to gate free vs. premium tiers.
