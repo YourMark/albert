@@ -759,8 +759,26 @@ class Abilities implements Hookable {
 				<?php if ( $has_sub_items ) { ?>
 					<?php
 					// Render individual ability rows.
+					$has_both_modes = ! empty( $read_abilities ) && ! empty( $write_abilities );
+
+					if ( $has_both_modes ) {
+						?>
+						<div class="ability-mode-label ability-mode-label--read">
+							<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
+							<?php esc_html_e( 'Read', 'albert' ); ?>
+						</div>
+						<?php
+					}
 					foreach ( $read_abilities as $ability_name => $ability ) {
 						$this->render_ability_item( $ability, $disabled_abilities, 'read', $read_id );
+					}
+					if ( $has_both_modes ) {
+						?>
+						<div class="ability-mode-label ability-mode-label--write">
+							<span class="dashicons dashicons-edit" aria-hidden="true"></span>
+							<?php esc_html_e( 'Write', 'albert' ); ?>
+						</div>
+						<?php
 					}
 					foreach ( $write_abilities as $ability_name => $ability ) {
 						$this->render_ability_item( $ability, $disabled_abilities, 'write', $write_id );
