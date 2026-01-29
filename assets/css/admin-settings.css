@@ -239,6 +239,7 @@
 /* Main content area */
 .albert-main-content {
 	min-width: 0;
+	max-width: 80rem;
 }
 
 /* Tab navigation */
@@ -971,24 +972,32 @@
 
 /* Expanded details panel */
 .ability-type-details {
-	padding: 0 var(--albert-spacing-md) var(--albert-spacing-md) calc(var(--albert-spacing-md) + 24px);
-	background: var(--albert-bg-light);
-	border-top: 1px solid var(--albert-border-light);
+	padding: var(--albert-spacing-sm) var(--albert-spacing-md) var(--albert-spacing-md) calc(var(--albert-spacing-md) + 24px);
 }
 
 .ability-type-details[hidden] {
 	display: none;
 }
 
+.ability-type-description {
+	margin: 0;
+	font-size: var(--albert-font-sm);
+	color: var(--albert-text-secondary);
+	line-height: 1.5;
+}
+
 .ability-type-details .ability-item {
-	background: var(--albert-bg-white);
 	margin-top: var(--albert-spacing-xs);
-	border-radius: var(--albert-border-radius);
-	border: 1px solid var(--albert-border-light);
+	border-bottom: 1px solid var(--albert-border-light);
+	border-radius: 0;
 }
 
 .ability-type-details .ability-item:first-child {
 	margin-top: 0;
+}
+
+.ability-type-details .ability-item:last-child {
+	border-bottom: none;
 }
 
 /* Responsive: Stack toggles on smaller screens */

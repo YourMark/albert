@@ -659,17 +659,15 @@ class Abilities implements Hookable {
 		// Get source badge info.
 		$source = $this->get_content_type_source( $read_abilities, $write_abilities );
 
-		// Determine if this row should be expandable (more than 1 ability total).
+		// Determine if this row has sub-items (more than 1 ability total).
 		$total_abilities = count( $read_abilities ) + count( $write_abilities );
-		$is_expandable   = $total_abilities > 1;
+		$has_sub_items   = $total_abilities > 1;
 		?>
-		<div class="ability-type-row<?php echo $is_expandable ? ' ability-type-row--expandable' : ''; ?>" data-category="<?php echo esc_attr( $category_slug ); ?>" data-type="<?php echo esc_attr( $type_key ); ?>">
+		<div class="ability-type-row ability-type-row--expandable" data-category="<?php echo esc_attr( $category_slug ); ?>" data-type="<?php echo esc_attr( $type_key ); ?>">
 			<div class="ability-type-header">
-				<?php if ( $is_expandable ) : ?>
-					<button type="button" class="ability-type-expand" aria-expanded="false" aria-controls="<?php echo esc_attr( $details_id ); ?>">
-						<span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>
-					</button>
-				<?php endif; ?>
+				<button type="button" class="ability-type-expand" aria-expanded="false" aria-controls="<?php echo esc_attr( $details_id ); ?>">
+					<span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>
+				</button>
 
 				<div class="ability-type-label">
 					<?php echo esc_html( $label ); ?>
@@ -755,8 +753,8 @@ class Abilities implements Hookable {
 				</div>
 			</div>
 
-			<?php if ( $is_expandable ) : ?>
-				<div class="ability-type-details" id="<?php echo esc_attr( $details_id ); ?>" hidden>
+			<div class="ability-type-details" id="<?php echo esc_attr( $details_id ); ?>" hidden>
+				<?php if ( $has_sub_items ) : ?>
 					<?php
 					// Render individual ability rows.
 					foreach ( $read_abilities as $ability_name => $ability ) {
@@ -766,22 +764,19 @@ class Abilities implements Hookable {
 						$this->render_ability_item( $ability, $disabled_abilities, 'write', $write_id );
 					}
 					?>
-				</div>
-			<?php else : ?>
-				<?php
-				// Single ability - render hidden inputs for form submission.
-				foreach ( $read_abilities as $ability_name => $ability ) {
-					?>
-					<input type="hidden" name="albert_presented_abilities[]" value="<?php echo esc_attr( $ability_name ); ?>" />
+				<?php else : ?>
 					<?php
-				}
-				foreach ( $write_abilities as $ability_name => $ability ) {
+					// Single ability - show description and hidden input.
+					$single_ability = ! empty( $read_abilities ) ? reset( $read_abilities ) : reset( $write_abilities );
+					$single_name    = ! empty( $read_abilities ) ? array_key_first( $read_abilities ) : array_key_first( $write_abilities );
+					$description    = is_object( $single_ability ) && method_exists( $single_ability, 'get_description' ) ? $single_ability->get_description() : '';
 					?>
-					<input type="hidden" name="albert_presented_abilities[]" value="<?php echo esc_attr( $ability_name ); ?>" />
-					<?php
-				}
-				?>
-			<?php endif; ?>
+					<input type="hidden" name="albert_presented_abilities[]" value="<?php echo esc_attr( $single_name ); ?>" />
+					<?php if ( ! empty( $description ) ) : ?>
+						<p class="ability-type-description"><?php echo esc_html( $description ); ?></p>
+					<?php endif; ?>
+				<?php endif; ?>
+			</div>
 		</div>
 		<?php
 	}
