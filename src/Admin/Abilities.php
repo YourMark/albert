@@ -298,25 +298,6 @@ class Abilities implements Hookable {
 	}
 
 	/**
-	 * Get tooltip text for a source type badge.
-	 *
-	 * @param string $source_type Source type identifier.
-	 *
-	 * @return string Tooltip text.
-	 * @since 1.1.0
-	 */
-	private function get_source_tooltip( string $source_type ): string {
-		$tooltips = [
-			'core'        => __( 'Built into WordPress core', 'albert' ),
-			'albert'      => __( 'Provided by the Albert plugin', 'albert' ),
-			'premium'     => __( 'Requires Albert Pro', 'albert' ),
-			'third-party' => __( 'Provided by a third-party plugin', 'albert' ),
-		];
-
-		return $tooltips[ $source_type ] ?? '';
-	}
-
-	/**
 	 * Render abilities content.
 	 *
 	 * @param array<string, mixed> $grouped             Grouped abilities data.
@@ -407,14 +388,17 @@ class Abilities implements Hookable {
 	}
 
 	/**
-	 * Render a category section with abilities split into read/write subgroups.
+	 * Render a category section with simplified content type rows.
+	 *
+	 * Each content type (Posts, Pages, Media, etc.) gets a single row
+	 * with Read and Write toggles instead of individual ability toggles.
 	 *
 	 * @param string               $slug                Category slug.
 	 * @param array<string, mixed> $category_data       Category data with 'category' and 'abilities'.
 	 * @param array<string>        $disabled_abilities  Currently disabled ability slugs.
 	 *
 	 * @return void
-	 * @since 1.1.0
+	 * @since 1.2.0
 	 */
 	private function render_category_section( string $slug, array $category_data, array $disabled_abilities ): void {
 		$category    = $category_data['category'];
@@ -426,17 +410,11 @@ class Abilities implements Hookable {
 		$label       = is_object( $category ) && method_exists( $category, 'get_label' ) ? $category->get_label() : ( $category['label'] ?? ucfirst( $slug ) );
 		$description = is_object( $category ) && method_exists( $category, 'get_description' ) ? $category->get_description() : ( $category['description'] ?? '' );
 
-		// Split abilities into read and write subgroups.
-		$read_abilities  = [];
-		$write_abilities = [];
+		// Get the predefined content type groupings.
+		$content_types = $this->get_content_types_for_category( $slug, $abilities );
 
-		foreach ( $abilities as $ability ) {
-			$name = is_object( $ability ) && method_exists( $ability, 'get_name' ) ? $ability->get_name() : '';
-			if ( $this->is_write_ability( $name ) ) {
-				$write_abilities[] = $ability;
-			} else {
-				$read_abilities[] = $ability;
-			}
+		if ( empty( $content_types ) ) {
+			return;
 		}
 		?>
 		<section class="ability-group" id="<?php echo esc_attr( $card_id ); ?>" aria-labelledby="<?php echo esc_attr( 'title-' . $card_id ); ?>">
@@ -483,66 +461,421 @@ class Abilities implements Hookable {
 			</div>
 
 			<div class="ability-group-items" id="<?php echo esc_attr( $items_id ); ?>" role="group" aria-labelledby="<?php echo esc_attr( 'title-' . $card_id ); ?>">
-				<?php if ( ! empty( $read_abilities ) ) : ?>
-					<?php $this->render_subgroup( $slug, 'read', __( 'Read', 'albert' ), $read_abilities, $disabled_abilities ); ?>
-				<?php endif; ?>
-
-				<?php if ( ! empty( $write_abilities ) ) : ?>
-					<?php $this->render_subgroup( $slug, 'write', __( 'Write', 'albert' ), $write_abilities, $disabled_abilities ); ?>
-				<?php endif; ?>
+				<?php foreach ( $content_types as $type_key => $type_data ) : ?>
+					<?php $this->render_content_type_row( $slug, $type_key, $type_data, $disabled_abilities ); ?>
+				<?php endforeach; ?>
 			</div>
 		</section>
 		<?php
 	}
 
 	/**
-	 * Render a subgroup (read or write) within a category section.
+	 * Get content types for a category with their abilities grouped by read/write.
 	 *
-	 * @param string        $category_slug       Parent category slug.
-	 * @param string        $subgroup_type       Subgroup type ('read' or 'write').
-	 * @param string        $subgroup_label      Display label for the subgroup.
-	 * @param list<object>  $abilities           Abilities in this subgroup.
-	 * @param array<string> $disabled_abilities  Currently disabled ability slugs.
+	 * Maps abilities to predefined content type groups from AbilitiesRegistry.
+	 * For ungrouped abilities, creates individual entries using the ability's label.
 	 *
-	 * @return void
+	 * @param string        $category_slug Category slug.
+	 * @param array<object> $abilities     Abilities in this category.
+	 *
+	 * @return array<string, array<string, mixed>> Content types with their abilities.
+	 * @since 1.2.0
+	 */
+	private function get_content_types_for_category( string $category_slug, array $abilities ): array {
+		// Get predefined groupings from AbilitiesRegistry.
+		$groups = AbilitiesRegistry::get_ability_groups();
+
+		// Build a lookup of ability name to ability object.
+		$ability_lookup = [];
+		foreach ( $abilities as $ability ) {
+			$name = is_object( $ability ) && method_exists( $ability, 'get_name' ) ? $ability->get_name() : '';
+			if ( $name ) {
+				$ability_lookup[ $name ] = $ability;
+			}
+		}
+
+		$content_types = [];
+
+		// Check each group for matching abilities.
+		foreach ( $groups as $group ) {
+			if ( ! isset( $group['types'] ) ) {
+				continue;
+			}
+
+			foreach ( $group['types'] as $type_key => $type_data ) {
+				$type_label      = $type_data['label'] ?? ucfirst( $type_key );
+				$read_abilities  = [];
+				$write_abilities = [];
+				$read_premium    = false;
+				$write_premium   = false;
+
+				// Collect read abilities (store full objects for details).
+				if ( isset( $type_data['read']['abilities'] ) ) {
+					foreach ( $type_data['read']['abilities'] as $ability_name ) {
+						if ( isset( $ability_lookup[ $ability_name ] ) ) {
+							$read_abilities[ $ability_name ] = $ability_lookup[ $ability_name ];
+						}
+					}
+					$read_premium = $type_data['read']['premium'] ?? false;
+				}
+
+				// Collect write abilities (store full objects for details).
+				if ( isset( $type_data['write']['abilities'] ) ) {
+					foreach ( $type_data['write']['abilities'] as $ability_name ) {
+						if ( isset( $ability_lookup[ $ability_name ] ) ) {
+							$write_abilities[ $ability_name ] = $ability_lookup[ $ability_name ];
+						}
+					}
+					$write_premium = $type_data['write']['premium'] ?? false;
+				}
+
+				// Only add if we found at least one ability.
+				if ( ! empty( $read_abilities ) || ! empty( $write_abilities ) ) {
+					$content_types[ $type_key ] = [
+						'label'           => $type_label,
+						'read_abilities'  => $read_abilities,
+						'write_abilities' => $write_abilities,
+						'read_premium'    => $read_premium,
+						'write_premium'   => $write_premium,
+						'category'        => $category_slug,
+					];
+				}
+			}
+		}
+
+		// Handle any abilities not in predefined groups (core, third-party).
+		// Create individual entries for each ungrouped ability using its label.
+		$grouped_abilities = [];
+		foreach ( $content_types as $type_data ) {
+			$grouped_abilities = array_merge( $grouped_abilities, array_keys( $type_data['read_abilities'] ), array_keys( $type_data['write_abilities'] ) );
+		}
+
+		$ungrouped = array_diff( array_keys( $ability_lookup ), $grouped_abilities );
+		foreach ( $ungrouped as $ability_name ) {
+			$ability = $ability_lookup[ $ability_name ];
+			$label   = method_exists( $ability, 'get_label' ) ? $ability->get_label() : $ability_name;
+
+			// Create a unique key from the ability name.
+			$type_key = sanitize_key( str_replace( '/', '-', $ability_name ) );
+
+			// Determine if read or write.
+			if ( $this->is_write_ability( $ability_name ) ) {
+				$content_types[ $type_key ] = [
+					'label'           => $label,
+					'read_abilities'  => [],
+					'write_abilities' => [ $ability_name => $ability ],
+					'read_premium'    => false,
+					'write_premium'   => AbilitiesRegistry::is_premium_ability( $ability_name ),
+					'category'        => $category_slug,
+				];
+			} else {
+				$content_types[ $type_key ] = [
+					'label'           => $label,
+					'read_abilities'  => [ $ability_name => $ability ],
+					'write_abilities' => [],
+					'read_premium'    => AbilitiesRegistry::is_premium_ability( $ability_name ),
+					'write_premium'   => false,
+					'category'        => $category_slug,
+				];
+			}
+		}
+
+		return $content_types;
+	}
+
+	/**
+	 * Get tooltip text for a source type badge.
+	 *
+	 * @param string $source_type Source type identifier.
+	 *
+	 * @return string Tooltip text.
 	 * @since 1.1.0
 	 */
-	private function render_subgroup( string $category_slug, string $subgroup_type, string $subgroup_label, array $abilities, array $disabled_abilities ): void {
-		$subgroup_key = $category_slug . '-' . $subgroup_type;
-		$toggle_id    = 'toggle-subgroup-' . sanitize_key( $subgroup_key );
+	private function get_source_tooltip( string $source_type ): string {
+		$tooltips = [
+			'core'        => __( 'Built into WordPress core', 'albert' ),
+			'albert'      => __( 'Provided by the Albert plugin', 'albert' ),
+			'premium'     => __( 'Requires Albert Pro', 'albert' ),
+			'third-party' => __( 'Provided by a third-party plugin', 'albert' ),
+		];
+
+		return $tooltips[ $source_type ] ?? '';
+	}
+
+	/**
+	 * Determine the primary source for a content type based on its abilities.
+	 *
+	 * @param array<string, object> $read_abilities  Read abilities.
+	 * @param array<string, object> $write_abilities Write abilities.
+	 *
+	 * @return array{type: string, label: string} Source info.
+	 * @since 1.2.0
+	 */
+	private function get_content_type_source( array $read_abilities, array $write_abilities ): array {
+		$all_abilities = array_merge( array_keys( $read_abilities ), array_keys( $write_abilities ) );
+
+		if ( empty( $all_abilities ) ) {
+			return [
+				'type'  => 'unknown',
+				'label' => '',
+			];
+		}
+
+		// Use the first ability to determine source.
+		return AbilitiesRegistry::get_ability_source( $all_abilities[0] );
+	}
+
+	/**
+	 * Render a content type row with Read and Write toggles.
+	 *
+	 * The row is expandable to show individual ability toggles for power users.
+	 *
+	 * @param string               $category_slug       Parent category slug.
+	 * @param string               $type_key            Content type key (e.g., 'posts', 'pages').
+	 * @param array<string, mixed> $type_data           Content type data.
+	 * @param array<string>        $disabled_abilities  Currently disabled ability slugs.
+	 *
+	 * @return void
+	 * @since 1.2.0
+	 */
+	private function render_content_type_row( string $category_slug, string $type_key, array $type_data, array $disabled_abilities ): void {
+		$label           = $type_data['label'];
+		$read_abilities  = $type_data['read_abilities'];
+		$write_abilities = $type_data['write_abilities'];
+		$read_premium    = $type_data['read_premium'];
+		$write_premium   = $type_data['write_premium'];
+
+		$row_id              = 'type-' . sanitize_key( $category_slug . '-' . $type_key );
+		$details_id          = $row_id . '-details';
+		$read_id             = $row_id . '-read';
+		$write_id            = $row_id . '-write';
+		$has_read            = ! empty( $read_abilities );
+		$has_write           = ! empty( $write_abilities );
+		$read_ability_names  = $has_read ? array_values( array_map( 'strval', array_keys( $read_abilities ) ) ) : [];
+		$write_ability_names = $has_write ? array_values( array_map( 'strval', array_keys( $write_abilities ) ) ) : [];
+		$read_enabled        = $has_read && $this->are_all_abilities_enabled( $read_ability_names, $disabled_abilities );
+		$write_enabled       = $has_write && $this->are_all_abilities_enabled( $write_ability_names, $disabled_abilities );
+
+		// Get source badge info.
+		$source = $this->get_content_type_source( $read_abilities, $write_abilities );
+
+		// Determine if this row has sub-items (more than 1 ability total).
+		$total_abilities = count( $read_abilities ) + count( $write_abilities );
+		$has_sub_items   = $total_abilities > 1;
 		?>
-		<div class="ability-subgroup" data-subgroup="<?php echo esc_attr( $subgroup_type ); ?>">
-			<div class="ability-subgroup-header">
-				<span class="ability-subgroup-label">
-					<span class="dashicons <?php echo esc_attr( 'write' === $subgroup_type ? 'dashicons-edit' : 'dashicons-visibility' ); ?>" aria-hidden="true"></span>
-					<?php echo esc_html( $subgroup_label ); ?>
-				</span>
-				<div class="ability-subgroup-toggle">
-					<label class="albert-toggle albert-toggle--small" for="<?php echo esc_attr( $toggle_id ); ?>">
-						<input
-								type="checkbox"
-								id="<?php echo esc_attr( $toggle_id ); ?>"
-								class="toggle-subgroup-abilities"
-								data-category="<?php echo esc_attr( $category_slug ); ?>"
-								data-subgroup="<?php echo esc_attr( $subgroup_type ); ?>"
-								aria-label="
-								<?php
-									/* translators: %s: subgroup name (Read or Write) */
-									echo esc_attr( sprintf( __( 'Enable all %s abilities', 'albert' ), $subgroup_label ) );
-								?>
-								"
-						/>
-						<span class="albert-toggle-slider" aria-hidden="true"></span>
-					</label>
+		<div class="ability-type-row ability-type-row--expandable" data-category="<?php echo esc_attr( $category_slug ); ?>" data-type="<?php echo esc_attr( $type_key ); ?>">
+			<div class="ability-type-header">
+				<button type="button" class="ability-type-expand" aria-expanded="false" aria-controls="<?php echo esc_attr( $details_id ); ?>">
+					<span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>
+				</button>
+
+				<div class="ability-type-label">
+					<?php echo esc_html( $label ); ?>
+					<span class="albert-source-badge albert-source-<?php echo esc_attr( $source['type'] ); ?>" title="<?php echo esc_attr( $this->get_source_tooltip( $source['type'] ) ); ?>">
+						<?php echo esc_html( $source['label'] ); ?>
+					</span>
+				</div>
+
+				<div class="ability-type-toggles">
+					<?php if ( $has_read ) : ?>
+						<div class="ability-type-toggle">
+							<?php if ( $read_premium ) : ?>
+								<label class="albert-toggle albert-toggle--disabled" for="<?php echo esc_attr( $read_id ); ?>">
+									<input
+										type="checkbox"
+										id="<?php echo esc_attr( $read_id ); ?>"
+										disabled
+										class="ability-group-checkbox"
+									/>
+									<span class="albert-toggle-slider" aria-hidden="true"></span>
+								</label>
+							<?php else : ?>
+								<label class="albert-toggle" for="<?php echo esc_attr( $read_id ); ?>">
+									<input
+										type="checkbox"
+										id="<?php echo esc_attr( $read_id ); ?>"
+										class="ability-group-checkbox"
+										data-category="<?php echo esc_attr( $category_slug ); ?>"
+										data-type="<?php echo esc_attr( $type_key ); ?>"
+										data-mode="read"
+										data-abilities="<?php echo esc_attr( (string) wp_json_encode( $read_ability_names ) ); ?>"
+										<?php checked( $read_enabled ); ?>
+									/>
+									<span class="albert-toggle-slider" aria-hidden="true"></span>
+								</label>
+							<?php endif; ?>
+							<label class="ability-type-toggle-label" for="<?php echo esc_attr( $read_id ); ?>">
+								<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
+								<?php esc_html_e( 'Read', 'albert' ); ?>
+							</label>
+							<?php if ( $read_premium ) : ?>
+								<span class="albert-premium-lock dashicons dashicons-lock" aria-hidden="true"></span>
+							<?php endif; ?>
+						</div>
+					<?php endif; ?>
+
+					<?php if ( $has_write ) : ?>
+						<div class="ability-type-toggle">
+							<?php if ( $write_premium ) : ?>
+								<label class="albert-toggle albert-toggle--disabled" for="<?php echo esc_attr( $write_id ); ?>">
+									<input
+										type="checkbox"
+										id="<?php echo esc_attr( $write_id ); ?>"
+										disabled
+										class="ability-group-checkbox"
+									/>
+									<span class="albert-toggle-slider" aria-hidden="true"></span>
+								</label>
+							<?php else : ?>
+								<label class="albert-toggle" for="<?php echo esc_attr( $write_id ); ?>">
+									<input
+										type="checkbox"
+										id="<?php echo esc_attr( $write_id ); ?>"
+										class="ability-group-checkbox"
+										data-category="<?php echo esc_attr( $category_slug ); ?>"
+										data-type="<?php echo esc_attr( $type_key ); ?>"
+										data-mode="write"
+										data-abilities="<?php echo esc_attr( (string) wp_json_encode( $write_ability_names ) ); ?>"
+										<?php checked( $write_enabled ); ?>
+									/>
+									<span class="albert-toggle-slider" aria-hidden="true"></span>
+								</label>
+							<?php endif; ?>
+							<label class="ability-type-toggle-label" for="<?php echo esc_attr( $write_id ); ?>">
+								<span class="dashicons dashicons-edit" aria-hidden="true"></span>
+								<?php esc_html_e( 'Write', 'albert' ); ?>
+							</label>
+							<?php if ( $write_premium ) : ?>
+								<span class="albert-premium-lock dashicons dashicons-lock" aria-hidden="true"></span>
+							<?php endif; ?>
+						</div>
+					<?php endif; ?>
 				</div>
 			</div>
-			<div class="ability-subgroup-items">
-				<?php foreach ( $abilities as $ability ) : ?>
-					<?php $this->render_ability_row( $ability, $disabled_abilities, $subgroup_type ); ?>
-				<?php endforeach; ?>
+
+			<div class="ability-type-details" id="<?php echo esc_attr( $details_id ); ?>" hidden>
+				<?php if ( $has_sub_items ) : ?>
+					<?php
+					// Render individual ability rows.
+					foreach ( $read_abilities as $ability_name => $ability ) {
+						$this->render_ability_item( $ability, $disabled_abilities, 'read', $read_id );
+					}
+					foreach ( $write_abilities as $ability_name => $ability ) {
+						$this->render_ability_item( $ability, $disabled_abilities, 'write', $write_id );
+					}
+					?>
+				<?php else : ?>
+					<?php
+					// Single ability - show description and hidden input.
+					$single_ability = ! empty( $read_abilities ) ? reset( $read_abilities ) : reset( $write_abilities );
+					$single_name    = ! empty( $read_abilities ) ? array_key_first( $read_abilities ) : array_key_first( $write_abilities );
+					$description    = is_object( $single_ability ) && method_exists( $single_ability, 'get_description' ) ? $single_ability->get_description() : '';
+					?>
+					<input type="hidden" name="albert_presented_abilities[]" value="<?php echo esc_attr( $single_name ); ?>" />
+					<?php if ( ! empty( $description ) ) : ?>
+						<p class="ability-type-description"><?php echo esc_html( $description ); ?></p>
+					<?php endif; ?>
+				<?php endif; ?>
 			</div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Render a single ability item within an expanded content type.
+	 *
+	 * @param object        $ability             Ability object.
+	 * @param array<string> $disabled_abilities  Currently disabled ability slugs.
+	 * @param string        $mode                Mode ('read' or 'write').
+	 * @param string        $group_checkbox_id   ID of the parent group checkbox.
+	 *
+	 * @return void
+	 * @since 1.2.0
+	 */
+	private function render_ability_item( object $ability, array $disabled_abilities, string $mode, string $group_checkbox_id ): void {
+		$name        = method_exists( $ability, 'get_name' ) ? $ability->get_name() : '';
+		$label       = method_exists( $ability, 'get_label' ) ? $ability->get_label() : $name;
+		$description = method_exists( $ability, 'get_description' ) ? $ability->get_description() : '';
+		$category    = method_exists( $ability, 'get_category' ) ? $ability->get_category() : '';
+
+		$is_premium = AbilitiesRegistry::is_premium_ability( $name );
+		$is_enabled = ! in_array( $name, $disabled_abilities, true );
+		$field_id   = 'ability-' . sanitize_key( str_replace( '/', '-', $name ) );
+
+		$row_classes = [ 'ability-item' ];
+		if ( $is_premium ) {
+			$row_classes[] = 'ability-item--premium';
+		}
+		?>
+		<div class="<?php echo esc_attr( implode( ' ', $row_classes ) ); ?>"
+			data-ability="<?php echo esc_attr( $name ); ?>"
+			data-category="<?php echo esc_attr( $category ); ?>"
+			data-mode="<?php echo esc_attr( $mode ); ?>">
+
+			<input type="hidden" name="albert_presented_abilities[]" value="<?php echo esc_attr( $name ); ?>" />
+
+			<div class="ability-item-toggle">
+				<?php if ( $is_premium ) : ?>
+					<label class="albert-toggle albert-toggle--disabled" for="<?php echo esc_attr( $field_id ); ?>">
+						<input
+							type="checkbox"
+							id="<?php echo esc_attr( $field_id ); ?>"
+							disabled
+							class="ability-checkbox"
+						/>
+						<span class="albert-toggle-slider" aria-hidden="true"></span>
+					</label>
+				<?php else : ?>
+					<label class="albert-toggle" for="<?php echo esc_attr( $field_id ); ?>">
+						<input
+							type="checkbox"
+							id="<?php echo esc_attr( $field_id ); ?>"
+							name="albert_enabled_on_page[]"
+							value="<?php echo esc_attr( $name ); ?>"
+							class="ability-checkbox ability-item-checkbox"
+							data-category="<?php echo esc_attr( $category ); ?>"
+							data-mode="<?php echo esc_attr( $mode ); ?>"
+							data-group-checkbox="<?php echo esc_attr( $group_checkbox_id ); ?>"
+							<?php if ( ! empty( $description ) ) : ?>
+								aria-describedby="<?php echo esc_attr( $field_id . '-description' ); ?>"
+							<?php endif; ?>
+							<?php checked( $is_enabled ); ?>
+						/>
+						<span class="albert-toggle-slider" aria-hidden="true"></span>
+					</label>
+				<?php endif; ?>
+			</div>
+			<div class="ability-item-content">
+				<label class="ability-item-label" for="<?php echo esc_attr( $field_id ); ?>">
+					<?php echo esc_html( $label ); ?>
+				</label>
+				<?php if ( ! empty( $description ) ) : ?>
+					<p class="ability-item-description" id="<?php echo esc_attr( $field_id . '-description' ); ?>">
+						<?php echo esc_html( $description ); ?>
+					</p>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Check if all abilities in a list are enabled.
+	 *
+	 * @param array<string> $abilities          List of ability names.
+	 * @param array<string> $disabled_abilities Currently disabled ability slugs.
+	 *
+	 * @return bool True if all abilities are enabled.
+	 * @since 1.2.0
+	 */
+	private function are_all_abilities_enabled( array $abilities, array $disabled_abilities ): bool {
+		foreach ( $abilities as $ability_name ) {
+			if ( in_array( $ability_name, $disabled_abilities, true ) ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/**
@@ -567,97 +900,6 @@ class Abilities implements Hookable {
 		}
 
 		return false;
-	}
-
-	/**
-	 * Render a single ability row.
-	 *
-	 * Every ability gets a toggle. Premium abilities have a disabled toggle.
-	 * Each row includes a hidden "presented" input so the sanitize callback
-	 * can compute disabled = presented - enabled.
-	 *
-	 * @param object        $ability             Ability object from WP Abilities API.
-	 * @param array<string> $disabled_abilities  Currently disabled ability slugs.
-	 * @param string        $subgroup            Subgroup type ('read' or 'write').
-	 *
-	 * @return void
-	 * @since 1.1.0
-	 */
-	private function render_ability_row( object $ability, array $disabled_abilities, string $subgroup = '' ): void {
-		$name        = method_exists( $ability, 'get_name' ) ? $ability->get_name() : '';
-		$label       = method_exists( $ability, 'get_label' ) ? $ability->get_label() : $name;
-		$description = method_exists( $ability, 'get_description' ) ? $ability->get_description() : '';
-		$category    = method_exists( $ability, 'get_category' ) ? $ability->get_category() : '';
-
-		$source     = AbilitiesRegistry::get_ability_source( $name );
-		$is_premium = AbilitiesRegistry::is_premium_ability( $name );
-		$is_enabled = ! in_array( $name, $disabled_abilities, true );
-
-		$field_id = 'ability-' . sanitize_key( str_replace( '/', '-', $name ) );
-
-		$row_classes = [ 'ability-item' ];
-		if ( $is_premium ) {
-			$row_classes[] = 'ability-item--premium';
-		}
-		?>
-		<div class="<?php echo esc_attr( implode( ' ', $row_classes ) ); ?>"
-			data-source="<?php echo esc_attr( $source['type'] ); ?>"
-			data-ability="<?php echo esc_attr( $name ); ?>"
-			data-category="<?php echo esc_attr( $category ); ?>">
-
-			<?php // Track that this ability was presented on the form. ?>
-			<input type="hidden" name="albert_presented_abilities[]" value="<?php echo esc_attr( $name ); ?>" />
-
-			<div class="ability-item-toggle">
-				<?php if ( $is_premium ) : ?>
-					<label class="albert-toggle albert-toggle--disabled" for="<?php echo esc_attr( $field_id ); ?>">
-						<input
-								type="checkbox"
-								id="<?php echo esc_attr( $field_id ); ?>"
-								disabled
-								class="ability-checkbox"
-						/>
-						<span class="albert-toggle-slider" aria-hidden="true"></span>
-					</label>
-				<?php else : ?>
-					<label class="albert-toggle" for="<?php echo esc_attr( $field_id ); ?>">
-						<input
-								type="checkbox"
-								id="<?php echo esc_attr( $field_id ); ?>"
-								name="albert_enabled_on_page[]"
-								value="<?php echo esc_attr( $name ); ?>"
-								class="ability-checkbox ability-checkbox-category"
-								data-category="<?php echo esc_attr( $category ); ?>"
-								data-subgroup="<?php echo esc_attr( $subgroup ); ?>"
-								<?php if ( ! empty( $description ) ) : ?>
-									aria-describedby="<?php echo esc_attr( $field_id . '-description' ); ?>"
-								<?php endif; ?>
-								<?php checked( $is_enabled ); ?>
-						/>
-						<span class="albert-toggle-slider" aria-hidden="true"></span>
-					</label>
-				<?php endif; ?>
-			</div>
-			<div class="ability-item-content">
-				<div class="ability-item-header">
-					<label class="ability-item-label" for="<?php echo esc_attr( $field_id ); ?>">
-						<?php echo esc_html( $label ); ?>
-					</label>
-					<span class="albert-source-badge albert-source-<?php echo esc_attr( $source['type'] ); ?>" aria-label="<?php echo esc_attr( $this->get_source_tooltip( $source['type'] ) ); ?>">
-						<?php echo esc_html( $source['label'] ); ?>
-					</span>
-					<?php if ( $is_premium ) : ?>
-						<span class="albert-premium-lock dashicons dashicons-lock" aria-hidden="true"></span>
-					<?php endif; ?>
-				</div>
-				<?php if ( ! empty( $description ) ) : ?>
-					<p class="ability-item-description" id="<?php echo esc_attr( $field_id . '-description' ); ?>">
-						<?php echo esc_html( $description ); ?>
-					</p>
-				<?php endif; ?>
-			</div>
-		</div>
-		<?php
 	}
 
 	/**

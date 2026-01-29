@@ -50,16 +50,148 @@ const DirtyStateModule = {
 };
 
 /**
- * Toggle functionality for ability categories.
+ * Toggle functionality for ability categories (simplified UI with grouped toggles).
  */
 const ToggleModule = {
 	init() {
+		this.handleGroupCheckboxes();
+		this.handleIndividualCheckboxes();
 		this.handleCategoryToggleAll();
-		this.handleSubgroupToggleAll();
-		this.handleIndividualToggles();
+		this.handleContentTypeExpand();
 		this.initializeToggleStates();
 	},
 
+	/**
+	 * Handle group checkbox changes (Read/Write toggles per content type).
+	 * Each group checkbox controls multiple abilities via data-abilities attribute.
+	 */
+	handleGroupCheckboxes() {
+		document.querySelectorAll( '.ability-group-checkbox' ).forEach( ( checkbox ) => {
+			checkbox.addEventListener( 'change', ( e ) => {
+				const abilities = JSON.parse( e.target.dataset.abilities || '[]' );
+				const isChecked = e.target.checked;
+				const category = e.target.dataset.category;
+
+				// Sync individual checkboxes if details panel is expanded.
+				this.syncIndividualCheckboxes( checkbox.id, abilities, isChecked );
+
+				// Sync hidden inputs for abilities not shown in expanded panel.
+				this.syncHiddenInputsForGroup( checkbox, abilities, isChecked );
+
+				this.updateCategoryToggleState( category );
+			} );
+		} );
+	},
+
+	/**
+	 * Handle individual ability checkbox changes within expanded panels.
+	 */
+	handleIndividualCheckboxes() {
+		document.addEventListener( 'change', ( e ) => {
+			if ( ! e.target.classList.contains( 'ability-item-checkbox' ) ) {
+				return;
+			}
+
+			const groupCheckboxId = e.target.dataset.groupCheckbox;
+			if ( ! groupCheckboxId ) {
+				return;
+			}
+
+			// Update the group checkbox state based on individual checkboxes.
+			this.updateGroupCheckboxState( groupCheckboxId );
+		} );
+	},
+
+	/**
+	 * Sync individual checkboxes when group checkbox changes.
+	 */
+	syncIndividualCheckboxes( groupCheckboxId, abilities, isChecked ) {
+		abilities.forEach( ( abilityName ) => {
+			const checkbox = document.querySelector(
+				`.ability-item-checkbox[data-group-checkbox="${ groupCheckboxId }"][value="${ abilityName }"]`
+			);
+			if ( checkbox && checkbox.checked !== isChecked ) {
+				checkbox.checked = isChecked;
+			}
+		} );
+	},
+
+	/**
+	 * Sync hidden inputs for abilities when a group is toggled.
+	 * Only needed for single-ability types without expanded panel.
+	 */
+	syncHiddenInputsForGroup( checkbox, abilities, isChecked ) {
+		const form = document.getElementById( 'albert-form' );
+		if ( ! form ) {
+			return;
+		}
+
+		abilities.forEach( ( abilityName ) => {
+			// Skip if there's already a visible checkbox for this ability.
+			const visibleCheckbox = form.querySelector(
+				`.ability-item-checkbox[value="${ abilityName }"]`
+			);
+			if ( visibleCheckbox ) {
+				return;
+			}
+
+			// Find or create the hidden input for this ability.
+			let input = form.querySelector(
+				`input[type="hidden"][name="albert_enabled_on_page[]"][value="${ abilityName }"]`
+			);
+
+			if ( isChecked && ! input ) {
+				// Create hidden input for enabled ability.
+				input = document.createElement( 'input' );
+				input.type = 'hidden';
+				input.name = 'albert_enabled_on_page[]';
+				input.value = abilityName;
+				input.dataset.groupCheckbox = checkbox.id;
+				form.appendChild( input );
+			} else if ( ! isChecked && input && input.type === 'hidden' ) {
+				// Remove hidden input for disabled ability.
+				input.remove();
+			}
+		} );
+	},
+
+	/**
+	 * Update group checkbox state based on individual checkboxes.
+	 * Sets indeterminate state when some (but not all) are checked.
+	 */
+	updateGroupCheckboxState( groupCheckboxId ) {
+		const groupCheckbox = document.getElementById( groupCheckboxId );
+		if ( ! groupCheckbox ) {
+			return;
+		}
+
+		const abilities = JSON.parse( groupCheckbox.dataset.abilities || '[]' );
+		const individualCheckboxes = abilities.map( ( name ) =>
+			document.querySelector( `.ability-item-checkbox[value="${ name }"]` )
+		).filter( Boolean );
+
+		if ( individualCheckboxes.length === 0 ) {
+			return;
+		}
+
+		const checkedCount = individualCheckboxes.filter( ( cb ) => cb.checked ).length;
+		const allChecked = checkedCount === individualCheckboxes.length;
+		const noneChecked = checkedCount === 0;
+
+		// Set indeterminate state for partial selection.
+		groupCheckbox.indeterminate = ! allChecked && ! noneChecked;
+		groupCheckbox.checked = allChecked;
+
+		// Update category toggle.
+		const category = groupCheckbox.dataset.category;
+		if ( category ) {
+			this.updateCategoryToggleState( category );
+		}
+	},
+
+	/**
+	 * Handle category "Enable All" toggle.
+	 */
 	handleCategoryToggleAll() {
 		document.querySelectorAll( '.toggle-category-abilities' ).forEach( ( toggle ) => {
 			toggle.addEventListener( 'change', ( e ) => {
@@ -69,14 +201,13 @@ const ToggleModule = {
 				// If enabling, check for unchecked write abilities and confirm.
 				if ( isChecked ) {
 					const writeCheckboxes = document.querySelectorAll(
-						`.ability-checkbox-category[data-category="${ category }"][data-subgroup="write"]`
+						`.ability-group-checkbox[data-category="${ category }"][data-mode="write"]:not(:checked)`
 					);
-					const uncheckedWrites = Array.from( writeCheckboxes ).filter( ( cb ) => ! cb.checked );
 
-					if ( uncheckedWrites.length > 0 ) {
+					if ( writeCheckboxes.length > 0 ) {
 						const i18n = window.albertAdmin?.i18n || {};
 						const msg = i18n.enableAllWriteConfirm ||
-							`This will enable ${ uncheckedWrites.length } write ability(ies) (create, update, delete). Continue?`;
+							`This will enable ${ writeCheckboxes.length } write ability group(s) (create, update, delete). Continue?`;
 
 						if ( ! window.confirm( msg ) ) {
 							e.target.checked = false;
@@ -85,59 +216,51 @@ const ToggleModule = {
 					}
 				}
 
-				document.querySelectorAll( `.ability-checkbox-category[data-category="${ category }"]` ).forEach( ( checkbox ) => {
-					checkbox.checked = isChecked;
-				} );
-
-				// Sync subgroup toggles.
-				document.querySelectorAll( `.toggle-subgroup-abilities[data-category="${ category }"]` ).forEach( ( subToggle ) => {
-					subToggle.checked = isChecked;
+				// Toggle all group checkboxes in this category.
+				document.querySelectorAll( `.ability-group-checkbox[data-category="${ category }"]` ).forEach( ( checkbox ) => {
+					if ( checkbox.checked !== isChecked ) {
+						checkbox.checked = isChecked;
+						checkbox.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+					}
 				} );
 			} );
 		} );
 	},
 
-	handleSubgroupToggleAll() {
-		document.querySelectorAll( '.toggle-subgroup-abilities' ).forEach( ( toggle ) => {
-			toggle.addEventListener( 'change', ( e ) => {
-				const category = e.target.dataset.category;
-				const subgroup = e.target.dataset.subgroup;
-				const isChecked = e.target.checked;
+	/**
+	 * Handle expand/collapse of content type rows.
+	 */
+	handleContentTypeExpand() {
+		document.querySelectorAll( '.ability-type-expand' ).forEach( ( button ) => {
+			button.addEventListener( 'click', () => {
+				const isExpanded = button.getAttribute( 'aria-expanded' ) === 'true';
+				const detailsId = button.getAttribute( 'aria-controls' );
+				const details = document.getElementById( detailsId );
 
-				document.querySelectorAll( `.ability-checkbox-category[data-category="${ category }"][data-subgroup="${ subgroup }"]` ).forEach( ( checkbox ) => {
-					checkbox.checked = isChecked;
-				} );
+				button.setAttribute( 'aria-expanded', String( ! isExpanded ) );
 
-				// Update the parent category toggle.
-				this.updateCategoryToggleState( category );
+				if ( details ) {
+					details.hidden = isExpanded;
+				}
 			} );
 		} );
 	},
 
-	handleIndividualToggles() {
-		document.querySelectorAll( '.ability-checkbox-category' ).forEach( ( checkbox ) => {
-			checkbox.addEventListener( 'change', ( e ) => {
-				const category = e.target.dataset.category;
-				const subgroup = e.target.dataset.subgroup;
-
-				this.updateSubgroupToggleState( category, subgroup );
-				this.updateCategoryToggleState( category );
-			} );
-		} );
-	},
-
+	/**
+	 * Initialize toggle states on page load.
+	 */
 	initializeToggleStates() {
-		const processedCategories = new Set();
-		const processedSubgroups = new Set();
-
-		document.querySelectorAll( '.toggle-subgroup-abilities' ).forEach( ( toggle ) => {
-			const key = toggle.dataset.category + '-' + toggle.dataset.subgroup;
-			if ( ! processedSubgroups.has( key ) ) {
-				processedSubgroups.add( key );
-				this.updateSubgroupToggleState( toggle.dataset.category, toggle.dataset.subgroup );
-			}
+		// Sync hidden inputs for checked group checkboxes without expanded panels.
+		document.querySelectorAll( '.ability-group-checkbox:checked' ).forEach( ( checkbox ) => {
+			const abilities = JSON.parse( checkbox.dataset.abilities || '[]' );
+			this.syncHiddenInputsForGroup( checkbox, abilities, true );
 		} );
 
+		// Initialize indeterminate states for group checkboxes based on individual abilities.
+		this.initializeIndeterminateStates();
+
+		// Update category toggle states.
+		const processedCategories = new Set();
 		document.querySelectorAll( '.toggle-category-abilities' ).forEach( ( toggle ) => {
 			const category = toggle.dataset.category;
 			if ( ! processedCategories.has( category ) ) {
@@ -147,8 +270,53 @@ const ToggleModule = {
 		} );
 	},
 
+	/**
+	 * Initialize indeterminate states for group checkboxes.
+	 * Checks if individual ability checkboxes have mixed states.
+	 */
+	initializeIndeterminateStates() {
+		document.querySelectorAll( '.ability-group-checkbox' ).forEach( ( groupCheckbox ) => {
+			const abilities = JSON.parse( groupCheckbox.dataset.abilities || '[]' );
+
+			// Check if there are individual checkboxes for these abilities.
+			const individualCheckboxes = abilities.map( ( name ) =>
+				document.querySelector( `.ability-item-checkbox[value="${ name }"]` )
+			).filter( Boolean );
+
+			// If no individual checkboxes exist, check hidden presented inputs vs enabled.
+			if ( individualCheckboxes.length === 0 ) {
+				const form = document.getElementById( 'albert-form' );
+				if ( ! form ) {
+					return;
+				}
+
+				const enabledCount = abilities.filter( ( name ) =>
+					form.querySelector( `input[name="albert_enabled_on_page[]"][value="${ name }"]` )
+				).length;
+
+				const allEnabled = enabledCount === abilities.length;
+				const noneEnabled = enabledCount === 0;
+
+				groupCheckbox.indeterminate = ! allEnabled && ! noneEnabled;
+				// Note: checked state is already set from PHP.
+			} else {
+				// Use individual checkboxes to determine state.
+				const checkedCount = individualCheckboxes.filter( ( cb ) => cb.checked ).length;
+				const allChecked = checkedCount === individualCheckboxes.length;
+				const noneChecked = checkedCount === 0;
+
+				groupCheckbox.indeterminate = ! allChecked && ! noneChecked;
+				groupCheckbox.checked = allChecked;
+			}
+		} );
+	},
+
+	/**
+	 * Update category toggle state based on group checkboxes.
+	 * Sets indeterminate state when some (but not all) groups are fully enabled.
+	 */
 	updateCategoryToggleState( category ) {
-		const checkboxes = document.querySelectorAll( `.ability-checkbox-category[data-category="${ category }"]` );
+		const checkboxes = document.querySelectorAll( `.ability-group-checkbox[data-category="${ category }"]` );
 		const toggleAll = document.querySelector( `.toggle-category-abilities[data-category="${ category }"]` );
 
 		if ( checkboxes.length === 0 || ! toggleAll ) {
@@ -156,23 +324,13 @@ const ToggleModule = {
 		}
 
 		const checkedCount = Array.from( checkboxes ).filter( ( cb ) => cb.checked ).length;
-		toggleAll.checked = checkedCount === checkboxes.length;
-	},
+		const hasIndeterminate = Array.from( checkboxes ).some( ( cb ) => cb.indeterminate );
+		const allChecked = checkedCount === checkboxes.length;
+		const noneChecked = checkedCount === 0;
 
-	updateSubgroupToggleState( category, subgroup ) {
-		if ( ! subgroup ) {
-			return;
-		}
-
-		const checkboxes = document.querySelectorAll( `.ability-checkbox-category[data-category="${ category }"][data-subgroup="${ subgroup }"]` );
-		const toggleAll = document.querySelector( `.toggle-subgroup-abilities[data-category="${ category }"][data-subgroup="${ subgroup }"]` );
-
-		if ( checkboxes.length === 0 || ! toggleAll ) {
-			return;
-		}
-
-		const checkedCount = Array.from( checkboxes ).filter( ( cb ) => cb.checked ).length;
-		toggleAll.checked = checkedCount === checkboxes.length;
+		// Indeterminate if any group is indeterminate, or if some groups are checked.
+		toggleAll.indeterminate = hasIndeterminate || ( ! allChecked && ! noneChecked );
+		toggleAll.checked = allChecked && ! hasIndeterminate;
 	},
 };
 
@@ -300,28 +458,18 @@ const CollapseModule = {
 };
 
 /**
- * Ability item click-to-toggle functionality.
+ * Content type row click-to-toggle functionality.
  */
-const AbilityItemModule = {
+const ContentTypeRowModule = {
 	init() {
-		document.querySelectorAll( '.ability-item' ).forEach( ( item ) => {
-			item.addEventListener( 'click', ( e ) => {
+		document.querySelectorAll( '.ability-type-row' ).forEach( ( row ) => {
+			row.addEventListener( 'click', ( e ) => {
 				// Let native label/input behavior handle clicks on those elements.
 				if ( e.target.closest( 'label' ) || e.target.closest( 'input' ) ) {
 					return;
 				}
 
-				// Skip premium items.
-				if ( item.classList.contains( 'ability-item--premium' ) ) {
-					return;
-				}
-
-				// For clicks elsewhere (description, padding, etc.), toggle the checkbox.
-				const checkbox = item.querySelector( '.ability-checkbox:not(:disabled)' );
-				if ( checkbox ) {
-					checkbox.checked = ! checkbox.checked;
-					checkbox.dispatchEvent( new Event( 'change', { bubbles: true } ) );
-				}
+				// Don't toggle on row click - let users click specific toggles.
 			} );
 		} );
 	},
@@ -580,7 +728,7 @@ function init() {
 	initLiveRegion();
 	ToggleModule.init();
 	CollapseModule.init();
-	AbilityItemModule.init();
+	ContentTypeRowModule.init();
 	ClipboardModule.init();
 	ModalModule.init();
 	DirtyStateModule.init();

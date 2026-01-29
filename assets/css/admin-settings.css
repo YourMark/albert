@@ -239,6 +239,7 @@
 /* Main content area */
 .albert-main-content {
 	min-width: 0;
+	max-width: 80rem;
 }
 
 /* Tab navigation */
@@ -620,6 +621,28 @@
 	transform: translateX(12px);
 }
 
+/* Indeterminate state - partial selection */
+.albert-toggle input:indeterminate + .albert-toggle-slider {
+	background-color: var(--albert-primary-60);
+}
+
+.albert-toggle input:indeterminate + .albert-toggle-slider:before {
+	transform: translateX(6px);
+}
+
+/* Indeterminate indicator dash */
+.albert-toggle input:indeterminate + .albert-toggle-slider::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 8px;
+	height: 2px;
+	background-color: var(--albert-bg-white);
+	border-radius: 1px;
+}
+
 /* Category description in header */
 .ability-group-description {
 	font-size: var(--albert-font-sm);
@@ -833,6 +856,165 @@
 
 .ability-subgroup-toggle-all > label:last-child {
 	cursor: pointer;
+}
+
+/* Content type rows - simplified abilities UI */
+.ability-type-row {
+	border-radius: var(--albert-border-radius);
+	transition: background-color var(--albert-transition);
+}
+
+.ability-type-row + .ability-type-row {
+	border-top: 1px solid var(--albert-border-light);
+}
+
+.ability-type-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--albert-spacing-sm) 0;
+	gap: var(--albert-spacing-sm);
+}
+
+/* Expand button */
+.ability-type-expand {
+	background: none;
+	border: none;
+	padding: 2px;
+	margin: 0;
+	cursor: pointer;
+	color: var(--albert-text-secondary);
+	display: flex;
+	align-items: center;
+	border-radius: var(--albert-border-radius);
+	transition: background-color var(--albert-transition), transform var(--albert-transition);
+	flex-shrink: 0;
+}
+
+.ability-type-expand .dashicons {
+	font-size: var(--albert-font-xl);
+	width: 16px;
+	height: 16px;
+	transition: transform 0.2s ease-out;
+}
+
+.ability-type-expand:hover {
+	color: var(--albert-primary);
+}
+
+.ability-type-expand[aria-expanded="true"] .dashicons {
+	transform: rotate(90deg);
+}
+
+.ability-type-label {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: var(--albert-spacing-sm);
+	font-size: var(--albert-font-md);
+	font-weight: 500;
+	color: var(--albert-text-primary);
+	min-width: 0;
+}
+
+.ability-type-label .albert-source-badge {
+	flex-shrink: 0;
+}
+
+.ability-type-toggles {
+	display: flex;
+	align-items: center;
+	gap: var(--albert-spacing-xl);
+	flex-shrink: 0;
+}
+
+.ability-type-toggle {
+	display: flex;
+	align-items: center;
+	gap: var(--albert-spacing-xs);
+}
+
+.ability-type-toggle-label {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	font-size: var(--albert-font-sm);
+	color: var(--albert-text-secondary);
+	cursor: pointer;
+	user-select: none;
+}
+
+.ability-type-toggle-label .dashicons {
+	font-size: var(--albert-font-md);
+	width: 14px;
+	height: 14px;
+}
+
+/* Read toggle styling */
+.ability-type-toggle:has([data-mode="read"]) .ability-type-toggle-label {
+	color: var(--albert-primary);
+}
+
+/* Write toggle styling */
+.ability-type-toggle:has([data-mode="write"]) .ability-type-toggle-label {
+	color: var(--albert-warning);
+}
+
+/* Premium lock in type row */
+.ability-type-toggle .albert-premium-lock {
+	margin-left: 2px;
+}
+
+/* Expanded details panel */
+.ability-type-details {
+	padding: var(--albert-spacing-sm) var(--albert-spacing-md) var(--albert-spacing-md) calc(var(--albert-spacing-md) + 24px);
+}
+
+.ability-type-details[hidden] {
+	display: none;
+}
+
+.ability-type-description {
+	margin: 0;
+	font-size: var(--albert-font-sm);
+	color: var(--albert-text-secondary);
+	line-height: 1.5;
+}
+
+.ability-type-details .ability-item {
+	margin-top: var(--albert-spacing-xs);
+	border-bottom: 1px solid var(--albert-border-light);
+	border-radius: 0;
+}
+
+.ability-type-details .ability-item:first-child {
+	margin-top: 0;
+}
+
+.ability-type-details .ability-item:last-child {
+	border-bottom: none;
+}
+
+/* Responsive: Stack toggles on smaller screens */
+@media screen and (max-width: 600px) {
+	.ability-type-header {
+		flex-wrap: wrap;
+	}
+
+	.ability-type-label {
+		flex-basis: calc(100% - 30px);
+	}
+
+	.ability-type-toggles {
+		width: 100%;
+		justify-content: flex-start;
+		gap: var(--albert-spacing-lg);
+		margin-left: 24px;
+	}
+
+	.ability-type-details {
+		padding-left: var(--albert-spacing-md);
+	}
 }
 
 /* Settings page grid */
