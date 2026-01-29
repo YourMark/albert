@@ -458,24 +458,6 @@ const CollapseModule = {
 };
 
 /**
- * Content type row click-to-toggle functionality.
- */
-const ContentTypeRowModule = {
-	init() {
-		document.querySelectorAll( '.ability-type-row' ).forEach( ( row ) => {
-			row.addEventListener( 'click', ( e ) => {
-				// Let native label/input behavior handle clicks on those elements.
-				if ( e.target.closest( 'label' ) || e.target.closest( 'input' ) ) {
-					return;
-				}
-
-				// Don't toggle on row click - let users click specific toggles.
-			} );
-		} );
-	},
-};
-
-/**
  * Clipboard functionality for copy buttons and text.
  */
 const ClipboardModule = {
@@ -566,162 +548,6 @@ const ClipboardModule = {
 };
 
 /**
- * OAuth client modal functionality.
- */
-const ModalModule = {
-	init() {
-		const modal = document.getElementById( 'albert-oauth-client-modal' );
-		if ( ! modal ) {
-			return;
-		}
-
-		this.modal = modal;
-		this.form = document.getElementById( 'albert-client-form' );
-		this.created = document.getElementById( 'albert-client-created' );
-		this.spinner = modal.querySelector( '.spinner' );
-
-		this.bindEvents();
-	},
-
-	bindEvents() {
-		// Open modal.
-		document.addEventListener( 'click', ( e ) => {
-			if ( e.target.closest( '#albert-add-client' ) ) {
-				e.preventDefault();
-				this.openModal();
-			}
-		} );
-
-		// Close modal.
-		document.addEventListener( 'click', ( e ) => {
-			if ( e.target.closest( '.albert-modal-close' ) || e.target.closest( '#albert-close-modal-btn' ) ) {
-				this.closeModal();
-			}
-		} );
-
-		// Close on backdrop click.
-		this.modal.addEventListener( 'click', ( e ) => {
-			if ( e.target.classList.contains( 'albert-modal' ) ) {
-				this.closeModal();
-			}
-		} );
-
-		// Close on ESC key.
-		document.addEventListener( 'keydown', ( e ) => {
-			if ( e.key === 'Escape' && this.modal.style.display !== 'none' ) {
-				this.closeModal();
-			}
-		} );
-
-		// Create client.
-		document.addEventListener( 'click', ( e ) => {
-			if ( e.target.closest( '#albert-create-client-btn' ) ) {
-				this.createClient();
-			}
-		} );
-	},
-
-	openModal() {
-		if ( this.form ) {
-			this.form.style.display = '';
-		}
-		if ( this.created ) {
-			this.created.style.display = 'none';
-		}
-
-		const userSelect = document.getElementById( 'albert-client-user' );
-		const nameInput = document.getElementById( 'albert-client-name' );
-
-		if ( userSelect ) {
-			userSelect.value = '';
-		}
-		if ( nameInput ) {
-			nameInput.value = '';
-		}
-
-		this.modal.style.display = '';
-		userSelect?.focus();
-	},
-
-	closeModal() {
-		this.modal.style.display = 'none';
-
-		if ( this.created && this.created.style.display !== 'none' ) {
-			window.location.reload();
-		}
-	},
-
-	async createClient() {
-		const userSelect = document.getElementById( 'albert-client-user' );
-		const nameInput = document.getElementById( 'albert-client-name' );
-		const userId = userSelect?.value;
-		const name = nameInput?.value.trim();
-
-		if ( ! userId ) {
-			userSelect?.focus();
-			return;
-		}
-
-		if ( ! name ) {
-			nameInput?.focus();
-			return;
-		}
-
-		if ( this.spinner ) {
-			this.spinner.classList.add( 'is-active' );
-		}
-
-		const adminData = window.albertAdmin || {};
-		const i18n = adminData.i18n || { createError: 'Error creating client' };
-
-		try {
-			const formData = new FormData();
-			formData.append( 'action', 'ea_create_oauth_client' );
-			formData.append( 'nonce', adminData.nonce || '' );
-			formData.append( 'user_id', userId );
-			formData.append( 'name', name );
-
-			const response = await fetch( adminData.ajaxUrl || '/wp-admin/admin-ajax.php', {
-				method: 'POST',
-				body: formData,
-			} );
-
-			const data = await response.json();
-
-			if ( this.spinner ) {
-				this.spinner.classList.remove( 'is-active' );
-			}
-
-			if ( data.success ) {
-				const clientIdEl = document.getElementById( 'albert-new-client-id' );
-				const clientSecretEl = document.getElementById( 'albert-new-client-secret' );
-
-				if ( clientIdEl ) {
-					clientIdEl.textContent = data.data.client_id;
-				}
-				if ( clientSecretEl ) {
-					clientSecretEl.textContent = data.data.client_secret;
-				}
-
-				if ( this.form ) {
-					this.form.style.display = 'none';
-				}
-				if ( this.created ) {
-					this.created.style.display = '';
-				}
-			} else {
-				alert( data.data?.message || i18n.createError );
-			}
-		} catch {
-			if ( this.spinner ) {
-				this.spinner.classList.remove( 'is-active' );
-			}
-			alert( i18n.createError );
-		}
-	},
-};
-
-/**
  * Disconnect dialog — populates and shows a native dialog for disconnect actions.
  */
 const DisconnectModule = {
@@ -773,9 +599,7 @@ function init() {
 	initLiveRegion();
 	ToggleModule.init();
 	CollapseModule.init();
-	ContentTypeRowModule.init();
 	ClipboardModule.init();
-	ModalModule.init();
 	DirtyStateModule.init();
 	DisconnectModule.init();
 }

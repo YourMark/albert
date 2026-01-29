@@ -1404,116 +1404,6 @@
 	margin-bottom: 0;
 }
 
-/* Modal styles */
-.albert-modal {
-	position: fixed;
-	inset: 0;
-	z-index: 100100;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: var(--albert-modal-backdrop);
-}
-
-.albert-modal-content {
-	background: var(--albert-bg-white);
-	border-radius: var(--albert-border-radius);
-	box-shadow: 0 5px 15px var(--albert-black-30);
-	max-width: 500px;
-	width: 90%;
-	max-height: 90vh;
-	overflow-y: auto;
-}
-
-.albert-modal-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--albert-spacing-md) var(--albert-spacing-lg);
-	border-bottom: 1px solid var(--albert-border);
-}
-
-.albert-modal-header h2 {
-	margin: 0;
-	font-size: var(--albert-font-2xl);
-}
-
-.albert-modal-close {
-	background: none;
-	border: none;
-	cursor: pointer;
-	padding: 0;
-	color: var(--albert-text-secondary);
-	display: flex;
-	align-items: center;
-}
-
-.albert-modal-close:hover {
-	color: var(--albert-text-primary);
-}
-
-.albert-modal-close:focus-visible {
-	outline: 2px solid var(--albert-primary);
-	outline-offset: 2px;
-}
-
-.albert-modal-body {
-	padding: var(--albert-spacing-lg);
-}
-
-.albert-modal-body p {
-	margin-bottom: var(--albert-spacing-md);
-}
-
-.albert-modal-body label {
-	display: block;
-	font-weight: 500;
-	margin-bottom: 4px;
-}
-
-.albert-modal-body input.regular-text {
-	width: 100%;
-}
-
-.albert-modal-body .description {
-	display: block;
-	margin-top: 4px;
-	color: var(--albert-text-secondary);
-	font-size: var(--albert-font-sm);
-}
-
-.albert-modal-body .submit {
-	margin-top: var(--albert-spacing-lg);
-	padding-top: var(--albert-spacing-md);
-	border-top: 1px solid var(--albert-border-light);
-}
-
-.albert-modal-body .spinner {
-	float: none;
-	margin-left: var(--albert-spacing-xs);
-}
-
-.albert-modal-body .spinner.is-active {
-	visibility: visible;
-}
-
-.albert-modal-body .form-table {
-	margin: var(--albert-spacing-md) 0;
-}
-
-.albert-modal-body .form-table th {
-	padding: var(--albert-spacing-xs) 0;
-	width: 120px;
-}
-
-.albert-modal-body .form-table td {
-	padding: var(--albert-spacing-xs) 0;
-}
-
-.albert-modal-body .notice {
-	margin: 0 0 var(--albert-spacing-md) 0;
-}
-
 /* Responsive - Large tablets and below */
 @media screen and (max-width: 1200px) {
 	.albert-page-layout {
@@ -1593,11 +1483,6 @@
 
 	.ability-item {
 		padding: var(--albert-spacing-sm) var(--albert-spacing-xs);
-	}
-
-	.albert-modal-content {
-		width: 95%;
-		margin: var(--albert-spacing-md);
 	}
 
 	.albert-oauth-info-box .form-table th {
@@ -2092,34 +1977,6 @@
 	white-space: normal;
 }
 
-/* Empty connections state */
-.albert-empty-connections {
-	text-align: center;
-	padding: 60px 40px;
-}
-
-.albert-empty-connections .dashicons {
-	font-size: var(--albert-font-5xl);
-	width: 64px;
-	height: 64px;
-	color: var(--albert-text-secondary);
-	opacity: 0.3;
-	margin-bottom: var(--albert-spacing-lg);
-}
-
-.albert-empty-connections h3 {
-	font-size: var(--albert-font-2xl);
-	margin: 0 0 var(--albert-spacing-sm) 0;
-	color: var(--albert-text-primary);
-}
-
-.albert-empty-connections p {
-	font-size: var(--albert-font-md);
-	color: var(--albert-text-secondary);
-	margin: 0 0 20px 0;
-	line-height: 1.6;
-}
-
 /* Endpoint Bar (compact, for Connections page) */
 .albert-endpoint-bar {
 	display: flex;
@@ -2405,10 +2262,6 @@
 	.albert-connections-table-actions {
 		text-align: left;
 		padding-top: var(--albert-spacing-sm);
-	}
-
-	.albert-empty-connections {
-		padding: 40px 20px;
 	}
 
 	.albert-endpoint-bar {

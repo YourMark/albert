@@ -136,6 +136,11 @@ class Connections implements Hookable {
 			wp_die( esc_html__( 'Security check failed.', 'albert' ) );
 		}
 
+		// Check permissions.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to revoke sessions.', 'albert' ) );
+		}
+
 		global $wpdb;
 		$table = $wpdb->prefix . 'albert_oauth_access_tokens';
 
@@ -186,6 +191,11 @@ class Connections implements Hookable {
 		// Verify nonce.
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ?? '' ) ), 'revoke_full_session_' . $token_id ) ) {
 			wp_die( esc_html__( 'Security check failed.', 'albert' ) );
+		}
+
+		// Check permissions.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to end sessions.', 'albert' ) );
 		}
 
 		global $wpdb;
@@ -247,6 +257,11 @@ class Connections implements Hookable {
 		// Verify nonce.
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ?? '' ) ), 'revoke_all_my_sessions' ) ) {
 			wp_die( esc_html__( 'Security check failed.', 'albert' ) );
+		}
+
+		// Check permissions.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to revoke sessions.', 'albert' ) );
 		}
 
 		Settings::revoke_user_tokens( get_current_user_id() );
