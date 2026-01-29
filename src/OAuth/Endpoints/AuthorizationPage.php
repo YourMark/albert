@@ -15,6 +15,7 @@ namespace Albert\OAuth\Endpoints;
 defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
+use Albert\Core\Limits;
 use Albert\OAuth\Entities\UserEntity;
 use Albert\OAuth\Repositories\ClientRepository;
 use Albert\OAuth\Server\AuthorizationServerFactory;
@@ -166,6 +167,12 @@ class AuthorizationPage implements Hookable {
 
 		if ( ! in_array( $current_user->ID, $allowed_users, true ) ) {
 			$this->render_access_denied_page( $current_user );
+			return;
+		}
+
+		// Check connection limit.
+		if ( ! Limits::can_add_connection( $current_user->ID ) ) {
+			$this->render_connection_limit_page();
 			return;
 		}
 
@@ -583,6 +590,95 @@ class AuthorizationPage implements Hookable {
 		</div>
 		<p class="contact-admin">
 			<?php esc_html_e( 'Please contact your site administrator to request access.', 'albert' ); ?>
+		</p>
+	</div>
+</body>
+</html>
+		<?php
+		exit;
+	}
+
+	/**
+	 * Render the connection limit page.
+	 *
+	 * Shown when a user has reached their maximum number of active connections.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private function render_connection_limit_page(): void {
+		nocache_headers();
+		header( 'Content-Type: text/html; charset=utf-8' );
+		status_header( 403 );
+
+		$site_name = get_bloginfo( 'name' );
+
+		?>
+<!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+	<meta charset="<?php bloginfo( 'charset' ); ?>">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title><?php esc_html_e( 'Connection Limit Reached', 'albert' ); ?> - <?php echo esc_html( $site_name ); ?></title>
+	<style>
+		* { box-sizing: border-box; margin: 0; padding: 0; }
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+			background: #f0f0f1;
+			min-height: 100vh;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 20px;
+		}
+		.limit-container {
+			background: #fff;
+			border-radius: 8px;
+			box-shadow: 0 1px 3px rgba(0,0,0,0.13);
+			max-width: 400px;
+			width: 100%;
+			padding: 40px;
+			text-align: center;
+		}
+		.icon {
+			font-size: 48px;
+			margin-bottom: 20px;
+		}
+		h1 {
+			font-size: 24px;
+			color: #1d2327;
+			margin-bottom: 15px;
+		}
+		p {
+			color: #50575e;
+			font-size: 14px;
+			line-height: 1.6;
+			margin-bottom: 10px;
+		}
+		.help-text {
+			font-size: 13px;
+			color: #646970;
+			margin-top: 20px;
+		}
+	</style>
+</head>
+<body>
+	<div class="limit-container">
+		<div class="icon">&#x26A0;&#xFE0F;</div>
+		<h1><?php esc_html_e( 'Connection Limit Reached', 'albert' ); ?></h1>
+		<p>
+			<?php
+			echo esc_html(
+				sprintf(
+					/* translators: %d: maximum number of connections per user */
+					__( 'You have reached the maximum of %d active connection(s). You cannot authorize another AI assistant until you revoke an existing session.', 'albert' ),
+					Limits::max_connections_per_user()
+				)
+			);
+			?>
+		</p>
+		<p class="help-text">
+			<?php esc_html_e( 'Please contact your site administrator to revoke an existing session or upgrade your plan.', 'albert' ); ?>
 		</p>
 	</div>
 </body>

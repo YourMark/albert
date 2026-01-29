@@ -9,10 +9,12 @@
 
 namespace Albert\OAuth\Repositories;
 
+use Albert\Core\Limits;
 use Albert\OAuth\Database\Installer;
 use Albert\OAuth\Entities\AccessTokenEntity;
 use League\OAuth2\Server\Entities\AccessTokenEntityInterface;
 use League\OAuth2\Server\Entities\ClientEntityInterface;
+use League\OAuth2\Server\Exception\OAuthServerException;
 use League\OAuth2\Server\Repositories\AccessTokenRepositoryInterface;
 
 /**
@@ -59,9 +61,20 @@ class AccessTokenRepository implements AccessTokenRepositoryInterface {
 	 * @param AccessTokenEntityInterface $access_token_entity The access token entity.
 	 *
 	 * @return void
+	 * @throws OAuthServerException When connection limit is reached for the user.
 	 * @since 1.0.0
 	 */
 	public function persistNewAccessToken( AccessTokenEntityInterface $access_token_entity ): void {
+		$user_id = $access_token_entity->getUserIdentifier();
+		if ( $user_id && ! Limits::can_add_connection( (int) $user_id ) ) {
+			throw new OAuthServerException(
+				'Connection limit reached for this user.',
+				101,
+				'connection_limit',
+				403
+			);
+		}
+
 		global $wpdb;
 
 		$tables = Installer::get_table_names();

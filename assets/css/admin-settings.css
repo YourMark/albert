@@ -2376,6 +2376,41 @@
 	margin-top: var(--albert-spacing-sm);
 }
 
+/* Limit badge */
+.albert-limit-badge {
+	margin-left: auto;
+	font-size: var(--albert-font-xs);
+	font-weight: 600;
+	color: var(--albert-text-secondary);
+	background: var(--albert-bg-white);
+	padding: 2px 8px;
+	border-radius: 10px;
+	border: 1px solid var(--albert-border-light);
+	white-space: nowrap;
+}
+
+/* Limit notice */
+.albert-limit-notice {
+	background: var(--albert-warning-10);
+	border-left: 4px solid var(--albert-warning);
+	padding: var(--albert-spacing-sm) var(--albert-spacing-md);
+	margin-bottom: var(--albert-spacing-md);
+	border-radius: 0 var(--albert-border-radius) var(--albert-border-radius) 0;
+}
+
+.albert-limit-notice p {
+	margin: 0;
+	font-size: var(--albert-font-sm);
+	color: var(--albert-text-primary);
+	line-height: 1.5;
+}
+
+/* Disabled inline form */
+.albert-inline-form--disabled {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
 /* Connections Responsive */
 @media screen and (max-width: 960px) {
 	.albert-connections-grid {
