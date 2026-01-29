@@ -326,7 +326,7 @@ class Dashboard implements Hookable {
 	 * @since 1.0.0
 	 */
 	private function get_enabled_abilities_count(): string {
-		$disabled_abilities = Abilities::get_disabled_abilities();
+		$disabled_abilities = AbstractAbilitiesPage::get_disabled_abilities();
 		$all_abilities      = wp_get_abilities();
 
 		$enabled_count = 0;

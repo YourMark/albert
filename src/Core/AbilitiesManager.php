@@ -103,6 +103,22 @@ class AbilitiesManager implements Hookable {
 			],
 		];
 
+		// Register WooCommerce-specific categories when WooCommerce is active.
+		if ( class_exists( 'WooCommerce' ) ) {
+			$categories['woo-products']  = [
+				'label'       => __( 'Products', 'albert' ),
+				'description' => __( 'WooCommerce product management.', 'albert' ),
+			];
+			$categories['woo-orders']    = [
+				'label'       => __( 'Orders', 'albert' ),
+				'description' => __( 'WooCommerce order management.', 'albert' ),
+			];
+			$categories['woo-customers'] = [
+				'label'       => __( 'Customers', 'albert' ),
+				'description' => __( 'WooCommerce customer management.', 'albert' ),
+			];
+		}
+
 		foreach ( $categories as $slug => $args ) {
 			if ( ! wp_has_ability_category( $slug ) ) {
 				wp_register_ability_category( $slug, $args );
