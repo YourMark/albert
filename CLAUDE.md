@@ -45,12 +45,22 @@ albert/
 │   │   └── Limits.php                  # Plan limits (users, connections)
 │   │
 │   ├── Admin/
-│   │   ├── Abilities.php               # Abilities admin page
+│   │   ├── AbstractAbilitiesPage.php   # Base class for abilities admin pages
+│   │   ├── CoreAbilities.php           # Core abilities page (albert/*, core/*)
+│   │   ├── AcfAbilities.php            # ACF abilities page (acf/*)
+│   │   ├── WooCommerceAbilities.php    # WooCommerce abilities page (albert/woo-*)
 │   │   ├── Connections.php             # Allowed users & active connections
 │   │   ├── Settings.php                # Plugin settings page
 │   │   └── UserSessions.php            # OAuth sessions management
 │   │
 │   ├── Abilities/
+│   │   ├── WooCommerce/
+│   │   │   ├── FindProducts.php        # albert/woo-find-products
+│   │   │   ├── ViewProduct.php         # albert/woo-view-product
+│   │   │   ├── FindOrders.php          # albert/woo-find-orders
+│   │   │   ├── ViewOrder.php           # albert/woo-view-order
+│   │   │   ├── FindCustomers.php       # albert/woo-find-customers
+│   │   │   └── ViewCustomer.php        # albert/woo-view-customer
 │   │   └── WordPress/
 │   │       ├── Posts/
 │   │       │   ├── ListPosts.php       # core/posts/list
@@ -254,6 +264,12 @@ Handles MCP protocol communication with AI assistants. Authenticated via OAuth.
 | `core/terms/create` | Create a term | taxonomies |
 | `core/terms/update` | Update a term | taxonomies |
 | `core/terms/delete` | Delete a term | taxonomies |
+| `albert/woo-find-products` | Search/list WooCommerce products | products |
+| `albert/woo-view-product` | View a single product | products |
+| `albert/woo-find-orders` | Search/list WooCommerce orders | orders |
+| `albert/woo-view-order` | View a single order | orders |
+| `albert/woo-find-customers` | Search/list WooCommerce customers | customers |
+| `albert/woo-view-customer` | View a single customer | customers |
 
 ## Development Commands
 

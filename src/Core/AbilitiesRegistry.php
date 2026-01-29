@@ -141,33 +141,33 @@ class AbilitiesRegistry {
 	 */
 	private static function get_woocommerce_types(): array {
 		return [
-			'orders'    => [
-				'label' => __( 'Orders', 'albert' ),
-				'read'  => [
-					'label'       => __( 'Read', 'albert' ),
-					'description' => __( 'Find and view orders', 'albert' ),
-					'abilities'   => [ 'woo/orders/find', 'woo/orders/view' ],
-					'premium'     => false,
-				],
-				'write' => [
-					'label'       => __( 'Write', 'albert' ),
-					'description' => __( 'Create and update orders', 'albert' ),
-					'abilities'   => [ 'woo/orders/create', 'woo/orders/update' ],
-					'premium'     => true, // Locked in free version.
-				],
-			],
 			'products'  => [
 				'label' => __( 'Products', 'albert' ),
 				'read'  => [
 					'label'       => __( 'Read', 'albert' ),
 					'description' => __( 'Find and view products', 'albert' ),
-					'abilities'   => [ 'woo/products/find', 'woo/products/view' ],
+					'abilities'   => [ 'albert/woo-find-products', 'albert/woo-view-product' ],
 					'premium'     => false,
 				],
 				'write' => [
 					'label'       => __( 'Write', 'albert' ),
 					'description' => __( 'Create, edit, and delete products', 'albert' ),
-					'abilities'   => [ 'woo/products/create', 'woo/products/update', 'woo/products/delete' ],
+					'abilities'   => [ 'albert/woo-create-product', 'albert/woo-update-product', 'albert/woo-delete-product' ],
+					'premium'     => true, // Locked in free version.
+				],
+			],
+			'orders'    => [
+				'label' => __( 'Orders', 'albert' ),
+				'read'  => [
+					'label'       => __( 'Read', 'albert' ),
+					'description' => __( 'Find and view orders', 'albert' ),
+					'abilities'   => [ 'albert/woo-find-orders', 'albert/woo-view-order' ],
+					'premium'     => false,
+				],
+				'write' => [
+					'label'       => __( 'Write', 'albert' ),
+					'description' => __( 'Create and update orders', 'albert' ),
+					'abilities'   => [ 'albert/woo-create-order', 'albert/woo-update-order' ],
 					'premium'     => true, // Locked in free version.
 				],
 			],
@@ -176,20 +176,10 @@ class AbilitiesRegistry {
 				'read'  => [
 					'label'       => __( 'Read', 'albert' ),
 					'description' => __( 'Find and view customers', 'albert' ),
-					'abilities'   => [ 'woo/customers/find', 'woo/customers/view' ],
+					'abilities'   => [ 'albert/woo-find-customers', 'albert/woo-view-customer' ],
 					'premium'     => false,
 				],
 				// No write for customers in free version.
-			],
-			'stats'     => [
-				'label' => __( 'Statistics', 'albert' ),
-				'read'  => [
-					'label'       => __( 'Read', 'albert' ),
-					'description' => __( 'View sales and store statistics', 'albert' ),
-					'abilities'   => [ 'woo/stats/sales', 'woo/stats/overview' ],
-					'premium'     => false,
-				],
-				// No write for statistics.
 			],
 		];
 	}
@@ -307,6 +297,9 @@ class AbilitiesRegistry {
 			'taxonomy',
 			'comments',
 			'commerce',
+			'woo-products',
+			'woo-orders',
+			'woo-customers',
 			'seo',
 			'fields',
 			'forms',
@@ -394,11 +387,11 @@ class AbilitiesRegistry {
 	 */
 	public static function get_premium_abilities(): array {
 		$list = [
-			'albert/create-order'   => 'commerce',
-			'albert/update-order'   => 'commerce',
-			'albert/create-product' => 'commerce',
-			'albert/update-product' => 'commerce',
-			'albert/delete-product' => 'commerce',
+			'albert/woo-create-order'   => 'commerce',
+			'albert/woo-update-order'   => 'commerce',
+			'albert/woo-create-product' => 'commerce',
+			'albert/woo-update-product' => 'commerce',
+			'albert/woo-delete-product' => 'commerce',
 		];
 
 		/**

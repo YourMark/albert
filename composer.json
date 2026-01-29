@@ -18,6 +18,7 @@
         "wordpress/mcp-adapter": "^0.4.1"
     },
     "require-dev": {
+        "php-stubs/woocommerce-stubs": "^10.4",
         "phpstan/extension-installer": "*",
         "phpstan/phpstan": "*",
         "phpunit/phpunit": "^9.0",

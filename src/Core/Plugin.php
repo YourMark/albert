@@ -36,8 +36,16 @@ use Albert\Abilities\WordPress\Taxonomies\ViewTerm;
 use Albert\Abilities\WordPress\Taxonomies\CreateTerm;
 use Albert\Abilities\WordPress\Taxonomies\UpdateTerm;
 use Albert\Abilities\WordPress\Taxonomies\DeleteTerm;
-use Albert\Admin\Abilities;
+use Albert\Abilities\WooCommerce\FindCustomers;
+use Albert\Abilities\WooCommerce\FindOrders;
+use Albert\Abilities\WooCommerce\FindProducts;
+use Albert\Abilities\WooCommerce\ViewCustomer;
+use Albert\Abilities\WooCommerce\ViewOrder;
+use Albert\Abilities\WooCommerce\ViewProduct;
+use Albert\Admin\AcfAbilities;
+use Albert\Admin\CoreAbilities;
 use Albert\Admin\Connections;
+use Albert\Admin\WooCommerceAbilities;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
 use Albert\Contracts\Interfaces\Hookable;
@@ -110,8 +118,16 @@ class Plugin {
 			// Connections page (allowed users + active sessions).
 			( new Connections() )->register_hooks();
 
-			// Abilities page (toggle abilities on/off).
-			( new Abilities() )->register_hooks();
+			// Abilities pages (toggle abilities on/off).
+			( new CoreAbilities() )->register_hooks();
+
+			if ( class_exists( 'ACF' ) ) {
+				( new AcfAbilities() )->register_hooks();
+			}
+
+			if ( class_exists( 'WooCommerce' ) ) {
+				( new WooCommerceAbilities() )->register_hooks();
+			}
 
 			// Settings page (API key, MCP endpoint, developer options).
 			( new Settings() )->register_hooks();
@@ -194,6 +210,16 @@ class Plugin {
 		$this->abilities_manager->add_ability( new CreateTerm() );
 		$this->abilities_manager->add_ability( new UpdateTerm() );
 		$this->abilities_manager->add_ability( new DeleteTerm() );
+
+		// WooCommerce abilities (only when WooCommerce is active).
+		if ( class_exists( 'WooCommerce' ) ) {
+			$this->abilities_manager->add_ability( new FindProducts() );
+			$this->abilities_manager->add_ability( new ViewProduct() );
+			$this->abilities_manager->add_ability( new FindOrders() );
+			$this->abilities_manager->add_ability( new ViewOrder() );
+			$this->abilities_manager->add_ability( new FindCustomers() );
+			$this->abilities_manager->add_ability( new ViewCustomer() );
+		}
 
 		// Register abilities manager hooks.
 		$this->abilities_manager->register_hooks();

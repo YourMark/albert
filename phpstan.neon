@@ -9,6 +9,8 @@ parameters:
 	bootstrapFiles:
 		- phpstan-bootstrap.php
 		- vendor/autoload.php
+		- vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php
+		- vendor/php-stubs/woocommerce-stubs/woocommerce-packages-stubs.php
 	scanDirectories:
 		- vendor/php-stubs/wordpress-stubs/
 	treatPhpDocTypesAsCertain: false
