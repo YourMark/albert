@@ -36,14 +36,17 @@ albert/
 │   ├── Contracts/
 │   │   └── Interfaces/
 │   │       ├── Ability.php             # Ability interface
-│   │       └── Hookable.php            # Hook registration interface
+│   │       ├── Hookable.php            # Hook registration interface
+│   │       └── PlanResolverInterface.php # Hook point for premium plan addons
 │   │
 │   ├── Core/
 │   │   ├── Plugin.php                  # Main singleton, bootstraps everything
-│   │   └── AbilitiesManager.php        # Registers abilities with WordPress
+│   │   ├── AbilitiesManager.php        # Registers abilities with WordPress
+│   │   └── Limits.php                  # Plan limits (users, connections)
 │   │
 │   ├── Admin/
 │   │   ├── Abilities.php               # Abilities admin page
+│   │   ├── Connections.php             # Allowed users & active connections
 │   │   ├── Settings.php                # Plugin settings page
 │   │   └── UserSessions.php            # OAuth sessions management
 │   │
@@ -294,9 +297,71 @@ wp plugin activate albert
 - **Never bump version without approval**
 - Run `composer phpcs` before committing
 
-## Ongoing Work
+## Plan Limits System
 
-See `.claude/media-upload-discussion.md` for discussion about:
-- MCP binary transport limitations
-- Local file upload challenges
-- Potential solutions for media uploads from AI assistants
+The plugin enforces user and connection limits to gate free vs. premium tiers.
+
+### How it works
+
+`Albert\Core\Limits` is a `final` static class with `private const FREE_LIMITS`:
+- `max_users` = 2 (max WordPress users who can connect AI assistants)
+- `max_connections_per_user` = 1 (max simultaneous OAuth client connections per user)
+
+These defaults **cannot** be changed via `apply_filters` — there are zero filter hooks in `Limits.php`. The only override path is `Limits::register_plan_resolver()`, which accepts a `PlanResolverInterface` implementation.
+
+### Key files
+
+| File | Role |
+|------|------|
+| `src/Contracts/Interfaces/PlanResolverInterface.php` | Interface addon plugins implement |
+| `src/Core/Limits.php` | Limit enforcement + resolution logic |
+| `src/Admin/Connections.php` | Admin UI: counter badge, disabled form, error notices |
+| `src/OAuth/Repositories/AccessTokenRepository.php` | Token persistence: blocks new tokens at limit |
+| `src/OAuth/Endpoints/AuthorizationPage.php` | OAuth consent: blocks authorization flow at limit |
+
+### Enforcement points (3 places)
+
+1. **Adding an allowed user** — `Connections::handle_add_allowed_user()` calls `Limits::can_add_user()`. If at limit, redirects with `?error=user_limit`.
+
+2. **OAuth authorization page** — `AuthorizationPage::handle_authorization()` calls `Limits::can_add_connection()` after the allowed-users check. If at limit, renders `render_connection_limit_page()` (standalone HTML error page, 403 status).
+
+3. **Token persistence** — `AccessTokenRepository::persistNewAccessToken()` calls `Limits::can_add_connection()` before the `$wpdb->insert()`. If at limit, throws `OAuthServerException` (code 101, type `connection_limit`). This is the last line of defense if someone bypasses the consent page.
+
+### How `can_add_connection()` counts
+
+Queries `wp_albert_oauth_access_tokens` for `COUNT(DISTINCT client_id) WHERE user_id = %d AND revoked = 0`. Each unique OAuth client counts as one connection, regardless of how many tokens that client has.
+
+### Admin UI behavior at limit
+
+- **Counter badge** in card header: "1 of 2" (uses `.albert-limit-badge` CSS class)
+- **Limit notice** when at max: yellow warning bar explaining the limit (`.albert-limit-notice`)
+- **Disabled form**: select + button get `disabled` attribute, form gets `.albert-inline-form--disabled` (grayed out, no pointer events)
+- **Error notice**: when redirected with `?error=user_limit`, shows a red inline `notice-error`
+
+### Premium addon integration (future)
+
+A separate plugin will call:
+```php
+Limits::register_plan_resolver( new ProPlanResolver( $license_key ) );
+```
+
+The resolver implements `PlanResolverInterface`:
+```php
+interface PlanResolverInterface {
+    public function get_plan(): string;       // e.g. 'pro', 'agency'
+    public function get_limits(): ?array;     // e.g. ['max_users' => 10, 'max_connections_per_user' => 5]
+}
+```
+
+`Limits::get_limits()` merges the resolver's array over `FREE_LIMITS`, so the resolver only needs to return the keys it wants to override. Returning `null` from `get_limits()` falls back to free defaults.
+
+### Why this is bypass-resistant
+
+1. No `apply_filters` anywhere in `Limits.php`
+2. `FREE_LIMITS` is `private const` — inaccessible from outside the class
+3. `Limits` is `final` — cannot be extended
+4. Without the addon plugin installed, there's nothing to hook — defaults are baked in
+5. Calling `register_plan_resolver()` with a fake resolver requires writing a plugin (same effort as editing source)
+6. Future: resolver validates license key against a remote server
+
+## Ongoing Work

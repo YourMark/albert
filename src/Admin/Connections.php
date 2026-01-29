@@ -15,6 +15,7 @@ namespace Albert\Admin;
 defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
+use Albert\Core\Limits;
 use Albert\MCP\Server as McpServer;
 use Albert\OAuth\Database\Installer;
 
@@ -235,6 +236,19 @@ class Connections implements Hookable {
 
 		// Get current allowed users and add the new one.
 		$allowed_users = get_option( 'albert_allowed_users', [] );
+
+		if ( ! Limits::can_add_user() ) {
+			wp_safe_redirect(
+				add_query_arg(
+					[
+						'page'  => $this->page_slug,
+						'error' => 'user_limit',
+					],
+					admin_url( 'admin.php' )
+				)
+			);
+			exit;
+		}
 
 		if ( ! in_array( $user_id, $allowed_users, true ) ) {
 			$allowed_users[] = $user_id;
@@ -479,6 +493,9 @@ class Connections implements Hookable {
 	 */
 	private function render_allowed_users_section(): void {
 		$allowed_users = get_option( 'albert_allowed_users', [] );
+		$user_count    = count( $allowed_users );
+		$max_users     = Limits::max_users();
+		$limit_reached = ! Limits::can_add_user();
 
 		// Get all users for the dropdown.
 		$all_users = get_users(
@@ -487,23 +504,70 @@ class Connections implements Hookable {
 				'order'   => 'ASC',
 			]
 		);
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Just checking for error display.
+		$show_limit_error = isset( $_GET['error'] ) && $_GET['error'] === 'user_limit';
 		?>
 		<section class="albert-settings-card">
 			<div class="albert-settings-card-header">
 				<span class="dashicons dashicons-admin-users" aria-hidden="true"></span>
 				<h2><?php esc_html_e( 'Allowed Users', 'albert' ); ?></h2>
+				<span class="albert-limit-badge">
+					<?php
+					echo esc_html(
+						sprintf(
+							/* translators: 1: current count, 2: maximum allowed */
+							__( '%1$d of %2$d', 'albert' ),
+							$user_count,
+							$max_users
+						)
+					);
+					?>
+				</span>
 			</div>
 			<div class="albert-settings-card-body">
+				<?php if ( $show_limit_error ) { ?>
+					<div class="notice notice-error inline">
+						<p>
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: %d: maximum number of users */
+									__( 'User limit reached. Your current plan allows a maximum of %d users.', 'albert' ),
+									$max_users
+								)
+							);
+							?>
+						</p>
+					</div>
+				<?php } ?>
+
 				<div class="albert-field-group">
 					<p class="albert-field-description">
 						<?php esc_html_e( 'Select users who can connect AI tools to your site. Only these users can authorize AI assistants.', 'albert' ); ?>
 					</p>
 
-					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="albert-inline-form">
+					<?php if ( $limit_reached ) { ?>
+						<div class="albert-limit-notice">
+							<p>
+								<?php
+								echo esc_html(
+									sprintf(
+										/* translators: %d: maximum number of users */
+										__( 'You have reached the maximum of %d allowed users. Remove a user or upgrade your plan to add more.', 'albert' ),
+										$max_users
+									)
+								);
+								?>
+							</p>
+						</div>
+					<?php } ?>
+
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="albert-inline-form<?php echo $limit_reached ? ' albert-inline-form--disabled' : ''; ?>">
 						<?php wp_nonce_field( 'albert_add_allowed_user', 'albert_add_user_nonce' ); ?>
 						<input type="hidden" name="action" value="albert_add_allowed_user" />
 						<label for="albert-add-user-select" class="screen-reader-text"><?php esc_html_e( 'Select user to add', 'albert' ); ?></label>
-						<select name="albert_user_id" id="albert-add-user-select" class="albert-select-input">
+						<select name="albert_user_id" id="albert-add-user-select" class="albert-select-input" <?php disabled( $limit_reached ); ?>>
 							<option value=""><?php esc_html_e( '— Select User —', 'albert' ); ?></option>
 							<?php foreach ( $all_users as $user ) { ?>
 								<?php if ( ! in_array( $user->ID, $allowed_users, true ) ) { ?>
@@ -513,7 +577,7 @@ class Connections implements Hookable {
 								<?php } ?>
 							<?php } ?>
 						</select>
-						<button type="submit" class="button button-primary"><?php esc_html_e( 'Add User', 'albert' ); ?></button>
+						<button type="submit" class="button button-primary" <?php disabled( $limit_reached ); ?>><?php esc_html_e( 'Add User', 'albert' ); ?></button>
 					</form>
 				</div>
 
