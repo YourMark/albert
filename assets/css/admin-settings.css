@@ -872,12 +872,8 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--albert-spacing-sm) var(--albert-spacing-md);
+	padding: var(--albert-spacing-sm) 0;
 	gap: var(--albert-spacing-sm);
-}
-
-.ability-type-row:hover > .ability-type-header {
-	background: var(--albert-bg-light);
 }
 
 /* Expand button */
@@ -903,7 +899,6 @@
 }
 
 .ability-type-expand:hover {
-	background: var(--albert-black-5);
 	color: var(--albert-primary);
 }
 
