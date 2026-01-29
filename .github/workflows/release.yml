@@ -4,6 +4,16 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g. 1.0.0-test)'
+        required: true
+        default: '1.0.0-test'
+      dry_run:
+        description: 'Dry run (build only, no release)'
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -17,14 +27,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get version from tag
+      - name: Get version
         id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Check if pre-release
         id: prerelease
         run: |
-          if [[ "${{ steps.version.outputs.version }}" =~ (alpha|beta|rc|dev) ]]; then
+          if [[ "${{ steps.version.outputs.version }}" =~ (alpha|beta|rc|dev|test) ]]; then
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
           else
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
@@ -62,7 +77,14 @@ jobs:
         working-directory: build
         run: zip -r albert-${{ steps.version.outputs.version }}.zip albert
 
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: albert-${{ steps.version.outputs.version }}
+          path: build/albert-${{ steps.version.outputs.version }}.zip
+
       - name: Generate changelog
+        if: github.event.inputs.dry_run != 'true'
         id: changelog
         run: |
           # Get commits since last tag
@@ -78,9 +100,11 @@ jobs:
           echo "changelog_file=changelog.txt" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
+        if: github.event.inputs.dry_run != 'true'
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ steps.prerelease.outputs.is_prerelease == 'true' && format('Pre-release {0}', steps.version.outputs.version) || format('Release {0}', steps.version.outputs.version) }}
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', steps.version.outputs.version) || github.ref }}
           body_path: changelog.txt
           prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
           files: build/albert-${{ steps.version.outputs.version }}.zip
