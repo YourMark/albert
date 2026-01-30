@@ -73,6 +73,9 @@ jobs:
           [ -d "assets" ] && cp -r assets build/albert/ || true
           [ -d "languages" ] && cp -r languages build/albert/ || true
 
+      - name: Remove files not permitted by WordPress.org
+        run: find build/albert/vendor -name "*.sh" -type f -delete
+
       - name: Create zip file
         working-directory: build
         run: zip -r albert-${{ steps.version.outputs.version }}.zip albert
