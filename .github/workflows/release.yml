@@ -81,7 +81,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: albert-${{ steps.version.outputs.version }}
-          path: build/albert-${{ steps.version.outputs.version }}.zip
+          path: build/albert
 
       - name: Generate changelog
         if: github.event.inputs.dry_run != 'true'
