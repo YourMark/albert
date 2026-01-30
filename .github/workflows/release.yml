@@ -1,0 +1,116 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g. 1.0.0-test)'
+        required: true
+        default: '1.0.0-test'
+      dry_run:
+        description: 'Dry run (build only, no release)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if pre-release
+        id: prerelease
+        run: |
+          if [[ "${{ steps.version.outputs.version }}" =~ (alpha|beta|rc|dev|test) ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+          coverage: none
+
+      - name: Install production dependencies
+        run: composer install --no-dev --prefer-dist --optimize-autoloader --no-progress
+
+      - name: Create plugin directory
+        run: mkdir -p build/albert
+
+      - name: Copy plugin files
+        run: |
+          # Core plugin files
+          cp albert.php build/albert/
+          cp readme.txt build/albert/
+          cp LICENSE build/albert/
+
+          # Directories
+          cp -r src build/albert/
+          cp -r vendor build/albert/
+
+          # Optional directories (copy if they exist)
+          [ -d "assets" ] && cp -r assets build/albert/ || true
+          [ -d "languages" ] && cp -r languages build/albert/ || true
+
+      - name: Remove files not permitted by WordPress.org
+        run: find build/albert/vendor -name "*.sh" -type f -delete
+
+      - name: Create zip file
+        working-directory: build
+        run: zip -r albert-${{ steps.version.outputs.version }}.zip albert
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: albert-${{ steps.version.outputs.version }}
+          path: build/albert
+
+      - name: Generate changelog
+        if: github.event.inputs.dry_run != 'true'
+        id: changelog
+        run: |
+          # Get commits since last tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREVIOUS_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s" $PREVIOUS_TAG..HEAD --no-merges)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s" --no-merges -20)
+          fi
+
+          # Save to file for multiline output
+          echo "$CHANGELOG" > changelog.txt
+          echo "changelog_file=changelog.txt" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        if: github.event.inputs.dry_run != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Release ${{ steps.version.outputs.version }}"
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', steps.version.outputs.version) || github.ref }}
+          body_path: changelog.txt
+          prerelease: ${{ steps.prerelease.outputs.is_prerelease == 'true' }}
+          files: build/albert-${{ steps.version.outputs.version }}.zip
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
