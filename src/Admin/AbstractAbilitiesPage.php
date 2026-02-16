@@ -141,7 +141,7 @@ abstract class AbstractAbilitiesPage implements Hookable {
 		// Require WP 6.9+ Abilities API.
 		if ( ! function_exists( 'wp_get_abilities' ) ) {
 			?>
-			<div class="wrap albert-settings">
+			<div class="wrap albert-wrap">
 				<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 				<div class="notice notice-error">
 					<p>
@@ -172,7 +172,7 @@ abstract class AbstractAbilitiesPage implements Hookable {
 
 		$disabled_abilities = self::get_disabled_abilities();
 		?>
-		<div class="wrap albert-settings">
+		<div class="wrap albert-wrap">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 
 			<?php settings_errors(); ?>
