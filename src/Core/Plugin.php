@@ -48,7 +48,6 @@ use Albert\Admin\Connections;
 use Albert\Admin\WooCommerceAbilities;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
-use Albert\Contracts\Interfaces\Hookable;
 use Albert\MCP\Server as McpServer;
 use Albert\OAuth\Database\Installer as OAuthInstaller;
 use Albert\Core\SettingsMigration;
@@ -129,7 +128,7 @@ class Plugin {
 			// Connections page (allowed users + active sessions).
 			( new Connections() )->register_hooks();
 
-			// Settings page (MCP endpoint, developer options).
+			// Settings page (MCP endpoint, developer options, licenses).
 			( new Settings() )->register_hooks();
 
 			// Addon submenu pages (registered via filter at priority 15).

@@ -522,7 +522,7 @@ class Connections implements Hookable {
 
 		$mcp_endpoint = McpServer::get_endpoint_url();
 		?>
-		<div class="wrap albert-settings">
+		<div class="wrap albert-wrap">
 			<h1><?php echo esc_html__( 'Connections', 'albert' ); ?></h1>
 			<p class="description">
 				<?php esc_html_e( 'Manage who can connect AI assistants and view active connections.', 'albert' ); ?>
@@ -889,7 +889,7 @@ class Connections implements Hookable {
 			admin_url( 'admin.php' )
 		);
 		?>
-		<div class="wrap albert-settings">
+		<div class="wrap albert-wrap">
 			<h1><?php esc_html_e( 'User Sessions', 'albert' ); ?></h1>
 
 			<?php settings_errors( 'albert_connections' ); ?>

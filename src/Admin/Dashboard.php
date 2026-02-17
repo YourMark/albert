@@ -134,7 +134,7 @@ class Dashboard implements Hookable {
 		$mcp_endpoint       = McpServer::get_endpoint_url();
 
 		?>
-		<div class="wrap albert-settings">
+		<div class="wrap albert-wrap">
 			<h1><?php echo esc_html__( 'Albert Dashboard', 'albert' ); ?></h1>
 			<p class="description">
 				<?php echo esc_html__( 'Connect your WordPress site to AI assistants like Claude and ChatGPT.', 'albert' ); ?>

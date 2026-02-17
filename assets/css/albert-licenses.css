@@ -1,0 +1,197 @@
+/**
+ * Albert License Section Styles
+ *
+ * @package Albert
+ * @since   1.1.0
+ */
+
+/* Activation form */
+.albert-license-form {
+	display: flex;
+	align-items: center;
+	gap: var(--albert-spacing-sm);
+}
+
+.albert-license-form .albert-text-input {
+	flex: 1;
+}
+
+.albert-license-form .button {
+	flex-shrink: 0;
+	min-width: 100px;
+}
+
+.albert-license-hint {
+	margin-top: var(--albert-spacing-sm);
+	margin-bottom: var(--albert-spacing-lg);
+}
+
+/* Notice area */
+.albert-license-notice {
+	padding: var(--albert-spacing-sm) var(--albert-spacing-md);
+	border-radius: var(--albert-border-radius);
+	margin-bottom: var(--albert-spacing-md);
+	font-size: var(--albert-font-base);
+	line-height: 1.5;
+	animation: albert-fade-in 0.3s ease-out;
+}
+
+.albert-license-notice--success {
+	background: var(--albert-success-bg);
+	border-left: 4px solid var(--albert-success);
+	color: var(--albert-text-primary);
+}
+
+.albert-license-notice--error {
+	background: oklch(0.97 0.03 25);
+	border-left: 4px solid var(--albert-error);
+	color: var(--albert-text-primary);
+}
+
+/* Licenses table */
+.albert-licenses-table {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: fixed;
+}
+
+.albert-licenses-table th {
+	text-align: left;
+	font-size: var(--albert-font-xs);
+	font-weight: 600;
+	color: var(--albert-text-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	padding: var(--albert-spacing-sm) var(--albert-spacing-md);
+	border-bottom: 2px solid var(--albert-border-light);
+}
+
+.albert-licenses-table th:nth-child(1) { width: 30%; }
+.albert-licenses-table th:nth-child(2) { width: 12%; }
+.albert-licenses-table th:nth-child(3) { width: 22%; }
+.albert-licenses-table th:nth-child(4) { width: 18%; }
+.albert-licenses-table th:nth-child(5) { width: 18%; }
+
+.albert-licenses-table td {
+	padding: var(--albert-spacing-md);
+	border-bottom: 1px solid var(--albert-border-light);
+	font-size: var(--albert-font-base);
+	color: var(--albert-text-primary);
+	vertical-align: middle;
+}
+
+.albert-licenses-table tbody tr:last-child td {
+	border-bottom: none;
+}
+
+.albert-licenses-table td strong {
+	display: block;
+	font-weight: 600;
+}
+
+.albert-no-license {
+	color: var(--albert-text-secondary);
+}
+
+/* Status dot */
+.albert-status-dot {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+}
+
+.albert-status-dot--valid {
+	background: var(--albert-success);
+	box-shadow: 0 0 0 2px var(--albert-success-10);
+}
+
+.albert-status-dot--expired {
+	background: var(--albert-warning);
+	box-shadow: 0 0 0 2px var(--albert-warning-10);
+}
+
+.albert-status-dot--invalid {
+	background: var(--albert-error);
+	box-shadow: 0 0 0 2px oklch(0.52 0.18 25 / 0.1);
+}
+
+.albert-status-dot--none {
+	background: var(--albert-text-secondary);
+	opacity: 0.4;
+}
+
+/* Deactivate button */
+.albert-deactivate-btn {
+	background: none;
+	border: 1px solid var(--albert-error);
+	color: var(--albert-error);
+	padding: 3px 10px;
+	border-radius: var(--albert-border-radius);
+	font-size: var(--albert-font-sm);
+	font-weight: 500;
+	cursor: pointer;
+	transition: background-color var(--albert-transition), color var(--albert-transition);
+}
+
+.albert-deactivate-btn:hover {
+	background: var(--albert-error);
+	color: var(--albert-bg-white);
+}
+
+.albert-deactivate-btn:focus-visible {
+	outline: 2px solid var(--albert-primary);
+	outline-offset: 2px;
+}
+
+.albert-deactivate-btn:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+/* Loading state on button */
+.albert-btn-loading {
+	opacity: 0.7;
+	pointer-events: none;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+	.albert-license-form {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.albert-license-form .button {
+		width: 100%;
+	}
+
+	.albert-licenses-table thead {
+		display: none;
+	}
+
+	.albert-licenses-table,
+	.albert-licenses-table tbody,
+	.albert-licenses-table tr,
+	.albert-licenses-table td {
+		display: block;
+	}
+
+	.albert-licenses-table tr {
+		padding: var(--albert-spacing-md) 0;
+		border-bottom: 1px solid var(--albert-border-light);
+	}
+
+	.albert-licenses-table td {
+		padding: 2px var(--albert-spacing-md);
+		border-bottom: none;
+	}
+
+	.albert-licenses-table td:first-child {
+		padding-bottom: var(--albert-spacing-xs);
+	}
+
+	.albert-licenses-table td:last-child {
+		padding-top: var(--albert-spacing-xs);
+	}
+}
