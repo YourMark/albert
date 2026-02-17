@@ -7,6 +7,8 @@
  */
 
 // Guard against loading outside WordPress (e.g. Composer dump-autoload).
+use Albert\Abstracts\AbstractAddon;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	return;
 }
@@ -55,11 +57,9 @@ if ( ! function_exists( 'albert_has_valid_license' ) ) {
 	function albert_has_valid_license( string $slug ): bool {
 		// Resolve the option slug from the addon registry.
 		$option_slug = $slug;
-		if ( class_exists( '\Albert\Abstracts\AbstractAddon' ) ) {
-			$addons = \Albert\Abstracts\AbstractAddon::get_registered_addons();
-			if ( isset( $addons[ $slug ]['option_slug'] ) ) {
-				$option_slug = $addons[ $slug ]['option_slug'];
-			}
+		$addons      = AbstractAddon::get_registered_addons();
+		if ( isset( $addons[ $slug ]['option_slug'] ) ) {
+			$option_slug = $addons[ $slug ]['option_slug'];
 		}
 
 		$license_data = get_option( "{$option_slug}_license", false );
