@@ -25,6 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * AbstractAddon class
  *
+ * @phpstan-consistent-constructor
  * @since 1.1.0
  */
 abstract class AbstractAddon {

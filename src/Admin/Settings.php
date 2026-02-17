@@ -521,8 +521,9 @@ class Settings implements Hookable {
 		}
 
 		$timestamp = strtotime( $expires );
-		if ( $timestamp !== false ) {
-			echo esc_html( wp_date( get_option( 'date_format' ), $timestamp ) );
+		$formatted = $timestamp !== false ? wp_date( get_option( 'date_format' ), $timestamp ) : false;
+		if ( $formatted !== false ) {
+			echo esc_html( $formatted );
 		} else {
 			echo esc_html( $expires );
 		}
