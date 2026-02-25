@@ -38,7 +38,7 @@ class WooCommerceAbilities extends AbstractAbilitiesPage {
 	 * @since 1.0.0
 	 */
 	protected function get_page_title(): string {
-		return __( 'WooCommerce Abilities', 'albert' );
+		return __( 'WooCommerce Abilities', 'albert-ai-butler' );
 	}
 
 	/**
@@ -48,7 +48,7 @@ class WooCommerceAbilities extends AbstractAbilitiesPage {
 	 * @since 1.0.0
 	 */
 	protected function get_menu_title(): string {
-		return __( 'WooCommerce', 'albert' );
+		return __( 'WooCommerce', 'albert-ai-butler' );
 	}
 
 	/**

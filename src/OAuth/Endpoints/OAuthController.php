@@ -37,7 +37,7 @@ class OAuthController implements Hookable {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	const NAMESPACE = 'albert/v1';
+	const NAMESPACE = 'albert-ai-butler/v1';
 
 	/**
 	 * Transient prefix for authorization requests.
@@ -177,7 +177,7 @@ class OAuthController implements Hookable {
 			return new WP_REST_Response(
 				[
 					'error'       => 'login_required',
-					'message'     => __( 'Please log in to authorize this application.', 'albert' ),
+					'message'     => __( 'Please log in to authorize this application.', 'albert-ai-butler' ),
 					'redirect_to' => $login_url,
 				],
 				401
@@ -194,7 +194,7 @@ class OAuthController implements Hookable {
 		if ( ! $client ) {
 			return new WP_Error(
 				'invalid_client',
-				__( 'Unknown client.', 'albert' ),
+				__( 'Unknown client.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -210,7 +210,7 @@ class OAuthController implements Hookable {
 		if ( ! $is_wildcard && ! in_array( $redirect_uri, $allowed_uris, true ) ) {
 			return new WP_Error(
 				'invalid_redirect_uri',
-				__( 'Invalid redirect URI.', 'albert' ),
+				__( 'Invalid redirect URI.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -268,7 +268,7 @@ class OAuthController implements Hookable {
 		if ( ! $auth_request_data ) {
 			return new WP_Error(
 				'invalid_request',
-				__( 'Authorization request expired or invalid.', 'albert' ),
+				__( 'Authorization request expired or invalid.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -280,7 +280,7 @@ class OAuthController implements Hookable {
 		if ( get_current_user_id() !== (int) $auth_request_data['user_id'] ) {
 			return new WP_Error(
 				'user_mismatch',
-				__( 'User mismatch.', 'albert' ),
+				__( 'User mismatch.', 'albert-ai-butler' ),
 				[ 'status' => 403 ]
 			);
 		}
@@ -409,7 +409,7 @@ class OAuthController implements Hookable {
 		if ( ! is_user_logged_in() ) {
 			return new WP_Error(
 				'rest_forbidden',
-				__( 'You must be logged in.', 'albert' ),
+				__( 'You must be logged in.', 'albert-ai-butler' ),
 				[ 'status' => 401 ]
 			);
 		}

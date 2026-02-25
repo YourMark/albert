@@ -29,8 +29,8 @@ class Delete extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/delete-page';
-		$this->label       = __( 'Delete Page', 'albert' );
-		$this->description = __( 'Delete a WordPress page permanently or move it to trash.', 'albert' );
+		$this->label       = __( 'Delete Page', 'albert-ai-butler' );
+		$this->description = __( 'Delete a WordPress page permanently or move it to trash.', 'albert-ai-butler' );
 		$this->category    = 'content';
 		$this->group       = 'pages';
 
@@ -94,10 +94,10 @@ class Delete extends BaseAbility {
 	 *
 	 * Delegates to the REST API endpoint's own permission callback.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->check_rest_permission( '/wp/v2/pages/(?P<id>[\\d]+)', 'DELETE', 'delete_pages' );
 	}
 
@@ -118,7 +118,7 @@ class Delete extends BaseAbility {
 		if ( empty( $args['id'] ) ) {
 			return new WP_Error(
 				'missing_id',
-				__( 'Page ID is required.', 'albert' ),
+				__( 'Page ID is required.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -130,7 +130,7 @@ class Delete extends BaseAbility {
 		if ( ! $page ) {
 			return new WP_Error(
 				'page_not_found',
-				__( 'Page not found.', 'albert' ),
+				__( 'Page not found.', 'albert-ai-butler' ),
 				[ 'status' => 404 ]
 			);
 		}
@@ -154,7 +154,7 @@ class Delete extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while deleting the page.', 'albert' ),
+				$data['message'] ?? __( 'An error occurred while deleting the page.', 'albert-ai-butler' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

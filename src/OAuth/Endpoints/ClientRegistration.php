@@ -53,14 +53,14 @@ class ClientRegistration implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function register_routes(): void {
-		// Dynamic Client Registration endpoint.
+		// Dynamic Client Registration endpoint (public per RFC 7591, rate limited in handler).
 		register_rest_route(
 			self::NAMESPACE,
 			'/oauth/register',
 			[
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => [ $this, 'handle_registration' ],
-				'permission_callback' => '__return_true', // Public endpoint per RFC 7591.
+				'permission_callback' => '__return_true',
 			]
 		);
 	}
@@ -74,6 +74,23 @@ class ClientRegistration implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function handle_registration( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		// Rate limiting: 10 registrations per IP per hour.
+		$ip            = $request->get_header( 'X-Forwarded-For' )
+			? sanitize_text_field( explode( ',', $request->get_header( 'X-Forwarded-For' ) )[0] )
+			: sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0' ) );
+		$transient_key = 'albert_dcr_' . md5( $ip );
+		$attempts      = (int) get_transient( $transient_key );
+
+		if ( $attempts >= 10 ) {
+			return new WP_Error(
+				'rate_limit_exceeded',
+				__( 'Too many registration requests. Please try again later.', 'albert-ai-butler' ),
+				[ 'status' => 429 ]
+			);
+		}
+
+		set_transient( $transient_key, $attempts + 1, HOUR_IN_SECONDS );
+
 		$body = $request->get_json_params();
 
 		// Get client metadata from request.
@@ -86,7 +103,7 @@ class ClientRegistration implements Hookable {
 				if ( ! $this->is_valid_redirect_uri( $uri ) ) {
 					return new WP_Error(
 						'invalid_redirect_uri',
-						__( 'Invalid redirect URI provided.', 'albert' ),
+						__( 'Invalid redirect URI provided.', 'albert-ai-butler' ),
 						[ 'status' => 400 ]
 					);
 				}
@@ -106,7 +123,7 @@ class ClientRegistration implements Hookable {
 		if ( ! $result ) {
 			return new WP_Error(
 				'registration_failed',
-				__( 'Failed to register client.', 'albert' ),
+				__( 'Failed to register client.', 'albert-ai-butler' ),
 				[ 'status' => 500 ]
 			);
 		}

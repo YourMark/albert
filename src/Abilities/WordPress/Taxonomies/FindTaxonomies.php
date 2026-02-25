@@ -29,8 +29,8 @@ class FindTaxonomies extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/find-taxonomies';
-		$this->label       = __( 'Find Taxonomies', 'albert' );
-		$this->description = __( 'Find all registered taxonomies (categories, tags, custom taxonomies).', 'albert' );
+		$this->label       = __( 'Find Taxonomies', 'albert-ai-butler' );
+		$this->description = __( 'Find all registered taxonomies (categories, tags, custom taxonomies).', 'albert-ai-butler' );
 		$this->category    = 'taxonomy';
 		$this->group       = 'taxonomies';
 
@@ -92,10 +92,10 @@ class FindTaxonomies extends BaseAbility {
 	/**
 	 * Check if current user has permission to execute this ability.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->require_capability( 'manage_categories' );
 	}
 
@@ -131,7 +131,7 @@ class FindTaxonomies extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while retrieving taxonomies.', 'albert' ),
+				$data['message'] ?? __( 'An error occurred while retrieving taxonomies.', 'albert-ai-butler' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

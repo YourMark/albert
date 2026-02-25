@@ -148,76 +148,14 @@ abstract class BaseAbility implements Ability {
 				'ability_disabled',
 				sprintf(
 					/* translators: %s: ability name */
-					__( 'The ability "%s" is currently disabled. Please contact the site administrator.', 'albert' ),
+					__( 'The ability "%s" is currently disabled.', 'albert-ai-butler' ),
 					$this->label
 				),
 				[ 'status' => 403 ]
 			);
 		}
 
-		$user_id = get_current_user_id();
-
-		try {
-			/**
-			 * Fires before any ability is executed.
-			 *
-			 * @since 1.1.0
-			 *
-			 * @param string $ability_id Ability identifier.
-			 * @param array  $args       Input parameters.
-			 * @param int    $user_id    Current user ID.
-			 */
-			do_action( 'albert/abilities/before_execute', $this->id, $args, $user_id );
-
-			/**
-			 * Fires before a specific ability is executed.
-			 *
-			 * The dynamic portion of the hook name, `$this->id`, refers to the
-			 * ability identifier (e.g. 'core/posts/create', 'albert/woo-find-products').
-			 *
-			 * @since 1.1.0
-			 *
-			 * @param array $args    Input parameters.
-			 * @param int   $user_id Current user ID.
-			 */
-			do_action( "albert/abilities/before_execute/{$this->id}", $args, $user_id );
-		} catch ( \Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
-			// Log in debug mode but never break execution.
-		}
-
-		$result = $this->execute( $args );
-
-		try {
-			/**
-			 * Fires after any ability is executed.
-			 *
-			 * @since 1.1.0
-			 *
-			 * @param string         $ability_id Ability identifier.
-			 * @param array          $args       Input parameters.
-			 * @param array|WP_Error $result     Execution result.
-			 * @param int            $user_id    Current user ID.
-			 */
-			do_action( 'albert/abilities/after_execute', $this->id, $args, $result, $user_id );
-
-			/**
-			 * Fires after a specific ability is executed.
-			 *
-			 * The dynamic portion of the hook name, `$this->id`, refers to the
-			 * ability identifier (e.g. 'core/posts/create', 'albert/woo-find-products').
-			 *
-			 * @since 1.1.0
-			 *
-			 * @param array          $args    Input parameters.
-			 * @param array|WP_Error $result  Execution result.
-			 * @param int            $user_id Current user ID.
-			 */
-			do_action( "albert/abilities/after_execute/{$this->id}", $args, $result, $user_id );
-		} catch ( \Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
-			// Log in debug mode but never break execution.
-		}
-
-		return $result;
+		return $this->execute( $args );
 	}
 
 	/**
@@ -239,10 +177,10 @@ abstract class BaseAbility implements Ability {
 	 * Returns a WP_Error with a descriptive message on failure so AI
 	 * clients can communicate the reason to the user.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->require_capability( 'manage_options' );
 	}
 
@@ -254,10 +192,10 @@ abstract class BaseAbility implements Ability {
 	 *
 	 * @param string $capability The capability to check.
 	 *
-	 * @return true|WP_Error True if the user has the capability, WP_Error otherwise.
+	 * @return bool|WP_Error True if the user has the capability, WP_Error otherwise.
 	 * @since 1.0.0
 	 */
-	protected function require_capability( string $capability ): true|WP_Error {
+	protected function require_capability( string $capability ): bool|WP_Error {
 		if ( current_user_can( $capability ) ) {
 			return true;
 		}
@@ -266,7 +204,7 @@ abstract class BaseAbility implements Ability {
 			'ability_permission_denied',
 			sprintf(
 				/* translators: 1: ability label, 2: capability name */
-				__( 'You do not have permission to use "%1$s". The "%2$s" capability is required.', 'albert' ),
+				__( 'You do not have permission to use "%1$s". The "%2$s" capability is required.', 'albert-ai-butler' ),
 				$this->label,
 				$capability
 			),
@@ -286,10 +224,10 @@ abstract class BaseAbility implements Ability {
 	 * @param string $method       The HTTP method (GET, POST, DELETE, etc.).
 	 * @param string $fallback_cap The capability to check if the route is unavailable.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	protected function check_rest_permission( string $route, string $method, string $fallback_cap ): true|WP_Error {
+	protected function check_rest_permission( string $route, string $method, string $fallback_cap ): bool|WP_Error {
 		$server     = rest_get_server();
 		$routes     = $server->get_routes();
 		$is_pattern = str_contains( $route, '(?P<' );
@@ -318,10 +256,10 @@ abstract class BaseAbility implements Ability {
 	 * @param string                           $route        The resolved route path.
 	 * @param string                           $fallback_cap The capability to check on failure.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error otherwise.
 	 * @since 1.0.0
 	 */
-	private function check_rest_endpoints( array $endpoints, string $method, string $route, string $fallback_cap ): true|WP_Error {
+	private function check_rest_endpoints( array $endpoints, string $method, string $route, string $fallback_cap ): bool|WP_Error {
 		foreach ( $endpoints as $endpoint ) {
 			if ( ! isset( $endpoint['methods'][ $method ], $endpoint['permission_callback'] ) ) {
 				continue;

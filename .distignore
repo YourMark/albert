@@ -4,11 +4,19 @@
 .DS_Store
 .phpunit.result.cache
 
+# Version control
+.git/
+.gitignore
+
 # Development tooling
 .claude
 .github
-.gitignore
 .distignore
+.editorconfig
+
+# Dependencies
+composer.lock
+node_modules/
 
 # Dev config
 phpcs.xml.dist
@@ -28,5 +36,14 @@ CLAUDE.md
 DEVELOPER_GUIDE.md
 plan.md
 
+# Non-permitted vendor files
+vendor/bin/
+vendor/*/bin/
+vendor/**/.deployignore
+vendor/**/.deepsource.toml
+vendor/**/dist/*.asc
+vendor/**/dist/*.asc.sig
+vendor/**/*.bat
+
 # WordPress.org directory assets (screenshots, banners, icons)
-.wordpress.org
+.wordpress-org

@@ -29,8 +29,8 @@ class ViewTerm extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/view-term';
-		$this->label       = __( 'View Term', 'albert' );
-		$this->description = __( 'Retrieve a single taxonomy term by ID.', 'albert' );
+		$this->label       = __( 'View Term', 'albert-ai-butler' );
+		$this->description = __( 'Retrieve a single taxonomy term by ID.', 'albert-ai-butler' );
 		$this->category    = 'taxonomy';
 		$this->group       = 'terms';
 
@@ -92,10 +92,10 @@ class ViewTerm extends BaseAbility {
 	/**
 	 * Check if the current user has permission to execute this ability.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->require_capability( 'manage_categories' );
 	}
 
@@ -111,15 +111,15 @@ class ViewTerm extends BaseAbility {
 		$taxonomy = sanitize_key( $args['taxonomy'] ?? '' );
 
 		if ( ! $term_id ) {
-			return new WP_Error( 'missing_term_id', __( 'Term ID is required.', 'albert' ) );
+			return new WP_Error( 'missing_term_id', __( 'Term ID is required.', 'albert-ai-butler' ) );
 		}
 
 		if ( ! $taxonomy ) {
-			return new WP_Error( 'missing_taxonomy', __( 'Taxonomy is required.', 'albert' ) );
+			return new WP_Error( 'missing_taxonomy', __( 'Taxonomy is required.', 'albert-ai-butler' ) );
 		}
 
 		if ( ! taxonomy_exists( $taxonomy ) ) {
-			return new WP_Error( 'invalid_taxonomy', __( 'Invalid taxonomy.', 'albert' ) );
+			return new WP_Error( 'invalid_taxonomy', __( 'Invalid taxonomy.', 'albert-ai-butler' ) );
 		}
 
 		$term = get_term( $term_id, $taxonomy );
@@ -133,7 +133,7 @@ class ViewTerm extends BaseAbility {
 				'term_not_found',
 				sprintf(
 					/* translators: %d: Term ID */
-					__( 'Term with ID %d not found.', 'albert' ),
+					__( 'Term with ID %d not found.', 'albert-ai-butler' ),
 					$term_id
 				)
 			);

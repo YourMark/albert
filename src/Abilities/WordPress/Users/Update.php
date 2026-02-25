@@ -29,8 +29,8 @@ class Update extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/update-user';
-		$this->label       = __( 'Update User', 'albert' );
-		$this->description = __( 'Update an existing WordPress user with new information.', 'albert' );
+		$this->label       = __( 'Update User', 'albert-ai-butler' );
+		$this->description = __( 'Update an existing WordPress user with new information.', 'albert-ai-butler' );
 		$this->category    = 'user';
 		$this->group       = 'users';
 
@@ -132,10 +132,10 @@ class Update extends BaseAbility {
 	 *
 	 * Delegates to the REST API endpoint's own permission callback.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->check_rest_permission( '/wp/v2/users/(?P<id>[\\d]+)', 'POST', 'edit_users' );
 	}
 
@@ -162,7 +162,7 @@ class Update extends BaseAbility {
 		if ( empty( $args['id'] ) ) {
 			return new WP_Error(
 				'missing_id',
-				__( 'User ID is required.', 'albert' ),
+				__( 'User ID is required.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -173,7 +173,7 @@ class Update extends BaseAbility {
 		if ( ! get_userdata( $user_id ) ) {
 			return new WP_Error(
 				'user_not_found',
-				__( 'User not found.', 'albert' ),
+				__( 'User not found.', 'albert-ai-butler' ),
 				[ 'status' => 404 ]
 			);
 		}
@@ -228,7 +228,7 @@ class Update extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while updating the user.', 'albert' ),
+				$data['message'] ?? __( 'An error occurred while updating the user.', 'albert-ai-butler' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

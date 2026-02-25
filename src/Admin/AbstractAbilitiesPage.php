@@ -135,18 +135,18 @@ abstract class AbstractAbilitiesPage implements Hookable {
 	 */
 	public function render_page(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'albert' ) );
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'albert-ai-butler' ) );
 		}
 
 		// Require WP 6.9+ Abilities API.
 		if ( ! function_exists( 'wp_get_abilities' ) ) {
 			?>
-			<div class="wrap albert-wrap">
+			<div class="wrap albert-settings">
 				<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 				<div class="notice notice-error">
 					<p>
-						<strong><?php esc_html_e( 'WordPress 6.9+ Required', 'albert' ); ?></strong>
-						<?php esc_html_e( 'The Abilities API requires WordPress 6.9 or later. Please update WordPress to use this feature.', 'albert' ); ?>
+						<strong><?php esc_html_e( 'WordPress 6.9+ Required', 'albert-ai-butler' ); ?></strong>
+						<?php esc_html_e( 'The Abilities API requires WordPress 6.9 or later. Please update WordPress to use this feature.', 'albert-ai-butler' ); ?>
 					</p>
 				</div>
 			</div>
@@ -172,7 +172,7 @@ abstract class AbstractAbilitiesPage implements Hookable {
 
 		$disabled_abilities = self::get_disabled_abilities();
 		?>
-		<div class="wrap albert-wrap">
+		<div class="wrap albert-settings">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 
 			<?php settings_errors(); ?>
@@ -206,11 +206,11 @@ abstract class AbstractAbilitiesPage implements Hookable {
 			return;
 		}
 		?>
-		<aside class="albert-sidebar" aria-label="<?php esc_attr_e( 'Abilities navigation', 'albert' ); ?>">
+		<aside class="albert-sidebar" aria-label="<?php esc_attr_e( 'Abilities navigation', 'albert-ai-butler' ); ?>">
 			<div class="albert-sidebar-save">
-				<?php submit_button( __( 'Save Changes', 'albert' ), 'primary', 'submit', false, [ 'form' => 'albert-form' ] ); ?>
+				<?php submit_button( __( 'Save Changes', 'albert-ai-butler' ), 'primary', 'submit', false, [ 'form' => 'albert-form' ] ); ?>
 			</div>
-			<h2 class="albert-sidebar-title"><?php esc_html_e( 'Categories', 'albert' ); ?></h2>
+			<h2 class="albert-sidebar-title"><?php esc_html_e( 'Categories', 'albert-ai-butler' ); ?></h2>
 			<nav>
 				<ul class="albert-sidebar-nav">
 					<?php foreach ( $grouped as $slug => $data ) { ?>
@@ -260,7 +260,7 @@ abstract class AbstractAbilitiesPage implements Hookable {
 			return;
 		}
 		?>
-		<nav class="albert-sidebar-mobile" aria-label="<?php esc_attr_e( 'Abilities categories', 'albert' ); ?>">
+		<nav class="albert-sidebar-mobile" aria-label="<?php esc_attr_e( 'Abilities categories', 'albert-ai-butler' ); ?>">
 			<ul class="albert-sidebar-mobile-nav">
 				<?php foreach ( $grouped as $slug => $data ) { ?>
 					<?php
@@ -340,7 +340,7 @@ abstract class AbstractAbilitiesPage implements Hookable {
 	 */
 	private function render_abilities_content( array $grouped, array $disabled_abilities ): void {
 		?>
-		<form method="post" action="options.php" id="albert-form" aria-label="<?php esc_attr_e( 'Albert Abilities Settings', 'albert' ); ?>">
+		<form method="post" action="options.php" id="albert-form" aria-label="<?php esc_attr_e( 'Albert Abilities Settings', 'albert-ai-butler' ); ?>">
 			<?php settings_fields( self::OPTION_GROUP ); ?>
 
 			<?php
@@ -351,12 +351,12 @@ abstract class AbstractAbilitiesPage implements Hookable {
 
 			<div class="albert-content-header">
 				<p class="albert-content-description">
-					<?php esc_html_e( 'Select which abilities AI assistants can use on your site. Only enable abilities you trust.', 'albert' ); ?>
+					<?php esc_html_e( 'Select which abilities AI assistants can use on your site. Only enable abilities you trust.', 'albert-ai-butler' ); ?>
 				</p>
 				<span class="albert-content-actions">
-					<button type="button" class="albert-action-link" id="albert-expand-all"><?php esc_html_e( 'Expand all', 'albert' ); ?></button>
+					<button type="button" class="albert-action-link" id="albert-expand-all"><?php esc_html_e( 'Expand all', 'albert-ai-butler' ); ?></button>
 					<span class="albert-action-separator" aria-hidden="true">·</span>
-					<button type="button" class="albert-action-link" id="albert-collapse-all"><?php esc_html_e( 'Collapse all', 'albert' ); ?></button>
+					<button type="button" class="albert-action-link" id="albert-collapse-all"><?php esc_html_e( 'Collapse all', 'albert-ai-butler' ); ?></button>
 				</span>
 			</div>
 
@@ -370,14 +370,14 @@ abstract class AbstractAbilitiesPage implements Hookable {
 			<?php } else { ?>
 				<div class="notice notice-info">
 					<p>
-						<?php esc_html_e( 'No abilities are currently registered. Abilities will appear here once they are registered.', 'albert' ); ?>
+						<?php esc_html_e( 'No abilities are currently registered. Abilities will appear here once they are registered.', 'albert-ai-butler' ); ?>
 					</p>
 				</div>
 			<?php } ?>
 
 			<?php if ( ! empty( $grouped ) ) { ?>
 				<div class="albert-mobile-save">
-					<?php submit_button( __( 'Save Changes', 'albert' ), 'primary', 'submit-mobile', false ); ?>
+					<?php submit_button( __( 'Save Changes', 'albert-ai-butler' ), 'primary', 'submit-mobile', false ); ?>
 				</div>
 			<?php } ?>
 		</form>
@@ -464,14 +464,14 @@ abstract class AbstractAbilitiesPage implements Hookable {
 								aria-label="
 								<?php
 									/* translators: %s: category name */
-									echo esc_attr( sprintf( __( 'Enable all %s abilities', 'albert' ), $label ) );
+									echo esc_attr( sprintf( __( 'Enable all %s abilities', 'albert-ai-butler' ), $label ) );
 								?>
 								"
 						/>
 						<span class="albert-toggle-slider" aria-hidden="true"></span>
 					</label>
 					<label for="<?php echo esc_attr( $toggle_id ); ?>">
-						<?php esc_html_e( 'Enable All', 'albert' ); ?>
+						<?php esc_html_e( 'Enable All', 'albert-ai-butler' ); ?>
 					</label>
 				</div>
 			</div>
@@ -557,7 +557,7 @@ abstract class AbstractAbilitiesPage implements Hookable {
 							</label>
 							<label class="ability-type-toggle-label" for="<?php echo esc_attr( $read_id ); ?>">
 								<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
-								<?php esc_html_e( 'Read', 'albert' ); ?>
+								<?php esc_html_e( 'Read', 'albert-ai-butler' ); ?>
 							</label>
 						</div>
 					<?php } ?>
@@ -578,7 +578,7 @@ abstract class AbstractAbilitiesPage implements Hookable {
 							</label>
 							<label class="ability-type-toggle-label" for="<?php echo esc_attr( $write_id ); ?>">
 								<span class="dashicons dashicons-edit" aria-hidden="true"></span>
-								<?php esc_html_e( 'Write', 'albert' ); ?>
+								<?php esc_html_e( 'Write', 'albert-ai-butler' ); ?>
 							</label>
 						</div>
 					<?php } ?>
@@ -593,7 +593,7 @@ abstract class AbstractAbilitiesPage implements Hookable {
 					?>
 					<div class="ability-mode-label ability-mode-label--read">
 						<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
-						<?php esc_html_e( 'Read', 'albert' ); ?>
+						<?php esc_html_e( 'Read', 'albert-ai-butler' ); ?>
 					</div>
 					<?php
 				}
@@ -604,7 +604,7 @@ abstract class AbstractAbilitiesPage implements Hookable {
 					?>
 					<div class="ability-mode-label ability-mode-label--write">
 						<span class="dashicons dashicons-edit" aria-hidden="true"></span>
-						<?php esc_html_e( 'Write', 'albert' ); ?>
+						<?php esc_html_e( 'Write', 'albert-ai-butler' ); ?>
 					</div>
 					<?php
 				}
@@ -727,9 +727,9 @@ abstract class AbstractAbilitiesPage implements Hookable {
 	 */
 	private function get_source_tooltip( string $source_type ): string {
 		$tooltips = [
-			'core'        => __( 'Built into WordPress core', 'albert' ),
-			'albert'      => __( 'Provided by the Albert plugin', 'albert' ),
-			'third-party' => __( 'Provided by a third-party plugin', 'albert' ),
+			'core'        => __( 'Built into WordPress core', 'albert-ai-butler' ),
+			'albert'      => __( 'Provided by the Albert plugin', 'albert-ai-butler' ),
+			'third-party' => __( 'Provided by a third-party plugin', 'albert-ai-butler' ),
 		];
 
 		return $tooltips[ $source_type ] ?? '';
@@ -823,7 +823,7 @@ abstract class AbstractAbilitiesPage implements Hookable {
 							</label>
 							<label class="ability-type-toggle-label" for="<?php echo esc_attr( $read_id ); ?>">
 								<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
-								<?php esc_html_e( 'Read', 'albert' ); ?>
+								<?php esc_html_e( 'Read', 'albert-ai-butler' ); ?>
 							</label>
 						</div>
 					<?php } ?>
@@ -845,7 +845,7 @@ abstract class AbstractAbilitiesPage implements Hookable {
 							</label>
 							<label class="ability-type-toggle-label" for="<?php echo esc_attr( $write_id ); ?>">
 								<span class="dashicons dashicons-edit" aria-hidden="true"></span>
-								<?php esc_html_e( 'Write', 'albert' ); ?>
+								<?php esc_html_e( 'Write', 'albert-ai-butler' ); ?>
 							</label>
 						</div>
 					<?php } ?>
@@ -862,7 +862,7 @@ abstract class AbstractAbilitiesPage implements Hookable {
 						?>
 						<div class="ability-mode-label ability-mode-label--read">
 							<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
-							<?php esc_html_e( 'Read', 'albert' ); ?>
+							<?php esc_html_e( 'Read', 'albert-ai-butler' ); ?>
 						</div>
 						<?php
 					}
@@ -873,7 +873,7 @@ abstract class AbstractAbilitiesPage implements Hookable {
 						?>
 						<div class="ability-mode-label ability-mode-label--write">
 							<span class="dashicons dashicons-edit" aria-hidden="true"></span>
-							<?php esc_html_e( 'Write', 'albert' ); ?>
+							<?php esc_html_e( 'Write', 'albert-ai-butler' ); ?>
 						</div>
 						<?php
 					}

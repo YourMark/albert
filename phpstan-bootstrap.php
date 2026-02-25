@@ -13,7 +13,7 @@ if ( ! defined( 'ALBERT_VERSION' ) ) {
 }
 
 if ( ! defined( 'ALBERT_PLUGIN_FILE' ) ) {
-	define( 'ALBERT_PLUGIN_FILE', __DIR__ . '/albert.php' );
+	define( 'ALBERT_PLUGIN_FILE', __DIR__ . '/albert-ai-butler.php' );
 }
 
 if ( ! defined( 'ALBERT_PLUGIN_DIR' ) ) {
@@ -21,9 +21,9 @@ if ( ! defined( 'ALBERT_PLUGIN_DIR' ) ) {
 }
 
 if ( ! defined( 'ALBERT_PLUGIN_URL' ) ) {
-	define( 'ALBERT_PLUGIN_URL', 'https://example.com/wp-content/plugins/albert/' );
+	define( 'ALBERT_PLUGIN_URL', 'https://example.com/wp-content/plugins/albert-ai-butler/' );
 }
 
 if ( ! defined( 'ALBERT_PLUGIN_BASENAME' ) ) {
-	define( 'ALBERT_PLUGIN_BASENAME', 'albert/albert.php' );
+	define( 'ALBERT_PLUGIN_BASENAME', 'albert-ai-butler/albert-ai-butler.php' );
 }

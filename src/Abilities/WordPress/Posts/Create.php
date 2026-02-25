@@ -9,7 +9,7 @@
 
 namespace Albert\Abilities\WordPress\Posts;
 
-use Alley\WP\Block_Converter\Block_Converter;
+use Albert\Utilities\BlockConverter;
 use Albert\Abstracts\BaseAbility;
 use Albert\Core\Annotations;
 use WP_Error;
@@ -30,8 +30,8 @@ class Create extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/create-post';
-		$this->label       = __( 'Create Post', 'albert' );
-		$this->description = __( 'Create a new WordPress post with specified title, content, and metadata.', 'albert' );
+		$this->label       = __( 'Create Post', 'albert-ai-butler' );
+		$this->description = __( 'Create a new WordPress post with specified title, content, and metadata.', 'albert-ai-butler' );
 		$this->category    = 'content';
 		$this->group       = 'posts';
 
@@ -123,10 +123,10 @@ class Create extends BaseAbility {
 	 *
 	 * Delegates to the REST API endpoint's own permission callback.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->check_rest_permission( '/wp/v2/posts', 'POST', 'edit_posts' );
 	}
 
@@ -151,12 +151,12 @@ class Create extends BaseAbility {
 		if ( empty( $args['title'] ) ) {
 			return new WP_Error(
 				'missing_title',
-				__( 'Post title is required.', 'albert' ),
+				__( 'Post title is required.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
 
-		$content = ( new Block_Converter( $args['content'] ) )->convert();
+		$content = ( new BlockConverter( $args['content'] ) )->convert();
 
 		// Prepare REST API request data.
 		$request_data = [
@@ -209,7 +209,7 @@ class Create extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while creating the post.', 'albert' ),
+				$data['message'] ?? __( 'An error occurred while creating the post.', 'albert-ai-butler' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

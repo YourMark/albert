@@ -29,8 +29,8 @@ class SetFeaturedImage extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/set-featured-image';
-		$this->label       = __( 'Set Featured Image', 'albert' );
-		$this->description = __( 'Set an existing media attachment as the featured image for a post or page.', 'albert' );
+		$this->label       = __( 'Set Featured Image', 'albert-ai-butler' );
+		$this->description = __( 'Set an existing media attachment as the featured image for a post or page.', 'albert-ai-butler' );
 		$this->category    = 'content';
 		$this->group       = 'media';
 
@@ -93,10 +93,10 @@ class SetFeaturedImage extends BaseAbility {
 	 *
 	 * Delegates to the REST API endpoint's own permission callback.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->check_rest_permission( '/wp/v2/posts/(?P<id>[\\d]+)', 'POST', 'edit_posts' );
 	}
 
@@ -117,7 +117,7 @@ class SetFeaturedImage extends BaseAbility {
 		if ( empty( $args['post_id'] ) ) {
 			return new WP_Error(
 				'missing_post_id',
-				__( 'Post ID is required.', 'albert' ),
+				__( 'Post ID is required.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -125,7 +125,7 @@ class SetFeaturedImage extends BaseAbility {
 		if ( empty( $args['attachment_id'] ) ) {
 			return new WP_Error(
 				'missing_attachment_id',
-				__( 'Attachment ID is required.', 'albert' ),
+				__( 'Attachment ID is required.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -145,7 +145,7 @@ class SetFeaturedImage extends BaseAbility {
 			if ( $page_response->is_error() ) {
 				return new WP_Error(
 					'invalid_post',
-					__( 'The specified post or page does not exist.', 'albert' ),
+					__( 'The specified post or page does not exist.', 'albert-ai-butler' ),
 					[ 'status' => 404 ]
 				);
 			}
@@ -158,7 +158,7 @@ class SetFeaturedImage extends BaseAbility {
 		if ( $media_response->is_error() ) {
 			return new WP_Error(
 				'invalid_attachment',
-				__( 'The specified attachment does not exist.', 'albert' ),
+				__( 'The specified attachment does not exist.', 'albert-ai-butler' ),
 				[ 'status' => 404 ]
 			);
 		}
@@ -186,7 +186,7 @@ class SetFeaturedImage extends BaseAbility {
 			if ( $page_update_response->is_error() ) {
 				return new WP_Error(
 					'thumbnail_error',
-					__( 'Failed to set the featured image.', 'albert' ),
+					__( 'Failed to set the featured image.', 'albert-ai-butler' ),
 					[ 'status' => 500 ]
 				);
 			}

@@ -29,8 +29,8 @@ class ViewPage extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/view-page';
-		$this->label       = __( 'View Page', 'albert' );
-		$this->description = __( 'Retrieve a single WordPress page by ID.', 'albert' );
+		$this->label       = __( 'View Page', 'albert-ai-butler' );
+		$this->description = __( 'Retrieve a single WordPress page by ID.', 'albert-ai-butler' );
 		$this->category    = 'content';
 		$this->group       = 'pages';
 
@@ -88,10 +88,10 @@ class ViewPage extends BaseAbility {
 	/**
 	 * Check if the current user has permission to execute this ability.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->require_capability( 'read' );
 	}
 
@@ -106,7 +106,7 @@ class ViewPage extends BaseAbility {
 		$page_id = absint( $args['id'] ?? 0 );
 
 		if ( ! $page_id ) {
-			return new WP_Error( 'missing_page_id', __( 'Page ID is required.', 'albert' ) );
+			return new WP_Error( 'missing_page_id', __( 'Page ID is required.', 'albert-ai-butler' ) );
 		}
 
 		$page = get_post( $page_id );
@@ -116,7 +116,7 @@ class ViewPage extends BaseAbility {
 				'page_not_found',
 				sprintf(
 					/* translators: %d: Page ID */
-					__( 'Page with ID %d not found.', 'albert' ),
+					__( 'Page with ID %d not found.', 'albert-ai-butler' ),
 					$page_id
 				)
 			);
@@ -124,7 +124,7 @@ class ViewPage extends BaseAbility {
 
 		// Check if user can read this specific page.
 		if ( ! current_user_can( 'read_post', $page_id ) ) {
-			return new WP_Error( 'forbidden', __( 'You do not have permission to view this page.', 'albert' ) );
+			return new WP_Error( 'forbidden', __( 'You do not have permission to view this page.', 'albert-ai-butler' ) );
 		}
 
 		return [

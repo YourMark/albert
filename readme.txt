@@ -1,9 +1,9 @@
 === Albert - The AI Butler ===
-Contributors: markjansen
+Contributors: albertai, mark-jansen
 Tags: ai, mcp, oauth, claude, chatgpt
 Requires at least: 6.9
 Tested up to: 6.9
-Requires PHP: 8.2
+Requires PHP: 8.1
 Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -44,7 +44,7 @@ Every AI assistant must present proper credentials before Albert lets them in. C
 = Manual Installation =
 
 1. Download the plugin files
-2. Upload the `albert` folder to `/wp-content/plugins/`
+2. Upload the `albert-ai-butler` folder to `/wp-content/plugins/`
 3. Activate the plugin through the 'Plugins' menu in WordPress
 4. Follow the setup steps above
 
@@ -65,7 +65,7 @@ Every AI assistant must present proper credentials before Albert lets them in. C
 4. Authorize when prompted
 5. ChatGPT can now work with your WordPress site
 
-Full setup guide available at [albertwp.com/docs](https://albertwp.com/docs)
+Full setup guide available at [Documentation](https://github.com/YourMark/albert-ai-butler/wiki)
 
 == Frequently Asked Questions ==
 
@@ -103,13 +103,7 @@ No. Albert works with WordPress core out of the box. WooCommerce abilities appea
 
 = Can I add custom abilities? =
 
-Yes. Create a class that extends Albert's BaseAbility, implement the `execute()` and `check_permission()` methods, then register it via the `albert_register_abilities` action. This works from an addon plugin, a must-use plugin, or your theme's `functions.php`:
-
-`add_action( 'albert_register_abilities', function ( $manager ) {
-    $manager->add_ability( new MyCustomAbility() );
-} );`
-
-Custom abilities automatically appear in the Albert admin UI, can be toggled on/off, and are available to AI assistants via MCP. See the documentation at [albertwp.com/docs](https://albertwp.com/docs).
+Yes. Developers can register custom abilities using the WordPress Abilities API to expose any functionality to AI assistants. See the documentation at [GitHub](https://github.com/YourMark/albert-ai-butler/wiki).
 
 = Does this work with multisite? =
 
@@ -124,9 +118,9 @@ Albert is designed for single-site installations. Multisite support is on the ro
 
 = Where can I get support? =
 
-* Documentation: [albertwp.com/docs](https://albertwp.com/docs)
+* Documentation: [GitHub Wiki](https://github.com/YourMark/albert-ai-butler/wiki)
 * Support Forum: [WordPress.org support forums](https://wordpress.org/support/plugin/albert/)
-* GitHub: [Report issues](https://github.com/yourmark/albert/issues)
+* GitHub: [Report issues](https://github.com/YourMark/albert-ai-butler/issues)
 
 == Screenshots ==
 
@@ -162,7 +156,7 @@ Albert does not collect, store, or transmit any user data to external servers. A
 
 Developed by Mark Jansen - Your Mark Media
 Website: https://yourmark.nl
-Plugin URL: https://albertwp.com
+Plugin URL: https://github.com/YourMark/albert-ai-butler
 
 Built with:
 * league/oauth2-server for OAuth 2.0 implementation

@@ -31,7 +31,7 @@ class SampleTest extends TestCase {
 	 * @return void
 	 */
 	public function test_plugin_file_exists(): void {
-		$plugin_file = dirname( __DIR__, 2 ) . '/albert.php';
+		$plugin_file = dirname( __DIR__, 2 ) . '/albert-ai-butler.php';
 
 		$this->assertFileExists( $plugin_file );
 	}

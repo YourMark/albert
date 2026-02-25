@@ -29,8 +29,8 @@ class ViewCustomer extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/woo-view-customer';
-		$this->label       = __( 'View Customer', 'albert' );
-		$this->description = __( 'Retrieve a single WooCommerce customer by user ID.', 'albert' );
+		$this->label       = __( 'View Customer', 'albert-ai-butler' );
+		$this->description = __( 'Retrieve a single WooCommerce customer by user ID.', 'albert-ai-butler' );
 		$this->category    = 'woo-customers';
 		$this->group       = 'customers';
 
@@ -88,10 +88,10 @@ class ViewCustomer extends BaseAbility {
 	/**
 	 * Check permission.
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->require_capability( 'list_users' );
 	}
 
@@ -107,7 +107,7 @@ class ViewCustomer extends BaseAbility {
 		$customer_id = absint( $args['id'] ?? 0 );
 
 		if ( ! $customer_id ) {
-			return new WP_Error( 'missing_customer_id', __( 'Customer ID is required.', 'albert' ) );
+			return new WP_Error( 'missing_customer_id', __( 'Customer ID is required.', 'albert-ai-butler' ) );
 		}
 
 		try {
@@ -117,7 +117,7 @@ class ViewCustomer extends BaseAbility {
 				'customer_not_found',
 				sprintf(
 					/* translators: %d: Customer ID */
-					__( 'Customer with ID %d not found.', 'albert' ),
+					__( 'Customer with ID %d not found.', 'albert-ai-butler' ),
 					$customer_id
 				)
 			);
@@ -128,7 +128,7 @@ class ViewCustomer extends BaseAbility {
 				'customer_not_found',
 				sprintf(
 					/* translators: %d: Customer ID */
-					__( 'Customer with ID %d not found.', 'albert' ),
+					__( 'Customer with ID %d not found.', 'albert-ai-butler' ),
 					$customer_id
 				)
 			);

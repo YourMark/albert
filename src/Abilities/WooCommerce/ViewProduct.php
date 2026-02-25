@@ -28,8 +28,8 @@ class ViewProduct extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/woo-view-product';
-		$this->label       = __( 'View Product', 'albert' );
-		$this->description = __( 'Retrieve a single WooCommerce product by ID.', 'albert' );
+		$this->label       = __( 'View Product', 'albert-ai-butler' );
+		$this->description = __( 'Retrieve a single WooCommerce product by ID.', 'albert-ai-butler' );
 		$this->category    = 'woo-products';
 		$this->group       = 'products';
 
@@ -87,10 +87,10 @@ class ViewProduct extends BaseAbility {
 	/**
 	 * Check permission.
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->require_capability( 'read' );
 	}
 
@@ -106,7 +106,7 @@ class ViewProduct extends BaseAbility {
 		$product_id = absint( $args['id'] ?? 0 );
 
 		if ( ! $product_id ) {
-			return new WP_Error( 'missing_product_id', __( 'Product ID is required.', 'albert' ) );
+			return new WP_Error( 'missing_product_id', __( 'Product ID is required.', 'albert-ai-butler' ) );
 		}
 
 		$product = wc_get_product( $product_id );
@@ -116,7 +116,7 @@ class ViewProduct extends BaseAbility {
 				'product_not_found',
 				sprintf(
 					/* translators: %d: Product ID */
-					__( 'Product with ID %d not found.', 'albert' ),
+					__( 'Product with ID %d not found.', 'albert-ai-butler' ),
 					$product_id
 				)
 			);

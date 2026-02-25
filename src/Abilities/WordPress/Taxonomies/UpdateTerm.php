@@ -29,8 +29,8 @@ class UpdateTerm extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/update-term';
-		$this->label       = __( 'Update Term', 'albert' );
-		$this->description = __( 'Update an existing term in a taxonomy (category, tag, etc).', 'albert' );
+		$this->label       = __( 'Update Term', 'albert-ai-butler' );
+		$this->description = __( 'Update an existing term in a taxonomy (category, tag, etc).', 'albert-ai-butler' );
 		$this->category    = 'taxonomy';
 		$this->group       = 'terms';
 
@@ -111,10 +111,10 @@ class UpdateTerm extends BaseAbility {
 	/**
 	 * Check if current user has permission to execute this ability.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->require_capability( 'manage_categories' );
 	}
 
@@ -139,7 +139,7 @@ class UpdateTerm extends BaseAbility {
 		if ( empty( $args['id'] ) ) {
 			return new WP_Error(
 				'missing_id',
-				__( 'Term ID is required.', 'albert' ),
+				__( 'Term ID is required.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -186,7 +186,7 @@ class UpdateTerm extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while updating the term.', 'albert' ),
+				$data['message'] ?? __( 'An error occurred while updating the term.', 'albert-ai-butler' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}
@@ -226,7 +226,7 @@ class UpdateTerm extends BaseAbility {
 		if ( ! $taxonomy_obj ) {
 			return new WP_Error(
 				'invalid_taxonomy',
-				__( 'Invalid taxonomy.', 'albert' ),
+				__( 'Invalid taxonomy.', 'albert-ai-butler' ),
 				[ 'status' => 404 ]
 			);
 		}
@@ -234,7 +234,7 @@ class UpdateTerm extends BaseAbility {
 		if ( empty( $taxonomy_obj->rest_base ) ) {
 			return new WP_Error(
 				'taxonomy_not_rest_enabled',
-				__( 'This taxonomy is not available via REST API.', 'albert' ),
+				__( 'This taxonomy is not available via REST API.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}

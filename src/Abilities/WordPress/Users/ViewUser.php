@@ -30,8 +30,8 @@ class ViewUser extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/view-user';
-		$this->label       = __( 'View User', 'albert' );
-		$this->description = __( 'Retrieve a single WordPress user by ID.', 'albert' );
+		$this->label       = __( 'View User', 'albert-ai-butler' );
+		$this->description = __( 'Retrieve a single WordPress user by ID.', 'albert-ai-butler' );
 		$this->category    = 'user';
 		$this->group       = 'users';
 
@@ -89,10 +89,10 @@ class ViewUser extends BaseAbility {
 	/**
 	 * Check if the current user has permission to execute this ability.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->require_capability( 'list_users' );
 	}
 
@@ -107,7 +107,7 @@ class ViewUser extends BaseAbility {
 		$user_id = absint( $args['id'] ?? 0 );
 
 		if ( ! $user_id ) {
-			return new WP_Error( 'missing_user_id', __( 'User ID is required.', 'albert' ) );
+			return new WP_Error( 'missing_user_id', __( 'User ID is required.', 'albert-ai-butler' ) );
 		}
 
 		$user = get_user_by( 'id', $user_id );
@@ -117,7 +117,7 @@ class ViewUser extends BaseAbility {
 				'user_not_found',
 				sprintf(
 					/* translators: %d: User ID */
-					__( 'User with ID %d not found.', 'albert' ),
+					__( 'User with ID %d not found.', 'albert-ai-butler' ),
 					$user_id
 				)
 			);

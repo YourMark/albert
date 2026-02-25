@@ -28,8 +28,8 @@ class FindProducts extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/woo-find-products';
-		$this->label       = __( 'Find Products', 'albert' );
-		$this->description = __( 'Search and list WooCommerce products with optional filtering and pagination.', 'albert' );
+		$this->label       = __( 'Find Products', 'albert-ai-butler' );
+		$this->description = __( 'Search and list WooCommerce products with optional filtering and pagination.', 'albert-ai-butler' );
 		$this->category    = 'woo-products';
 		$this->group       = 'products';
 
@@ -143,10 +143,10 @@ class FindProducts extends BaseAbility {
 	/**
 	 * Check permission.
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->require_capability( 'edit_products' );
 	}
 

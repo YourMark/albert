@@ -29,8 +29,8 @@ class ViewMedia extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/view-media';
-		$this->label       = __( 'View Media', 'albert' );
-		$this->description = __( 'Retrieve a single media file by ID.', 'albert' );
+		$this->label       = __( 'View Media', 'albert-ai-butler' );
+		$this->description = __( 'Retrieve a single media file by ID.', 'albert-ai-butler' );
 		$this->category    = 'content';
 		$this->group       = 'media';
 
@@ -88,10 +88,10 @@ class ViewMedia extends BaseAbility {
 	/**
 	 * Check if the current user has permission to execute this ability.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->require_capability( 'upload_files' );
 	}
 
@@ -106,7 +106,7 @@ class ViewMedia extends BaseAbility {
 		$media_id = absint( $args['id'] ?? 0 );
 
 		if ( ! $media_id ) {
-			return new WP_Error( 'missing_media_id', __( 'Media ID is required.', 'albert' ) );
+			return new WP_Error( 'missing_media_id', __( 'Media ID is required.', 'albert-ai-butler' ) );
 		}
 
 		$media = get_post( $media_id );
@@ -116,7 +116,7 @@ class ViewMedia extends BaseAbility {
 				'media_not_found',
 				sprintf(
 					/* translators: %d: Media ID */
-					__( 'Media with ID %d not found.', 'albert' ),
+					__( 'Media with ID %d not found.', 'albert-ai-butler' ),
 					$media_id
 				)
 			);

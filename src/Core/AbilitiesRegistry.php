@@ -29,8 +29,8 @@ class AbilitiesRegistry {
 	public static function get_ability_groups(): array {
 		$groups = [
 			'wordpress' => [
-				'label'       => __( 'WordPress Core', 'albert' ),
-				'description' => __( 'Core WordPress content management.', 'albert' ),
+				'label'       => __( 'WordPress Core', 'albert-ai-butler' ),
+				'description' => __( 'Core WordPress content management.', 'albert-ai-butler' ),
 				'types'       => self::get_wordpress_types(),
 			],
 		];
@@ -38,13 +38,13 @@ class AbilitiesRegistry {
 		// Add WooCommerce if active.
 		if ( class_exists( 'WooCommerce' ) ) {
 			$groups['woocommerce'] = [
-				'label'       => __( 'WooCommerce', 'albert' ),
-				'description' => __( 'Store and order management.', 'albert' ),
+				'label'       => __( 'WooCommerce', 'albert-ai-butler' ),
+				'description' => __( 'Store and order management.', 'albert-ai-butler' ),
 				'types'       => self::get_woocommerce_types(),
 			];
 		}
 
-		return apply_filters( 'albert/abilities/groups', $groups );
+		return apply_filters( 'albert_ability_groups', $groups );
 	}
 
 	/**
@@ -56,67 +56,67 @@ class AbilitiesRegistry {
 	private static function get_wordpress_types(): array {
 		return [
 			'posts'      => [
-				'label' => __( 'Posts', 'albert' ),
+				'label' => __( 'Posts', 'albert-ai-butler' ),
 				'read'  => [
-					'label'       => __( 'Read', 'albert' ),
-					'description' => __( 'Find and view posts', 'albert' ),
+					'label'       => __( 'Read', 'albert-ai-butler' ),
+					'description' => __( 'Find and view posts', 'albert-ai-butler' ),
 					'abilities'   => [ 'albert/find-posts', 'albert/view-post' ],
 				],
 				'write' => [
-					'label'       => __( 'Write', 'albert' ),
-					'description' => __( 'Create, edit, and delete posts', 'albert' ),
+					'label'       => __( 'Write', 'albert-ai-butler' ),
+					'description' => __( 'Create, edit, and delete posts', 'albert-ai-butler' ),
 					'abilities'   => [ 'albert/create-post', 'albert/update-post', 'albert/delete-post' ],
 				],
 			],
 			'pages'      => [
-				'label' => __( 'Pages', 'albert' ),
+				'label' => __( 'Pages', 'albert-ai-butler' ),
 				'read'  => [
-					'label'       => __( 'Read', 'albert' ),
-					'description' => __( 'Find and view pages', 'albert' ),
+					'label'       => __( 'Read', 'albert-ai-butler' ),
+					'description' => __( 'Find and view pages', 'albert-ai-butler' ),
 					'abilities'   => [ 'albert/find-pages', 'albert/view-page' ],
 				],
 				'write' => [
-					'label'       => __( 'Write', 'albert' ),
-					'description' => __( 'Create, edit, and delete pages', 'albert' ),
+					'label'       => __( 'Write', 'albert-ai-butler' ),
+					'description' => __( 'Create, edit, and delete pages', 'albert-ai-butler' ),
 					'abilities'   => [ 'albert/create-page', 'albert/update-page', 'albert/delete-page' ],
 				],
 			],
 			'media'      => [
-				'label' => __( 'Media', 'albert' ),
+				'label' => __( 'Media', 'albert-ai-butler' ),
 				'read'  => [
-					'label'       => __( 'Read', 'albert' ),
-					'description' => __( 'Find and view media files', 'albert' ),
+					'label'       => __( 'Read', 'albert-ai-butler' ),
+					'description' => __( 'Find and view media files', 'albert-ai-butler' ),
 					'abilities'   => [ 'albert/find-media', 'albert/view-media' ],
 				],
 				'write' => [
-					'label'       => __( 'Write', 'albert' ),
-					'description' => __( 'Upload and manage media', 'albert' ),
+					'label'       => __( 'Write', 'albert-ai-butler' ),
+					'description' => __( 'Upload and manage media', 'albert-ai-butler' ),
 					'abilities'   => [ 'albert/upload-media', 'albert/set-featured-image' ],
 				],
 			],
 			'users'      => [
-				'label' => __( 'Users', 'albert' ),
+				'label' => __( 'Users', 'albert-ai-butler' ),
 				'read'  => [
-					'label'       => __( 'Read', 'albert' ),
-					'description' => __( 'Find and view users', 'albert' ),
+					'label'       => __( 'Read', 'albert-ai-butler' ),
+					'description' => __( 'Find and view users', 'albert-ai-butler' ),
 					'abilities'   => [ 'albert/find-users', 'albert/view-user' ],
 				],
 				'write' => [
-					'label'       => __( 'Write', 'albert' ),
-					'description' => __( 'Create, edit, and delete users', 'albert' ),
+					'label'       => __( 'Write', 'albert-ai-butler' ),
+					'description' => __( 'Create, edit, and delete users', 'albert-ai-butler' ),
 					'abilities'   => [ 'albert/create-user', 'albert/update-user', 'albert/delete-user' ],
 				],
 			],
 			'taxonomies' => [
-				'label' => __( 'Taxonomies', 'albert' ),
+				'label' => __( 'Taxonomies', 'albert-ai-butler' ),
 				'read'  => [
-					'label'       => __( 'Read', 'albert' ),
-					'description' => __( 'Find categories, tags, and terms', 'albert' ),
+					'label'       => __( 'Read', 'albert-ai-butler' ),
+					'description' => __( 'Find categories, tags, and terms', 'albert-ai-butler' ),
 					'abilities'   => [ 'albert/find-taxonomies', 'albert/find-terms', 'albert/view-term' ],
 				],
 				'write' => [
-					'label'       => __( 'Write', 'albert' ),
-					'description' => __( 'Create, edit, and delete terms', 'albert' ),
+					'label'       => __( 'Write', 'albert-ai-butler' ),
+					'description' => __( 'Create, edit, and delete terms', 'albert-ai-butler' ),
 					'abilities'   => [ 'albert/create-term', 'albert/update-term', 'albert/delete-term' ],
 				],
 			],
@@ -132,36 +132,36 @@ class AbilitiesRegistry {
 	private static function get_woocommerce_types(): array {
 		return [
 			'products'  => [
-				'label' => __( 'Products', 'albert' ),
+				'label' => __( 'Products', 'albert-ai-butler' ),
 				'read'  => [
-					'label'       => __( 'Read', 'albert' ),
-					'description' => __( 'Find and view products', 'albert' ),
+					'label'       => __( 'Read', 'albert-ai-butler' ),
+					'description' => __( 'Find and view products', 'albert-ai-butler' ),
 					'abilities'   => [ 'albert/woo-find-products', 'albert/woo-view-product' ],
 				],
 				'write' => [
-					'label'       => __( 'Write', 'albert' ),
-					'description' => __( 'Create, edit, and delete products', 'albert' ),
+					'label'       => __( 'Write', 'albert-ai-butler' ),
+					'description' => __( 'Create, edit, and delete products', 'albert-ai-butler' ),
 					'abilities'   => [ 'albert/woo-create-product', 'albert/woo-update-product', 'albert/woo-delete-product' ],
 				],
 			],
 			'orders'    => [
-				'label' => __( 'Orders', 'albert' ),
+				'label' => __( 'Orders', 'albert-ai-butler' ),
 				'read'  => [
-					'label'       => __( 'Read', 'albert' ),
-					'description' => __( 'Find and view orders', 'albert' ),
+					'label'       => __( 'Read', 'albert-ai-butler' ),
+					'description' => __( 'Find and view orders', 'albert-ai-butler' ),
 					'abilities'   => [ 'albert/woo-find-orders', 'albert/woo-view-order' ],
 				],
 				'write' => [
-					'label'       => __( 'Write', 'albert' ),
-					'description' => __( 'Create and update orders', 'albert' ),
+					'label'       => __( 'Write', 'albert-ai-butler' ),
+					'description' => __( 'Create and update orders', 'albert-ai-butler' ),
 					'abilities'   => [ 'albert/woo-create-order', 'albert/woo-update-order' ],
 				],
 			],
 			'customers' => [
-				'label' => __( 'Customers', 'albert' ),
+				'label' => __( 'Customers', 'albert-ai-butler' ),
 				'read'  => [
-					'label'       => __( 'Read', 'albert' ),
-					'description' => __( 'Find and view customers', 'albert' ),
+					'label'       => __( 'Read', 'albert-ai-butler' ),
+					'description' => __( 'Find and view customers', 'albert-ai-butler' ),
 					'abilities'   => [ 'albert/woo-find-customers', 'albert/woo-view-customer' ],
 				],
 			],

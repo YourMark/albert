@@ -110,8 +110,8 @@ class Server implements Hookable {
 			self::SERVER_ID,
 			self::ROUTE_NAMESPACE,
 			self::ROUTE,
-			__( 'Albert MCP Server', 'albert' ),
-			__( 'MCP server for AI assistants to interact with WordPress', 'albert' ),
+			__( 'Albert MCP Server', 'albert-ai-butler' ),
+			__( 'MCP server for AI assistants to interact with WordPress', 'albert-ai-butler' ),
 			ALBERT_VERSION,
 			[ HttpTransport::class ],
 			ErrorLogMcpErrorHandler::class,
@@ -156,7 +156,7 @@ class Server implements Hookable {
 		if ( empty( $token ) ) {
 			return new WP_Error(
 				'oauth_missing_token',
-				__( 'OAuth Bearer token required. Include an Authorization header with a valid Bearer token.', 'albert' ),
+				__( 'OAuth Bearer token required. Include an Authorization header with a valid Bearer token.', 'albert-ai-butler' ),
 				[ 'status' => 401 ]
 			);
 		}

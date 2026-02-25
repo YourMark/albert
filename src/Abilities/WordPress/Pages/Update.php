@@ -9,7 +9,7 @@
 
 namespace Albert\Abilities\WordPress\Pages;
 
-use Alley\WP\Block_Converter\Block_Converter;
+use Albert\Utilities\BlockConverter;
 use Albert\Abstracts\BaseAbility;
 use Albert\Core\Annotations;
 use WP_Error;
@@ -30,8 +30,8 @@ class Update extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/update-page';
-		$this->label       = __( 'Update Page', 'albert' );
-		$this->description = __( 'Update an existing WordPress page with new title and content.', 'albert' );
+		$this->label       = __( 'Update Page', 'albert-ai-butler' );
+		$this->description = __( 'Update an existing WordPress page with new title and content.', 'albert-ai-butler' );
 		$this->category    = 'content';
 		$this->group       = 'pages';
 
@@ -116,10 +116,10 @@ class Update extends BaseAbility {
 	 *
 	 * Delegates to the REST API endpoint's own permission callback.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->check_rest_permission( '/wp/v2/pages/(?P<id>[\\d]+)', 'POST', 'edit_pages' );
 	}
 
@@ -144,7 +144,7 @@ class Update extends BaseAbility {
 		if ( empty( $args['id'] ) ) {
 			return new WP_Error(
 				'missing_id',
-				__( 'Page ID is required.', 'albert' ),
+				__( 'Page ID is required.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -158,7 +158,7 @@ class Update extends BaseAbility {
 		if ( $check_response->is_error() ) {
 			return new WP_Error(
 				'page_not_found',
-				__( 'Page not found.', 'albert' ),
+				__( 'Page not found.', 'albert-ai-butler' ),
 				[ 'status' => 404 ]
 			);
 		}
@@ -171,7 +171,7 @@ class Update extends BaseAbility {
 		}
 
 		if ( isset( $args['content'] ) ) {
-			$request_data['content'] = ( new Block_Converter( $args['content'] ) )->convert();
+			$request_data['content'] = ( new BlockConverter( $args['content'] ) )->convert();
 		}
 
 		if ( isset( $args['status'] ) ) {
@@ -205,7 +205,7 @@ class Update extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while updating the page.', 'albert' ),
+				$data['message'] ?? __( 'An error occurred while updating the page.', 'albert-ai-butler' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

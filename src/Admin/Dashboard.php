@@ -64,8 +64,8 @@ class Dashboard implements Hookable {
 	public function add_menu_pages(): void {
 		// Add top-level menu (shows Dashboard by default).
 		add_menu_page(
-			__( 'Albert Dashboard', 'albert' ),
-			__( 'Albert', 'albert' ),
+			__( 'Albert Dashboard', 'albert-ai-butler' ),
+			__( 'Albert', 'albert-ai-butler' ),
 			'manage_options',
 			$this->page_slug,
 			[ $this, 'render_dashboard_page' ],
@@ -76,8 +76,8 @@ class Dashboard implements Hookable {
 		// Add Dashboard submenu (replaces auto-generated first submenu).
 		add_submenu_page(
 			$this->parent_slug,
-			__( 'Dashboard', 'albert' ),
-			__( 'Dashboard', 'albert' ),
+			__( 'Dashboard', 'albert-ai-butler' ),
+			__( 'Dashboard', 'albert-ai-butler' ),
 			'manage_options',
 			$this->page_slug,
 			[ $this, 'render_dashboard_page' ]
@@ -122,7 +122,7 @@ class Dashboard implements Hookable {
 	 */
 	public function render_dashboard_page(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'albert' ) );
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'albert-ai-butler' ) );
 		}
 
 		// Gather setup state.
@@ -134,45 +134,45 @@ class Dashboard implements Hookable {
 		$mcp_endpoint       = McpServer::get_endpoint_url();
 
 		?>
-		<div class="wrap albert-wrap">
-			<h1><?php echo esc_html__( 'Albert Dashboard', 'albert' ); ?></h1>
+		<div class="wrap albert-settings">
+			<h1><?php echo esc_html__( 'Albert Dashboard', 'albert-ai-butler' ); ?></h1>
 			<p class="description">
-				<?php echo esc_html__( 'Connect your WordPress site to AI assistants like Claude and ChatGPT.', 'albert' ); ?>
+				<?php echo esc_html__( 'Connect your WordPress site to AI assistants like Claude and ChatGPT.', 'albert-ai-butler' ); ?>
 			</p>
 
 			<div class="albert-dashboard-grid">
 				<!-- Setup Checklist -->
 				<div class="albert-card albert-setup-checklist-card">
 					<?php if ( $setup_complete ) { ?>
-						<h2><?php esc_html_e( 'Setup', 'albert' ); ?></h2>
+						<h2><?php esc_html_e( 'Setup', 'albert-ai-butler' ); ?></h2>
 						<div class="albert-setup-complete-wrapper">
 							<div class="albert-setup-complete-bar">
 								<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
-								<?php esc_html_e( 'Complete', 'albert' ); ?>
+								<?php esc_html_e( 'Complete', 'albert-ai-butler' ); ?>
 							</div>
 							<div class="albert-setup-complete-content">
 								<p class="albert-setup-complete-actions">
 									<a href="<?php echo esc_url( admin_url( 'admin.php?page=albert-abilities' ) ); ?>" class="button button-primary">
-										<?php esc_html_e( 'Manage Abilities', 'albert' ); ?>
+										<?php esc_html_e( 'Manage Abilities', 'albert-ai-butler' ); ?>
 									</a>
 								</p>
 							</div>
 						</div>
 					<?php } else { ?>
-						<h2><?php echo esc_html__( 'Get Started', 'albert' ); ?></h2>
+						<h2><?php echo esc_html__( 'Get Started', 'albert-ai-butler' ); ?></h2>
 						<ol class="albert-checklist">
 							<li class="albert-checklist-item albert-checklist-done">
 								<span class="albert-checklist-icon dashicons dashicons-yes-alt" aria-hidden="true"></span>
-								<span class="albert-checklist-text"><?php esc_html_e( 'Plugin installed', 'albert' ); ?></span>
+								<span class="albert-checklist-text"><?php esc_html_e( 'Plugin installed', 'albert-ai-butler' ); ?></span>
 							</li>
 							<li class="albert-checklist-item <?php echo $has_allowed_users ? 'albert-checklist-done' : 'albert-checklist-current'; ?>">
 								<span class="albert-checklist-icon dashicons <?php echo $has_allowed_users ? 'dashicons-yes-alt' : 'dashicons-marker'; ?>" aria-hidden="true"></span>
 								<span class="albert-checklist-text">
 									<?php if ( $has_allowed_users ) { ?>
-										<?php esc_html_e( 'Allowed user added', 'albert' ); ?>
+										<?php esc_html_e( 'Allowed user added', 'albert-ai-butler' ); ?>
 									<?php } else { ?>
 										<a href="<?php echo esc_url( admin_url( 'admin.php?page=albert-connections' ) ); ?>">
-											<?php esc_html_e( 'Add an allowed user', 'albert' ); ?>
+											<?php esc_html_e( 'Add an allowed user', 'albert-ai-butler' ); ?>
 										</a>
 									<?php } ?>
 								</span>
@@ -181,19 +181,19 @@ class Dashboard implements Hookable {
 								<span class="albert-checklist-icon dashicons <?php echo $has_connections ? 'dashicons-yes-alt' : ( $has_allowed_users ? 'dashicons-marker' : 'dashicons-marker' ); ?>" aria-hidden="true"></span>
 								<span class="albert-checklist-text">
 									<?php if ( $has_connections ) { ?>
-										<?php esc_html_e( 'AI assistant connected', 'albert' ); ?>
+										<?php esc_html_e( 'AI assistant connected', 'albert-ai-butler' ); ?>
 									<?php } elseif ( $has_allowed_users ) { ?>
-										<?php esc_html_e( 'Connect an AI assistant', 'albert' ); ?>
+										<?php esc_html_e( 'Connect an AI assistant', 'albert-ai-butler' ); ?>
 									<?php } else { ?>
-										<?php esc_html_e( 'Connect an AI assistant', 'albert' ); ?>
+										<?php esc_html_e( 'Connect an AI assistant', 'albert-ai-butler' ); ?>
 									<?php } ?>
 								</span>
 							</li>
 							<?php if ( $has_allowed_users && ! $has_connections ) { ?>
 								<li class="albert-checklist-endpoint">
-									<label class="albert-field-label"><?php esc_html_e( 'MCP Endpoint URL', 'albert' ); ?></label>
+									<label class="albert-field-label"><?php esc_html_e( 'MCP Endpoint URL', 'albert-ai-butler' ); ?></label>
 									<p class="albert-field-description">
-										<?php esc_html_e( 'Add this URL to Claude Desktop or ChatGPT as an MCP connector:', 'albert' ); ?>
+										<?php esc_html_e( 'Add this URL to Claude Desktop or ChatGPT as an MCP connector:', 'albert-ai-butler' ); ?>
 									</p>
 									<div class="albert-endpoint-box">
 										<input
@@ -208,7 +208,7 @@ class Dashboard implements Hookable {
 											class="button button-secondary albert-copy-btn"
 											data-clipboard-target="#albert-mcp-endpoint"
 										>
-											<?php echo esc_html__( 'Copy', 'albert' ); ?>
+											<?php echo esc_html__( 'Copy', 'albert-ai-butler' ); ?>
 										</button>
 									</div>
 								</li>
@@ -219,52 +219,52 @@ class Dashboard implements Hookable {
 
 				<!-- Status Overview -->
 				<div class="albert-card albert-status-card">
-					<h2><?php echo esc_html__( 'Status', 'albert' ); ?></h2>
+					<h2><?php echo esc_html__( 'Status', 'albert-ai-butler' ); ?></h2>
 					<ul class="albert-status-list">
 						<li>
 							<span class="albert-status-indicator albert-status-active" aria-hidden="true"></span>
-							<strong><?php echo esc_html__( 'OAuth Server:', 'albert' ); ?></strong>
-							<span class="albert-status-value"><?php echo esc_html__( 'Active', 'albert' ); ?></span>
+							<strong><?php echo esc_html__( 'OAuth Server:', 'albert-ai-butler' ); ?></strong>
+							<span class="albert-status-value"><?php echo esc_html__( 'Active', 'albert-ai-butler' ); ?></span>
 						</li>
 						<li>
 							<span class="albert-status-indicator albert-status-active" aria-hidden="true"></span>
-							<strong><?php echo esc_html__( 'MCP Endpoint:', 'albert' ); ?></strong>
-							<span class="albert-status-value"><?php echo esc_html__( 'Active', 'albert' ); ?></span>
+							<strong><?php echo esc_html__( 'MCP Endpoint:', 'albert-ai-butler' ); ?></strong>
+							<span class="albert-status-value"><?php echo esc_html__( 'Active', 'albert-ai-butler' ); ?></span>
 						</li>
 						<li>
 							<span class="albert-status-indicator albert-status-info" aria-hidden="true"></span>
-							<strong><?php echo esc_html__( 'Active Connections:', 'albert' ); ?></strong>
+							<strong><?php echo esc_html__( 'Active Connections:', 'albert-ai-butler' ); ?></strong>
 							<span class="albert-status-value"><?php echo esc_html( (string) $active_connections ); ?></span>
 						</li>
 						<li>
 							<span class="albert-status-indicator albert-status-info" aria-hidden="true"></span>
-							<strong><?php echo esc_html__( 'Enabled Abilities:', 'albert' ); ?></strong>
+							<strong><?php echo esc_html__( 'Enabled Abilities:', 'albert-ai-butler' ); ?></strong>
 							<span class="albert-status-value"><?php echo esc_html( $enabled_abilities ); ?></span>
 						</li>
 					</ul>
 					<p>
 						<a href="<?php echo esc_url( admin_url( 'admin.php?page=albert-connections' ) ); ?>" class="button button-secondary">
-							<?php echo esc_html__( 'View Connections', 'albert' ); ?>
+							<?php echo esc_html__( 'View Connections', 'albert-ai-butler' ); ?>
 						</a>
 					</p>
 				</div>
 
 				<!-- Resources -->
 				<div class="albert-card albert-resources-card">
-					<h2><?php esc_html_e( 'Resources', 'albert' ); ?></h2>
+					<h2><?php esc_html_e( 'Resources', 'albert-ai-butler' ); ?></h2>
 					<ul class="albert-resources-list">
 						<li>
 							<span class="dashicons dashicons-book" aria-hidden="true"></span>
 							<a href="https://wordpress.org/plugins/albert/" target="_blank" rel="noopener noreferrer">
-								<?php esc_html_e( 'Documentation', 'albert' ); ?>
-								<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'albert' ); ?></span>
+								<?php esc_html_e( 'Documentation', 'albert-ai-butler' ); ?>
+								<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'albert-ai-butler' ); ?></span>
 							</a>
 						</li>
 						<li>
 							<span class="dashicons dashicons-sos" aria-hidden="true"></span>
-							<a href="https://github.com/WordPress/albert/issues" target="_blank" rel="noopener noreferrer">
-								<?php esc_html_e( 'Report an Issue', 'albert' ); ?>
-								<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'albert' ); ?></span>
+							<a href="https://github.com/YourMark/albert-ai-butler/issues" target="_blank" rel="noopener noreferrer">
+								<?php esc_html_e( 'Report an Issue', 'albert-ai-butler' ); ?>
+								<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'albert-ai-butler' ); ?></span>
 							</a>
 						</li>
 					</ul>
@@ -272,7 +272,7 @@ class Dashboard implements Hookable {
 
 				<!-- Recent Activity -->
 				<div class="albert-card albert-activity-card">
-					<h2><?php echo esc_html__( 'Recent Activity', 'albert' ); ?></h2>
+					<h2><?php echo esc_html__( 'Recent Activity', 'albert-ai-butler' ); ?></h2>
 					<?php
 					$recent_activity = $this->get_recent_activity();
 					if ( ! empty( $recent_activity ) ) {
@@ -288,7 +288,7 @@ class Dashboard implements Hookable {
 						</ul>
 					<?php } else { ?>
 						<p class="description">
-							<?php echo esc_html__( 'No recent activity. Connect an AI assistant to get started!', 'albert' ); ?>
+							<?php echo esc_html__( 'No recent activity. Connect an AI assistant to get started!', 'albert-ai-butler' ); ?>
 						</p>
 					<?php } ?>
 				</div>
@@ -371,19 +371,19 @@ class Dashboard implements Hookable {
 		$activity = [];
 		foreach ( $results as $result ) {
 			$user        = get_userdata( $result->user_id );
-			$client_name = $result->name ?? __( 'Unknown Client', 'albert' );
+			$client_name = $result->name ?? __( 'Unknown Client', 'albert-ai-butler' );
 			$time_diff   = human_time_diff( strtotime( $result->created_at ), time() );
 			$activity[]  = [
 				'icon' => '🔗',
 				'text' => sprintf(
 					/* translators: 1: Client name, 2: Username */
-					__( '%1$s connected by %2$s', 'albert' ),
+					__( '%1$s connected by %2$s', 'albert-ai-butler' ),
 					$client_name,
-					$user ? $user->display_name : __( 'Unknown', 'albert' )
+					$user ? $user->display_name : __( 'Unknown', 'albert-ai-butler' )
 				),
 				'time' => sprintf(
 					/* translators: %s: Time difference */
-					__( '%s ago', 'albert' ),
+					__( '%s ago', 'albert-ai-butler' ),
 					$time_diff
 				),
 			];

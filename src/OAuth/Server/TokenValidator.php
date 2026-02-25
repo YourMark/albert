@@ -47,7 +47,7 @@ class TokenValidator {
 			if ( empty( $user_id ) ) {
 				return new WP_Error(
 					'oauth_invalid_token',
-					__( 'Token does not contain a valid user identifier.', 'albert' ),
+					__( 'Token does not contain a valid user identifier.', 'albert-ai-butler' ),
 					[ 'status' => 401 ]
 				);
 			}
@@ -58,7 +58,7 @@ class TokenValidator {
 			if ( ! $user ) {
 				return new WP_Error(
 					'oauth_user_not_found',
-					__( 'User associated with token not found.', 'albert' ),
+					__( 'User associated with token not found.', 'albert-ai-butler' ),
 					[ 'status' => 401 ]
 				);
 			}
@@ -206,7 +206,7 @@ class TokenValidator {
 						'oauth_insufficient_scope',
 						sprintf(
 							/* translators: %s: Required scope */
-							__( 'This action requires the "%s" scope.', 'albert' ),
+							__( 'This action requires the "%s" scope.', 'albert-ai-butler' ),
 							$scope
 						),
 						[ 'status' => 403 ]

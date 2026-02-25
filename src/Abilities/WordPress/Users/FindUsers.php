@@ -30,8 +30,8 @@ class FindUsers extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/find-users';
-		$this->label       = __( 'Find Users', 'albert' );
-		$this->description = __( 'Find and search WordPress users with optional filtering and pagination.', 'albert' );
+		$this->label       = __( 'Find Users', 'albert-ai-butler' );
+		$this->description = __( 'Find and search WordPress users with optional filtering and pagination.', 'albert-ai-butler' );
 		$this->category    = 'user';
 		$this->group       = 'users';
 
@@ -133,10 +133,10 @@ class FindUsers extends BaseAbility {
 	 *
 	 * Delegates to the REST API endpoint's own permission callback.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->check_rest_permission( '/wp/v2/users', 'GET', 'list_users' );
 	}
 
@@ -192,7 +192,7 @@ class FindUsers extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while retrieving users.', 'albert' ),
+				$data['message'] ?? __( 'An error occurred while retrieving users.', 'albert-ai-butler' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

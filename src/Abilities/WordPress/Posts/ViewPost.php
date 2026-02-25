@@ -29,8 +29,8 @@ class ViewPost extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/view-post';
-		$this->label       = __( 'View Post', 'albert' );
-		$this->description = __( 'Retrieve a single WordPress post by ID.', 'albert' );
+		$this->label       = __( 'View Post', 'albert-ai-butler' );
+		$this->description = __( 'Retrieve a single WordPress post by ID.', 'albert-ai-butler' );
 		$this->category    = 'content';
 		$this->group       = 'posts';
 
@@ -88,10 +88,10 @@ class ViewPost extends BaseAbility {
 	/**
 	 * Check if the current user has permission to execute this ability.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->require_capability( 'read' );
 	}
 
@@ -106,7 +106,7 @@ class ViewPost extends BaseAbility {
 		$post_id = absint( $args['id'] ?? 0 );
 
 		if ( ! $post_id ) {
-			return new WP_Error( 'missing_post_id', __( 'Post ID is required.', 'albert' ) );
+			return new WP_Error( 'missing_post_id', __( 'Post ID is required.', 'albert-ai-butler' ) );
 		}
 
 		$post = get_post( $post_id );
@@ -116,7 +116,7 @@ class ViewPost extends BaseAbility {
 				'post_not_found',
 				sprintf(
 					/* translators: %d: Post ID */
-					__( 'Post with ID %d not found.', 'albert' ),
+					__( 'Post with ID %d not found.', 'albert-ai-butler' ),
 					$post_id
 				)
 			);
@@ -124,7 +124,7 @@ class ViewPost extends BaseAbility {
 
 		// Check if user can read this specific post.
 		if ( ! current_user_can( 'read_post', $post_id ) ) {
-			return new WP_Error( 'forbidden', __( 'You do not have permission to view this post.', 'albert' ) );
+			return new WP_Error( 'forbidden', __( 'You do not have permission to view this post.', 'albert-ai-butler' ) );
 		}
 
 		return [

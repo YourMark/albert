@@ -1,12 +1,6 @@
 # Albert .gitignore
 
 ############
-## Claude
-############
-
-.claude/
-
-############
 ## IDEs
 ############
 
@@ -108,13 +102,6 @@ temp/
 *.php.in
 .svn
 .env
-
-############
-## Shared Claude rules (symlinks)
-############
-
-.claude/rules/*
-!.claude/rules/patterns.md
 
 ############
 ## Generated files

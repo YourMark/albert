@@ -48,6 +48,7 @@ use Albert\Admin\Connections;
 use Albert\Admin\WooCommerceAbilities;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
+use Albert\Contracts\Interfaces\Hookable;
 use Albert\MCP\Server as McpServer;
 use Albert\OAuth\Database\Installer as OAuthInstaller;
 use Albert\Core\SettingsMigration;
@@ -128,11 +129,8 @@ class Plugin {
 			// Connections page (allowed users + active sessions).
 			( new Connections() )->register_hooks();
 
-			// Settings page (MCP endpoint, developer options, licenses).
+			// Settings page (MCP endpoint, developer options).
 			( new Settings() )->register_hooks();
-
-			// Addon submenu pages (registered via filter at priority 15).
-			add_action( 'admin_menu', [ $this, 'register_addon_admin_pages' ], 15 );
 		}
 
 		// Register OAuth controller (REST API endpoints for token exchange).
@@ -223,81 +221,18 @@ class Plugin {
 			$this->abilities_manager->add_ability( new ViewCustomer() );
 		}
 
-		/**
-		 * Fires after built-in abilities are registered.
-		 *
-		 * Addon plugins hook here to register their own abilities by calling
-		 * $manager->add_ability() with a BaseAbility subclass.
-		 *
-		 * @since 1.1.0
-		 *
-		 * @param AbilitiesManager $manager The abilities manager instance.
-		 */
-		do_action( 'albert/abilities/register', $this->abilities_manager );
-
 		// Register abilities manager hooks.
 		$this->abilities_manager->register_hooks();
 	}
 
 	/**
-	 * Register addon admin submenu pages.
+	 * Get the abilities manager instance.
 	 *
-	 * Addon plugins can add pages to the Albert admin menu via the
-	 * 'albert_admin_submenu_pages' filter. Each page definition must
-	 * include a 'slug' and a callable 'callback'.
-	 *
-	 * @return void
-	 * @since 1.1.0
+	 * @return AbilitiesManager|null The abilities manager instance.
+	 * @since 1.0.0
 	 */
-	public function register_addon_admin_pages(): void {
-		/**
-		 * Filters the list of addon admin submenu page definitions.
-		 *
-		 * @since 1.1.0
-		 *
-		 * @param array[] $pages Array of page definitions. Each should have:
-		 *                       - string   'slug'       Page slug (required).
-		 *                       - callable 'callback'   Render callback (required).
-		 *                       - string   'page_title' Browser/page title (optional).
-		 *                       - string   'menu_title' Sidebar menu title (optional).
-		 *                       - string   'capability' Required capability (optional, default 'manage_options').
-		 *                       - int      'position'   Menu position (optional, default 100).
-		 */
-		$pages = apply_filters( 'albert/admin/submenu_pages', [] );
-
-		if ( ! is_array( $pages ) || empty( $pages ) ) {
-			return;
-		}
-
-		// Validate and set defaults.
-		$valid_pages = [];
-		foreach ( $pages as $page ) {
-			if ( empty( $page['slug'] ) || ! is_callable( $page['callback'] ?? null ) ) {
-				continue;
-			}
-
-			$page['position'] = (int) ( $page['position'] ?? 100 );
-			$valid_pages[]    = $page;
-		}
-
-		// Sort by position.
-		usort(
-			$valid_pages,
-			function ( $a, $b ) {
-				return $a['position'] <=> $b['position'];
-			}
-		);
-
-		foreach ( $valid_pages as $page ) {
-			add_submenu_page(
-				'albert',
-				$page['page_title'] ?? $page['slug'],
-				$page['menu_title'] ?? $page['slug'],
-				$page['capability'] ?? 'manage_options',
-				$page['slug'],
-				$page['callback']
-			);
-		}
+	public function get_abilities_manager(): ?AbilitiesManager {
+		return $this->abilities_manager;
 	}
 
 	/**

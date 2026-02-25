@@ -38,7 +38,7 @@ class CoreAbilities extends AbstractAbilitiesPage {
 	 * @since 1.0.0
 	 */
 	protected function get_page_title(): string {
-		return __( 'Core Abilities', 'albert' );
+		return __( 'Core Abilities', 'albert-ai-butler' );
 	}
 
 	/**
@@ -48,14 +48,13 @@ class CoreAbilities extends AbstractAbilitiesPage {
 	 * @since 1.0.0
 	 */
 	protected function get_menu_title(): string {
-		return __( 'Core', 'albert' );
+		return __( 'Core', 'albert-ai-butler' );
 	}
 
 	/**
-	 * Filter abilities to exclude those handled by other pages.
+	 * Filter abilities to only core ones.
 	 *
-	 * Uses an exclude-list approach so addon abilities are visible on this page.
-	 * Abilities handled by dedicated pages (WooCommerce, ACF, mcp-adapter) are excluded.
+	 * Includes abilities starting with 'albert/' (but not 'albert/woo-') or 'core/'.
 	 *
 	 * @param array<string, mixed> $grouped Grouped abilities.
 	 *
@@ -63,21 +62,19 @@ class CoreAbilities extends AbstractAbilitiesPage {
 	 * @since 1.0.0
 	 */
 	protected function filter_abilities( array $grouped ): array {
-		$excluded_prefixes = [ 'albert/woo-', 'acf/', 'mcp-adapter/' ];
-
 		foreach ( $grouped as $slug => &$data ) {
 			$data['abilities'] = array_filter(
 				$data['abilities'],
-				function ( $ability ) use ( $excluded_prefixes ) {
+				function ( $ability ) {
 					$name = is_object( $ability ) && method_exists( $ability, 'get_name' ) ? $ability->get_name() : '';
 
-					foreach ( $excluded_prefixes as $prefix ) {
-						if ( str_starts_with( $name, $prefix ) ) {
-							return false;
-						}
+					// Include albert/ abilities but exclude albert/woo- ones.
+					if ( str_starts_with( $name, 'albert/' ) ) {
+						return ! str_starts_with( $name, 'albert/woo-' );
 					}
 
-					return true;
+					// Include core/ abilities.
+					return str_starts_with( $name, 'core/' );
 				}
 			);
 		}

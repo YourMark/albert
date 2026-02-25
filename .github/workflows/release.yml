@@ -22,6 +22,8 @@ jobs:
   build:
     name: Build and Release
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
 
     steps:
       - name: Checkout code
@@ -56,36 +58,36 @@ jobs:
         run: composer install --no-dev --prefer-dist --optimize-autoloader --no-progress
 
       - name: Create plugin directory
-        run: mkdir -p build/albert
+        run: mkdir -p build/albert-ai-butler
 
       - name: Copy plugin files
         run: |
           # Core plugin files
-          cp albert.php build/albert/
-          cp composer.json build/albert/
-          cp readme.txt build/albert/
-          cp LICENSE build/albert/
+          cp albert-ai-butler.php build/albert-ai-butler/
+          cp composer.json build/albert-ai-butler/
+          cp readme.txt build/albert-ai-butler/
+          cp LICENSE build/albert-ai-butler/
 
           # Directories
-          cp -r src build/albert/
-          cp -r vendor build/albert/
+          cp -r src build/albert-ai-butler/
+          cp -r vendor build/albert-ai-butler/
 
           # Optional directories (copy if they exist)
-          [ -d "assets" ] && cp -r assets build/albert/ || true
-          [ -d "languages" ] && cp -r languages build/albert/ || true
+          [ -d "assets" ] && cp -r assets build/albert-ai-butler/ || true
+          [ -d "languages" ] && cp -r languages build/albert-ai-butler/ || true
 
       - name: Remove files not permitted by WordPress.org
-        run: find build/albert/vendor -name "*.sh" -type f -delete
+        run: find build/albert-ai-butler/vendor -name "*.sh" -type f -delete
 
       - name: Create zip file
         working-directory: build
-        run: zip -r albert-${{ steps.version.outputs.version }}.zip albert
+        run: zip -r albert-ai-butler-${{ steps.version.outputs.version }}.zip albert-ai-butler
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: albert-${{ steps.version.outputs.version }}
-          path: build/albert
+          name: albert-ai-butler-${{ steps.version.outputs.version }}
+          path: build/albert-ai-butler
 
       - name: Generate changelog
         if: github.event.inputs.dry_run != 'true'
@@ -111,7 +113,42 @@ jobs:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', steps.version.outputs.version) || github.ref }}
           body_path: changelog.txt
           prerelease: ${{ steps.prerelease.outputs.is_prerelease == 'true' }}
-          files: build/albert-${{ steps.version.outputs.version }}.zip
+          files: build/albert-ai-butler-${{ steps.version.outputs.version }}.zip
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    name: Deploy to WordPress.org
+    runs-on: ubuntu-latest
+    needs: build
+    if: >-
+      github.event.inputs.dry_run != 'true' &&
+      ! contains(needs.build.outputs.version, 'alpha') &&
+      ! contains(needs.build.outputs.version, 'beta') &&
+      ! contains(needs.build.outputs.version, 'rc') &&
+      ! contains(needs.build.outputs.version, 'dev') &&
+      ! contains(needs.build.outputs.version, 'test')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+          coverage: none
+
+      - name: Install production dependencies
+        run: composer install --no-dev --prefer-dist --optimize-autoloader --no-progress
+
+      - name: Deploy to WordPress.org
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        with:
+          generate-zip: false
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SLUG: albert-ai-butler

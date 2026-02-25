@@ -12,7 +12,7 @@ Albert is a WordPress plugin that exposes WordPress functionality to AI assistan
 
 ## System Requirements
 
-- **PHP**: 8.2+ (8.3+ recommended)
+- **PHP**: 8.1+ (8.3+ recommended)
 - **WordPress**: 6.9+
 - **Database**: MySQL 8.0+ or MariaDB 10.5+
 - **HTTPS**: Required for OAuth
@@ -21,8 +21,8 @@ Albert is a WordPress plugin that exposes WordPress functionality to AI assistan
 ## Directory Structure
 
 ```
-albert/
-├── albert.php                       # Main plugin bootstrap
+albert-ai-butler/
+├── albert-ai-butler.php             # Main plugin bootstrap
 ├── composer.json                       # PSR-4 autoloading & dependencies
 ├── CLAUDE.md                           # This file
 ├── README.md                           # GitHub documentation

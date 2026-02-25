@@ -28,8 +28,8 @@ class FindOrders extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/woo-find-orders';
-		$this->label       = __( 'Find Orders', 'albert' );
-		$this->description = __( 'Search and list WooCommerce orders with optional filtering and pagination.', 'albert' );
+		$this->label       = __( 'Find Orders', 'albert-ai-butler' );
+		$this->description = __( 'Search and list WooCommerce orders with optional filtering and pagination.', 'albert-ai-butler' );
 		$this->category    = 'woo-orders';
 		$this->group       = 'orders';
 
@@ -139,10 +139,10 @@ class FindOrders extends BaseAbility {
 	/**
 	 * Check permission.
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->require_capability( 'edit_shop_orders' );
 	}
 

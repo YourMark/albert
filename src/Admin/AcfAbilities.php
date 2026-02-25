@@ -59,7 +59,7 @@ class AcfAbilities extends AbstractAbilitiesPage {
 	 * @since 1.0.0
 	 */
 	protected function get_page_title(): string {
-		return __( 'ACF Abilities', 'albert' );
+		return __( 'ACF Abilities', 'albert-ai-butler' );
 	}
 
 	/**
@@ -69,7 +69,7 @@ class AcfAbilities extends AbstractAbilitiesPage {
 	 * @since 1.0.0
 	 */
 	protected function get_menu_title(): string {
-		return __( 'ACF', 'albert' );
+		return __( 'ACF', 'albert-ai-butler' );
 	}
 
 	/**

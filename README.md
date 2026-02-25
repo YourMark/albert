@@ -35,7 +35,11 @@ Think of abilities as superpowers that you can grant to AI assistants - from man
 ### Manual Installation
 
 1. Download the plugin files
+<<<<<<< HEAD
 2. Upload the `albert` folder to `/wp-content/plugins/`
+=======
+2. Upload the `albert-ai-butler` folder to `/wp-content/plugins/`
+>>>>>>> main
 3. Activate the plugin through the 'Plugins' menu in WordPress
 
 ## Development
@@ -45,7 +49,11 @@ Think of abilities as superpowers that you can grant to AI assistants - from man
 1. Clone this repository
 2. Navigate to the plugin directory:
    ```bash
+<<<<<<< HEAD
    cd wp-content/plugins/albert
+=======
+   cd wp-content/plugins/albert-ai-butler
+>>>>>>> main
    ```
 3. Install dependencies:
    ```bash

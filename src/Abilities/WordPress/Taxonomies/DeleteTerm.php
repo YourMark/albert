@@ -29,8 +29,8 @@ class DeleteTerm extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/delete-term';
-		$this->label       = __( 'Delete Term', 'albert' );
-		$this->description = __( 'Delete a term from a taxonomy (category, tag, etc).', 'albert' );
+		$this->label       = __( 'Delete Term', 'albert-ai-butler' );
+		$this->description = __( 'Delete a term from a taxonomy (category, tag, etc).', 'albert-ai-butler' );
 		$this->category    = 'taxonomy';
 		$this->group       = 'terms';
 
@@ -103,10 +103,10 @@ class DeleteTerm extends BaseAbility {
 	/**
 	 * Check if current user has permission to execute this ability.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->require_capability( 'manage_categories' );
 	}
 
@@ -128,7 +128,7 @@ class DeleteTerm extends BaseAbility {
 		if ( empty( $args['id'] ) ) {
 			return new WP_Error(
 				'missing_id',
-				__( 'Term ID is required.', 'albert' ),
+				__( 'Term ID is required.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -163,7 +163,7 @@ class DeleteTerm extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while deleting the term.', 'albert' ),
+				$data['message'] ?? __( 'An error occurred while deleting the term.', 'albert-ai-butler' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}
@@ -203,7 +203,7 @@ class DeleteTerm extends BaseAbility {
 		if ( ! $taxonomy_obj ) {
 			return new WP_Error(
 				'invalid_taxonomy',
-				__( 'Invalid taxonomy.', 'albert' ),
+				__( 'Invalid taxonomy.', 'albert-ai-butler' ),
 				[ 'status' => 404 ]
 			);
 		}
@@ -211,7 +211,7 @@ class DeleteTerm extends BaseAbility {
 		if ( empty( $taxonomy_obj->rest_base ) ) {
 			return new WP_Error(
 				'taxonomy_not_rest_enabled',
-				__( 'This taxonomy is not available via REST API.', 'albert' ),
+				__( 'This taxonomy is not available via REST API.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}

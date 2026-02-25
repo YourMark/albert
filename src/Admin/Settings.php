@@ -19,7 +19,7 @@ use Albert\OAuth\Database\Installer;
  * Settings class
  *
  * Manages the plugin settings page for configuration options
- * (MCP endpoint, developer settings, addon licenses).
+ * (MCP endpoint, developer settings).
  *
  * @since 1.0.0
  */
@@ -48,7 +48,7 @@ class Settings implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function register_hooks(): void {
-		add_action( 'admin_menu', [ $this, 'add_settings_page' ], 20 );
+		add_action( 'admin_menu', [ $this, 'add_settings_page' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'admin_post_albert_save_external_url', [ $this, 'handle_save_external_url' ] );
 	}
@@ -62,8 +62,8 @@ class Settings implements Hookable {
 	public function add_settings_page(): void {
 		add_submenu_page(
 			$this->parent_slug,
-			__( 'Settings', 'albert' ),
-			__( 'Settings', 'albert' ),
+			__( 'Settings', 'albert-ai-butler' ),
+			__( 'Settings', 'albert-ai-butler' ),
 			'manage_options',
 			$this->page_slug,
 			[ $this, 'render_settings_page' ]
@@ -78,23 +78,22 @@ class Settings implements Hookable {
 	 */
 	public function render_settings_page(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'albert' ) );
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'albert-ai-butler' ) );
 		}
 		?>
-		<div class="wrap albert-wrap">
+		<div class="wrap albert-settings">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 
 			<?php settings_errors(); ?>
 
 			<div class="albert-content-header">
 				<p class="albert-content-description">
-					<?php esc_html_e( 'Configure plugin settings and connection details.', 'albert' ); ?>
+					<?php esc_html_e( 'Configure plugin settings and connection details.', 'albert-ai-butler' ); ?>
 				</p>
 			</div>
 
-			<div class="albert-main-content">
+			<div class="albert-settings-grid">
 				<?php $this->render_mcp_server_section(); ?>
-				<?php $this->render_licenses_section(); ?>
 			</div>
 		</div>
 		<?php
@@ -123,27 +122,27 @@ class Settings implements Hookable {
 		<section class="albert-settings-card">
 			<div class="albert-settings-card-header">
 				<span class="dashicons dashicons-cloud" aria-hidden="true"></span>
-				<h2><?php esc_html_e( 'MCP Server', 'albert' ); ?></h2>
+				<h2><?php esc_html_e( 'MCP Server', 'albert-ai-butler' ); ?></h2>
 			</div>
 			<div class="albert-settings-card-body">
 				<div class="albert-field-group">
-					<strong class="albert-field-label"><?php esc_html_e( 'Connection URL', 'albert' ); ?></strong>
+					<strong class="albert-field-label"><?php esc_html_e( 'Connection URL', 'albert-ai-butler' ); ?></strong>
 					<p class="albert-field-description">
-						<?php esc_html_e( 'Use this URL to connect AI tools (Claude Desktop, ChatGPT, etc.) to your site.', 'albert' ); ?>
+						<?php esc_html_e( 'Use this URL to connect AI tools (Claude Desktop, ChatGPT, etc.) to your site.', 'albert-ai-butler' ); ?>
 					</p>
 					<div class="albert-url-field">
 						<code class="albert-url-value" id="mcp-endpoint-url"><?php echo esc_html( $mcp_endpoint ); ?></code>
 						<button type="button" class="button albert-copy-button" data-copy-target="mcp-endpoint-url">
-							<?php esc_html_e( 'Copy', 'albert' ); ?>
+							<?php esc_html_e( 'Copy', 'albert-ai-butler' ); ?>
 						</button>
 					</div>
 				</div>
 
 				<?php if ( $show_developer_settings ) { ?>
 					<div class="albert-field-group">
-						<label class="albert-field-label" for="albert-external-url"><?php esc_html_e( 'External URL', 'albert' ); ?></label>
+						<label class="albert-field-label" for="albert-external-url"><?php esc_html_e( 'External URL', 'albert-ai-butler' ); ?></label>
 						<p class="albert-field-description">
-							<?php esc_html_e( 'If your site is behind a tunnel or reverse proxy, enter the public URL here.', 'albert' ); ?>
+							<?php esc_html_e( 'If your site is behind a tunnel or reverse proxy, enter the public URL here.', 'albert-ai-butler' ); ?>
 						</p>
 						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="albert-inline-form">
 							<?php wp_nonce_field( 'albert_save_external_url', 'albert_external_url_nonce' ); ?>
@@ -153,12 +152,12 @@ class Settings implements Hookable {
 								name="albert_external_url"
 								id="albert-external-url"
 								value="<?php echo esc_attr( $external_url ); ?>"
-								placeholder="<?php esc_attr_e( 'https://your-tunnel-url.example.com', 'albert' ); ?>"
+								placeholder="<?php esc_attr_e( 'https://your-tunnel-url.example.com', 'albert-ai-butler' ); ?>"
 								class="albert-text-input"
 							/>
-							<button type="submit" class="button"><?php esc_html_e( 'Save', 'albert' ); ?></button>
+							<button type="submit" class="button"><?php esc_html_e( 'Save', 'albert-ai-butler' ); ?></button>
 							<?php if ( ! empty( $external_url ) ) { ?>
-								<button type="submit" name="albert_clear_url" value="1" class="button"><?php esc_html_e( 'Clear', 'albert' ); ?></button>
+								<button type="submit" name="albert_clear_url" value="1" class="button"><?php esc_html_e( 'Clear', 'albert-ai-butler' ); ?></button>
 							<?php } ?>
 						</form>
 					</div>
@@ -177,12 +176,12 @@ class Settings implements Hookable {
 	public function handle_save_external_url(): void {
 		// Verify nonce.
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['albert_external_url_nonce'] ?? '' ) ), 'albert_save_external_url' ) ) {
-			wp_die( esc_html__( 'Security check failed.', 'albert' ) );
+			wp_die( esc_html__( 'Security check failed.', 'albert-ai-butler' ) );
 		}
 
 		// Check permissions.
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to change this setting.', 'albert' ) );
+			wp_die( esc_html__( 'You do not have permission to change this setting.', 'albert-ai-butler' ) );
 		}
 
 		// Check if clearing.
@@ -295,291 +294,10 @@ class Settings implements Hookable {
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce'   => wp_create_nonce( 'albert_oauth_nonce' ),
 				'i18n'    => [
-					'copied'     => __( 'Copied!', 'albert' ),
-					'copyFailed' => __( 'Copy failed', 'albert' ),
+					'copied'     => __( 'Copied!', 'albert-ai-butler' ),
+					'copyFailed' => __( 'Copy failed', 'albert-ai-butler' ),
 				],
 			]
 		);
-
-		// License management assets.
-		wp_enqueue_style(
-			'albert-licenses',
-			ALBERT_PLUGIN_URL . 'assets/css/albert-licenses.css',
-			[ 'albert-admin' ],
-			ALBERT_VERSION
-		);
-
-		wp_enqueue_script(
-			'albert-licenses',
-			ALBERT_PLUGIN_URL . 'assets/js/albert-licenses.js',
-			[],
-			ALBERT_VERSION,
-			true
-		);
-
-		$addons_for_js = [];
-		if ( class_exists( '\Albert\Abstracts\AbstractAddon' ) ) {
-			foreach ( \Albert\Abstracts\AbstractAddon::get_registered_addons() as $addon ) {
-				$addons_for_js[] = [
-					'name'        => $addon['name'],
-					'option_slug' => $addon['option_slug'],
-				];
-			}
-		}
-
-		$timestamp = time();
-		$token     = '';
-		$edd_nonce = '';
-		if ( class_exists( '\EasyDigitalDownloads\Updater\Utilities\Tokenizer' ) ) {
-			$token     = \EasyDigitalDownloads\Updater\Utilities\Tokenizer::tokenize( $timestamp );
-			$edd_nonce = wp_create_nonce( 'edd_sl_sdk_license_handler' );
-		}
-
-		wp_localize_script(
-			'albert-licenses',
-			'albertLicenses',
-			[
-				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-				'nonce'     => wp_create_nonce( 'albert_license_nonce' ),
-				'token'     => $token,
-				'timestamp' => $timestamp,
-				'eddNonce'  => $edd_nonce,
-				'addons'    => $addons_for_js,
-				'i18n'      => [
-					'activating'        => __( 'Activating...', 'albert' ),
-					'activate'          => __( 'Activate', 'albert' ),
-					'deactivating'      => __( 'Deactivating...', 'albert' ),
-					/* translators: %s: addon name */
-					'confirmDeactivate' => __( 'Deactivate license for %s?', 'albert' ),
-					'emptyKey'          => __( 'Please enter a license key.', 'albert' ),
-					'networkError'      => __( 'A network error occurred. Please try again.', 'albert' ),
-				],
-			]
-		);
-	}
-
-	/**
-	 * Render the licenses section.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @return void
-	 */
-	private function render_licenses_section(): void {
-		$has_addons = class_exists( '\Albert\Abstracts\AbstractAddon' )
-			&& ! empty( \Albert\Abstracts\AbstractAddon::get_registered_addons() );
-		?>
-		<section class="albert-settings-card albert-license-card">
-			<div class="albert-settings-card-header">
-				<span class="dashicons dashicons-admin-network" aria-hidden="true"></span>
-				<h2><?php esc_html_e( 'Licenses', 'albert' ); ?></h2>
-			</div>
-			<div class="albert-settings-card-body">
-				<?php if ( $has_addons ) { ?>
-					<div id="albert-license-notice" class="albert-license-notice" hidden></div>
-					<div class="albert-license-form">
-						<input
-							type="text"
-							id="albert-license-key"
-							class="albert-text-input"
-							placeholder="<?php esc_attr_e( 'Enter your license key', 'albert' ); ?>"
-							autocomplete="off"
-						/>
-						<button type="button" id="albert-activate-btn" class="button button-primary">
-							<?php esc_html_e( 'Activate', 'albert' ); ?>
-						</button>
-					</div>
-					<p class="albert-field-description albert-license-hint">
-						<?php esc_html_e( 'Enter your license key. It will be automatically matched to the correct addon.', 'albert' ); ?>
-					</p>
-					<div id="albert-addons-table-wrap">
-						<?php self::render_licenses_table(); ?>
-					</div>
-				<?php } else { ?>
-					<?php self::render_licenses_empty_state(); ?>
-				<?php } ?>
-			</div>
-		</section>
-		<?php
-	}
-
-	/**
-	 * Render the licenses table.
-	 *
-	 * This method is public and static so the AJAX handler can call it to
-	 * return refreshed table HTML.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @return void
-	 */
-	public static function render_licenses_table(): void {
-		if ( ! class_exists( '\Albert\Abstracts\AbstractAddon' ) ) {
-			self::render_licenses_empty_state();
-			return;
-		}
-
-		$addons = \Albert\Abstracts\AbstractAddon::get_registered_addons();
-
-		if ( empty( $addons ) ) {
-			self::render_licenses_empty_state();
-			return;
-		}
-		?>
-		<table class="albert-licenses-table">
-			<thead>
-				<tr>
-					<th><?php esc_html_e( 'Addon', 'albert' ); ?></th>
-					<th><?php esc_html_e( 'Version', 'albert' ); ?></th>
-					<th><?php esc_html_e( 'Status', 'albert' ); ?></th>
-					<th><?php esc_html_e( 'Expires', 'albert' ); ?></th>
-					<th><?php esc_html_e( 'Actions', 'albert' ); ?></th>
-				</tr>
-			</thead>
-			<tbody>
-				<?php
-				foreach ( $addons as $addon ) {
-					$option_slug  = $addon['option_slug'];
-					$license_data = get_option( "{$option_slug}_license", false );
-					$license_key  = get_option( "{$option_slug}_license_key", '' );
-					$status       = is_object( $license_data ) ? ( $license_data->license ?? '' ) : '';
-					$expires      = is_object( $license_data ) ? ( $license_data->expires ?? '' ) : '';
-					$store_url    = $addon['store_url'] ?? 'https://albertwp.com';
-					?>
-					<tr>
-						<td><strong><?php echo esc_html( $addon['name'] ); ?></strong></td>
-						<td><?php echo esc_html( $addon['version'] ); ?></td>
-						<td><?php self::render_status( $status ); ?></td>
-						<td><?php self::render_expires( $status, $expires ); ?></td>
-						<td><?php self::render_actions( $status, $option_slug, $addon['name'], $store_url, $license_key ); ?></td>
-					</tr>
-				<?php } ?>
-			</tbody>
-		</table>
-		<?php
-	}
-
-	/**
-	 * Render the status cell content.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @param string $status The EDD license status.
-	 *
-	 * @return void
-	 */
-	private static function render_status( string $status ): void {
-		switch ( $status ) {
-			case 'valid':
-				$class = 'albert-status-dot--valid';
-				$label = __( 'Active', 'albert' );
-				break;
-
-			case 'expired':
-				$class = 'albert-status-dot--expired';
-				$label = __( 'Expired', 'albert' );
-				break;
-
-			case 'disabled':
-			case 'invalid':
-			case 'site_inactive':
-			case 'item_name_mismatch':
-			case 'no_activations_left':
-				$class = 'albert-status-dot--invalid';
-				$label = ucfirst( str_replace( '_', ' ', $status ) );
-				break;
-
-			default:
-				$class = 'albert-status-dot--none';
-				$label = __( 'Not activated', 'albert' );
-				break;
-		}
-
-		echo '<span class="albert-status-dot ' . esc_attr( $class ) . '"></span> ';
-		echo esc_html( $label );
-	}
-
-	/**
-	 * Render the "Expires" cell content.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @param string $status  The license status.
-	 * @param string $expires The expiration date string.
-	 *
-	 * @return void
-	 */
-	private static function render_expires( string $status, string $expires ): void {
-		if ( empty( $status ) || $status === 'inactive' || empty( $expires ) ) {
-			echo '<span class="albert-no-license">&mdash;</span>';
-			return;
-		}
-
-		if ( $expires === 'lifetime' ) {
-			echo esc_html__( 'Lifetime', 'albert' );
-			return;
-		}
-
-		$timestamp = strtotime( $expires );
-		$formatted = $timestamp !== false ? wp_date( get_option( 'date_format' ), $timestamp ) : false;
-		if ( $formatted !== false ) {
-			echo esc_html( $formatted );
-		} else {
-			echo esc_html( $expires );
-		}
-	}
-
-	/**
-	 * Render the actions cell content.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @param string $status      The license status.
-	 * @param string $option_slug The addon option slug (basename of plugin dir).
-	 * @param string $name        The addon name.
-	 * @param string $store_url   The addon store URL.
-	 * @param string $license_key The stored license key.
-	 *
-	 * @return void
-	 */
-	private static function render_actions( string $status, string $option_slug, string $name, string $store_url, string $license_key = '' ): void {
-		if ( $status === 'valid' ) {
-			echo '<button type="button" class="albert-deactivate-btn"'
-				. ' data-option-slug="' . esc_attr( $option_slug ) . '"'
-				. ' data-addon-name="' . esc_attr( $name ) . '"'
-				. ' data-license-key="' . esc_attr( $license_key ) . '">'
-				. esc_html__( 'Deactivate', 'albert' )
-				. '</button>';
-		} elseif ( $status === 'expired' ) {
-			echo '<a href="' . esc_url( $store_url ) . '" target="_blank" rel="noopener noreferrer" class="button button-small">'
-				. esc_html__( 'Renew', 'albert' )
-				. '</a>';
-		} else {
-			echo '<span class="albert-no-license">&mdash;</span>';
-		}
-	}
-
-	/**
-	 * Render the empty state when no addons are installed.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @return void
-	 */
-	private static function render_licenses_empty_state(): void {
-		?>
-		<div class="albert-empty-state">
-			<span class="dashicons dashicons-admin-plugins" aria-hidden="true"></span>
-			<p>
-				<?php esc_html_e( 'Premium addons extend Albert with powerful features like bulk operations, WooCommerce management, and SEO tools.', 'albert' ); ?>
-			</p>
-			<p>
-				<a href="https://albertwp.com/addons/" target="_blank" rel="noopener noreferrer">
-					<?php esc_html_e( 'Explore addons', 'albert' ); ?>
-					<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'albert' ); ?></span>
-				</a>
-			</p>
-		</div>
-		<?php
 	}
 }

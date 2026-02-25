@@ -30,8 +30,8 @@ class ViewOrder extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/woo-view-order';
-		$this->label       = __( 'View Order', 'albert' );
-		$this->description = __( 'Retrieve a single WooCommerce order by ID.', 'albert' );
+		$this->label       = __( 'View Order', 'albert-ai-butler' );
+		$this->description = __( 'Retrieve a single WooCommerce order by ID.', 'albert-ai-butler' );
 		$this->category    = 'woo-orders';
 		$this->group       = 'orders';
 
@@ -89,10 +89,10 @@ class ViewOrder extends BaseAbility {
 	/**
 	 * Check permission.
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->require_capability( 'edit_shop_orders' );
 	}
 
@@ -108,7 +108,7 @@ class ViewOrder extends BaseAbility {
 		$order_id = absint( $args['id'] ?? 0 );
 
 		if ( ! $order_id ) {
-			return new WP_Error( 'missing_order_id', __( 'Order ID is required.', 'albert' ) );
+			return new WP_Error( 'missing_order_id', __( 'Order ID is required.', 'albert-ai-butler' ) );
 		}
 
 		$order = wc_get_order( $order_id );
@@ -118,7 +118,7 @@ class ViewOrder extends BaseAbility {
 				'order_not_found',
 				sprintf(
 					/* translators: %d: Order ID */
-					__( 'Order with ID %d not found.', 'albert' ),
+					__( 'Order with ID %d not found.', 'albert-ai-butler' ),
 					$order_id
 				)
 			);

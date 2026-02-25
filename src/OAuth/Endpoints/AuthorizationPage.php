@@ -154,8 +154,8 @@ class AuthorizationPage implements Hookable {
 		// Validate required parameters.
 		if ( empty( $client_id ) || empty( $redirect_uri ) || $response_type !== 'code' ) {
 			$this->render_error_page(
-				__( 'Invalid Request', 'albert' ),
-				__( 'Missing or invalid OAuth parameters.', 'albert' )
+				__( 'Invalid Request', 'albert-ai-butler' ),
+				__( 'Missing or invalid OAuth parameters.', 'albert-ai-butler' )
 			);
 			return;
 		}
@@ -166,8 +166,8 @@ class AuthorizationPage implements Hookable {
 
 		if ( ! $client ) {
 			$this->render_error_page(
-				__( 'Unknown Application', 'albert' ),
-				__( 'The application requesting access is not registered.', 'albert' )
+				__( 'Unknown Application', 'albert-ai-butler' ),
+				__( 'The application requesting access is not registered.', 'albert-ai-butler' )
 			);
 			return;
 		}
@@ -181,8 +181,8 @@ class AuthorizationPage implements Hookable {
 		$is_wildcard = in_array( '*', $allowed_uris, true );
 		if ( ! $is_wildcard && ! in_array( $redirect_uri, $allowed_uris, true ) ) {
 			$this->render_error_page(
-				__( 'Invalid Redirect', 'albert' ),
-				__( 'The redirect URI is not allowed for this application.', 'albert' )
+				__( 'Invalid Redirect', 'albert-ai-butler' ),
+				__( 'The redirect URI is not allowed for this application.', 'albert-ai-butler' )
 			);
 			return;
 		}
@@ -204,8 +204,17 @@ class AuthorizationPage implements Hookable {
 		}
 
 		// Handle form submission (user approved or denied).
-		// phpcs:disable WordPress.Security.NonceVerification.Missing -- OAuth flow uses state parameter.
 		if ( isset( $_SERVER['REQUEST_METHOD'] ) && $_SERVER['REQUEST_METHOD'] === 'POST' ) {
+			if ( ! isset( $_POST['_albert_nonce'] )
+				|| ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_albert_nonce'] ) ), 'albert_oauth_authorize' )
+			) {
+				$this->render_error_page(
+					__( 'Invalid Request', 'albert-ai-butler' ),
+					__( 'Security verification failed. Please try again.', 'albert-ai-butler' )
+				);
+				return;
+			}
+
 			$this->handle_authorization_decision(
 				$client,
 				$redirect_uri,
@@ -216,7 +225,6 @@ class AuthorizationPage implements Hookable {
 			);
 			return;
 		}
-		// phpcs:enable
 
 		// Show consent page.
 		$this->render_consent_page( $client, $redirect_uri, $state, $scope, $code_challenge, $code_challenge_method );
@@ -236,8 +244,8 @@ class AuthorizationPage implements Hookable {
 	 * @since 1.0.0
 	 */
 	private function handle_authorization_decision( $client, $redirect_uri, $state, $scope, $code_challenge, $code_challenge_method ): void {
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- OAuth flow uses state parameter.
-		$approved = isset( $_POST['approve'] ) && $_POST['approve'] === 'yes';
+		// Nonce already verified in handle_authorization() before calling this method.
+		$approved = isset( $_POST['approve'] ) && sanitize_text_field( wp_unslash( $_POST['approve'] ) ) === 'yes'; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
 		if ( ! $approved ) {
 			// User denied - redirect with error.
@@ -300,7 +308,7 @@ class AuthorizationPage implements Hookable {
 			exit;
 		} catch ( \Exception $e ) {
 			$this->render_error_page(
-				__( 'Server Error', 'albert' ),
+				__( 'Server Error', 'albert-ai-butler' ),
 				$e->getMessage()
 			);
 		}
@@ -337,20 +345,20 @@ class AuthorizationPage implements Hookable {
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title><?php echo esc_html__( 'Authorize Application', 'albert' ); ?> - <?php echo esc_html( $site_name ); ?></title>
+	<title><?php echo esc_html__( 'Authorize Application', 'albert-ai-butler' ); ?> - <?php echo esc_html( $site_name ); ?></title>
 		<?php wp_print_styles( 'albert-oauth-pages' ); ?>
 </head>
 <body>
 	<div class="auth-container">
 		<div class="auth-header">
-			<h1><?php esc_html_e( 'Authorize Application', 'albert' ); ?></h1>
+			<h1><?php esc_html_e( 'Authorize Application', 'albert-ai-butler' ); ?></h1>
 			<p><?php echo esc_html( $site_name ); ?></p>
 		</div>
 
 		<div class="client-info">
 			<div class="client-name"><?php echo esc_html( $client_name ); ?></div>
 			<div class="permission-text">
-				<?php esc_html_e( 'This application wants to access your WordPress site on your behalf.', 'albert' ); ?>
+				<?php esc_html_e( 'This application wants to access your WordPress site on your behalf.', 'albert-ai-butler' ); ?>
 			</div>
 		</div>
 
@@ -358,7 +366,7 @@ class AuthorizationPage implements Hookable {
 			<?php
 			printf(
 				/* translators: %s: user display name */
-				esc_html__( 'Logged in as %s', 'albert' ),
+				esc_html__( 'Logged in as %s', 'albert-ai-butler' ),
 				'<strong>' . esc_html( $user_name ) . '</strong>'
 			);
 			?>
@@ -371,13 +379,14 @@ class AuthorizationPage implements Hookable {
 			<input type="hidden" name="scope" value="<?php echo esc_attr( $scope ); ?>">
 			<input type="hidden" name="code_challenge" value="<?php echo esc_attr( $code_challenge ); ?>">
 			<input type="hidden" name="code_challenge_method" value="<?php echo esc_attr( $code_challenge_method ); ?>">
+			<?php wp_nonce_field( 'albert_oauth_authorize', '_albert_nonce' ); ?>
 
 			<div class="button-group">
 				<button type="submit" name="approve" value="no" class="button button-secondary">
-					<?php esc_html_e( 'Deny', 'albert' ); ?>
+					<?php esc_html_e( 'Deny', 'albert-ai-butler' ); ?>
 				</button>
 				<button type="submit" name="approve" value="yes" class="button button-primary">
-					<?php esc_html_e( 'Authorize', 'albert' ); ?>
+					<?php esc_html_e( 'Authorize', 'albert-ai-butler' ); ?>
 				</button>
 			</div>
 		</form>
@@ -447,21 +456,21 @@ class AuthorizationPage implements Hookable {
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title><?php esc_html_e( 'Access Denied', 'albert' ); ?> - <?php echo esc_html( $site_name ); ?></title>
+	<title><?php esc_html_e( 'Access Denied', 'albert-ai-butler' ); ?> - <?php echo esc_html( $site_name ); ?></title>
 		<?php wp_print_styles( 'albert-oauth-pages' ); ?>
 </head>
 <body>
 	<div class="access-denied-container">
 		<div class="icon">🚫</div>
-		<h1><?php esc_html_e( 'Access Not Authorized', 'albert' ); ?></h1>
+		<h1><?php esc_html_e( 'Access Not Authorized', 'albert-ai-butler' ); ?></h1>
 		<p>
-			<?php esc_html_e( 'Your account has not been granted access to connect AI tools to this site.', 'albert' ); ?>
+			<?php esc_html_e( 'Your account has not been granted access to connect AI tools to this site.', 'albert-ai-butler' ); ?>
 		</p>
 		<div class="user-info">
 			<?php
 			printf(
 				/* translators: %s: user display name */
-				esc_html__( 'Logged in as %s', 'albert' ),
+				esc_html__( 'Logged in as %s', 'albert-ai-butler' ),
 				'<strong>' . esc_html( $user->display_name ) . '</strong>'
 			);
 			?>
@@ -469,7 +478,7 @@ class AuthorizationPage implements Hookable {
 			<small><?php echo esc_html( $user->user_email ); ?></small>
 		</div>
 		<p class="contact-admin">
-			<?php esc_html_e( 'Please contact your site administrator to request access.', 'albert' ); ?>
+			<?php esc_html_e( 'Please contact your site administrator to request access.', 'albert-ai-butler' ); ?>
 		</p>
 	</div>
 </body>
@@ -509,7 +518,7 @@ class AuthorizationPage implements Hookable {
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title><?php esc_html_e( 'Authorization Successful', 'albert' ); ?> - <?php echo esc_html( $site_name ); ?></title>
+	<title><?php esc_html_e( 'Authorization Successful', 'albert-ai-butler' ); ?> - <?php echo esc_html( $site_name ); ?></title>
 		<?php wp_print_styles( 'albert-oauth-pages' ); ?>
 </head>
 <body>
@@ -519,23 +528,23 @@ class AuthorizationPage implements Hookable {
 				<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
 			</svg>
 		</div>
-		<h1><?php esc_html_e( 'Authorization Successful', 'albert' ); ?></h1>
+		<h1><?php esc_html_e( 'Authorization Successful', 'albert-ai-butler' ); ?></h1>
 		<p>
 			<?php
 			printf(
 				/* translators: %s: client/application name */
-				esc_html__( '%s has been authorized to access your site.', 'albert' ),
+				esc_html__( '%s has been authorized to access your site.', 'albert-ai-butler' ),
 				'<span class="client-name">' . esc_html( $client_name ) . '</span>'
 			);
 			?>
 		</p>
 		<p class="close-message">
-			<?php esc_html_e( 'Redirecting back to the application...', 'albert' ); ?>
+			<?php esc_html_e( 'Redirecting back to the application...', 'albert-ai-butler' ); ?>
 		</p>
 		<p class="fallback-message">
-			<?php esc_html_e( "If the application doesn't open automatically, please click the button below.", 'albert' ); ?>
+			<?php esc_html_e( "If the application doesn't open automatically, please click the button below.", 'albert-ai-butler' ); ?>
 		</p>
-		<a href="<?php echo esc_url( $redirect_url ); ?>" class="button"><?php esc_html_e( 'Return to Application', 'albert' ); ?></a>
+		<a href="<?php echo esc_url( $redirect_url ); ?>" class="button"><?php esc_html_e( 'Return to Application', 'albert-ai-butler' ); ?></a>
 	</div>
 		<?php wp_print_scripts( 'albert-oauth-redirect' ); ?>
 </body>

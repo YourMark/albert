@@ -29,8 +29,8 @@ class Delete extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/delete-post';
-		$this->label       = __( 'Delete Post', 'albert' );
-		$this->description = __( 'Delete a WordPress post permanently or move it to trash.', 'albert' );
+		$this->label       = __( 'Delete Post', 'albert-ai-butler' );
+		$this->description = __( 'Delete a WordPress post permanently or move it to trash.', 'albert-ai-butler' );
 		$this->category    = 'content';
 		$this->group       = 'posts';
 
@@ -94,10 +94,10 @@ class Delete extends BaseAbility {
 	 *
 	 * Delegates to the REST API endpoint's own permission callback.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->check_rest_permission( '/wp/v2/posts/(?P<id>[\\d]+)', 'DELETE', 'delete_posts' );
 	}
 
@@ -118,7 +118,7 @@ class Delete extends BaseAbility {
 		if ( empty( $args['id'] ) ) {
 			return new WP_Error(
 				'missing_id',
-				__( 'Post ID is required.', 'albert' ),
+				__( 'Post ID is required.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -130,7 +130,7 @@ class Delete extends BaseAbility {
 		if ( ! $post ) {
 			return new WP_Error(
 				'post_not_found',
-				__( 'Post not found.', 'albert' ),
+				__( 'Post not found.', 'albert-ai-butler' ),
 				[ 'status' => 404 ]
 			);
 		}
@@ -154,7 +154,7 @@ class Delete extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while deleting the post.', 'albert' ),
+				$data['message'] ?? __( 'An error occurred while deleting the post.', 'albert-ai-butler' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

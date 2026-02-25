@@ -29,8 +29,8 @@ class FindPages extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/find-pages';
-		$this->label       = __( 'Find Pages', 'albert' );
-		$this->description = __( 'Find and search WordPress pages with optional filtering and pagination.', 'albert' );
+		$this->label       = __( 'Find Pages', 'albert-ai-butler' );
+		$this->description = __( 'Find and search WordPress pages with optional filtering and pagination.', 'albert-ai-butler' );
 		$this->category    = 'content';
 		$this->group       = 'pages';
 
@@ -144,10 +144,10 @@ class FindPages extends BaseAbility {
 	 *
 	 * Delegates to the REST API endpoint's own permission callback.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->check_rest_permission( '/wp/v2/pages', 'GET', 'edit_pages' );
 	}
 
@@ -213,7 +213,7 @@ class FindPages extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while retrieving pages.', 'albert' ),
+				$data['message'] ?? __( 'An error occurred while retrieving pages.', 'albert-ai-butler' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

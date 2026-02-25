@@ -29,8 +29,8 @@ class Create extends BaseAbility {
 	 */
 	public function __construct() {
 		$this->id          = 'albert/create-user';
-		$this->label       = __( 'Create User', 'albert' );
-		$this->description = __( 'Create a new WordPress user with specified username, email, and role.', 'albert' );
+		$this->label       = __( 'Create User', 'albert-ai-butler' );
+		$this->description = __( 'Create a new WordPress user with specified username, email, and role.', 'albert-ai-butler' );
 		$this->category    = 'user';
 		$this->group       = 'users';
 
@@ -137,10 +137,10 @@ class Create extends BaseAbility {
 	 *
 	 * Delegates to the REST API endpoint's own permission callback.
 	 *
-	 * @return true|WP_Error True if permitted, WP_Error with details otherwise.
+	 * @return bool|WP_Error True if permitted, WP_Error with details otherwise.
 	 * @since 1.0.0
 	 */
-	public function check_permission(): true|WP_Error {
+	public function check_permission(): bool|WP_Error {
 		return $this->check_rest_permission( '/wp/v2/users', 'POST', 'create_users' );
 	}
 
@@ -167,7 +167,7 @@ class Create extends BaseAbility {
 		if ( empty( $args['username'] ) ) {
 			return new WP_Error(
 				'missing_username',
-				__( 'Username is required.', 'albert' ),
+				__( 'Username is required.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -175,7 +175,7 @@ class Create extends BaseAbility {
 		if ( empty( $args['email'] ) ) {
 			return new WP_Error(
 				'missing_email',
-				__( 'Email is required.', 'albert' ),
+				__( 'Email is required.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -183,7 +183,7 @@ class Create extends BaseAbility {
 		if ( empty( $args['password'] ) ) {
 			return new WP_Error(
 				'missing_password',
-				__( 'Password is required.', 'albert' ),
+				__( 'Password is required.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -219,7 +219,7 @@ class Create extends BaseAbility {
 		if ( $response->is_error() ) {
 			return new WP_Error(
 				$data['code'] ?? 'rest_error',
-				$data['message'] ?? __( 'An error occurred while creating the user.', 'albert' ),
+				$data['message'] ?? __( 'An error occurred while creating the user.', 'albert-ai-butler' ),
 				[ 'status' => $response->get_status() ]
 			);
 		}

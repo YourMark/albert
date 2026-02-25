@@ -66,56 +66,56 @@ class AbilitiesManager implements Hookable {
 
 		$categories = [
 			'content'     => [
-				'label'       => __( 'Content', 'albert' ),
-				'description' => __( 'Posts, pages, and media management.', 'albert' ),
+				'label'       => __( 'Content', 'albert-ai-butler' ),
+				'description' => __( 'Posts, pages, and media management.', 'albert-ai-butler' ),
 			],
 			'taxonomy'    => [
-				'label'       => __( 'Taxonomies', 'albert' ),
-				'description' => __( 'Categories, tags, and custom taxonomies.', 'albert' ),
+				'label'       => __( 'Taxonomies', 'albert-ai-butler' ),
+				'description' => __( 'Categories, tags, and custom taxonomies.', 'albert-ai-butler' ),
 			],
 			'comments'    => [
-				'label'       => __( 'Comments', 'albert' ),
-				'description' => __( 'Comment management.', 'albert' ),
+				'label'       => __( 'Comments', 'albert-ai-butler' ),
+				'description' => __( 'Comment management.', 'albert-ai-butler' ),
 			],
 			'commerce'    => [
-				'label'       => __( 'Commerce', 'albert' ),
-				'description' => __( 'Store and order management.', 'albert' ),
+				'label'       => __( 'Commerce', 'albert-ai-butler' ),
+				'description' => __( 'Store and order management.', 'albert-ai-butler' ),
 			],
 			'seo'         => [
-				'label'       => __( 'SEO', 'albert' ),
-				'description' => __( 'Search engine optimization.', 'albert' ),
+				'label'       => __( 'SEO', 'albert-ai-butler' ),
+				'description' => __( 'Search engine optimization.', 'albert-ai-butler' ),
 			],
 			'fields'      => [
-				'label'       => __( 'Custom Fields', 'albert' ),
-				'description' => __( 'Custom field management.', 'albert' ),
+				'label'       => __( 'Custom Fields', 'albert-ai-butler' ),
+				'description' => __( 'Custom field management.', 'albert-ai-butler' ),
 			],
 			'forms'       => [
-				'label'       => __( 'Forms', 'albert' ),
-				'description' => __( 'Form management.', 'albert' ),
+				'label'       => __( 'Forms', 'albert-ai-butler' ),
+				'description' => __( 'Form management.', 'albert-ai-butler' ),
 			],
 			'lms'         => [
-				'label'       => __( 'Learning', 'albert' ),
-				'description' => __( 'Learning management.', 'albert' ),
+				'label'       => __( 'Learning', 'albert-ai-butler' ),
+				'description' => __( 'Learning management.', 'albert-ai-butler' ),
 			],
 			'maintenance' => [
-				'label'       => __( 'Maintenance', 'albert' ),
-				'description' => __( 'Site maintenance and monitoring.', 'albert' ),
+				'label'       => __( 'Maintenance', 'albert-ai-butler' ),
+				'description' => __( 'Site maintenance and monitoring.', 'albert-ai-butler' ),
 			],
 		];
 
 		// Register WooCommerce-specific categories when WooCommerce is active.
 		if ( class_exists( 'WooCommerce' ) ) {
 			$categories['woo-products']  = [
-				'label'       => __( 'Products', 'albert' ),
-				'description' => __( 'WooCommerce product management.', 'albert' ),
+				'label'       => __( 'Products', 'albert-ai-butler' ),
+				'description' => __( 'WooCommerce product management.', 'albert-ai-butler' ),
 			];
 			$categories['woo-orders']    = [
-				'label'       => __( 'Orders', 'albert' ),
-				'description' => __( 'WooCommerce order management.', 'albert' ),
+				'label'       => __( 'Orders', 'albert-ai-butler' ),
+				'description' => __( 'WooCommerce order management.', 'albert-ai-butler' ),
 			];
 			$categories['woo-customers'] = [
-				'label'       => __( 'Customers', 'albert' ),
-				'description' => __( 'WooCommerce customer management.', 'albert' ),
+				'label'       => __( 'Customers', 'albert-ai-butler' ),
+				'description' => __( 'WooCommerce customer management.', 'albert-ai-butler' ),
 			];
 		}
 
