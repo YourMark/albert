@@ -9,7 +9,7 @@
 
 namespace Albert\Abilities\WordPress\Posts;
 
-use Alley\WP\Block_Converter\Block_Converter;
+use Albert\Utilities\BlockConverter;
 use Albert\Abstracts\BaseAbility;
 use Albert\Core\Annotations;
 use WP_Error;
@@ -178,7 +178,7 @@ class Update extends BaseAbility {
 		}
 
 		if ( isset( $args['content'] ) ) {
-			$request_data['content'] = ( new Block_Converter( $args['content'] ) )->convert();
+			$request_data['content'] = ( new BlockConverter( $args['content'] ) )->convert();
 		}
 
 		if ( isset( $args['status'] ) ) {

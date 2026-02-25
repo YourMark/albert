@@ -9,7 +9,7 @@
 
 namespace Albert\Abilities\WordPress\Posts;
 
-use Alley\WP\Block_Converter\Block_Converter;
+use Albert\Utilities\BlockConverter;
 use Albert\Abstracts\BaseAbility;
 use Albert\Core\Annotations;
 use WP_Error;
@@ -156,7 +156,7 @@ class Create extends BaseAbility {
 			);
 		}
 
-		$content = ( new Block_Converter( $args['content'] ) )->convert();
+		$content = ( new BlockConverter( $args['content'] ) )->convert();
 
 		// Prepare REST API request data.
 		$request_data = [
