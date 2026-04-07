@@ -42,10 +42,8 @@ use Albert\Abilities\WooCommerce\FindProducts;
 use Albert\Abilities\WooCommerce\ViewCustomer;
 use Albert\Abilities\WooCommerce\ViewOrder;
 use Albert\Abilities\WooCommerce\ViewProduct;
-use Albert\Admin\AcfAbilities;
-use Albert\Admin\CoreAbilities;
+use Albert\Admin\AbilitiesPage;
 use Albert\Admin\Connections;
-use Albert\Admin\WooCommerceAbilities;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
 use Albert\MCP\Server as McpServer;
@@ -114,16 +112,8 @@ class Plugin {
 			// Dashboard page (creates top-level menu and first submenu).
 			( new Dashboard() )->register_hooks();
 
-			// Abilities pages (toggle abilities on/off).
-			( new CoreAbilities() )->register_hooks();
-
-			if ( class_exists( 'ACF' ) ) {
-				( new AcfAbilities() )->register_hooks();
-			}
-
-			if ( class_exists( 'WooCommerce' ) ) {
-				( new WooCommerceAbilities() )->register_hooks();
-			}
+			// Unified abilities page (toggle abilities on/off).
+			( new AbilitiesPage() )->register_hooks();
 
 			// Connections page (allowed users + active sessions).
 			( new Connections() )->register_hooks();
