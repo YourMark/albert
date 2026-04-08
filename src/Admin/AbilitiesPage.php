@@ -35,12 +35,12 @@ use Albert\Core\AnnotationPresenter;
 class AbilitiesPage implements Hookable {
 
 	/**
-	 * Option name for storing disabled abilities (blocklist).
+	 * Option name for storing the disabled-abilities blocklist.
 	 *
 	 * @since 1.1.0
 	 * @var string
 	 */
-	const OPTION_NAME = 'albert_disabled_abilities';
+	const DISABLED_ABILITIES_OPTION = 'albert_disabled_abilities';
 
 	/**
 	 * Settings API option group.
@@ -59,7 +59,36 @@ class AbilitiesPage implements Hookable {
 	const PAGE_SLUG = 'albert-abilities';
 
 	/**
+	 * Option name for the persisted view-mode preference.
+	 *
+	 * Stores either `list` or `paginated`. The value is rendered into the
+	 * initial HTML on every page load so the JavaScript module never has to
+	 * "re-apply" the user's preference after the page paints — that race
+	 * caused a visible jump from list to paginated view on slow loads.
+	 *
+	 * @since 1.1.0
+	 * @var string
+	 */
+	const VIEW_MODE_OPTION = 'albert_abilities_view_mode';
+
+	/**
+	 * Number of rows per page in paginated view.
+	 *
+	 * Surfaced to the JavaScript module via the `data-rows-per-page`
+	 * attribute on `#albert-abilities-list`; both sides must agree so the
+	 * server can pre-hide rows beyond the first page without flashing.
+	 *
+	 * @since 1.1.0
+	 * @var int
+	 */
+	const ROWS_PER_PAGE = 25;
+
+	/**
 	 * Register WordPress hooks.
+	 *
+	 * Wires the admin menu entry, the Settings API registration, the
+	 * page-scoped asset enqueue, and the AJAX endpoint that persists the
+	 * view-mode preference (`wp_ajax_albert_save_view_mode`).
 	 *
 	 * @return void
 	 * @since 1.1.0
@@ -68,6 +97,56 @@ class AbilitiesPage implements Hookable {
 		add_action( 'admin_menu', [ $this, 'add_menu_page' ] );
 		add_action( 'admin_init', [ $this, 'register_settings' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+		add_action( 'wp_ajax_albert_save_view_mode', [ $this, 'ajax_save_view_mode' ] );
+	}
+
+	/**
+	 * AJAX handler that persists the view-mode preference.
+	 *
+	 * Called by the view toggle in the admin bar; returns success silently.
+	 * The capability check matches the abilities page itself.
+	 *
+	 * @return void
+	 * @since 1.1.0
+	 */
+	public function ajax_save_view_mode(): void {
+		check_ajax_referer( 'albert_view_mode', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'albert-ai-butler' ) ], 403 );
+		}
+
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized via sanitize_key() on the next line.
+		$mode = self::normalize_view_mode( sanitize_key( wp_unslash( (string) ( $_POST['mode'] ?? '' ) ) ) );
+
+		update_option( self::VIEW_MODE_OPTION, $mode, false );
+
+		wp_send_json_success( [ 'mode' => $mode ] );
+	}
+
+	/**
+	 * Get the persisted view-mode preference, defaulting to "list".
+	 *
+	 * @return string Either `list` or `paginated`.
+	 * @since 1.1.0
+	 */
+	public static function get_view_mode(): string {
+		return self::normalize_view_mode( (string) get_option( self::VIEW_MODE_OPTION, 'list' ) );
+	}
+
+	/**
+	 * Normalize an arbitrary string to a valid view mode.
+	 *
+	 * Anything that isn't `paginated` collapses to `list` so an unexpected
+	 * value (corrupted option, bad AJAX payload) never breaks rendering.
+	 *
+	 * @param string $mode Raw mode string.
+	 *
+	 * @return string Either `list` or `paginated`.
+	 * @since 1.1.0
+	 */
+	private static function normalize_view_mode( string $mode ): string {
+		return 'paginated' === $mode ? 'paginated' : 'list';
 	}
 
 	/**
@@ -96,7 +175,7 @@ class AbilitiesPage implements Hookable {
 	public function register_settings(): void {
 		register_setting(
 			self::OPTION_GROUP,
-			self::OPTION_NAME,
+			self::DISABLED_ABILITIES_OPTION,
 			[
 				'type'              => 'array',
 				'sanitize_callback' => [ $this, 'sanitize_settings' ],
@@ -136,6 +215,7 @@ class AbilitiesPage implements Hookable {
 		$disabled_abilities = self::get_disabled_abilities();
 		$categories         = self::collect_category_options( $abilities );
 		$suppliers          = self::collect_supplier_options( $abilities );
+		$view_mode          = self::get_view_mode();
 		$enabled_count      = 0;
 		foreach ( $abilities as $row ) {
 			if ( ! in_array( $row['id'], $disabled_abilities, true ) ) {
@@ -163,16 +243,32 @@ class AbilitiesPage implements Hookable {
 				 * inside <form action="options.php"> caused Enter in the
 				 * search box to submit the settings form unexpectedly.
 				 */
-				$this->render_toolbar( $categories, $suppliers, $enabled_count, $total_count );
+				$this->render_toolbar( $categories, $suppliers, $enabled_count, $total_count, $view_mode );
 				?>
 
 				<form method="post" action="options.php" id="albert-form" class="albert-abilities-form">
 					<?php settings_fields( self::OPTION_GROUP ); ?>
-					<input type="hidden" name="<?php echo esc_attr( self::OPTION_NAME ); ?>" value="" />
+					<input type="hidden" name="<?php echo esc_attr( self::DISABLED_ABILITIES_OPTION ); ?>" value="" />
 
-					<div class="albert-abilities-list" id="albert-abilities-list" role="list">
+					<?php
+					// Render rows beyond the first page hidden when starting in
+					// paginated mode, so the user never sees a flash of the full
+					// list before JavaScript can apply the pagination window.
+					$row_index = 0;
+					?>
+					<div
+						class="albert-abilities-list"
+						id="albert-abilities-list"
+						role="list"
+						data-view-mode="<?php echo esc_attr( $view_mode ); ?>"
+						data-rows-per-page="<?php echo esc_attr( (string) self::ROWS_PER_PAGE ); ?>"
+					>
 						<?php foreach ( $abilities as $row ) { ?>
-							<?php $this->render_ability_row( $row, $disabled_abilities ); ?>
+							<?php
+							$pre_hidden = ( 'paginated' === $view_mode ) && ( $row_index >= self::ROWS_PER_PAGE );
+							++$row_index;
+							?>
+							<?php $this->render_ability_row( $row, $disabled_abilities, $pre_hidden ); ?>
 						<?php } ?>
 
 						<p class="albert-abilities-empty" hidden>
@@ -180,7 +276,14 @@ class AbilitiesPage implements Hookable {
 						</p>
 					</div>
 
-					<nav class="albert-abilities-pagination" aria-label="<?php esc_attr_e( 'Abilities pagination', 'albert-ai-butler' ); ?>" hidden>
+					<nav
+						class="albert-abilities-pagination"
+						aria-label="<?php esc_attr_e( 'Abilities pagination', 'albert-ai-butler' ); ?>"
+						<?php
+						if ( 'paginated' !== $view_mode ) {
+							?>
+							hidden<?php } ?>
+					>
 						<button type="button" class="button albert-pagination-prev" data-direction="prev">
 							<?php esc_html_e( 'Previous', 'albert-ai-butler' ); ?>
 						</button>
@@ -206,11 +309,13 @@ class AbilitiesPage implements Hookable {
 	 * @param array<string, string> $suppliers     Supplier slug => label.
 	 * @param int                   $enabled_count Number of currently-enabled abilities.
 	 * @param int                   $total_count   Total ability count.
+	 * @param string                $view_mode     Current view mode (`list` or `paginated`).
 	 *
 	 * @return void
 	 * @since 1.1.0
 	 */
-	private function render_toolbar( array $categories, array $suppliers, int $enabled_count, int $total_count ): void {
+	private function render_toolbar( array $categories, array $suppliers, int $enabled_count, int $total_count, string $view_mode ): void {
+		$is_paginated = 'paginated' === $view_mode;
 		?>
 		<div class="albert-abilities-toolbar" role="region" aria-label="<?php esc_attr_e( 'Filter abilities', 'albert-ai-butler' ); ?>">
 			<div class="albert-toolbar-filters">
@@ -249,10 +354,20 @@ class AbilitiesPage implements Hookable {
 
 			<div class="albert-toolbar-meta">
 				<div class="albert-view-toggle" role="group" aria-label="<?php esc_attr_e( 'View mode', 'albert-ai-butler' ); ?>">
-					<button type="button" class="albert-view-toggle-btn is-active" data-view="list" aria-pressed="true">
+					<button
+						type="button"
+						class="albert-view-toggle-btn<?php echo $is_paginated ? '' : ' is-active'; ?>"
+						data-view="list"
+						aria-pressed="<?php echo $is_paginated ? 'false' : 'true'; ?>"
+					>
 						<?php esc_html_e( 'List', 'albert-ai-butler' ); ?>
 					</button>
-					<button type="button" class="albert-view-toggle-btn" data-view="paginated" aria-pressed="false">
+					<button
+						type="button"
+						class="albert-view-toggle-btn<?php echo $is_paginated ? ' is-active' : ''; ?>"
+						data-view="paginated"
+						aria-pressed="<?php echo $is_paginated ? 'true' : 'false'; ?>"
+					>
 						<?php esc_html_e( 'Paginated', 'albert-ai-butler' ); ?>
 					</button>
 				</div>
@@ -285,11 +400,14 @@ class AbilitiesPage implements Hookable {
 	 *
 	 * @param array<string, mixed> $row                Normalized ability row data.
 	 * @param array<string>        $disabled_abilities List of disabled ability ids.
+	 * @param bool                 $pre_hidden         Whether to pre-render the row hidden
+	 *                                                 (used for paginated view to avoid a
+	 *                                                 flash of all rows before JS runs).
 	 *
 	 * @return void
 	 * @since 1.1.0
 	 */
-	private function render_ability_row( array $row, array $disabled_abilities ): void {
+	private function render_ability_row( array $row, array $disabled_abilities, bool $pre_hidden = false ): void {
 		$id            = (string) $row['id'];
 		$label         = (string) $row['label'];
 		$description   = (string) $row['description'];
@@ -316,6 +434,10 @@ class AbilitiesPage implements Hookable {
 			data-supplier="<?php echo esc_attr( $supplier_slug ); ?>"
 			data-search="<?php echo esc_attr( $search_haystack ); ?>"
 			data-destructive="<?php echo $is_destruct ? '1' : '0'; ?>"
+			<?php
+			if ( $pre_hidden ) {
+				?>
+				hidden<?php } ?>
 		>
 			<input type="hidden" name="albert_presented_abilities[]" value="<?php echo esc_attr( $id ); ?>" />
 
@@ -553,7 +675,7 @@ class AbilitiesPage implements Hookable {
 
 		$newly_disabled = array_diff( $presented, $enabled );
 
-		$existing_disabled = get_option( self::OPTION_NAME, [] );
+		$existing_disabled = get_option( self::DISABLED_ABILITIES_OPTION, [] );
 		if ( ! is_array( $existing_disabled ) ) {
 			$existing_disabled = [];
 		}
@@ -579,7 +701,7 @@ class AbilitiesPage implements Hookable {
 	 * @since 1.1.0
 	 */
 	public static function get_disabled_abilities(): array {
-		$disabled = get_option( self::OPTION_NAME, [] );
+		$disabled = get_option( self::DISABLED_ABILITIES_OPTION, [] );
 
 		if ( empty( $disabled ) && ! get_option( 'albert_abilities_saved' ) ) {
 			return AbilitiesRegistry::get_default_disabled_abilities();
@@ -632,7 +754,9 @@ class AbilitiesPage implements Hookable {
 			'albert-admin',
 			'albertAdmin',
 			[
-				'i18n' => [
+				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
+				'viewModeNonce' => wp_create_nonce( 'albert_view_mode' ),
+				'i18n'          => [
 					'copied'             => __( 'Copied!', 'albert-ai-butler' ),
 					'copyFailed'         => __( 'Copy failed', 'albert-ai-butler' ),
 					/* translators: 1: visible count, 2: total count, 3: enabled count. */

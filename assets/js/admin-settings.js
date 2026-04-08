@@ -55,9 +55,6 @@ const DirtyStateModule = {
  * includes every row regardless of the current filter/page.
  */
 const AbilitiesListModule = {
-	PAGE_SIZE: 25,
-	STORAGE_KEY: 'albert_abilities_view_mode',
-
 	init() {
 		this.list = document.getElementById( 'albert-abilities-list' );
 		if ( ! this.list ) {
@@ -78,7 +75,12 @@ const AbilitiesListModule = {
 		this.enabled = parseInt( this.statsNode?.dataset.enabled || '0', 10 );
 		this.statsTemplate = this.statsNode?.dataset.templateAll || 'Showing %1$s of %2$s · %3$s enabled';
 
-		this.viewMode = this.readSavedViewMode();
+		// Initial view mode + rows-per-page come from data attributes the
+		// server rendered, so the page paints in the correct state with no
+		// flicker or JS-driven re-layout. localStorage is intentionally NOT
+		// consulted — the preference lives in wp_options.
+		this.viewMode = AbilitiesListModule.normalizeViewMode( this.list.dataset.viewMode );
+		this.rowsPerPage = parseInt( this.list.dataset.rowsPerPage, 10 );
 		this.currentPage = 1;
 
 		this.bindSearch();
@@ -89,8 +91,29 @@ const AbilitiesListModule = {
 		this.bindPagination();
 		this.bindChipDismiss();
 
-		this.applyViewMode( this.viewMode, { persist: false } );
-		this.applyFilters();
+		// Server already pre-rendered the correct view mode (toggle button
+		// state, pagination nav visibility, rows beyond page 1 hidden when
+		// paginated), so we don't call applyViewMode on init — calling it
+		// would trigger renderPaginationWindow() which writes `hidden` on
+		// every row and causes the visible flash we're trying to avoid.
+		// We do still need an initial filter/stats pass to set things like
+		// the enabled count and the pagination pager numbers.
+		if ( 'paginated' === this.viewMode ) {
+			this.renderPaginationWindow();
+		} else {
+			this.updateStats( this.rows.length );
+		}
+	},
+
+	/**
+	 * Coerce an arbitrary string to a valid view mode.
+	 *
+	 * Mirrors the PHP `AbilitiesPage::normalize_view_mode()` so the two
+	 * sides apply identical validation. Anything that isn't `paginated`
+	 * collapses to `list`.
+	 */
+	normalizeViewMode( mode ) {
+		return 'paginated' === mode ? 'paginated' : 'list';
 	},
 
 	/**
@@ -129,39 +152,54 @@ const AbilitiesListModule = {
 			true
 		);
 
-		this.list.addEventListener( 'mouseleave', ( e ) => {
-			const chip = e.target.closest?.( '.ability-chip' );
-			if ( chip ) {
-				chip.classList.remove( 'is-dismissed' );
-			}
-		}, true );
+		this.list.addEventListener(
+			'mouseleave',
+			( e ) => {
+				const chip = e.target.closest( '.ability-chip' );
+				if ( chip ) {
+					chip.classList.remove( 'is-dismissed' );
+				}
+			},
+			true
+		);
 	},
 
-	readSavedViewMode() {
-		try {
-			const saved = localStorage.getItem( this.STORAGE_KEY );
-			return saved === 'paginated' ? 'paginated' : 'list';
-		} catch {
-			return 'list';
-		}
-	},
-
+	/**
+	 * Persist the view-mode preference to wp_options via admin-ajax.
+	 *
+	 * Fire-and-forget — failures are logged but don't block the UI. The
+	 * preference is server-rendered on next page load, so a failed save
+	 * just means the current session keeps the new mode but the next page
+	 * load reverts to the previous one.
+	 */
 	saveViewMode( mode ) {
-		try {
-			localStorage.setItem( this.STORAGE_KEY, mode );
-		} catch {
-			// localStorage unavailable — ignore.
+		const cfg = window.albertAdmin || {};
+		if ( ! cfg.ajaxUrl || ! cfg.viewModeNonce ) {
+			return;
 		}
+		const body = new URLSearchParams();
+		body.set( 'action', 'albert_save_view_mode' );
+		body.set( 'nonce', cfg.viewModeNonce );
+		body.set( 'mode', mode );
+
+		fetch( cfg.ajaxUrl, {
+			method: 'POST',
+			credentials: 'same-origin',
+			body,
+		} ).catch( ( err ) => {
+			// eslint-disable-next-line no-console
+			console.warn( 'Albert: failed to persist view mode', err );
+		} );
 	},
 
 	bindSearch() {
 		if ( ! this.searchInput ) {
 			return;
 		}
-		let debounce;
+		let searchDebounceTimer;
 		this.searchInput.addEventListener( 'input', () => {
-			clearTimeout( debounce );
-			debounce = setTimeout( () => {
+			clearTimeout( searchDebounceTimer );
+			searchDebounceTimer = setTimeout( () => {
 				this.currentPage = 1;
 				this.applyFilters();
 			}, 120 );
@@ -183,8 +221,7 @@ const AbilitiesListModule = {
 	bindViewToggle() {
 		this.viewButtons.forEach( ( btn ) => {
 			btn.addEventListener( 'click', () => {
-				const mode = btn.dataset.view === 'paginated' ? 'paginated' : 'list';
-				this.applyViewMode( mode );
+				this.applyViewMode( AbilitiesListModule.normalizeViewMode( btn.dataset.view ) );
 			} );
 		} );
 	},
@@ -256,7 +293,7 @@ const AbilitiesListModule = {
 		} );
 	},
 
-	applyViewMode( mode, { persist = true } = {} ) {
+	applyViewMode( mode ) {
 		this.viewMode = mode;
 		this.viewButtons.forEach( ( btn ) => {
 			const active = btn.dataset.view === mode;
@@ -266,9 +303,7 @@ const AbilitiesListModule = {
 		if ( this.pagination ) {
 			this.pagination.hidden = mode !== 'paginated';
 		}
-		if ( persist ) {
-			this.saveViewMode( mode );
-		}
+		this.saveViewMode( mode );
 		this.currentPage = 1;
 		this.renderPaginationWindow();
 	},
@@ -301,7 +336,7 @@ const AbilitiesListModule = {
 
 	totalPages() {
 		const visible = this.filteredRows().length;
-		return Math.max( 1, Math.ceil( visible / this.PAGE_SIZE ) );
+		return Math.max( 1, Math.ceil( visible / this.rowsPerPage ) );
 	},
 
 	renderPaginationWindow() {
@@ -322,8 +357,8 @@ const AbilitiesListModule = {
 		if ( this.currentPage > pages ) {
 			this.currentPage = pages;
 		}
-		const start = ( this.currentPage - 1 ) * this.PAGE_SIZE;
-		const end = start + this.PAGE_SIZE;
+		const start = ( this.currentPage - 1 ) * this.rowsPerPage;
+		const end = start + this.rowsPerPage;
 
 		// Hide everything first, then reveal the current slice.
 		this.rows.forEach( ( row ) => {
@@ -399,8 +434,8 @@ const AbilitiesListModule = {
 		this.statsNode.setAttribute( 'aria-live', 'off' );
 		this.statsNode.textContent = text;
 
-		clearTimeout( this._statsAnnounce );
-		this._statsAnnounce = setTimeout( () => {
+		clearTimeout( this.statsAnnounceTimer );
+		this.statsAnnounceTimer = setTimeout( () => {
 			this.statsNode.setAttribute( 'aria-live', 'polite' );
 		}, 400 );
 	},
