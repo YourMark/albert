@@ -87,9 +87,54 @@ const AbilitiesListModule = {
 		this.bindRowExpand();
 		this.bindRowToggle();
 		this.bindPagination();
+		this.bindChipDismiss();
 
 		this.applyViewMode( this.viewMode, { persist: false } );
 		this.applyFilters();
+	},
+
+	/**
+	 * Escape dismisses any visible chip tooltip (WCAG 1.4.13 dismissible).
+	 *
+	 * Pressing Escape while a chip is focused hides its overlay until the
+	 * user moves away; moving focus or pointer away clears the dismissed
+	 * state so the next hover/focus shows the tooltip again.
+	 */
+	bindChipDismiss() {
+		if ( ! this.list ) {
+			return;
+		}
+
+		this.list.addEventListener( 'keydown', ( e ) => {
+			if ( e.key !== 'Escape' ) {
+				return;
+			}
+			const chip = e.target.closest( '.ability-chip' );
+			if ( ! chip ) {
+				return;
+			}
+			chip.classList.add( 'is-dismissed' );
+		} );
+
+		// Clear the dismissed state when the chip loses focus/hover, so the
+		// tooltip is available again the next time the user lands on it.
+		this.list.addEventListener(
+			'focusout',
+			( e ) => {
+				const chip = e.target.closest( '.ability-chip' );
+				if ( chip ) {
+					chip.classList.remove( 'is-dismissed' );
+				}
+			},
+			true
+		);
+
+		this.list.addEventListener( 'mouseleave', ( e ) => {
+			const chip = e.target.closest?.( '.ability-chip' );
+			if ( chip ) {
+				chip.classList.remove( 'is-dismissed' );
+			}
+		}, true );
 	},
 
 	readSavedViewMode() {
@@ -328,6 +373,18 @@ const AbilitiesListModule = {
 		}
 	},
 
+	/**
+	 * Update the stats line.
+	 *
+	 * The stats node is `aria-live="polite"`, so every textContent change
+	 * would queue a screen-reader announcement — spammy while the user is
+	 * typing in the search box. We split the write into two steps:
+	 *   - The visible text is updated immediately (sighted users need to
+	 *     see the filter results live).
+	 *   - The announcement is debounced (~400ms): we temporarily remove
+	 *     aria-live while updating, then restore it after a short delay so
+	 *     only the settled value is announced.
+	 */
 	updateStats( visibleCount ) {
 		if ( ! this.statsNode ) {
 			return;
@@ -337,7 +394,15 @@ const AbilitiesListModule = {
 			.replace( '%1$s', String( visible ) )
 			.replace( '%2$s', String( this.total ) )
 			.replace( '%3$s', String( this.enabled ) );
+
+		// Suppress the live announcement while the value is changing.
+		this.statsNode.setAttribute( 'aria-live', 'off' );
 		this.statsNode.textContent = text;
+
+		clearTimeout( this._statsAnnounce );
+		this._statsAnnounce = setTimeout( () => {
+			this.statsNode.setAttribute( 'aria-live', 'polite' );
+		}, 400 );
 	},
 };
 

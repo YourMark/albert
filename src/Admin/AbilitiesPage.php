@@ -152,15 +152,23 @@ class AbilitiesPage implements Hookable {
 			<div class="albert-abilities-page">
 				<header class="albert-abilities-header">
 					<p class="albert-abilities-intro">
-						<?php esc_html_e( 'Enable or disable the abilities AI assistants can call. Search, filter by category or supplier, and expand a row for details.', 'albert-ai-butler' ); ?>
+						<?php esc_html_e( 'Enable or disable the abilities AI assistants can call. Each row is labelled with what it can do — read data, make changes, or delete data — so you can decide at a glance which to allow.', 'albert-ai-butler' ); ?>
 					</p>
 				</header>
+
+				<?php
+				/*
+				 * Toolbar sits OUTSIDE the form on purpose. Its inputs are
+				 * client-side filters, not settings fields; leaving them
+				 * inside <form action="options.php"> caused Enter in the
+				 * search box to submit the settings form unexpectedly.
+				 */
+				$this->render_toolbar( $categories, $suppliers, $enabled_count, $total_count );
+				?>
 
 				<form method="post" action="options.php" id="albert-form" class="albert-abilities-form">
 					<?php settings_fields( self::OPTION_GROUP ); ?>
 					<input type="hidden" name="<?php echo esc_attr( self::OPTION_NAME ); ?>" value="" />
-
-					<?php $this->render_toolbar( $categories, $suppliers, $enabled_count, $total_count ); ?>
 
 					<div class="albert-abilities-list" id="albert-abilities-list" role="list">
 						<?php foreach ( $abilities as $row ) { ?>
@@ -329,14 +337,24 @@ class AbilitiesPage implements Hookable {
 					<?php } ?>
 
 					<?php if ( ! empty( $chips ) ) { ?>
-						<ul class="ability-row-annotations" aria-label="<?php esc_attr_e( 'Annotations', 'albert-ai-butler' ); ?>">
+						<ul class="ability-row-annotations" aria-label="<?php esc_attr_e( 'What this ability does', 'albert-ai-butler' ); ?>">
 							<?php foreach ( $chips as $chip ) { ?>
-								<li class="ability-chip ability-chip--<?php echo esc_attr( $chip['tone'] ); ?>">
+								<?php $desc_id = $dom_id . '-chip-' . $chip['key'] . '-desc'; ?>
+								<li
+									class="ability-chip ability-chip--<?php echo esc_attr( $chip['tone'] ); ?>"
+									tabindex="0"
+									aria-describedby="<?php echo esc_attr( $desc_id ); ?>"
+								>
 									<?php if ( 'danger' === $chip['tone'] ) { ?>
 										<span class="screen-reader-text"><?php esc_html_e( 'Warning: ', 'albert-ai-butler' ); ?></span>
 									<?php } ?>
 									<span class="dashicons <?php echo esc_attr( $chip['icon'] ); ?>" aria-hidden="true"></span>
 									<span class="ability-chip-label"><?php echo esc_html( $chip['label'] ); ?></span>
+									<span
+										class="ability-chip-desc"
+										id="<?php echo esc_attr( $desc_id ); ?>"
+										role="tooltip"
+									><?php echo esc_html( $chip['description'] ); ?></span>
 								</li>
 							<?php } ?>
 						</ul>
@@ -365,14 +383,7 @@ class AbilitiesPage implements Hookable {
 				<dl class="ability-row-details-grid">
 					<dt><?php esc_html_e( 'Ability ID', 'albert-ai-butler' ); ?></dt>
 					<dd>
-						<code class="ability-row-id" id="<?php echo esc_attr( $dom_id ); ?>-id"><?php echo esc_html( $id ); ?></code>
-						<button
-							type="button"
-							class="button-link albert-copy-button"
-							data-copy-target="<?php echo esc_attr( $dom_id ); ?>-id"
-						>
-							<?php esc_html_e( 'Copy', 'albert-ai-butler' ); ?>
-						</button>
+						<code class="ability-row-id"><?php echo esc_html( $id ); ?></code>
 					</dd>
 
 					<dt><?php esc_html_e( 'Supplier', 'albert-ai-butler' ); ?></dt>
@@ -381,20 +392,6 @@ class AbilitiesPage implements Hookable {
 					<?php if ( '' !== $category_lbl ) { ?>
 						<dt><?php esc_html_e( 'Category', 'albert-ai-butler' ); ?></dt>
 						<dd><?php echo esc_html( $category_lbl ); ?></dd>
-					<?php } ?>
-
-					<?php if ( ! empty( $annotations ) ) { ?>
-						<dt><?php esc_html_e( 'Annotations', 'albert-ai-butler' ); ?></dt>
-						<dd>
-							<ul class="ability-row-annotation-list">
-								<?php foreach ( $annotations as $key => $value ) { ?>
-									<li>
-										<code><?php echo esc_html( (string) $key ); ?></code>:
-										<?php echo esc_html( $value ? 'true' : 'false' ); ?>
-									</li>
-								<?php } ?>
-							</ul>
-						</dd>
 					<?php } ?>
 				</dl>
 			</div>
@@ -436,8 +433,8 @@ class AbilitiesPage implements Hookable {
 				'description'    => (string) $desc,
 				'category_slug'  => (string) $cat,
 				'category_label' => $category_label,
-				'supplier_slug'  => strtolower( $source['type'] ),
-				'supplier_label' => $source['label'],
+				'supplier_slug'  => (string) $source['slug'],
+				'supplier_label' => (string) $source['label'],
 				'annotations'    => $annotations,
 			];
 		}

@@ -358,6 +358,7 @@
 
 /* Annotation chips */
 .ability-chip {
+	position: relative;
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
@@ -369,10 +370,62 @@
 	border: 1px solid transparent;
 }
 
+.ability-chip:focus-visible {
+	outline: 2px solid var(--albert-primary);
+	outline-offset: 2px;
+}
+
 .ability-chip .dashicons {
 	font-size: var(--albert-font-md);
 	width: 14px;
 	height: 14px;
+}
+
+/*
+ * Chip description: in the DOM for screen readers at all times
+ * (.screen-reader-text clip pattern), revealed as a positioned overlay
+ * on hover OR keyboard focus. Because the overlay stays inside the
+ * chip's DOM subtree, moving the pointer onto the overlay still
+ * satisfies `.ability-chip:hover`, which meets WCAG 1.4.13's hoverable
+ * requirement. Keyboard users reach the chip via tabindex=0 and see the
+ * overlay on :focus-visible; pressing Escape toggles `.is-dismissed` on
+ * the chip (handled in admin-settings.js) to satisfy dismissibility.
+ */
+.ability-chip-desc {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+	border: 0;
+	word-break: normal;
+}
+
+.ability-chip:hover:not(.is-dismissed) .ability-chip-desc,
+.ability-chip:focus-visible:not(.is-dismissed) .ability-chip-desc {
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 0;
+	width: max-content;
+	max-width: 260px;
+	height: auto;
+	padding: 8px 10px;
+	margin: 0;
+	overflow: visible;
+	clip: auto;
+	white-space: normal;
+	background: var(--albert-text-primary);
+	color: var(--albert-bg-white);
+	border-radius: var(--albert-border-radius);
+	font-size: var(--albert-font-xs);
+	font-weight: 400;
+	line-height: 1.45;
+	box-shadow: var(--albert-shadow-md);
+	z-index: 20;
+	pointer-events: auto;
 }
 
 .ability-chip--neutral {
@@ -387,15 +440,21 @@
 	border-color: var(--albert-info-20);
 }
 
+/*
+ * Warning and danger chip text is darkened vs the raw --albert-warning /
+ * --albert-error tokens so the ~11px label meets WCAG 1.4.3 (4.5:1)
+ * against the 10%-tinted backgrounds. Using dedicated --*-chip-text
+ * tokens keeps the surrounding component colors unchanged.
+ */
 .ability-chip--warning {
 	background: var(--albert-warning-10);
-	color: var(--albert-warning);
+	color: oklch(0.38 0.13 75);
 	border-color: var(--albert-warning-20);
 }
 
 .ability-chip--danger {
 	background: var(--albert-danger-10);
-	color: var(--albert-error);
+	color: oklch(0.40 0.18 25);
 	border-color: var(--albert-danger-20);
 }
 
@@ -447,22 +506,6 @@
 	border: 1px solid var(--albert-border-light);
 }
 
-.ability-row-annotation-list {
-	list-style: none;
-	margin: 0;
-	padding: 0;
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-}
-
-.ability-row-annotation-list code {
-	background: var(--albert-bg-white);
-	padding: 1px 4px;
-	border-radius: 2px;
-	border: 1px solid var(--albert-border-light);
-}
-
 /* Hide filtered-out rows */
 .ability-row.is-filtered-out {
 	display: none;
@@ -490,6 +533,13 @@
 	background: var(--albert-primary);
 	color: var(--albert-bg-white);
 	border-color: var(--albert-primary);
+}
+
+.albert-pagination-page:focus-visible,
+.albert-pagination-prev:focus-visible,
+.albert-pagination-next:focus-visible {
+	outline: 2px solid var(--albert-primary);
+	outline-offset: 2px;
 }
 
 .albert-abilities-submit {
