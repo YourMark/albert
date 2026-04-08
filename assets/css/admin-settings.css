@@ -171,6 +171,17 @@
 	line-height: 1.5;
 }
 
+.albert-abilities-toolbar .albert-filter-category,
+.albert-abilities-toolbar .albert-filter-supplier {
+	appearance: none;
+	/* Caret icon as inline SVG so it inherits theme colors without an HTTP request. */
+	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='none' stroke='%234a5568' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1.5l5 5 5-5'/></svg>");
+	background-repeat: no-repeat;
+	background-position: right var(--albert-spacing-sm) center;
+	background-size: 12px 8px;
+	padding-right: calc(var(--albert-spacing-sm) * 2 + 12px);
+}
+
 .albert-abilities-toolbar .albert-search:focus-visible,
 .albert-abilities-toolbar .albert-filter-category:focus-visible,
 .albert-abilities-toolbar .albert-filter-supplier:focus-visible {
