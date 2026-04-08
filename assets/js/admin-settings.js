@@ -6,47 +6,6 @@
  */
 
 /**
- * Dirty state tracking — warns users about unsaved changes.
- */
-const DirtyStateModule = {
-	isDirty: false,
-
-	init() {
-		this.form = document.getElementById( 'albert-form' );
-		if ( ! this.form ) {
-			return;
-		}
-
-		this.saveButtons = document.querySelectorAll( '#submit, #submit-mobile' );
-
-		this.form.addEventListener( 'change', () => {
-			this.markDirty();
-		} );
-
-		this.form.addEventListener( 'submit', () => {
-			this.isDirty = false;
-		} );
-
-		window.addEventListener( 'beforeunload', ( e ) => {
-			if ( this.isDirty ) {
-				e.preventDefault();
-			}
-		} );
-	},
-
-	markDirty() {
-		if ( this.isDirty ) {
-			return;
-		}
-		this.isDirty = true;
-
-		this.saveButtons.forEach( ( btn ) => {
-			btn.classList.add( 'albert-save-dirty' );
-		} );
-	},
-};
-
-/**
  * Flat abilities list: filtering, view toggle, pagination, row expand,
  * destructive-confirmation, and stats updates.
  *
@@ -72,7 +31,7 @@ const AbilitiesListModule = {
 		this.viewButtons = Array.from( document.querySelectorAll( '.albert-view-toggle-btn' ) );
 
 		this.total = parseInt( this.statsNode?.dataset.total || String( this.rows.length ), 10 );
-		this.enabled = parseInt( this.statsNode?.dataset.enabled || '0', 10 );
+		this.enabled = parseInt( this.statsNode?.dataset.enabledCount || '0', 10 );
 		this.statsTemplate = this.statsNode?.dataset.templateAll || 'Showing %1$s of %2$s · %3$s enabled';
 
 		// Initial view mode + rows-per-page come from data attributes the
@@ -245,6 +204,22 @@ const AbilitiesListModule = {
 		} );
 	},
 
+	/**
+	 * Per-row toggle handler with optimistic UI + AJAX save + revert.
+	 *
+	 * The flow on click is:
+	 *
+	 *   1. Confirm destructive abilities BEFORE optimistic update; if the
+	 *      user cancels, snap the checkbox back and stop.
+	 *   2. Apply the optimistic state immediately (data-enabled, the
+	 *      visible "Enabled / Disabled" word, the live enabled count) so
+	 *      sighted users see instant feedback.
+	 *   3. Disable the checkbox so a rapid double-click can't race the
+	 *      pending request, and POST to wp_ajax_albert_toggle_ability.
+	 *   4. On success, re-enable the checkbox.
+	 *      On failure, revert every optimistic mutation, re-enable the
+	 *      checkbox, and surface the error in the inline notice.
+	 */
 	bindRowToggle() {
 		this.list.addEventListener( 'change', ( e ) => {
 			const checkbox = e.target.closest( '.ability-row-checkbox' );
@@ -252,10 +227,16 @@ const AbilitiesListModule = {
 				return;
 			}
 			const row = checkbox.closest( '.ability-row' );
-			const i18n = window.albertAdmin?.i18n || {};
-			const confirmText = i18n.destructiveConfirm || 'This ability can permanently delete data. Are you sure you want to enable it?';
+			if ( ! row ) {
+				return;
+			}
 
-			if ( checkbox.checked && row?.dataset.destructive === '1' ) {
+			const i18n = window.albertAdmin?.i18n || {};
+			const nextEnabled = checkbox.checked;
+
+			// Destructive confirm before any optimistic update.
+			if ( nextEnabled && row.dataset.destructive === '1' ) {
+				const confirmText = i18n.destructiveConfirm || 'This ability can permanently delete data. Are you sure you want to enable it?';
 				// eslint-disable-next-line no-alert
 				if ( ! window.confirm( confirmText ) ) {
 					checkbox.checked = false;
@@ -263,14 +244,105 @@ const AbilitiesListModule = {
 				}
 			}
 
-			// Update enabled count without a full re-filter.
-			if ( checkbox.checked ) {
-				this.enabled += 1;
-			} else {
-				this.enabled -= 1;
-			}
-			this.updateStats();
+			this.applyToggleState( row, nextEnabled );
+			this.persistAbilityToggle( row, checkbox, nextEnabled );
 		} );
+	},
+
+	/**
+	 * Apply the visual state of an ability row to match its checkbox.
+	 *
+	 * Updates `data-enabled` and the running enabled count. The visible
+	 * "Enabled / Disabled" text is handled entirely by CSS — both words
+	 * are rendered in the DOM and cross-fade based on
+	 * `.albert-toggle:has(input:checked)`, so there's no JS text swap.
+	 */
+	applyToggleState( row, enabled ) {
+		row.dataset.enabled = enabled ? '1' : '0';
+		this.enabled += enabled ? 1 : -1;
+		this.updateStats();
+	},
+
+	/**
+	 * POST the new state to wp_ajax_albert_toggle_ability.
+	 *
+	 * Disables the checkbox while in flight (to block double-clicks racing
+	 * each other), reverts on failure, and surfaces an error notice if the
+	 * request can't complete.
+	 */
+	persistAbilityToggle( row, checkbox, enabled ) {
+		const cfg = window.albertAdmin || {};
+		if ( ! cfg.ajaxUrl || ! cfg.toggleAbilityNonce ) {
+			this.revertToggle( row, checkbox, ! enabled );
+			this.showError( ( cfg.i18n && cfg.i18n.saveError ) || 'Could not save your change. Please try again.' );
+			return;
+		}
+
+		checkbox.disabled = true;
+
+		const body = new URLSearchParams();
+		body.set( 'action', 'albert_toggle_ability' );
+		body.set( 'nonce', cfg.toggleAbilityNonce );
+		body.set( 'ability_id', row.dataset.abilityId || '' );
+		body.set( 'enabled', enabled ? '1' : '0' );
+
+		fetch( cfg.ajaxUrl, {
+			method: 'POST',
+			credentials: 'same-origin',
+			body,
+		} )
+			.then( ( response ) => {
+				if ( ! response.ok ) {
+					const msg = response.status === 403
+						? ( cfg.i18n && cfg.i18n.sessionExpired ) || 'Your session has expired. Reload the page and try again.'
+						: ( cfg.i18n && cfg.i18n.saveError ) || 'Could not save your change. Please try again.';
+					throw new Error( msg );
+				}
+				checkbox.disabled = false;
+			} )
+			.catch( ( err ) => {
+				checkbox.disabled = false;
+				this.revertToggle( row, checkbox, ! enabled );
+				this.showError( err.message || ( cfg.i18n && cfg.i18n.saveError ) || 'Could not save your change. Please try again.' );
+			} );
+	},
+
+	/**
+	 * Roll a row back to a previous state after a failed save.
+	 *
+	 * Resets the checkbox first so `applyToggleState` re-derives every
+	 * dependent piece of UI from a consistent source. The optimistic
+	 * `applyToggleState` + this revert form a +1/-1 pair on the enabled
+	 * counter, so the running total ends at its original value.
+	 */
+	revertToggle( row, checkbox, previousEnabled ) {
+		checkbox.checked = previousEnabled;
+		this.applyToggleState( row, previousEnabled );
+	},
+
+	/**
+	 * Show an error notice in the dedicated inline alert region.
+	 *
+	 * Auto-dismisses after a few seconds so a transient failure doesn't
+	 * leave a permanent banner; the role="alert" attribute on the element
+	 * means screen readers announce it as soon as it appears.
+	 */
+	showError( message ) {
+		if ( ! this.errorNode ) {
+			this.errorNode = document.getElementById( 'albert-abilities-error' );
+		}
+		if ( ! this.errorNode ) {
+			// eslint-disable-next-line no-console
+			console.error( 'Albert:', message );
+			return;
+		}
+		this.errorNode.textContent = message;
+		this.errorNode.hidden = false;
+
+		clearTimeout( this.errorDismissTimer );
+		this.errorDismissTimer = setTimeout( () => {
+			this.errorNode.hidden = true;
+		}, 6000 );
 	},
 
 	bindPagination() {
@@ -595,7 +667,6 @@ function init() {
 	initLiveRegion();
 	AbilitiesListModule.init();
 	ClipboardModule.init();
-	DirtyStateModule.init();
 	DisconnectModule.init();
 }
 

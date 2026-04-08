@@ -43,14 +43,6 @@ class AbilitiesPage implements Hookable {
 	const DISABLED_ABILITIES_OPTION = 'albert_disabled_abilities';
 
 	/**
-	 * Settings API option group.
-	 *
-	 * @since 1.1.0
-	 * @var string
-	 */
-	const OPTION_GROUP = 'albert_settings';
-
-	/**
 	 * Admin page slug.
 	 *
 	 * @since 1.1.0
@@ -86,24 +78,96 @@ class AbilitiesPage implements Hookable {
 	/**
 	 * Register WordPress hooks.
 	 *
-	 * Wires the admin menu entry, the Settings API registration, the
-	 * page-scoped asset enqueue, and the AJAX endpoint that persists the
-	 * view-mode preference (`wp_ajax_albert_save_view_mode`).
+	 * Wires the admin menu entry, the page-scoped asset enqueue, and the
+	 * two AJAX endpoints used by the abilities admin UI:
+	 *
+	 *   - `wp_ajax_albert_toggle_ability`  — enable/disable a single ability
+	 *   - `wp_ajax_albert_save_view_mode`  — persist the list/paginated preference
+	 *
+	 * The page no longer uses the Settings API: the disabled-abilities
+	 * option is mutated per-row via the AJAX endpoint, which means there is
+	 * no Save Changes button and no bulk submit form.
 	 *
 	 * @return void
 	 * @since 1.1.0
 	 */
 	public function register_hooks(): void {
 		add_action( 'admin_menu', [ $this, 'add_menu_page' ] );
-		add_action( 'admin_init', [ $this, 'register_settings' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+		add_action( 'wp_ajax_albert_toggle_ability', [ $this, 'ajax_toggle_ability' ] );
 		add_action( 'wp_ajax_albert_save_view_mode', [ $this, 'ajax_save_view_mode' ] );
+	}
+
+	/**
+	 * AJAX handler that toggles a single ability on or off.
+	 *
+	 * Reads the current disabled-abilities option, adds or removes the
+	 * requested ability id, and writes it back. The endpoint accepts only
+	 * one ability id per call (never the full list) so two concurrent
+	 * toggles can't accidentally overwrite each other's state.
+	 *
+	 * Returns success with the new state, or an error with a translated
+	 * message that the JS surfaces to the user.
+	 *
+	 * @return void
+	 * @since 1.1.0
+	 */
+	public function ajax_toggle_ability(): void {
+		check_ajax_referer( 'albert_toggle_ability', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error(
+				[ 'message' => __( 'Insufficient permissions.', 'albert-ai-butler' ) ],
+				403
+			);
+		}
+
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized via sanitize_text_field() below.
+		$ability_id = sanitize_text_field( wp_unslash( (string) ( $_POST['ability_id'] ?? '' ) ) );
+
+		// Accept the explicit string forms the JS sends ("1" / "true"); anything
+		// else is treated as disable. Doesn't rely on PHP truthy coercion so
+		// "false" or "0" reach us as the user expects.
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- compared to literals below.
+		$enabled_raw = isset( $_POST['enabled'] ) ? wp_unslash( (string) $_POST['enabled'] ) : '';
+		$enabled     = '1' === $enabled_raw || 'true' === $enabled_raw;
+
+		if ( ! $this->is_valid_ability_slug( $ability_id ) ) {
+			wp_send_json_error(
+				[ 'message' => __( 'Invalid ability id.', 'albert-ai-butler' ) ],
+				400
+			);
+		}
+
+		$disabled = self::get_disabled_abilities();
+		// Re-sanitize stored values defensively before mutating.
+		$disabled = array_filter(
+			array_map( 'sanitize_text_field', $disabled ),
+			[ $this, 'is_valid_ability_slug' ]
+		);
+
+		if ( $enabled ) {
+			$disabled = array_values( array_diff( $disabled, [ $ability_id ] ) );
+		} elseif ( ! in_array( $ability_id, $disabled, true ) ) {
+			$disabled[] = $ability_id;
+		}
+		$disabled = array_values( array_unique( $disabled ) );
+
+		update_option( self::DISABLED_ABILITIES_OPTION, $disabled );
+		update_option( 'albert_abilities_saved', true );
+
+		wp_send_json_success(
+			[
+				'ability_id' => $ability_id,
+				'enabled'    => $enabled,
+			]
+		);
 	}
 
 	/**
 	 * AJAX handler that persists the view-mode preference.
 	 *
-	 * Called by the view toggle in the admin bar; returns success silently.
+	 * Called by the view toggle in the toolbar; returns success silently.
 	 * The capability check matches the abilities page itself.
 	 *
 	 * @return void
@@ -167,24 +231,6 @@ class AbilitiesPage implements Hookable {
 	}
 
 	/**
-	 * Register the disabled-abilities setting.
-	 *
-	 * @return void
-	 * @since 1.1.0
-	 */
-	public function register_settings(): void {
-		register_setting(
-			self::OPTION_GROUP,
-			self::DISABLED_ABILITIES_OPTION,
-			[
-				'type'              => 'array',
-				'sanitize_callback' => [ $this, 'sanitize_settings' ],
-				'default'           => [],
-			]
-		);
-	}
-
-	/**
 	 * Render the admin page.
 	 *
 	 * @return void
@@ -236,67 +282,58 @@ class AbilitiesPage implements Hookable {
 					</p>
 				</header>
 
+				<?php $this->render_toolbar( $categories, $suppliers, $enabled_count, $total_count, $view_mode ); ?>
+
+				<div
+					class="albert-abilities-error"
+					id="albert-abilities-error"
+					role="alert"
+					aria-live="assertive"
+					hidden
+				></div>
+
 				<?php
-				/*
-				 * Toolbar sits OUTSIDE the form on purpose. Its inputs are
-				 * client-side filters, not settings fields; leaving them
-				 * inside <form action="options.php"> caused Enter in the
-				 * search box to submit the settings form unexpectedly.
-				 */
-				$this->render_toolbar( $categories, $suppliers, $enabled_count, $total_count, $view_mode );
+				// Render rows beyond the first page hidden when starting in
+				// paginated mode, so the user never sees a flash of the full
+				// list before JavaScript can apply the pagination window.
+				$row_index = 0;
 				?>
-
-				<form method="post" action="options.php" id="albert-form" class="albert-abilities-form">
-					<?php settings_fields( self::OPTION_GROUP ); ?>
-					<input type="hidden" name="<?php echo esc_attr( self::DISABLED_ABILITIES_OPTION ); ?>" value="" />
-
-					<?php
-					// Render rows beyond the first page hidden when starting in
-					// paginated mode, so the user never sees a flash of the full
-					// list before JavaScript can apply the pagination window.
-					$row_index = 0;
-					?>
-					<div
-						class="albert-abilities-list"
-						id="albert-abilities-list"
-						role="list"
-						data-view-mode="<?php echo esc_attr( $view_mode ); ?>"
-						data-rows-per-page="<?php echo esc_attr( (string) self::ROWS_PER_PAGE ); ?>"
-					>
-						<?php foreach ( $abilities as $row ) { ?>
-							<?php
-							$pre_hidden = ( 'paginated' === $view_mode ) && ( $row_index >= self::ROWS_PER_PAGE );
-							++$row_index;
-							?>
-							<?php $this->render_ability_row( $row, $disabled_abilities, $pre_hidden ); ?>
-						<?php } ?>
-
-						<p class="albert-abilities-empty" hidden>
-							<?php esc_html_e( 'No abilities match your filters.', 'albert-ai-butler' ); ?>
-						</p>
-					</div>
-
-					<nav
-						class="albert-abilities-pagination"
-						aria-label="<?php esc_attr_e( 'Abilities pagination', 'albert-ai-butler' ); ?>"
+				<div
+					class="albert-abilities-list"
+					id="albert-abilities-list"
+					role="list"
+					data-view-mode="<?php echo esc_attr( $view_mode ); ?>"
+					data-rows-per-page="<?php echo esc_attr( (string) self::ROWS_PER_PAGE ); ?>"
+				>
+					<?php foreach ( $abilities as $row ) { ?>
 						<?php
-						if ( 'paginated' !== $view_mode ) {
-							?>
-							hidden<?php } ?>
-					>
-						<button type="button" class="button albert-pagination-prev" data-direction="prev">
-							<?php esc_html_e( 'Previous', 'albert-ai-butler' ); ?>
-						</button>
-						<span class="albert-pagination-pages" aria-live="polite"></span>
-						<button type="button" class="button albert-pagination-next" data-direction="next">
-							<?php esc_html_e( 'Next', 'albert-ai-butler' ); ?>
-						</button>
-					</nav>
+						$pre_hidden = ( 'paginated' === $view_mode ) && ( $row_index >= self::ROWS_PER_PAGE );
+						++$row_index;
+						?>
+						<?php $this->render_ability_row( $row, $disabled_abilities, $pre_hidden ); ?>
+					<?php } ?>
 
-					<div class="albert-abilities-submit">
-						<?php submit_button( __( 'Save Changes', 'albert-ai-butler' ), 'primary', 'submit', false ); ?>
-					</div>
-				</form>
+					<p class="albert-abilities-empty" hidden>
+						<?php esc_html_e( 'No abilities match your filters.', 'albert-ai-butler' ); ?>
+					</p>
+				</div>
+
+				<nav
+					class="albert-abilities-pagination"
+					aria-label="<?php esc_attr_e( 'Abilities pagination', 'albert-ai-butler' ); ?>"
+					<?php
+					if ( 'paginated' !== $view_mode ) {
+						?>
+						hidden<?php } ?>
+				>
+					<button type="button" class="button albert-pagination-prev" data-direction="prev">
+						<?php esc_html_e( 'Previous', 'albert-ai-butler' ); ?>
+					</button>
+					<span class="albert-pagination-pages" aria-live="polite"></span>
+					<button type="button" class="button albert-pagination-next" data-direction="next">
+						<?php esc_html_e( 'Next', 'albert-ai-butler' ); ?>
+					</button>
+				</nav>
 			</div>
 		</div>
 		<?php
@@ -378,7 +415,7 @@ class AbilitiesPage implements Hookable {
 					<?php /* translators: 1: visible count, 2: total count, 3: enabled count. */ ?>
 					data-template-all="<?php esc_attr_e( 'Showing %1$s of %2$s · %3$s enabled', 'albert-ai-butler' ); ?>"
 					data-total="<?php echo esc_attr( (string) $total_count ); ?>"
-					data-enabled="<?php echo esc_attr( (string) $enabled_count ); ?>"
+					data-enabled-count="<?php echo esc_attr( (string) $enabled_count ); ?>"
 				>
 					<?php
 					printf(
@@ -434,12 +471,12 @@ class AbilitiesPage implements Hookable {
 			data-supplier="<?php echo esc_attr( $supplier_slug ); ?>"
 			data-search="<?php echo esc_attr( $search_haystack ); ?>"
 			data-destructive="<?php echo $is_destruct ? '1' : '0'; ?>"
+			data-enabled="<?php echo $is_enabled ? '1' : '0'; ?>"
 			<?php
 			if ( $pre_hidden ) {
 				?>
 				hidden<?php } ?>
 		>
-			<input type="hidden" name="albert_presented_abilities[]" value="<?php echo esc_attr( $id ); ?>" />
 
 			<div class="ability-row-main">
 				<button
@@ -489,10 +526,13 @@ class AbilitiesPage implements Hookable {
 							type="checkbox"
 							id="<?php echo esc_attr( $toggle_id ); ?>"
 							class="ability-row-checkbox"
-							name="albert_enabled_on_page[]"
 							value="<?php echo esc_attr( $id ); ?>"
 							<?php checked( $is_enabled ); ?>
 						/>
+						<span class="albert-toggle-state" aria-hidden="true">
+							<span class="albert-toggle-state-word albert-toggle-state-word--on"><?php esc_html_e( 'Enabled', 'albert-ai-butler' ); ?></span>
+							<span class="albert-toggle-state-word albert-toggle-state-word--off"><?php esc_html_e( 'Disabled', 'albert-ai-butler' ); ?></span>
+						</span>
 						<span class="albert-toggle-slider" aria-hidden="true"></span>
 						<span class="screen-reader-text">
 							<?php echo esc_html( sprintf( /* translators: %s: ability label. */ __( 'Enable %s', 'albert-ai-butler' ), $label ) ); ?>
@@ -647,52 +687,6 @@ class AbilitiesPage implements Hookable {
 	}
 
 	/**
-	 * Sanitize settings on save.
-	 *
-	 * Computes the new disabled list from the hidden
-	 * albert_presented_abilities[] / albert_enabled_on_page[] arrays, preserving
-	 * any abilities that were not rendered on this request (future-proofing for
-	 * addon pages that re-use the same option).
-	 *
-	 * @param mixed $input Raw option input (unused; we read the hidden arrays directly).
-	 *
-	 * @return array<int, string>
-	 * @since 1.1.0
-	 */
-	public function sanitize_settings( $input ): array {
-		unset( $input ); // Hidden trigger field only; actual values come from the arrays below.
-
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Nonce verified by Settings API; sanitized below.
-		$presented_raw = isset( $_POST['albert_presented_abilities'] ) ? wp_unslash( $_POST['albert_presented_abilities'] ) : [];
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Nonce verified by Settings API; sanitized below.
-		$enabled_raw = isset( $_POST['albert_enabled_on_page'] ) ? wp_unslash( $_POST['albert_enabled_on_page'] ) : [];
-
-		$presented = array_map( 'sanitize_text_field', (array) $presented_raw );
-		$enabled   = array_map( 'sanitize_text_field', (array) $enabled_raw );
-
-		$presented = array_filter( $presented, [ $this, 'is_valid_ability_slug' ] );
-		$enabled   = array_filter( $enabled, [ $this, 'is_valid_ability_slug' ] );
-
-		$newly_disabled = array_diff( $presented, $enabled );
-
-		$existing_disabled = get_option( self::DISABLED_ABILITIES_OPTION, [] );
-		if ( ! is_array( $existing_disabled ) ) {
-			$existing_disabled = [];
-		}
-		$existing_disabled = array_map( 'sanitize_text_field', $existing_disabled );
-		$existing_disabled = array_filter( $existing_disabled, [ $this, 'is_valid_ability_slug' ] );
-
-		// Anything that was presented *and* is now enabled is no longer disabled.
-		$existing_disabled = array_diff( $existing_disabled, $enabled );
-
-		$disabled = array_values( array_unique( array_merge( $existing_disabled, $newly_disabled ) ) );
-
-		update_option( 'albert_abilities_saved', true );
-
-		return $disabled;
-	}
-
-	/**
 	 * Get currently disabled abilities.
 	 *
 	 * On fresh install returns the default blocklist (Albert write abilities).
@@ -754,9 +748,10 @@ class AbilitiesPage implements Hookable {
 			'albert-admin',
 			'albertAdmin',
 			[
-				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
-				'viewModeNonce' => wp_create_nonce( 'albert_view_mode' ),
-				'i18n'          => [
+				'ajaxUrl'            => admin_url( 'admin-ajax.php' ),
+				'toggleAbilityNonce' => wp_create_nonce( 'albert_toggle_ability' ),
+				'viewModeNonce'      => wp_create_nonce( 'albert_view_mode' ),
+				'i18n'               => [
 					'copied'             => __( 'Copied!', 'albert-ai-butler' ),
 					'copyFailed'         => __( 'Copy failed', 'albert-ai-butler' ),
 					/* translators: 1: visible count, 2: total count, 3: enabled count. */
@@ -765,6 +760,8 @@ class AbilitiesPage implements Hookable {
 					'pageTemplate'       => __( 'Page %1$s of %2$s', 'albert-ai-butler' ),
 					'destructiveConfirm' => __( 'This ability can permanently delete data. Are you sure you want to enable it?', 'albert-ai-butler' ),
 					'noMatches'          => __( 'No abilities match your filters.', 'albert-ai-butler' ),
+					'saveError'          => __( 'Could not save your change. Please try again.', 'albert-ai-butler' ),
+					'sessionExpired'     => __( 'Your session has expired. Reload the page and try again.', 'albert-ai-butler' ),
 				],
 			]
 		);

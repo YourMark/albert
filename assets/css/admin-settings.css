@@ -542,46 +542,149 @@
 	outline-offset: 2px;
 }
 
-.albert-abilities-submit {
-	display: flex;
-	justify-content: flex-end;
-	padding-top: var(--albert-spacing-md);
-	border-top: 1px solid var(--albert-border-light);
+/*
+ * Inline error notice for AJAX failures (toggle save).
+ *
+ * Sits above the list, role="alert" so screen readers announce it,
+ * dismissed automatically after a few seconds by the JS.
+ */
+.albert-abilities-error {
+	margin: 0 0 var(--albert-spacing-md) 0;
+	padding: var(--albert-spacing-sm) var(--albert-spacing-md);
+	background: var(--albert-danger-10);
+	border: 1px solid var(--albert-danger-20);
+	border-radius: var(--albert-border-radius);
+	color: oklch(0.40 0.18 25);
+	font-size: var(--albert-font-base);
+	line-height: 1.5;
 }
 
-/* Toggle switch (also used elsewhere) */
+.albert-abilities-error[hidden] {
+	display: none;
+}
+
+/*
+ * Toggle switch — flex container with the state text + slider on one row.
+ *
+ * The whole thing is wrapped in a `<label for="…">` so clicking either the
+ * "Enabled / Disabled" word or the pill flips the underlying checkbox.
+ * Doubling the click target is the cheapest accessibility win we can offer
+ * here.
+ */
 .albert-toggle {
 	position: relative;
-	display: inline-block;
-	width: 32px;
-	height: 18px;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--albert-spacing-sm);
 	margin: 0;
 	cursor: pointer;
+	user-select: none;
 }
 
 .albert-toggle::after {
 	content: "";
 	position: absolute;
 	top: 50%;
-	left: 50%;
+	right: 0;
 	width: 44px;
 	height: 44px;
-	transform: translate(-50%, -50%);
+	transform: translateY(-50%);
 }
 
+/*
+ * Hide the native checkbox without breaking focus / form semantics.
+ *
+ * wp-admin's forms.css injects `input[type="checkbox"]:checked::before`
+ * with a blue SVG checkmark. `opacity: 0` on the input alone isn't
+ * always enough to suppress that: the ::before can paint for a frame
+ * on state change before compositing settles, which shows up as a
+ * visible flash the user has to ignore. Clipping the input to a 1×1
+ * box with `overflow: hidden` and `clip-path: inset(50%)` (the
+ * canonical WP .screen-reader-text pattern) guarantees any generated
+ * content is clipped out regardless of how opacity inherits.
+ */
 .albert-toggle input {
-	opacity: 0;
-	width: 0;
-	height: 0;
 	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+
+/*
+ * State text — "Enabled" and "Disabled" both live in the DOM, stacked
+ * in the same grid cell, and cross-fade via opacity when the checkbox
+ * state changes. CSS grid sizes the container to the longer of the two
+ * words automatically, so there's no layout shift and no need to
+ * hard-code a width. Both words are aria-hidden because the checkbox
+ * itself carries the accessible state.
+ */
+.albert-toggle-state {
+	display: inline-grid;
+	grid-template-areas: "state";
+	font-size: var(--albert-font-sm);
+	font-weight: 500;
+	line-height: 1;
+	color: var(--albert-text-secondary);
+	transition: color var(--albert-transition);
+	white-space: nowrap;
+}
+
+.albert-toggle:has( input:checked ) .albert-toggle-state {
+	color: var(--albert-primary);
+}
+
+.albert-toggle-state-word {
+	grid-area: state;
+	transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.albert-toggle-state-word--on {
+	opacity: 0;
+	transform: translateY( -2px );
+}
+
+.albert-toggle-state-word--off {
+	opacity: 1;
+	transform: translateY( 0 );
+}
+
+.albert-toggle:has( input:checked ) .albert-toggle-state-word--on {
+	opacity: 1;
+	transform: translateY( 0 );
+}
+
+.albert-toggle:has( input:checked ) .albert-toggle-state-word--off {
+	opacity: 0;
+	transform: translateY( 2px );
+}
+
+@media ( prefers-reduced-motion: reduce ) {
+	.albert-toggle-state-word {
+		transition: opacity 0s;
+		transform: none;
+	}
+
+	.albert-toggle:has( input:checked ) .albert-toggle-state-word--on,
+	.albert-toggle:has( input:checked ) .albert-toggle-state-word--off {
+		transform: none;
+	}
 }
 
 .albert-toggle-slider {
-	position: absolute;
-	inset: 0;
+	position: relative;
+	display: inline-block;
+	width: 32px;
+	height: 18px;
+	flex-shrink: 0;
 	background-color: var(--albert-toggle-track);
 	border-radius: 18px;
-	transition: background-color var(--albert-transition);
+	/* Track colour snaps — only the knob below animates. */
 }
 
 .albert-toggle-slider::before {
@@ -597,19 +700,41 @@
 	box-shadow: 0 1px 1px var(--albert-black-10);
 }
 
-.albert-toggle input:checked + .albert-toggle-slider {
+@media ( prefers-reduced-motion: reduce ) {
+	.albert-toggle-slider::before {
+		transition: none;
+	}
+}
+
+.albert-toggle input:checked + .albert-toggle-state + .albert-toggle-slider {
 	background-color: var(--albert-primary);
 }
 
-.albert-toggle input:focus-visible + .albert-toggle-slider {
+.albert-toggle input:focus-visible + .albert-toggle-state + .albert-toggle-slider {
 	outline: 2px solid var(--albert-primary);
 	outline-offset: 2px;
 	box-shadow: none;
 }
 
-.albert-toggle input:checked + .albert-toggle-slider:before {
+.albert-toggle input:checked + .albert-toggle-state + .albert-toggle-slider::before {
 	transform: translateX(14px);
 }
+
+.albert-toggle input:disabled + .albert-toggle-state + .albert-toggle-slider {
+	opacity: 0.5;
+	cursor: progress;
+}
+
+/*
+ * Disabled-row treatment intentionally does NOT fade text.
+ *
+ * An earlier version dropped the description and chip opacity to 0.55
+ * as an ambient cue, but that blended the text with the background and
+ * broke WCAG 1.4.3 contrast for users with low vision. State is now
+ * signalled by four high-contrast cues instead: the "Enabled"/"Disabled"
+ * word, the toggle slider position, the toggle slider color, and the
+ * primary-color row accent above — none of which degrade any text.
+ */
 
 /* Responsive - Abilities toolbar wraps */
 @media screen and (max-width: 960px) {
@@ -1048,18 +1173,6 @@
 		margin: var(--albert-spacing-md) 0 0 0;
 		padding: var(--albert-spacing-sm) var(--albert-spacing-md);
 	}
-}
-
-/* Save button dirty state highlight */
-.albert-save-dirty {
-	animation: albert-pulse 1.5s ease-in-out;
-	box-shadow: 0 0 0 3px var(--albert-primary-40);
-}
-
-@keyframes albert-pulse {
-	0% { box-shadow: 0 0 0 0 var(--albert-primary-60); }
-	70% { box-shadow: 0 0 0 6px oklch(0.49 0.12 248 / 0); }
-	100% { box-shadow: 0 0 0 3px var(--albert-primary-40); }
 }
 
 /* Save success notice prominence */
