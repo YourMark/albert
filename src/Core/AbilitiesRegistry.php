@@ -222,104 +222,12 @@ class AbilitiesRegistry {
 	}
 
 	/**
-	 * Get all abilities grouped by category.
+	 * Cached supplier map, populated on first call to get_suppliers().
 	 *
-	 * Calls the WP Abilities API to get all registered abilities and categories,
-	 * and groups abilities by their category slug.
-	 *
-	 * @return array<string, array<string, mixed>> Grouped abilities.
-	 * @since 1.0.0
+	 * @since 1.1.0
+	 * @var array<string, string>|null
 	 */
-	public static function get_abilities_grouped_by_category(): array {
-		if ( ! function_exists( 'wp_get_abilities' ) || ! function_exists( 'wp_get_ability_categories' ) ) {
-			return [];
-		}
-
-		$all_abilities  = wp_get_abilities();
-		$all_categories = wp_get_ability_categories();
-		$grouped        = [];
-
-		// Initialize groups for all categories.
-		foreach ( $all_categories as $slug => $category ) {
-			$grouped[ $slug ] = [
-				'category'  => $category,
-				'abilities' => [],
-			];
-		}
-
-		// Group abilities into their categories.
-		foreach ( $all_abilities as $ability ) {
-			$cat_slug = method_exists( $ability, 'get_category' )
-				? $ability->get_category()
-				: 'uncategorized';
-			if ( ! isset( $grouped[ $cat_slug ] ) ) {
-				$grouped[ $cat_slug ] = [
-					'category'  => [
-						'label'       => ucfirst( $cat_slug ),
-						'description' => '',
-					],
-					'abilities' => [],
-				];
-			}
-			$grouped[ $cat_slug ]['abilities'][] = $ability;
-		}
-
-		return $grouped;
-	}
-
-	/**
-	 * Get the predefined sort order for categories.
-	 *
-	 * @return array<string> Ordered category slugs.
-	 * @since 1.0.0
-	 */
-	public static function get_category_sort_order(): array {
-		return [
-			'site',
-			'user',
-			'content',
-			'taxonomy',
-			'comments',
-			'commerce',
-			'woo-products',
-			'woo-orders',
-			'woo-customers',
-			'seo',
-			'fields',
-			'forms',
-			'lms',
-			'maintenance',
-		];
-	}
-
-	/**
-	 * Sort grouped categories by predefined order, then alphabetical for unknown.
-	 *
-	 * @param array<string, array<string, mixed>> $grouped Grouped abilities.
-	 *
-	 * @return array<string, array<string, mixed>> Sorted grouped abilities.
-	 * @since 1.0.0
-	 */
-	public static function sort_grouped_categories( array $grouped ): array {
-		$order  = self::get_category_sort_order();
-		$sorted = [];
-
-		// Add categories in predefined order.
-		foreach ( $order as $slug ) {
-			if ( isset( $grouped[ $slug ] ) ) {
-				$sorted[ $slug ] = $grouped[ $slug ];
-			}
-		}
-
-		// Add remaining categories alphabetically.
-		$remaining = array_diff_key( $grouped, $sorted );
-		ksort( $remaining );
-		foreach ( $remaining as $slug => $data ) {
-			$sorted[ $slug ] = $data;
-		}
-
-		return $sorted;
-	}
+	private static ?array $suppliers_cache = null;
 
 	/**
 	 * Get the curated supplier map.
@@ -337,6 +245,10 @@ class AbilitiesRegistry {
 	 * @since 1.1.0
 	 */
 	public static function get_suppliers(): array {
+		if ( self::$suppliers_cache !== null ) {
+			return self::$suppliers_cache;
+		}
+
 		$suppliers = [
 			'core'   => __( 'WordPress core', 'albert-ai-butler' ),
 			'albert' => __( 'Albert', 'albert-ai-butler' ),
@@ -357,7 +269,9 @@ class AbilitiesRegistry {
 		 *
 		 * @param array<string, string> $suppliers Prefix => supplier label.
 		 */
-		return apply_filters( 'albert/abilities/suppliers', $suppliers );
+		self::$suppliers_cache = apply_filters( 'albert/abilities/suppliers', $suppliers );
+
+		return self::$suppliers_cache;
 	}
 
 	/**
@@ -377,7 +291,7 @@ class AbilitiesRegistry {
 		$parts  = explode( '/', $ability_name, 2 );
 		$prefix = $parts[0] ?? '';
 
-		if ( '' === $prefix ) {
+		if ( $prefix === '' ) {
 			return [
 				'slug'  => 'unknown',
 				'label' => __( 'Unknown', 'albert-ai-butler' ),

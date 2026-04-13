@@ -31,16 +31,15 @@ class AnnotationPresenter {
 	 * Each chip is an array with:
 	 *  - 'key'         string — stable identifier ('read-only', 'deletes-data', …).
 	 *  - 'label'       string — short translated label shown on the chip.
-	 *  - 'description' string — one-sentence explanation used for tooltips and
-	 *                           the expanded details panel.
+	 *  - 'description' string — one-sentence explanation used for tooltips.
 	 *  - 'icon'        string — Dashicon class name.
 	 *  - 'tone'        string — one of: neutral, warning, danger.
 	 *
 	 * The presenter intentionally does NOT emit a chip for `idempotent`. That
 	 * annotation describes whether an AI agent can safely retry a failed call,
 	 * which is a runtime concern, not an admin permission decision. The raw
-	 * value is still surfaced in the expanded row details via
-	 * {@see self::is_idempotent()} so curious users can find it.
+	 * value is available via {@see self::is_idempotent()} for any caller that
+	 * wants to surface it (e.g. a future expanded details row).
 	 *
 	 * If the ability has no annotations the presenter falls back to the
 	 * slug heuristic ({@see self::heuristic_chips()}) so older custom
@@ -153,7 +152,7 @@ class AnnotationPresenter {
 	 * @since 1.1.0
 	 */
 	public static function heuristic_chips( string $ability_id ): array {
-		if ( '' === $ability_id ) {
+		if ( $ability_id === '' ) {
 			return [];
 		}
 

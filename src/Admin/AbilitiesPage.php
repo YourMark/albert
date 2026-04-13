@@ -130,7 +130,7 @@ class AbilitiesPage implements Hookable {
 		// "false" or "0" reach us as the user expects.
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- compared to literals below.
 		$enabled_raw = isset( $_POST['enabled'] ) ? wp_unslash( (string) $_POST['enabled'] ) : '';
-		$enabled     = '1' === $enabled_raw || 'true' === $enabled_raw;
+		$enabled     = $enabled_raw === '1' || $enabled_raw === 'true';
 
 		if ( ! $this->is_valid_ability_slug( $ability_id ) ) {
 			wp_send_json_error(
@@ -151,7 +151,6 @@ class AbilitiesPage implements Hookable {
 		} elseif ( ! in_array( $ability_id, $disabled, true ) ) {
 			$disabled[] = $ability_id;
 		}
-		$disabled = array_values( array_unique( $disabled ) );
 
 		update_option( self::DISABLED_ABILITIES_OPTION, $disabled );
 		update_option( 'albert_abilities_saved', true );
@@ -195,7 +194,7 @@ class AbilitiesPage implements Hookable {
 	 * @since 1.1.0
 	 */
 	public static function get_view_mode(): string {
-		return self::normalize_view_mode( (string) get_option( self::VIEW_MODE_OPTION, 'list' ) );
+		return self::normalize_view_mode( get_option( self::VIEW_MODE_OPTION, 'list' ) );
 	}
 
 	/**
@@ -210,7 +209,7 @@ class AbilitiesPage implements Hookable {
 	 * @since 1.1.0
 	 */
 	private static function normalize_view_mode( string $mode ): string {
-		return 'paginated' === $mode ? 'paginated' : 'list';
+		return $mode === 'paginated' ? 'paginated' : 'list';
 	}
 
 	/**
@@ -259,16 +258,16 @@ class AbilitiesPage implements Hookable {
 
 		$abilities          = self::collect_abilities();
 		$disabled_abilities = self::get_disabled_abilities();
-		$categories         = self::collect_category_options( $abilities );
-		$suppliers          = self::collect_supplier_options( $abilities );
+		$categories         = self::collect_filter_options( $abilities, 'category_slug', 'category_label' );
+		$suppliers          = self::collect_filter_options( $abilities, 'supplier_slug', 'supplier_label' );
 		$view_mode          = self::get_view_mode();
-		$enabled_count      = 0;
-		foreach ( $abilities as $row ) {
-			if ( ! in_array( $row['id'], $disabled_abilities, true ) ) {
-				++$enabled_count;
-			}
-		}
-		$total_count = count( $abilities );
+		$total_count        = count( $abilities );
+		$enabled_count      = count(
+			array_filter(
+				$abilities,
+				static fn( array $row ): bool => ! in_array( $row['id'], $disabled_abilities, true )
+			)
+		);
 		?>
 		<div class="wrap albert-wrap">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
@@ -292,12 +291,6 @@ class AbilitiesPage implements Hookable {
 					hidden
 				></div>
 
-				<?php
-				// Render rows beyond the first page hidden when starting in
-				// paginated mode, so the user never sees a flash of the full
-				// list before JavaScript can apply the pagination window.
-				$row_index = 0;
-				?>
 				<div
 					class="albert-abilities-list"
 					id="albert-abilities-list"
@@ -305,11 +298,8 @@ class AbilitiesPage implements Hookable {
 					data-view-mode="<?php echo esc_attr( $view_mode ); ?>"
 					data-rows-per-page="<?php echo esc_attr( (string) self::ROWS_PER_PAGE ); ?>"
 				>
-					<?php foreach ( $abilities as $row ) { ?>
-						<?php
-						$pre_hidden = ( 'paginated' === $view_mode ) && ( $row_index >= self::ROWS_PER_PAGE );
-						++$row_index;
-						?>
+					<?php foreach ( $abilities as $index => $row ) { ?>
+						<?php $pre_hidden = ( $view_mode === 'paginated' ) && ( $index >= self::ROWS_PER_PAGE ); ?>
 						<?php $this->render_ability_row( $row, $disabled_abilities, $pre_hidden ); ?>
 					<?php } ?>
 
@@ -322,7 +312,7 @@ class AbilitiesPage implements Hookable {
 					class="albert-abilities-pagination"
 					aria-label="<?php esc_attr_e( 'Abilities pagination', 'albert-ai-butler' ); ?>"
 					<?php
-					if ( 'paginated' !== $view_mode ) {
+					if ( $view_mode !== 'paginated' ) {
 						?>
 						hidden<?php } ?>
 				>
@@ -352,7 +342,7 @@ class AbilitiesPage implements Hookable {
 	 * @since 1.1.0
 	 */
 	private function render_toolbar( array $categories, array $suppliers, int $enabled_count, int $total_count, string $view_mode ): void {
-		$is_paginated = 'paginated' === $view_mode;
+		$is_paginated = $view_mode === 'paginated';
 		?>
 		<div class="albert-abilities-toolbar" role="region" aria-label="<?php esc_attr_e( 'Filter abilities', 'albert-ai-butler' ); ?>">
 			<div class="albert-toolbar-filters">
@@ -445,14 +435,14 @@ class AbilitiesPage implements Hookable {
 	 * @since 1.1.0
 	 */
 	private function render_ability_row( array $row, array $disabled_abilities, bool $pre_hidden = false ): void {
-		$id            = (string) $row['id'];
-		$label         = (string) $row['label'];
-		$description   = (string) $row['description'];
-		$category_slug = (string) $row['category_slug'];
-		$category_lbl  = (string) $row['category_label'];
-		$supplier_slug = (string) $row['supplier_slug'];
-		$supplier_lbl  = (string) $row['supplier_label'];
-		$annotations   = (array) $row['annotations'];
+		$id            = $row['id'];
+		$label         = $row['label'];
+		$description   = $row['description'];
+		$category_slug = $row['category_slug'];
+		$category_lbl  = $row['category_label'];
+		$supplier_slug = $row['supplier_slug'];
+		$supplier_lbl  = $row['supplier_label'];
+		$annotations   = $row['annotations'];
 		$chips         = AnnotationPresenter::chips_for( $annotations, $id );
 		$is_destruct   = AnnotationPresenter::is_destructive( $annotations, $id );
 		$is_enabled    = ! in_array( $id, $disabled_abilities, true );
@@ -491,7 +481,7 @@ class AbilitiesPage implements Hookable {
 
 				<div class="ability-row-body">
 					<label for="<?php echo esc_attr( $toggle_id ); ?>" class="ability-row-label"><?php echo esc_html( $label ); ?></label>
-					<?php if ( '' !== $description ) { ?>
+					<?php if ( $description !== '' ) { ?>
 						<p class="ability-row-description"><?php echo esc_html( $description ); ?></p>
 					<?php } ?>
 
@@ -504,7 +494,7 @@ class AbilitiesPage implements Hookable {
 									tabindex="0"
 									aria-describedby="<?php echo esc_attr( $desc_id ); ?>"
 								>
-									<?php if ( 'danger' === $chip['tone'] ) { ?>
+									<?php if ( $chip['tone'] === 'danger' ) { ?>
 										<span class="screen-reader-text"><?php esc_html_e( 'Warning: ', 'albert-ai-butler' ); ?></span>
 									<?php } ?>
 									<span class="dashicons <?php echo esc_attr( $chip['icon'] ); ?>" aria-hidden="true"></span>
@@ -551,7 +541,7 @@ class AbilitiesPage implements Hookable {
 					<dt><?php esc_html_e( 'Supplier', 'albert-ai-butler' ); ?></dt>
 					<dd><?php echo esc_html( $supplier_lbl ); ?></dd>
 
-					<?php if ( '' !== $category_lbl ) { ?>
+					<?php if ( $category_lbl !== '' ) { ?>
 						<dt><?php esc_html_e( 'Category', 'albert-ai-butler' ); ?></dt>
 						<dd><?php echo esc_html( $category_lbl ); ?></dd>
 					<?php } ?>
@@ -570,33 +560,24 @@ class AbilitiesPage implements Hookable {
 	 * @since 1.1.0
 	 */
 	private static function collect_abilities(): array {
-		if ( ! function_exists( 'wp_get_abilities' ) ) {
-			return [];
-		}
-
 		$all        = wp_get_abilities();
-		$categories = function_exists( 'wp_get_ability_categories' ) ? wp_get_ability_categories() : [];
+		$categories = wp_get_ability_categories();
 		$rows       = [];
 
 		foreach ( $all as $ability ) {
-			$id    = method_exists( $ability, 'get_name' ) ? $ability->get_name() : '';
-			$label = method_exists( $ability, 'get_label' ) ? $ability->get_label() : $id;
-			$desc  = method_exists( $ability, 'get_description' ) ? $ability->get_description() : '';
-			$cat   = method_exists( $ability, 'get_category' ) ? $ability->get_category() : '';
-			$meta  = method_exists( $ability, 'get_meta' ) ? (array) $ability->get_meta() : [];
-
-			$category_label = self::resolve_category_label( $cat, $categories );
-			$source         = AbilitiesRegistry::get_ability_source( $id );
-			$annotations    = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : [];
+			$id          = $ability->get_name();
+			$meta        = (array) $ability->get_meta();
+			$source      = AbilitiesRegistry::get_ability_source( $id );
+			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : [];
 
 			$rows[] = [
-				'id'             => (string) $id,
-				'label'          => (string) $label,
-				'description'    => (string) $desc,
-				'category_slug'  => (string) $cat,
-				'category_label' => $category_label,
-				'supplier_slug'  => (string) $source['slug'],
-				'supplier_label' => (string) $source['label'],
+				'id'             => $id,
+				'label'          => $ability->get_label(),
+				'description'    => $ability->get_description(),
+				'category_slug'  => $ability->get_category(),
+				'category_label' => self::resolve_category_label( $ability->get_category(), $categories ),
+				'supplier_slug'  => $source['slug'],
+				'supplier_label' => $source['label'],
 				'annotations'    => $annotations,
 			];
 		}
@@ -616,45 +597,25 @@ class AbilitiesPage implements Hookable {
 	}
 
 	/**
-	 * Build the category filter dropdown options.
+	 * Build a deduplicated, sorted map of filter dropdown options.
+	 *
+	 * Used for both the category and supplier filter dropdowns. Extracts
+	 * unique slug → label pairs from the collected rows, skipping empty
+	 * slugs, and sorts alphabetically by label.
 	 *
 	 * @param array<int, array<string, mixed>> $abilities Collected rows.
+	 * @param string                           $slug_key  Row key for the slug value.
+	 * @param string                           $label_key Row key for the label value.
 	 *
 	 * @return array<string, string>
 	 * @since 1.1.0
 	 */
-	private static function collect_category_options( array $abilities ): array {
+	private static function collect_filter_options( array $abilities, string $slug_key, string $label_key ): array {
 		$options = [];
 		foreach ( $abilities as $row ) {
-			$slug = (string) $row['category_slug'];
-			if ( '' === $slug ) {
-				continue;
-			}
-			if ( ! isset( $options[ $slug ] ) ) {
-				$options[ $slug ] = (string) $row['category_label'];
-			}
-		}
-		asort( $options, SORT_NATURAL | SORT_FLAG_CASE );
-		return $options;
-	}
-
-	/**
-	 * Build the supplier filter dropdown options.
-	 *
-	 * @param array<int, array<string, mixed>> $abilities Collected rows.
-	 *
-	 * @return array<string, string>
-	 * @since 1.1.0
-	 */
-	private static function collect_supplier_options( array $abilities ): array {
-		$options = [];
-		foreach ( $abilities as $row ) {
-			$slug = (string) $row['supplier_slug'];
-			if ( '' === $slug ) {
-				continue;
-			}
-			if ( ! isset( $options[ $slug ] ) ) {
-				$options[ $slug ] = (string) $row['supplier_label'];
+			$slug = $row[ $slug_key ];
+			if ( $slug !== '' && ! isset( $options[ $slug ] ) ) {
+				$options[ $slug ] = $row[ $label_key ];
 			}
 		}
 		asort( $options, SORT_NATURAL | SORT_FLAG_CASE );
@@ -671,7 +632,7 @@ class AbilitiesPage implements Hookable {
 	 * @since 1.1.0
 	 */
 	private static function resolve_category_label( string $slug, array $categories ): string {
-		if ( '' === $slug ) {
+		if ( $slug === '' ) {
 			return '';
 		}
 		if ( isset( $categories[ $slug ] ) ) {

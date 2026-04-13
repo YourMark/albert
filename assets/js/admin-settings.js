@@ -29,6 +29,7 @@ const AbilitiesListModule = {
 		this.pagination = document.querySelector( '.albert-abilities-pagination' );
 		this.pagesNode = this.pagination ? this.pagination.querySelector( '.albert-pagination-pages' ) : null;
 		this.viewButtons = Array.from( document.querySelectorAll( '.albert-view-toggle-btn' ) );
+		this.errorNode = document.getElementById( 'albert-abilities-error' );
 
 		this.total = parseInt( this.statsNode?.dataset.total || String( this.rows.length ), 10 );
 		this.enabled = parseInt( this.statsNode?.dataset.enabledCount || '0', 10 );
@@ -329,9 +330,6 @@ const AbilitiesListModule = {
 	 */
 	showError( message ) {
 		if ( ! this.errorNode ) {
-			this.errorNode = document.getElementById( 'albert-abilities-error' );
-		}
-		if ( ! this.errorNode ) {
 			// eslint-disable-next-line no-console
 			console.error( 'Albert:', message );
 			return;
@@ -392,11 +390,7 @@ const AbilitiesListModule = {
 			const matchesSupplier = '' === supplierFilter || row.dataset.supplier === supplierFilter;
 
 			const visible = matchesSearch && matchesCategory && matchesSupplier;
-			if ( visible ) {
-				row.classList.remove( 'is-filtered-out' );
-			} else {
-				row.classList.add( 'is-filtered-out' );
-			}
+			row.classList.toggle( 'is-filtered-out', ! visible );
 		} );
 
 		this.renderPaginationWindow();
