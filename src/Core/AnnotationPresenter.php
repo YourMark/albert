@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
  * AnnotationPresenter class
  *
  * Pure helper that converts an ability's WP 6.9 annotations array
- * (readonly / destructive / idempotent) into a list of chip DTOs the
+ * (read / write / delete) into a list of chip DTOs the
  * AbilitiesPage renders. Keeping the mapping here makes the view thin
  * and the logic unit-testable without a WordPress bootstrap.
  *
@@ -29,17 +29,11 @@ class AnnotationPresenter {
 	 * Build chip DTOs for an ability.
 	 *
 	 * Each chip is an array with:
-	 *  - 'key'         string — stable identifier ('read-only', 'deletes-data', …).
+	 *  - 'key'         string — stable identifier ('read', 'write', 'delete').
 	 *  - 'label'       string — short translated label shown on the chip.
 	 *  - 'description' string — one-sentence explanation used for tooltips.
 	 *  - 'icon'        string — Dashicon class name.
 	 *  - 'tone'        string — one of: neutral, warning, danger.
-	 *
-	 * The presenter intentionally does NOT emit a chip for `idempotent`. That
-	 * annotation describes whether an AI agent can safely retry a failed call,
-	 * which is a runtime concern, not an admin permission decision. The raw
-	 * value is available via {@see self::is_idempotent()} for any caller that
-	 * wants to surface it (e.g. a future expanded details row).
 	 *
 	 * If the ability has no annotations the presenter falls back to the
 	 * slug heuristic ({@see self::heuristic_chips()}) so older custom
@@ -71,25 +65,6 @@ class AnnotationPresenter {
 		}
 
 		return $chips;
-	}
-
-	/**
-	 * Whether the ability is marked idempotent (safe to retry).
-	 *
-	 * Surfaced in the expanded row details rather than as a top-level chip,
-	 * because retry safety is a runtime concern for AI agents — not a
-	 * permission decision admins need to weigh on the at-a-glance view.
-	 *
-	 * @param array<string, mixed> $annotations Raw annotations.
-	 *
-	 * @return bool|null `true` / `false` if the annotation is set, `null` if absent.
-	 * @since 1.1.0
-	 */
-	public static function is_idempotent( array $annotations ): ?bool {
-		if ( ! array_key_exists( 'idempotent', $annotations ) ) {
-			return null;
-		}
-		return (bool) $annotations['idempotent'];
 	}
 
 	/**

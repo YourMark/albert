@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
  *
  * Covers each annotation preset from {@see Annotations}, the slug-heuristic
  * fallback used when an ability declares no annotations, and the
- * is_idempotent helper that surfaces idempotency in the row details panel.
+ * is_destructive helper.
  */
 class AnnotationPresenterTest extends TestCase {
 
@@ -35,7 +35,7 @@ class AnnotationPresenterTest extends TestCase {
 	}
 
 	/**
-	 * Create annotations produce a single "Write" chip — never an idempotent chip.
+	 * Create annotations produce a single "Write" chip.
 	 *
 	 * @return void
 	 */
@@ -44,14 +44,10 @@ class AnnotationPresenterTest extends TestCase {
 		$keys  = array_column( $chips, 'key' );
 
 		$this->assertSame( [ 'write' ], $keys );
-		$this->assertNotContains( 'idempotent', $keys );
 	}
 
 	/**
-	 * Update annotations produce a "Write" chip but no idempotent chip.
-	 *
-	 * Idempotency is surfaced via {@see AnnotationPresenter::is_idempotent()}
-	 * for the row details panel, not as a top-level chip.
+	 * Update annotations produce a "Write" chip only.
 	 *
 	 * @return void
 	 */
@@ -102,29 +98,6 @@ class AnnotationPresenterTest extends TestCase {
 				$this->assertNotEmpty( $chip['description'], "Chip {$chip['key']} should have a description." );
 			}
 		}
-	}
-
-	/**
-	 * The is_idempotent helper returns the annotation flag when present.
-	 *
-	 * @return void
-	 */
-	public function test_is_idempotent_returns_annotation_value(): void {
-		$this->assertTrue( AnnotationPresenter::is_idempotent( Annotations::read() ) );
-		$this->assertTrue( AnnotationPresenter::is_idempotent( Annotations::update() ) );
-		$this->assertTrue( AnnotationPresenter::is_idempotent( Annotations::delete() ) );
-		$this->assertFalse( AnnotationPresenter::is_idempotent( Annotations::create() ) );
-		$this->assertFalse( AnnotationPresenter::is_idempotent( Annotations::action() ) );
-	}
-
-	/**
-	 * The is_idempotent helper returns null when the annotation is absent.
-	 *
-	 * @return void
-	 */
-	public function test_is_idempotent_returns_null_when_unset(): void {
-		$this->assertNull( AnnotationPresenter::is_idempotent( [] ) );
-		$this->assertNull( AnnotationPresenter::is_idempotent( [ 'readonly' => true ] ) );
 	}
 
 	/**
