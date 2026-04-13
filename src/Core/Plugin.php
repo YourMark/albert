@@ -48,7 +48,6 @@ use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
 use Albert\MCP\Server as McpServer;
 use Albert\OAuth\Database\Installer as OAuthInstaller;
-use Albert\Core\SettingsMigration;
 use Albert\OAuth\Endpoints\AuthorizationPage;
 use Albert\OAuth\Endpoints\ClientRegistration;
 use Albert\OAuth\Endpoints\OAuthController;
@@ -103,9 +102,6 @@ class Plugin {
 	public function init(): void {
 		// Check for database updates (handles upgrades without re-activation).
 		OAuthInstaller::install();
-
-		// Migrate settings from old format to new format (one-time).
-		SettingsMigration::maybe_migrate();
 
 		// Register admin components.
 		if ( is_admin() ) {

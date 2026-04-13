@@ -62,7 +62,6 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | `albert/abilities/before_execute/{id}` | action | Before a specific ability |
 | `albert/abilities/after_execute/{id}` | action | After a specific ability |
 | `albert/admin/submenu_pages` | filter | Add addon admin pages |
-| `albert/abilities/groups` | filter | Modify ability group definitions |
 | `albert/abilities_icons` | filter | Customize category icons |
 | `albert/developer_mode` | filter | Toggle developer mode |
 | `albert/activated` | action | Plugin activated |

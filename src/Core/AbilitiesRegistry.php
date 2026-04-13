@@ -2,7 +2,7 @@
 /**
  * Abilities Registry
  *
- * Defines ability groups and permission mappings.
+ * Supplier map, source lookup, and default-state logic for registered abilities.
  *
  * @package Albert
  * @subpackage Core
@@ -14,212 +14,11 @@ namespace Albert\Core;
 /**
  * Abilities Registry class
  *
- * Manages ability grouping and permission-to-ability mapping.
+ * Supplier map, category grouping, and source lookup for registered abilities.
  *
  * @since 1.0.0
  */
 class AbilitiesRegistry {
-
-	/**
-	 * Get all ability groups.
-	 *
-	 * @return array<string, array<string, mixed>> Ability groups structure.
-	 * @since 1.0.0
-	 */
-	public static function get_ability_groups(): array {
-		$groups = [
-			'wordpress' => [
-				'label'       => __( 'WordPress Core', 'albert-ai-butler' ),
-				'description' => __( 'Core WordPress content management.', 'albert-ai-butler' ),
-				'types'       => self::get_wordpress_types(),
-			],
-		];
-
-		// Add WooCommerce if active.
-		if ( class_exists( 'WooCommerce' ) ) {
-			$groups['woocommerce'] = [
-				'label'       => __( 'WooCommerce', 'albert-ai-butler' ),
-				'description' => __( 'Store and order management.', 'albert-ai-butler' ),
-				'types'       => self::get_woocommerce_types(),
-			];
-		}
-
-		return apply_filters( 'albert/abilities/groups', $groups );
-	}
-
-	/**
-	 * Get WordPress content types.
-	 *
-	 * @return array<string, array<string, mixed>> WordPress content types with read/write permissions.
-	 * @since 1.0.0
-	 */
-	private static function get_wordpress_types(): array {
-		return [
-			'posts'      => [
-				'label' => __( 'Posts', 'albert-ai-butler' ),
-				'read'  => [
-					'label'       => __( 'Read', 'albert-ai-butler' ),
-					'description' => __( 'Find and view posts', 'albert-ai-butler' ),
-					'abilities'   => [ 'albert/find-posts', 'albert/view-post' ],
-				],
-				'write' => [
-					'label'       => __( 'Write', 'albert-ai-butler' ),
-					'description' => __( 'Create, edit, and delete posts', 'albert-ai-butler' ),
-					'abilities'   => [ 'albert/create-post', 'albert/update-post', 'albert/delete-post' ],
-				],
-			],
-			'pages'      => [
-				'label' => __( 'Pages', 'albert-ai-butler' ),
-				'read'  => [
-					'label'       => __( 'Read', 'albert-ai-butler' ),
-					'description' => __( 'Find and view pages', 'albert-ai-butler' ),
-					'abilities'   => [ 'albert/find-pages', 'albert/view-page' ],
-				],
-				'write' => [
-					'label'       => __( 'Write', 'albert-ai-butler' ),
-					'description' => __( 'Create, edit, and delete pages', 'albert-ai-butler' ),
-					'abilities'   => [ 'albert/create-page', 'albert/update-page', 'albert/delete-page' ],
-				],
-			],
-			'media'      => [
-				'label' => __( 'Media', 'albert-ai-butler' ),
-				'read'  => [
-					'label'       => __( 'Read', 'albert-ai-butler' ),
-					'description' => __( 'Find and view media files', 'albert-ai-butler' ),
-					'abilities'   => [ 'albert/find-media', 'albert/view-media' ],
-				],
-				'write' => [
-					'label'       => __( 'Write', 'albert-ai-butler' ),
-					'description' => __( 'Upload and manage media', 'albert-ai-butler' ),
-					'abilities'   => [ 'albert/upload-media', 'albert/set-featured-image' ],
-				],
-			],
-			'users'      => [
-				'label' => __( 'Users', 'albert-ai-butler' ),
-				'read'  => [
-					'label'       => __( 'Read', 'albert-ai-butler' ),
-					'description' => __( 'Find and view users', 'albert-ai-butler' ),
-					'abilities'   => [ 'albert/find-users', 'albert/view-user' ],
-				],
-				'write' => [
-					'label'       => __( 'Write', 'albert-ai-butler' ),
-					'description' => __( 'Create, edit, and delete users', 'albert-ai-butler' ),
-					'abilities'   => [ 'albert/create-user', 'albert/update-user', 'albert/delete-user' ],
-				],
-			],
-			'taxonomies' => [
-				'label' => __( 'Taxonomies', 'albert-ai-butler' ),
-				'read'  => [
-					'label'       => __( 'Read', 'albert-ai-butler' ),
-					'description' => __( 'Find categories, tags, and terms', 'albert-ai-butler' ),
-					'abilities'   => [ 'albert/find-taxonomies', 'albert/find-terms', 'albert/view-term' ],
-				],
-				'write' => [
-					'label'       => __( 'Write', 'albert-ai-butler' ),
-					'description' => __( 'Create, edit, and delete terms', 'albert-ai-butler' ),
-					'abilities'   => [ 'albert/create-term', 'albert/update-term', 'albert/delete-term' ],
-				],
-			],
-		];
-	}
-
-	/**
-	 * Get WooCommerce content types.
-	 *
-	 * @return array<string, array<string, mixed>> WooCommerce content types with read/write permissions.
-	 * @since 1.0.0
-	 */
-	private static function get_woocommerce_types(): array {
-		return [
-			'products'  => [
-				'label' => __( 'Products', 'albert-ai-butler' ),
-				'read'  => [
-					'label'       => __( 'Read', 'albert-ai-butler' ),
-					'description' => __( 'Find and view products', 'albert-ai-butler' ),
-					'abilities'   => [ 'albert/woo-find-products', 'albert/woo-view-product' ],
-				],
-				'write' => [
-					'label'       => __( 'Write', 'albert-ai-butler' ),
-					'description' => __( 'Create, edit, and delete products', 'albert-ai-butler' ),
-					'abilities'   => [ 'albert/woo-create-product', 'albert/woo-update-product', 'albert/woo-delete-product' ],
-				],
-			],
-			'orders'    => [
-				'label' => __( 'Orders', 'albert-ai-butler' ),
-				'read'  => [
-					'label'       => __( 'Read', 'albert-ai-butler' ),
-					'description' => __( 'Find and view orders', 'albert-ai-butler' ),
-					'abilities'   => [ 'albert/woo-find-orders', 'albert/woo-view-order' ],
-				],
-				'write' => [
-					'label'       => __( 'Write', 'albert-ai-butler' ),
-					'description' => __( 'Create and update orders', 'albert-ai-butler' ),
-					'abilities'   => [ 'albert/woo-create-order', 'albert/woo-update-order' ],
-				],
-			],
-			'customers' => [
-				'label' => __( 'Customers', 'albert-ai-butler' ),
-				'read'  => [
-					'label'       => __( 'Read', 'albert-ai-butler' ),
-					'description' => __( 'Find and view customers', 'albert-ai-butler' ),
-					'abilities'   => [ 'albert/woo-find-customers', 'albert/woo-view-customer' ],
-				],
-			],
-		];
-	}
-
-	/**
-	 * Get all individual ability slugs from enabled permissions.
-	 *
-	 * @param array<string> $enabled_permissions Array of enabled permission keys (e.g., 'posts_read', 'posts_write').
-	 * @return array<string> Array of individual ability slugs.
-	 * @since 1.0.0
-	 */
-	public static function get_enabled_abilities( array $enabled_permissions ): array {
-		$abilities = [];
-		$groups    = self::get_ability_groups();
-
-		foreach ( $groups as $group_key => $group ) {
-			foreach ( $group['types'] as $type_key => $type ) {
-				foreach ( [ 'read', 'write' ] as $permission ) {
-					if ( ! isset( $type[ $permission ] ) ) {
-						continue;
-					}
-
-					$permission_key = $type_key . '_' . $permission;
-
-					if ( in_array( $permission_key, $enabled_permissions, true ) ) {
-						$abilities = array_merge( $abilities, $type[ $permission ]['abilities'] );
-					}
-				}
-			}
-		}
-
-		return array_unique( $abilities );
-	}
-
-	/**
-	 * Get default permissions (all read enabled, write disabled).
-	 *
-	 * @return array<string> Array of default permission keys.
-	 * @since 1.0.0
-	 */
-	public static function get_default_permissions(): array {
-		$defaults = [];
-		$groups   = self::get_ability_groups();
-
-		foreach ( $groups as $group ) {
-			foreach ( $group['types'] as $type_key => $type ) {
-				// Enable read by default.
-				if ( isset( $type['read'] ) ) {
-					$defaults[] = $type_key . '_read';
-				}
-				// Write disabled by default.
-			}
-		}
-
-		return $defaults;
-	}
 
 	/**
 	 * Cached supplier map, populated on first call to get_suppliers().
@@ -317,24 +116,40 @@ class AbilitiesRegistry {
 	/**
 	 * Get the default set of disabled abilities.
 	 *
-	 * On fresh install, Albert write abilities are disabled by default.
-	 * Everything else (read abilities, core, third-party) is enabled.
+	 * On fresh install, non-readonly abilities (write / delete) are disabled
+	 * by default. Derives the list from each registered ability's annotations
+	 * so it stays in sync automatically — no hardcoded slug lists.
 	 *
-	 * @return array<string> Array of ability slugs that are disabled by default.
+	 * @return array<string> Ability IDs that are disabled by default.
 	 * @since 1.0.0
 	 */
 	public static function get_default_disabled_abilities(): array {
-		$disabled = [];
-		$groups   = self::get_ability_groups();
+		if ( ! function_exists( 'wp_get_abilities' ) ) {
+			return [];
+		}
 
-		foreach ( $groups as $group ) {
-			foreach ( $group['types'] as $type ) {
-				if ( isset( $type['write'] ) ) {
-					$disabled = array_merge( $disabled, $type['write']['abilities'] );
+		$disabled = [];
+
+		foreach ( wp_get_abilities() as $ability ) {
+			$meta        = (array) $ability->get_meta();
+			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : [];
+
+			$id = $ability->get_name();
+
+			// No annotations — fall back to the slug heuristic.
+			if ( empty( $annotations ) ) {
+				$chips = AnnotationPresenter::heuristic_chips( $id );
+				if ( ! empty( $chips ) && $chips[0]['key'] !== 'read' ) {
+					$disabled[] = $id;
 				}
+				continue;
+			}
+
+			if ( empty( $annotations['readonly'] ) ) {
+				$disabled[] = $id;
 			}
 		}
 
-		return array_unique( $disabled );
+		return $disabled;
 	}
 }
