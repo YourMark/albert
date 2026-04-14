@@ -260,6 +260,7 @@ class AbilitiesPage implements Hookable {
 		$disabled_abilities = self::get_disabled_abilities();
 		$categories         = self::collect_filter_options( $abilities, 'category_slug', 'category_label' );
 		$suppliers          = self::collect_filter_options( $abilities, 'supplier_slug', 'supplier_label' );
+		$annotations        = self::collect_filter_options( $abilities, 'annotation_slug', 'annotation_label' );
 		$view_mode          = self::get_view_mode();
 		$total_count        = count( $abilities );
 		$enabled_count      = count(
@@ -281,7 +282,7 @@ class AbilitiesPage implements Hookable {
 					</p>
 				</header>
 
-				<?php $this->render_toolbar( $categories, $suppliers, $enabled_count, $total_count, $view_mode ); ?>
+				<?php $this->render_toolbar( $categories, $suppliers, $annotations, $enabled_count, $total_count, $view_mode ); ?>
 
 				<div
 					class="albert-abilities-error"
@@ -334,6 +335,7 @@ class AbilitiesPage implements Hookable {
 	 *
 	 * @param array<string, string> $categories    Category slug => label.
 	 * @param array<string, string> $suppliers     Supplier slug => label.
+	 * @param array<string, string> $annotations   Annotation slug => label.
 	 * @param int                   $enabled_count Number of currently-enabled abilities.
 	 * @param int                   $total_count   Total ability count.
 	 * @param string                $view_mode     Current view mode (`list` or `paginated`).
@@ -341,7 +343,7 @@ class AbilitiesPage implements Hookable {
 	 * @return void
 	 * @since 1.1.0
 	 */
-	private function render_toolbar( array $categories, array $suppliers, int $enabled_count, int $total_count, string $view_mode ): void {
+	private function render_toolbar( array $categories, array $suppliers, array $annotations, int $enabled_count, int $total_count, string $view_mode ): void {
 		$is_paginated = $view_mode === 'paginated';
 		?>
 		<div class="albert-abilities-toolbar" role="region" aria-label="<?php esc_attr_e( 'Filter abilities', 'albert-ai-butler' ); ?>">
@@ -373,6 +375,16 @@ class AbilitiesPage implements Hookable {
 					<select id="albert-abilities-filter-supplier" class="albert-filter-supplier">
 						<option value=""><?php esc_html_e( 'All suppliers', 'albert-ai-butler' ); ?></option>
 						<?php foreach ( $suppliers as $slug => $label ) { ?>
+							<option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></option>
+						<?php } ?>
+					</select>
+				</label>
+
+				<label class="albert-toolbar-field">
+					<span class="albert-toolbar-label"><?php esc_html_e( 'Type', 'albert-ai-butler' ); ?></span>
+					<select id="albert-abilities-filter-annotation" class="albert-filter-annotation">
+						<option value=""><?php esc_html_e( 'All types', 'albert-ai-butler' ); ?></option>
+						<?php foreach ( $annotations as $slug => $label ) { ?>
 							<option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></option>
 						<?php } ?>
 					</select>
@@ -435,17 +447,18 @@ class AbilitiesPage implements Hookable {
 	 * @since 1.1.0
 	 */
 	private function render_ability_row( array $row, array $disabled_abilities, bool $pre_hidden = false ): void {
-		$id            = $row['id'];
-		$label         = $row['label'];
-		$description   = $row['description'];
-		$category_slug = $row['category_slug'];
-		$category_lbl  = $row['category_label'];
-		$supplier_slug = $row['supplier_slug'];
-		$supplier_lbl  = $row['supplier_label'];
-		$annotations   = $row['annotations'];
-		$chips         = AnnotationPresenter::chips_for( $annotations, $id );
-		$is_destruct   = AnnotationPresenter::is_destructive( $annotations, $id );
-		$is_enabled    = ! in_array( $id, $disabled_abilities, true );
+		$id              = $row['id'];
+		$label           = $row['label'];
+		$description     = $row['description'];
+		$category_slug   = $row['category_slug'];
+		$category_lbl    = $row['category_label'];
+		$supplier_slug   = $row['supplier_slug'];
+		$supplier_lbl    = $row['supplier_label'];
+		$annotations     = $row['annotations'];
+		$annotation_slug = $row['annotation_slug'];
+		$chips           = AnnotationPresenter::chips_for( $annotations, $id );
+		$is_destruct     = AnnotationPresenter::is_destructive( $annotations, $id );
+		$is_enabled      = ! in_array( $id, $disabled_abilities, true );
 
 		$dom_id     = 'albert-ability-' . sanitize_html_class( str_replace( '/', '-', $id ) );
 		$details_id = $dom_id . '-details';
@@ -459,6 +472,7 @@ class AbilitiesPage implements Hookable {
 			data-ability-id="<?php echo esc_attr( $id ); ?>"
 			data-category="<?php echo esc_attr( $category_slug ); ?>"
 			data-supplier="<?php echo esc_attr( $supplier_slug ); ?>"
+			data-annotation="<?php echo esc_attr( $annotation_slug ); ?>"
 			data-search="<?php echo esc_attr( $search_haystack ); ?>"
 			data-destructive="<?php echo $is_destruct ? '1' : '0'; ?>"
 			data-enabled="<?php echo $is_enabled ? '1' : '0'; ?>"
@@ -570,15 +584,20 @@ class AbilitiesPage implements Hookable {
 			$source      = AbilitiesRegistry::get_ability_source( $id );
 			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : [];
 
+			$chips           = AnnotationPresenter::chips_for( $annotations, $id );
+			$annotation_slug = ! empty( $chips ) ? $chips[0]['key'] : '';
+
 			$rows[] = [
-				'id'             => $id,
-				'label'          => $ability->get_label(),
-				'description'    => $ability->get_description(),
-				'category_slug'  => $ability->get_category(),
-				'category_label' => self::resolve_category_label( $ability->get_category(), $categories ),
-				'supplier_slug'  => $source['slug'],
-				'supplier_label' => $source['label'],
-				'annotations'    => $annotations,
+				'id'               => $id,
+				'label'            => $ability->get_label(),
+				'description'      => $ability->get_description(),
+				'category_slug'    => $ability->get_category(),
+				'category_label'   => self::resolve_category_label( $ability->get_category(), $categories ),
+				'supplier_slug'    => $source['slug'],
+				'supplier_label'   => $source['label'],
+				'annotations'      => $annotations,
+				'annotation_slug'  => $annotation_slug,
+				'annotation_label' => self::resolve_annotation_label( $annotation_slug ),
 			];
 		}
 
@@ -645,6 +664,24 @@ class AbilitiesPage implements Hookable {
 			}
 		}
 		return ucfirst( str_replace( [ '-', '_' ], ' ', $slug ) );
+	}
+
+	/**
+	 * Resolve an annotation slug to its human label.
+	 *
+	 * @param string $slug Annotation slug (read, write, delete).
+	 *
+	 * @return string
+	 * @since 1.1.0
+	 */
+	private static function resolve_annotation_label( string $slug ): string {
+		$labels = [
+			'read'   => __( 'Read', 'albert-ai-butler' ),
+			'write'  => __( 'Write', 'albert-ai-butler' ),
+			'delete' => __( 'Delete', 'albert-ai-butler' ),
+		];
+
+		return $labels[ $slug ] ?? ucfirst( $slug );
 	}
 
 	/**

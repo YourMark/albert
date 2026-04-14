@@ -25,6 +25,7 @@ const AbilitiesListModule = {
 		this.searchInput = document.getElementById( 'albert-abilities-search' );
 		this.categoryFilter = document.getElementById( 'albert-abilities-filter-category' );
 		this.supplierFilter = document.getElementById( 'albert-abilities-filter-supplier' );
+		this.annotationFilter = document.getElementById( 'albert-abilities-filter-annotation' );
 		this.statsNode = document.getElementById( 'albert-abilities-stats' );
 		this.pagination = document.querySelector( '.albert-abilities-pagination' );
 		this.pagesNode = this.pagination ? this.pagination.querySelector( '.albert-pagination-pages' ) : null;
@@ -167,7 +168,7 @@ const AbilitiesListModule = {
 	},
 
 	bindFilters() {
-		[ this.categoryFilter, this.supplierFilter ].forEach( ( select ) => {
+		[ this.categoryFilter, this.supplierFilter, this.annotationFilter ].forEach( ( select ) => {
 			if ( ! select ) {
 				return;
 			}
@@ -382,14 +383,16 @@ const AbilitiesListModule = {
 		const query = ( this.searchInput?.value || '' ).trim().toLowerCase();
 		const categoryFilter = this.categoryFilter?.value || '';
 		const supplierFilter = this.supplierFilter?.value || '';
+		const annotationFilter = this.annotationFilter?.value || '';
 
 		this.rows.forEach( ( row ) => {
 			const haystack = row.dataset.search || '';
 			const matchesSearch = '' === query || haystack.includes( query );
 			const matchesCategory = '' === categoryFilter || row.dataset.category === categoryFilter;
 			const matchesSupplier = '' === supplierFilter || row.dataset.supplier === supplierFilter;
+			const matchesAnnotation = '' === annotationFilter || row.dataset.annotation === annotationFilter;
 
-			const visible = matchesSearch && matchesCategory && matchesSupplier;
+			const visible = matchesSearch && matchesCategory && matchesSupplier && matchesAnnotation;
 			row.classList.toggle( 'is-filtered-out', ! visible );
 		} );
 
