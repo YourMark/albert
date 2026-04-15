@@ -90,5 +90,6 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | `albert/admin/submenu_pages` | filter | Add addon admin pages |
 | `albert/abilities_icons` | filter | Customize category icons |
 | `albert/developer_mode` | filter | Toggle developer mode |
+| `albert/logging/enabled` | filter | Disable Free's ability log (Premium uses this) |
 | `albert/activated` | action | Plugin activated |
 | `albert/deactivated` | action | Plugin deactivated |

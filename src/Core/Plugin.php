@@ -46,6 +46,9 @@ use Albert\Admin\AbilitiesPage;
 use Albert\Admin\Connections;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
+use Albert\Logging\Installer as LoggingInstaller;
+use Albert\Logging\Logger;
+use Albert\Logging\Repository as LoggingRepository;
 use Albert\MCP\Server as McpServer;
 use Albert\OAuth\Database\Installer as OAuthInstaller;
 use Albert\OAuth\Endpoints\AuthorizationPage;
@@ -140,11 +143,17 @@ class Plugin {
 	public function init(): void {
 		// Check for database updates (handles upgrades without re-activation).
 		OAuthInstaller::install();
+		LoggingInstaller::install();
+
+		// Initialize the logging system (hooks wp_after_execute_ability).
+		$logging_repository = new LoggingRepository();
+		$logger             = new Logger( $logging_repository );
+		$logger->register_hooks();
 
 		// Register admin components.
 		if ( is_admin() ) {
 			// Dashboard page (creates top-level menu and first submenu).
-			( new Dashboard() )->register_hooks();
+			( new Dashboard( $logging_repository ) )->register_hooks();
 
 			// Unified abilities page (toggle abilities on/off).
 			( new AbilitiesPage() )->register_hooks();
@@ -335,6 +344,9 @@ class Plugin {
 	public static function activate(): void {
 		// Install OAuth database tables.
 		OAuthInstaller::install();
+
+		// Install logging database table.
+		LoggingInstaller::install();
 
 		// Register OAuth discovery rewrite rules.
 		OAuthDiscovery::activate();

@@ -100,6 +100,9 @@ function albert_deactivate(): void {
 
 register_deactivation_hook( __FILE__, 'albert_deactivate' );
 
+// Register uninstall hooks for database cleanup.
+register_uninstall_hook( __FILE__, [ 'Albert\Logging\Installer', 'uninstall' ] );
+
 /**
  * Add settings link to plugin action links.
  *

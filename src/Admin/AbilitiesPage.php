@@ -18,6 +18,7 @@ defined( 'ABSPATH' ) || exit;
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Core\AbilitiesRegistry;
 use Albert\Core\AnnotationPresenter;
+use Albert\Logging\Repository as LoggingRepository;
 
 /**
  * AbilitiesPage class
@@ -269,6 +270,11 @@ class AbilitiesPage implements Hookable {
 				static fn( array $row ): bool => ! in_array( $row['id'], $disabled_abilities, true )
 			)
 		);
+
+		// Pre-fetch log data for all abilities in one query to avoid N+1.
+		$ability_ids     = array_column( $abilities, 'id' );
+		$logging_repo    = new LoggingRepository();
+		$ability_log_map = $logging_repo->latest_bulk( $ability_ids );
 		?>
 		<div class="wrap albert-wrap">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
@@ -301,7 +307,7 @@ class AbilitiesPage implements Hookable {
 				>
 					<?php foreach ( $abilities as $index => $row ) { ?>
 						<?php $pre_hidden = ( $view_mode === 'paginated' ) && ( $index >= self::ROWS_PER_PAGE ); ?>
-						<?php $this->render_ability_row( $row, $disabled_abilities, $pre_hidden ); ?>
+						<?php $this->render_ability_row( $row, $disabled_abilities, $ability_log_map, $pre_hidden ); ?>
 					<?php } ?>
 
 					<p class="albert-abilities-empty" hidden>
@@ -437,16 +443,17 @@ class AbilitiesPage implements Hookable {
 	/**
 	 * Render a single ability row.
 	 *
-	 * @param array<string, mixed> $row                Normalized ability row data.
-	 * @param array<string>        $disabled_abilities List of disabled ability ids.
-	 * @param bool                 $pre_hidden         Whether to pre-render the row hidden
-	 *                                                 (used for paginated view to avoid a
-	 *                                                 flash of all rows before JS runs).
+	 * @param array<string, mixed>  $row                Normalized ability row data.
+	 * @param array<string>         $disabled_abilities List of disabled ability ids.
+	 * @param array<string, object> $ability_log_map    Map of ability_name => latest log row.
+	 * @param bool                  $pre_hidden         Whether to pre-render the row hidden
+	 *                                                  (used for paginated view to avoid a
+	 *                                                  flash of all rows before JS runs).
 	 *
 	 * @return void
 	 * @since 1.1.0
 	 */
-	private function render_ability_row( array $row, array $disabled_abilities, bool $pre_hidden = false ): void {
+	private function render_ability_row( array $row, array $disabled_abilities, array $ability_log_map, bool $pre_hidden = false ): void {
 		$id              = $row['id'];
 		$label           = $row['label'];
 		$description     = $row['description'];
@@ -559,9 +566,57 @@ class AbilitiesPage implements Hookable {
 						<dt><?php esc_html_e( 'Category', 'albert-ai-butler' ); ?></dt>
 						<dd><?php echo esc_html( $category_lbl ); ?></dd>
 					<?php } ?>
+
+					<dt><?php esc_html_e( 'Last run', 'albert-ai-butler' ); ?></dt>
+					<dd>
+						<?php $this->render_log_line( $id, $ability_log_map ); ?>
+					</dd>
 				</dl>
 			</div>
 		</div>
+		<?php
+	}
+
+	/**
+	 * Render the log line for an ability.
+	 *
+	 * @param string                $ability_id      The ability identifier.
+	 * @param array<string, object> $ability_log_map Map of ability_name => latest log row.
+	 *
+	 * @return void
+	 * @since 1.1.0
+	 */
+	private function render_log_line( string $ability_id, array $ability_log_map ): void {
+		if ( ! isset( $ability_log_map[ $ability_id ] ) ) {
+			?>
+			<span class="albert-ability__log-line albert-ability__log-line--empty">
+				<?php esc_html_e( 'Never run yet', 'albert-ai-butler' ); ?>
+			</span>
+			<?php
+			return;
+		}
+
+		/**
+		 * Log entry from the map.
+		 *
+		 * @var object{id: string, ability_name: string, user_id: string, created_at: string} $log
+		 */
+		$log          = $ability_log_map[ $ability_id ];
+		$user         = get_userdata( (int) $log->user_id );
+		$display_name = $user ? $user->display_name : __( 'Unknown user', 'albert-ai-butler' );
+		$created_utc  = get_gmt_from_date( $log->created_at, 'U' );
+		$time_diff    = human_time_diff( (int) $created_utc, time() );
+		?>
+		<span class="albert-ability__log-line">
+			<?php
+			printf(
+				/* translators: 1: human time diff, 2: user display name. */
+				esc_html__( '%1$s ago by %2$s', 'albert-ai-butler' ),
+				esc_html( $time_diff ),
+				'<strong>' . esc_html( $display_name ) . '</strong>'
+			);
+			?>
+		</span>
 		<?php
 	}
 
@@ -605,7 +660,7 @@ class AbilitiesPage implements Hookable {
 			$rows,
 			static function ( array $a, array $b ): int {
 				$cat = strcasecmp( $a['category_label'], $b['category_label'] );
-				if ( 0 !== $cat ) {
+				if ( $cat !== 0 ) {
 					return $cat;
 				}
 				return strcasecmp( $a['label'], $b['label'] );
