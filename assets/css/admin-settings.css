@@ -90,6 +90,7 @@
    Abilities page — flat list
    -------------------------------------------------------------- */
 
+.albert-page,
 .albert-abilities-page {
 	display: flex;
 	flex-direction: column;
@@ -97,10 +98,12 @@
 	max-width: none;
 }
 
+.albert-page__header,
 .albert-abilities-header {
 	margin: 0;
 }
 
+.albert-page__intro,
 .albert-abilities-intro {
 	margin: 0;
 	font-size: var(--albert-font-md);
@@ -495,6 +498,17 @@
 	align-items: center;
 	gap: var(--albert-spacing-sm);
 	flex-wrap: wrap;
+}
+
+/* Log line in ability details */
+.albert-ability__log-line {
+	font-size: var(--albert-font-sm);
+	color: var(--albert-text-primary);
+}
+
+.albert-ability__log-line--empty {
+	color: var(--albert-text-secondary);
+	font-style: italic;
 }
 
 .ability-row-id {

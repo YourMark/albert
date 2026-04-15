@@ -331,6 +331,32 @@ wp_set_current_user( $user->ID );
 #### 4. MCP Server (`src/MCP/Server.php`)
 Handles MCP protocol communication with AI assistants. Authenticated via OAuth.
 
+#### 5. Logging (`src/Logging/`)
+Minimal ability execution logging for the Free tier.
+
+**Hook used:** `wp_after_execute_ability` (WP core hook, fires on success only)
+
+**Filter:** `albert/logging/enabled` (bool, default `true`) — return `false` to suppress Free's writes. Premium uses this filter to disable Free's logger and use its own extended logging instead.
+
+**Schema (frozen):**
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `BIGINT UNSIGNED AUTO_INCREMENT` | PK |
+| `ability_name` | `VARCHAR(191)` | Ability identifier |
+| `user_id` | `BIGINT UNSIGNED` | `get_current_user_id()`, 0 if unauthenticated |
+| `created_at` | `DATETIME` | Default `CURRENT_TIMESTAMP` |
+
+**Retention:** Last 2 records per `ability_name`, pruned on insert.
+
+**Components:**
+- `Installer.php` — Creates/upgrades `{$wpdb->prefix}albert_ability_log` table
+- `Repository.php` — CRUD operations, bulk fetch, auto-prune
+- `Logger.php` — Hooks `wp_after_execute_ability`, gated by filter
+
+**Admin surfaces:**
+- Dashboard widget: "Albert - Last Activity" showing most recent execution
+- Abilities page: "Last run" line in each ability's expanded details
+
 ### Current Abilities
 
 | ID | Description | Group |
