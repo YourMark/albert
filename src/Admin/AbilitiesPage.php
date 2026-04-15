@@ -584,7 +584,7 @@ class AbilitiesPage implements Hookable {
 	 * @param array<string, object> $ability_log_map Map of ability_name => latest log row.
 	 *
 	 * @return void
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 */
 	private function render_log_line( string $ability_id, array $ability_log_map ): void {
 		if ( ! isset( $ability_log_map[ $ability_id ] ) ) {

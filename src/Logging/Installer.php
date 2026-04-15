@@ -16,14 +16,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * Handles creation and management of the ability log database table.
  *
- * @since 1.2.0
+ * @since 1.1.0
  */
 class Installer {
 
 	/**
 	 * Database version.
 	 *
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 * @var string
 	 */
 	const DB_VERSION = '1.0.0';
@@ -31,7 +31,7 @@ class Installer {
 	/**
 	 * Option name for storing database version.
 	 *
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 * @var string
 	 */
 	const DB_VERSION_OPTION = 'albert_logging_db_version';
@@ -40,7 +40,7 @@ class Installer {
 	 * Install database table.
 	 *
 	 * @return void
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 */
 	public static function install(): void {
 		$installed_version = get_option( self::DB_VERSION_OPTION, '0' );
@@ -55,7 +55,7 @@ class Installer {
 	 * Create database table.
 	 *
 	 * @return void
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 */
 	private static function create_table(): void {
 		global $wpdb;
@@ -80,7 +80,7 @@ class Installer {
 	 * Get the table name.
 	 *
 	 * @return string The full table name with prefix.
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 */
 	public static function get_table_name(): string {
 		global $wpdb;
@@ -94,7 +94,7 @@ class Installer {
 	 * Only call this on plugin uninstall, not deactivation.
 	 *
 	 * @return void
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 */
 	public static function uninstall(): void {
 		global $wpdb;

@@ -17,14 +17,14 @@ defined( 'ABSPATH' ) || exit;
  * Handles database operations for the ability log table.
  * Free tier retains only the last 2 records per ability_name.
  *
- * @since 1.2.0
+ * @since 1.1.0
  */
 class Repository {
 
 	/**
 	 * Number of log entries to keep per ability.
 	 *
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 * @var int
 	 */
 	const RETENTION_COUNT = 2;
@@ -36,7 +36,7 @@ class Repository {
 	 * @param int    $user_id      The user ID who executed the ability.
 	 *
 	 * @return void
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 */
 	public function insert( string $ability_name, int $user_id ): void {
 		global $wpdb;
@@ -63,7 +63,7 @@ class Repository {
 	 * @param string $ability_name The ability identifier.
 	 *
 	 * @return object|null The log entry or null if none found.
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 */
 	public function latest_for_ability( string $ability_name ): ?object {
 		global $wpdb;
@@ -86,7 +86,7 @@ class Repository {
 	 * Get the latest log entry overall.
 	 *
 	 * @return object|null The log entry or null if none found.
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 */
 	public function latest_overall(): ?object {
 		global $wpdb;
@@ -110,7 +110,7 @@ class Repository {
 	 * @param int $limit Maximum number of rows to return.
 	 *
 	 * @return array<int, object{id: int, ability_name: string, user_id: int, created_at: string}> List of log rows, newest first.
-	 * @since 1.0.2
+	 * @since 1.1.0
 	 */
 	public function recent( int $limit = 5 ): array {
 		global $wpdb;
@@ -139,7 +139,7 @@ class Repository {
 	 * @param array<int, string> $ability_names List of ability identifiers.
 	 *
 	 * @return array<string, object> Map of ability_name => log row object.
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 */
 	public function latest_bulk( array $ability_names ): array {
 		global $wpdb;
@@ -199,7 +199,7 @@ class Repository {
 	 * @param int    $keep         Number of entries to keep (default: 2).
 	 *
 	 * @return void
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 */
 	public function prune_for_ability( string $ability_name, int $keep = self::RETENTION_COUNT ): void {
 		global $wpdb;
@@ -237,7 +237,7 @@ class Repository {
 	 * Use with caution. Primarily for testing or complete reset.
 	 *
 	 * @return void
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 */
 	public function truncate(): void {
 		global $wpdb;

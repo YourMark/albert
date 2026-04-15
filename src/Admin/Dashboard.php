@@ -45,7 +45,7 @@ class Dashboard implements Hookable {
 	/**
 	 * Ability log repository.
 	 *
-	 * @since 1.0.2
+	 * @since 1.1.0
 	 * @var LoggingRepository
 	 */
 	private LoggingRepository $logging_repository;
@@ -55,7 +55,7 @@ class Dashboard implements Hookable {
 	 *
 	 * @param LoggingRepository $logging_repository Ability log repository.
 	 *
-	 * @since 1.0.2
+	 * @since 1.1.0
 	 */
 	public function __construct( LoggingRepository $logging_repository ) {
 		$this->logging_repository = $logging_repository;

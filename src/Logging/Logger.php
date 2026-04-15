@@ -20,14 +20,14 @@ use Albert\Contracts\Interfaces\Hookable;
  * Only logs when the `albert/logging/enabled` filter returns true (default).
  * Premium can disable this logger by returning false from that filter.
  *
- * @since 1.2.0
+ * @since 1.1.0
  */
 class Logger implements Hookable {
 
 	/**
 	 * The repository instance.
 	 *
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 * @var Repository
 	 */
 	protected Repository $repository;
@@ -37,7 +37,7 @@ class Logger implements Hookable {
 	 *
 	 * @param Repository $repository The logging repository.
 	 *
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 */
 	public function __construct( Repository $repository ) {
 		$this->repository = $repository;
@@ -47,7 +47,7 @@ class Logger implements Hookable {
 	 * Register WordPress hooks.
 	 *
 	 * @return void
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 */
 	public function register_hooks(): void {
 		add_action( 'wp_after_execute_ability', [ $this, 'log_execution' ], 10, 3 );
@@ -64,7 +64,7 @@ class Logger implements Hookable {
 	 * @param mixed  $result       The execution result (unused in Free tier).
 	 *
 	 * @return void
-	 * @since 1.2.0
+	 * @since 1.1.0
 	 */
 	protected function log_execution( string $ability_name, $input, $result ): void {
 		try {
@@ -74,7 +74,7 @@ class Logger implements Hookable {
 			 * Premium returns false from this filter to suppress Free's writes
 			 * and use its own extended logging instead.
 			 *
-			 * @since 1.2.0
+			 * @since 1.1.0
 			 *
 			 * @param bool $enabled Whether logging is enabled. Default true.
 			 */
