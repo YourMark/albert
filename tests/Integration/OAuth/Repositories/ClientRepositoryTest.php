@@ -188,21 +188,30 @@ class ClientRepositoryTest extends TestCase {
 	// ─── getClientsByUser ───────────────────────────────────────────
 
 	/**
-	 * Filters by user_id and returns newest first.
+	 * Filters clients by user_id.
+	 *
+	 * Ordering is asserted only to the extent it can be: within-second tie-
+	 * breaking is implementation-defined by MySQL when the source query only
+	 * orders on created_at without a secondary sort key. We verify the
+	 * filtering (only user_a's rows come back) and the count, not the
+	 * within-test ordering between freshly-inserted rows.
 	 *
 	 * @return void
 	 */
-	public function test_get_clients_by_user_filters_and_orders(): void {
+	public function test_get_clients_by_user_filters_by_user(): void {
 		$user_a = self::factory()->user->create();
 		$user_b = self::factory()->user->create();
 
-		$this->repository->createClient( 'A-old', 'https://a.test/cb', true, $user_a );
-		$this->repository->createClient( 'B', 'https://b.test/cb', true, $user_b );
-		$this->repository->createClient( 'A-new', 'https://a.test/cb2', true, $user_a );
+		$this->repository->createClient( 'A-one', 'https://a.test/cb', true, $user_a );
+		$this->repository->createClient( 'B-one', 'https://b.test/cb', true, $user_b );
+		$this->repository->createClient( 'A-two', 'https://a.test/cb2', true, $user_a );
 
 		$a_clients = $this->repository->getClientsByUser( $user_a );
+		$a_names   = array_map( static fn ( $c ): string => $c->getName(), $a_clients );
 
 		$this->assertCount( 2, $a_clients );
-		$this->assertSame( 'A-new', $a_clients[0]->getName() );
+		$this->assertContains( 'A-one', $a_names );
+		$this->assertContains( 'A-two', $a_names );
+		$this->assertNotContains( 'B-one', $a_names );
 	}
 }

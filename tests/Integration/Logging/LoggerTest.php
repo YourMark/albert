@@ -104,9 +104,8 @@ class LoggerTest extends TestCase {
 	/**
 	 * Repository exceptions are swallowed — ability execution must not break.
 	 *
-	 * Tested with a dedicated Logger instance and a throwing Repository so
-	 * the hook-registered real instance is not disturbed. Exposes the
-	 * protected log_execution() via a test subclass.
+	 * Uses a dedicated Logger instance and a throwing Repository so the
+	 * hook-registered real instance is not disturbed.
 	 *
 	 * @return void
 	 */
@@ -126,22 +125,10 @@ class LoggerTest extends TestCase {
 			}
 		};
 
-		$logger = new class( $throwing_repo ) extends Logger {
-
-			/**
-			 * Expose the protected log_execution() to the test.
-			 *
-			 * @param string $ability_name Ability id.
-			 * @param mixed  $input        Input args.
-			 * @param mixed  $result       Result payload.
-			 */
-			public function trigger( string $ability_name, $input, $result ): void {
-				$this->log_execution( $ability_name, $input, $result );
-			}
-		};
+		$logger = new Logger( $throwing_repo );
 
 		// Should not throw.
-		$logger->trigger( 'albert/boom', [], [] );
+		$logger->log_execution( 'albert/boom', [], [] );
 
 		$this->assertTrue( true, 'Logger swallowed the exception.' );
 	}

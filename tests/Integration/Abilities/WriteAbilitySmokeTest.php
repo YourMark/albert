@@ -253,12 +253,22 @@ class WriteAbilitySmokeTest extends TestCase {
 	/**
 	 * Deleting an existing user actually removes them.
 	 *
+	 * WP REST's DELETE /wp/v2/users/{id} requires a `reassign` parameter —
+	 * either a user id to inherit the deleted user's content, or `false`
+	 * to delete the content too. We reassign to a different admin.
+	 *
 	 * @return void
 	 */
 	public function test_delete_user_happy_path(): void {
-		$victim = self::factory()->user->create( [ 'role' => 'subscriber' ] );
+		$inheritor = self::factory()->user->create( [ 'role' => 'administrator' ] );
+		$victim    = self::factory()->user->create( [ 'role' => 'subscriber' ] );
 
-		$result = ( new DeleteUser() )->execute( [ 'id' => $victim ] );
+		$result = ( new DeleteUser() )->execute(
+			[
+				'id'       => $victim,
+				'reassign' => $inheritor,
+			]
+		);
 
 		$this->assertIsArray( $result );
 		$this->assertTrue( $result['deleted'] );
@@ -316,6 +326,9 @@ class WriteAbilitySmokeTest extends TestCase {
 	/**
 	 * Deleting a term removes it.
 	 *
+	 * Terms don't support trashing (REST returns rest_trash_not_supported
+	 * otherwise), so force=true is required for the happy path.
+	 *
 	 * @return void
 	 */
 	public function test_delete_term_happy_path(): void {
@@ -330,6 +343,7 @@ class WriteAbilitySmokeTest extends TestCase {
 			[
 				'taxonomy' => 'category',
 				'id'       => $term_id,
+				'force'    => true,
 			]
 		);
 
@@ -348,23 +362,25 @@ class WriteAbilitySmokeTest extends TestCase {
 	 * image ability is the riskier one to silently break (wrong post meta
 	 * key would make thumbnails disappear sitewide).
 	 *
-	 * We don't need a real image file on disk: set_post_thumbnail just
-	 * writes the _thumbnail_id postmeta, so a plain attachment post row
-	 * is enough.
+	 * The ability goes through REST `/wp/v2/media/{id}` to validate the
+	 * attachment exists, which requires a real file on disk. We use the WP
+	 * test suite's bundled canola.jpg fixture via create_upload_object().
 	 *
 	 * @return void
 	 */
 	public function test_set_featured_image_happy_path(): void {
+		if ( ! defined( 'DIR_TESTDATA' ) ) {
+			$this->markTestSkipped( 'DIR_TESTDATA not defined — WP test suite fixtures unavailable.' );
+		}
+
 		$post_id = self::factory()->post->create();
 
-		$attachment_id = wp_insert_attachment(
-			[
-				'post_title'     => 'Smoke Attachment',
-				'post_mime_type' => 'image/jpeg',
-				'post_status'    => 'inherit',
-				'post_parent'    => $post_id,
-			]
+		// phpcs:ignore PHPCompatibility.Constants.NewConstants -- DIR_TESTDATA is defined by the WP test suite bootstrap at runtime.
+		$attachment_id = self::factory()->attachment->create_upload_object(
+			DIR_TESTDATA . '/images/canola.jpg',
+			$post_id
 		);
+
 		$this->assertIsInt( $attachment_id );
 		$this->assertGreaterThan( 0, $attachment_id );
 
