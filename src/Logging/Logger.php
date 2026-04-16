@@ -59,6 +59,10 @@ class Logger implements Hookable {
 	 * Called after a successful ability execution via the WP core hook.
 	 * Wrapped in try/catch to ensure logging never breaks ability execution.
 	 *
+	 * Must be public so WordPress can invoke it via call_user_func_array
+	 * from the wp_after_execute_ability action — a protected method
+	 * throws a TypeError when dispatched externally.
+	 *
 	 * @param string $ability_name The ability identifier.
 	 * @param mixed  $input        The input arguments (unused in Free tier).
 	 * @param mixed  $result       The execution result (unused in Free tier).
@@ -66,7 +70,7 @@ class Logger implements Hookable {
 	 * @return void
 	 * @since 1.1.0
 	 */
-	protected function log_execution( string $ability_name, $input, $result ): void {
+	public function log_execution( string $ability_name, $input, $result ): void {
 		try {
 			/**
 			 * Filters whether Free's ability logging is enabled.
