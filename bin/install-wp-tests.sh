@@ -161,6 +161,41 @@ install_db() {
 	fi
 }
 
+install_woocommerce() {
+	# Skip when no WC_VERSION was provided.
+	if [ -z "${WC_VERSION:-}" ]; then
+		return 0
+	fi
+
+	local PLUGINS_DIR=$WP_CORE_DIR/wp-content/plugins
+	local WC_DIR=$PLUGINS_DIR/woocommerce
+
+	# Idempotent: reuse an existing install if it's already in place.
+	if [ -d $WC_DIR ]; then
+		echo "WooCommerce already installed at $WC_DIR — reusing."
+		return 0
+	fi
+
+	mkdir -p $PLUGINS_DIR
+
+	local ARCHIVE_URL
+	if [ "$WC_VERSION" = 'latest' ]; then
+		ARCHIVE_URL='https://downloads.wordpress.org/plugin/woocommerce.zip'
+	else
+		ARCHIVE_URL="https://downloads.wordpress.org/plugin/woocommerce.${WC_VERSION}.zip"
+	fi
+
+	echo "Installing WooCommerce $WC_VERSION from $ARCHIVE_URL"
+	download "$ARCHIVE_URL" "$TMPDIR/woocommerce.zip"
+	unzip -q -o "$TMPDIR/woocommerce.zip" -d "$PLUGINS_DIR"
+
+	if [ ! -f "$WC_DIR/woocommerce.php" ]; then
+		echo "WooCommerce install failed: $WC_DIR/woocommerce.php is missing."
+		exit 1
+	fi
+}
+
 install_wp
 install_test_suite
 install_db
+install_woocommerce
