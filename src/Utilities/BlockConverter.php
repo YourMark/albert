@@ -564,7 +564,7 @@ class BlockConverter {
 	protected function get_node_html( DOMNode $node ): string {
 		$html = $node->ownerDocument->saveHTML( $node ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
-		return false !== $html ? $html : '';
+		return $html !== false ? $html : '';
 	}
 
 	/**
