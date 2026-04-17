@@ -520,7 +520,8 @@ class Connections implements Hookable {
 			return;
 		}
 
-		$mcp_endpoint = McpServer::get_endpoint_url();
+		$mcp_endpoint    = McpServer::get_endpoint_url();
+		$external_url_fs = McpServer::get_external_url_state();
 		?>
 		<div class="wrap albert-settings">
 			<h1><?php echo esc_html__( 'Connections', 'albert-ai-butler' ); ?></h1>
@@ -550,12 +551,83 @@ class Connections implements Hookable {
 				</div>
 			</div>
 
+			<?php $this->render_external_url_filter_notice( $external_url_fs ); ?>
+
 			<div class="albert-settings-grid">
 				<?php $this->render_allowed_users_section(); ?>
 				<?php $this->render_active_connections_section(); ?>
 			</div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Render an indicator describing the current state of the
+	 * `albert/mcp/external_url` filter.
+	 *
+	 * Nothing is rendered when the filter is inactive.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param array{state: string, value: string} $state Filter state returned by
+	 *                                                   {@see McpServer::get_external_url_state()}.
+	 *
+	 * @return void
+	 */
+	private function render_external_url_filter_notice( array $state ): void {
+		if ( $state['state'] === 'active' ) {
+			?>
+			<div class="albert-endpoint-notice albert-endpoint-notice--info">
+				<p>
+					<?php
+					printf(
+						/* translators: 1: opening <code>, 2: closing </code> wrapping the filter name. */
+						esc_html__( 'External override active — MCP endpoint uses the URL returned by the %1$salbert/mcp/external_url%2$s filter.', 'albert-ai-butler' ),
+						'<code>',
+						'</code>'
+					);
+					?>
+				</p>
+			</div>
+			<?php
+			return;
+		}
+
+		if ( $state['state'] === 'invalid' ) {
+			$bad_value = (string) $state['value'];
+			?>
+			<div class="albert-endpoint-notice albert-endpoint-notice--warning">
+				<p>
+					<strong><?php esc_html_e( 'External URL filter is returning an invalid value', 'albert-ai-butler' ); ?></strong>
+				</p>
+				<p>
+					<?php
+					printf(
+						/* translators: 1: opening <code>, 2: closing </code> for the filter name, 3: opening <code>, 4: closing </code> for the invalid value. */
+						esc_html__( 'The %1$salbert/mcp/external_url%2$s filter returned %3$s%5$s%4$s, which is not a valid URL. Albert is ignoring it and using the default endpoint instead.', 'albert-ai-butler' ),
+						'<code>',
+						'</code>',
+						'<code>',
+						'</code>',
+						esc_html( $bad_value )
+					);
+					?>
+				</p>
+				<p>
+					<?php
+					printf(
+						/* translators: 1: opening <code>https://</code>, 2: closing </code>, 3: opening <code>http://</code>, 4: closing </code>. */
+						esc_html__( 'To fix this, make sure the filter returns a full URL with %1$shttps://%2$s (or %3$shttp://%4$s) and no extra characters, or return an empty string to disable the override.', 'albert-ai-butler' ),
+						'<code>',
+						'</code>',
+						'<code>',
+						'</code>'
+					);
+					?>
+				</p>
+			</div>
+			<?php
+		}
 	}
 
 	/**

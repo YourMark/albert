@@ -151,21 +151,13 @@ class OAuthDiscovery implements Hookable {
 	 * @since 1.0.0
 	 */
 	private function get_base_url(): string {
-		/**
-		 * Filter to enable developer settings like External URL.
-		 *
-		 * @param bool $show Whether to show developer settings. Default false.
-		 *
-		 * @since 1.0.0
-		 */
-		$show_developer_settings = apply_filters( 'albert/developer_mode', false );
+		$external_url = (string) apply_filters( 'albert/mcp/external_url', '' );
+		$external_url = rtrim( $external_url, '/' );
 
-		// Only use external URL if developer settings are enabled.
-		if ( $show_developer_settings ) {
-			$external_url = get_option( 'albert_external_url', '' );
-
-			if ( ! empty( $external_url ) ) {
-				return $external_url;
+		if ( $external_url !== '' ) {
+			$validated = wp_http_validate_url( $external_url );
+			if ( $validated !== false ) {
+				return $validated;
 			}
 		}
 

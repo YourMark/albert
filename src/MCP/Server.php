@@ -177,38 +177,20 @@ class Server implements Hookable {
 	}
 
 	/**
-	 * Check if developer settings are enabled.
-	 *
-	 * @return bool Whether developer settings are enabled.
-	 * @since 1.0.0
-	 */
-	private static function is_developer_mode(): bool {
-		/**
-		 * Filter to enable developer settings like External URL.
-		 *
-		 * @param bool $show Whether to show developer settings. Default false.
-		 *
-		 * @since 1.0.0
-		 */
-		return apply_filters( 'albert/developer_mode', false );
-	}
-
-	/**
 	 * Get the base URL for OAuth endpoints.
 	 *
-	 * Uses the external URL setting if configured and developer mode is enabled,
-	 * otherwise falls back to home_url().
+	 * Consults the `albert/mcp/external_url` filter. Returns `home_url()` when
+	 * the filter is empty or returns a value that fails
+	 * {@see wp_http_validate_url()}.
 	 *
 	 * @return string The base URL.
 	 * @since 1.0.0
 	 */
 	public static function get_base_url(): string {
-		if ( self::is_developer_mode() ) {
-			$external_url = get_option( 'albert_external_url', '' );
+		$state = self::get_external_url_state();
 
-			if ( ! empty( $external_url ) ) {
-				return $external_url;
-			}
+		if ( $state['state'] === 'active' ) {
+			return $state['value'];
 		}
 
 		return home_url();
@@ -217,25 +199,93 @@ class Server implements Hookable {
 	/**
 	 * Get the server endpoint URL.
 	 *
-	 * @param string $external_url Optional external URL to use as base (only used if developer mode enabled).
+	 * Consults the `albert/mcp/external_url` filter for the base URL. If the
+	 * filter returns a non-empty value that fails {@see wp_http_validate_url()},
+	 * emits a `_doing_it_wrong()` notice and falls back to {@see rest_url()}.
 	 *
 	 * @return string The full URL to the MCP server endpoint.
 	 * @since 1.0.0
 	 */
-	public static function get_endpoint_url( string $external_url = '' ): string {
-		// Only use external URL if developer mode is enabled.
-		if ( self::is_developer_mode() ) {
-			if ( ! empty( $external_url ) ) {
-				return $external_url . '/wp-json/' . Plugin::rest_namespace() . '/' . self::ROUTE;
-			}
+	public static function get_endpoint_url(): string {
+		$state = self::get_external_url_state();
 
-			// Check for configured external URL.
-			$configured_url = get_option( 'albert_external_url', '' );
-			if ( ! empty( $configured_url ) ) {
-				return $configured_url . '/wp-json/' . Plugin::rest_namespace() . '/' . self::ROUTE;
-			}
+		if ( $state['state'] === 'active' ) {
+			return $state['value'] . '/wp-json/' . Plugin::rest_namespace() . '/' . self::ROUTE;
 		}
 
 		return rest_url( Plugin::rest_namespace() . '/' . self::ROUTE );
+	}
+
+	/**
+	 * Get the current state of the `albert/mcp/external_url` filter.
+	 *
+	 * Used by both the endpoint resolver and the Connections admin screen.
+	 * The filter is evaluated once per request and the result is memoised.
+	 *
+	 * Possible states:
+	 *  - `inactive` — filter returns an empty string (no override).
+	 *  - `active`   — filter returns a non-empty, valid URL; `value` is the URL.
+	 *  - `invalid`  — filter returns a non-empty string that fails
+	 *                 {@see wp_http_validate_url()}; `value` is the raw filter
+	 *                 output so the UI can surface it to the admin.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return array{state: 'inactive'|'active'|'invalid', value: string}
+	 */
+	public static function get_external_url_state(): array {
+		static $cache = null;
+		if ( $cache !== null ) {
+			return $cache;
+		}
+
+		/**
+		 * Filters the external base URL used for the MCP endpoint.
+		 *
+		 * Return a fully-qualified URL (including scheme) to replace the host
+		 * portion of the MCP endpoint — useful when the site is reachable
+		 * through a tunnel or reverse proxy during development. Return an
+		 * empty string (the default) to use {@see rest_url()} as-is.
+		 *
+		 * Invalid URLs are ignored with a `_doing_it_wrong()` notice.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param string $external_url Empty string by default.
+		 */
+		$filtered = (string) apply_filters( 'albert/mcp/external_url', '' );
+		$filtered = rtrim( $filtered, '/' );
+
+		if ( $filtered === '' ) {
+			$cache = [
+				'state' => 'inactive',
+				'value' => '',
+			];
+			return $cache;
+		}
+
+		$validated = wp_http_validate_url( $filtered );
+		if ( $validated === false ) {
+			_doing_it_wrong(
+				'albert/mcp/external_url',
+				sprintf(
+					/* translators: %s: invalid URL returned by the filter */
+					esc_html__( 'Filter returned an invalid URL: %s. Falling back to rest_url().', 'albert-ai-butler' ),
+					esc_html( $filtered )
+				),
+				'1.1.0'
+			);
+			$cache = [
+				'state' => 'invalid',
+				'value' => $filtered,
+			];
+			return $cache;
+		}
+
+		$cache = [
+			'state' => 'active',
+			'value' => $validated,
+		];
+		return $cache;
 	}
 }

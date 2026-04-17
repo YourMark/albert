@@ -145,6 +145,9 @@ class Plugin {
 		OAuthInstaller::install();
 		LoggingInstaller::install();
 
+		// One-time cleanup of legacy options on upgrade from pre-1.1.0 installs.
+		$this->maybe_cleanup_legacy_options();
+
 		// Initialize the logging system (hooks wp_after_execute_ability).
 		$logging_repository = new LoggingRepository();
 		$logger             = new Logger( $logging_repository );
@@ -331,6 +334,44 @@ class Plugin {
 				$page['callback']
 			);
 		}
+	}
+
+	/**
+	 * Run one-time cleanup of legacy options when the plugin upgrades.
+	 *
+	 * Tracks the last-seen plugin version in the `albert_installed_version`
+	 * option. When the stored version is lower than the current
+	 * {@see ALBERT_VERSION} constant, removes options that no longer drive
+	 * any behaviour:
+	 *
+	 *  - `albert_external_url` — replaced by the `albert/mcp/external_url` filter.
+	 *
+	 * The stored version is bumped after cleanup so the block only runs once
+	 * per upgrade.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return void
+	 */
+	private function maybe_cleanup_legacy_options(): void {
+		if ( ! defined( 'ALBERT_VERSION' ) ) {
+			return;
+		}
+
+		$current_version = (string) ALBERT_VERSION;
+		$stored_version  = (string) get_option( 'albert_installed_version', '0.0.0' );
+
+		if ( version_compare( $stored_version, $current_version, '>=' ) ) {
+			return;
+		}
+
+		// Legacy options removed in 1.1.0 — delete unconditionally, `delete_option()`
+		// is a no-op if the option doesn't exist.
+		if ( version_compare( $stored_version, '1.1.0', '<' ) ) {
+			delete_option( 'albert_external_url' );
+		}
+
+		update_option( 'albert_installed_version', $current_version, false );
 	}
 
 	/**

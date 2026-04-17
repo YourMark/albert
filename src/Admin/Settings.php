@@ -12,7 +12,6 @@ namespace Albert\Admin;
 defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
-use Albert\MCP\Server as McpServer;
 use Albert\OAuth\Database\Installer;
 
 /**
@@ -50,7 +49,7 @@ class Settings implements Hookable {
 	public function register_hooks(): void {
 		add_action( 'admin_menu', [ $this, 'add_settings_page' ], 20 );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
-		add_action( 'admin_post_albert_save_external_url', [ $this, 'handle_save_external_url' ] );
+		add_action( 'admin_post_albert_save_settings', [ $this, 'handle_save_settings' ] );
 	}
 
 	/**
@@ -80,11 +79,14 @@ class Settings implements Hookable {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'albert-ai-butler' ) );
 		}
+
+		$sections = $this->collect_sections();
+		$renderer = new SettingsRenderer();
 		?>
 		<div class="wrap albert-wrap">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 
-			<?php settings_errors(); ?>
+			<?php settings_errors( 'albert_settings' ); ?>
 
 			<div class="albert-content-header">
 				<p class="albert-content-description">
@@ -92,119 +94,253 @@ class Settings implements Hookable {
 				</p>
 			</div>
 
-			<div class="albert-main-content">
-				<?php $this->render_mcp_server_section(); ?>
-				<?php $this->render_licenses_section(); ?>
-			</div>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="albert-settings-form">
+				<?php wp_nonce_field( 'albert_save_settings', 'albert_save_settings_nonce' ); ?>
+				<input type="hidden" name="action" value="albert_save_settings" />
+
+				<div class="albert-page">
+					<?php
+					$has_visible_section = false;
+					foreach ( $sections as $section ) {
+						$capability = isset( $section['capability'] ) && is_string( $section['capability'] ) && $section['capability'] !== ''
+							? $section['capability']
+							: 'manage_options';
+						if ( ! current_user_can( $capability ) ) {
+							continue;
+						}
+						$show_if = $section['show_if'] ?? null;
+						if ( is_callable( $show_if ) && ! (bool) call_user_func( $show_if ) ) {
+							continue;
+						}
+
+						// Sections with zero fields never render — skip them so the
+						// submit button doesn't appear for an otherwise-empty page.
+						$section_fields = isset( $section['fields'] ) && is_array( $section['fields'] ) ? $section['fields'] : [];
+						if ( empty( $section_fields ) ) {
+							continue;
+						}
+
+						$has_visible_section = true;
+						$this->render_section( $section, $renderer );
+					}
+					?>
+
+					<?php if ( $has_visible_section ) { ?>
+						<div class="albert-settings-submit">
+							<button type="submit" class="button button-primary">
+								<?php esc_html_e( 'Save Settings', 'albert-ai-butler' ); ?>
+							</button>
+						</div>
+					<?php } ?>
+				</div>
+			</form>
 		</div>
 		<?php
 	}
 
 	/**
-	 * Render the MCP Server section.
+	 * Render a single settings section card.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param array<string, mixed> $section  Normalised section.
+	 * @param SettingsRenderer     $renderer Field renderer.
 	 *
 	 * @return void
-	 * @since 1.0.0
 	 */
-	private function render_mcp_server_section(): void {
-		/**
-		 * Filter to show developer settings like External URL.
-		 *
-		 * @param bool $show Whether to show developer settings. Default false.
-		 *
-		 * @since 1.0.0
-		 */
-		$show_developer_settings = apply_filters( 'albert/developer_mode', false );
+	private function render_section( array $section, SettingsRenderer $renderer ): void {
+		$icon        = isset( $section['icon'] ) && is_string( $section['icon'] ) ? $section['icon'] : '';
+		$title       = isset( $section['title'] ) && is_string( $section['title'] ) ? $section['title'] : '';
+		$badge       = isset( $section['badge'] ) && is_string( $section['badge'] ) ? $section['badge'] : '';
+		$description = isset( $section['description'] ) && is_string( $section['description'] ) ? $section['description'] : '';
+		$fields      = isset( $section['fields'] ) && is_array( $section['fields'] ) ? $section['fields'] : [];
 
-		// Only use external URL if developer settings are enabled.
-		$external_url = $show_developer_settings ? get_option( 'albert_external_url', '' ) : '';
-		$mcp_endpoint = McpServer::get_endpoint_url( $external_url );
+		// Skip empty sections so the synthetic `albert/settings` card doesn't appear
+		// as an empty box when no add-on has registered any settings.
+		if ( empty( $fields ) ) {
+			return;
+		}
 		?>
 		<section class="albert-settings-card">
 			<div class="albert-settings-card-header">
-				<span class="dashicons dashicons-cloud" aria-hidden="true"></span>
-				<h2><?php esc_html_e( 'MCP Server', 'albert-ai-butler' ); ?></h2>
+				<?php if ( $icon !== '' ) { ?>
+					<span class="dashicons dashicons-<?php echo esc_attr( $icon ); ?>" aria-hidden="true"></span>
+				<?php } ?>
+				<h2><?php echo esc_html( $title ); ?></h2>
+				<?php if ( $badge !== '' ) { ?>
+					<span class="albert-section-badge"><?php echo esc_html( $badge ); ?></span>
+				<?php } ?>
 			</div>
 			<div class="albert-settings-card-body">
-				<div class="albert-field-group">
-					<strong class="albert-field-label"><?php esc_html_e( 'Connection URL', 'albert-ai-butler' ); ?></strong>
-					<p class="albert-field-description">
-						<?php esc_html_e( 'Use this URL to connect AI tools (Claude Desktop, ChatGPT, etc.) to your site.', 'albert-ai-butler' ); ?>
-					</p>
-					<div class="albert-url-field">
-						<code class="albert-url-value" id="mcp-endpoint-url"><?php echo esc_html( $mcp_endpoint ); ?></code>
-						<button type="button" class="button albert-copy-button" data-copy-target="mcp-endpoint-url">
-							<?php esc_html_e( 'Copy', 'albert-ai-butler' ); ?>
-						</button>
-					</div>
-				</div>
-
-				<?php if ( $show_developer_settings ) { ?>
-					<div class="albert-field-group">
-						<label class="albert-field-label" for="albert-external-url"><?php esc_html_e( 'External URL', 'albert-ai-butler' ); ?></label>
-						<p class="albert-field-description">
-							<?php esc_html_e( 'If your site is behind a tunnel or reverse proxy, enter the public URL here.', 'albert-ai-butler' ); ?>
-						</p>
-						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="albert-inline-form">
-							<?php wp_nonce_field( 'albert_save_external_url', 'albert_external_url_nonce' ); ?>
-							<input type="hidden" name="action" value="albert_save_external_url" />
-							<input
-								type="url"
-								name="albert_external_url"
-								id="albert-external-url"
-								value="<?php echo esc_attr( $external_url ); ?>"
-								placeholder="<?php esc_attr_e( 'https://your-tunnel-url.example.com', 'albert-ai-butler' ); ?>"
-								class="albert-text-input"
-							/>
-							<button type="submit" class="button"><?php esc_html_e( 'Save', 'albert-ai-butler' ); ?></button>
-							<?php if ( ! empty( $external_url ) ) { ?>
-								<button type="submit" name="albert_clear_url" value="1" class="button"><?php esc_html_e( 'Clear', 'albert-ai-butler' ); ?></button>
-							<?php } ?>
-						</form>
-					</div>
+				<?php if ( $description !== '' ) { ?>
+					<p class="albert-section-description"><?php echo esc_html( $description ); ?></p>
 				<?php } ?>
+				<?php
+				foreach ( $fields as $field ) {
+					if ( ! is_array( $field ) ) {
+						continue;
+					}
+					$show_if = $field['show_if'] ?? null;
+					if ( is_callable( $show_if ) && ! (bool) call_user_func( $show_if ) ) {
+						continue;
+					}
+
+					$option_name   = SettingsRegistry::get_option_name(
+						isset( $section['id'] ) && is_string( $section['id'] ) ? $section['id'] : '',
+						isset( $field['id'] ) && is_string( $field['id'] ) ? $field['id'] : '',
+						isset( $field['option_name'] ) && is_string( $field['option_name'] ) ? $field['option_name'] : null
+					);
+					$default_value = array_key_exists( 'default', $field ) ? $field['default'] : '';
+					$current_value = get_option( $option_name, $default_value );
+
+					$renderer->render_field( $field, $current_value );
+				}
+				?>
 			</div>
 		</section>
 		<?php
 	}
 
 	/**
-	 * Handle saving the external URL setting.
+	 * Collect, register, and filter sections for both render and save paths.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function collect_sections(): array {
+		$registry = SettingsRegistry::instance();
+
+		// Register Free's built-in sections FIRST so the synthetic `albert/settings`
+		// card created by `albert_register_setting()` can slot between them in the
+		// rendered order.
+		foreach ( SettingsBootstrap::get_builtin_sections() as $builtin ) {
+			$registry->register_section( $builtin );
+		}
+
+		/**
+		 * Fires before the unified settings sections are collected.
+		 *
+		 * Add-ons hook here to call {@see albert_register_setting()} or (for
+		 * advanced use) {@see albert_register_settings_section()}.
+		 *
+		 * @since 1.1.0
+		 */
+		do_action( 'albert/settings/register' );
+
+		/**
+		 * Filters the final list of settings sections.
+		 *
+		 * Last chance to add, remove, or re-order sections before render or save.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param array<int, array<string, mixed>> $sections Normalised, sorted sections.
+		 */
+		$sections = apply_filters( 'albert/settings/sections', $registry->get_sections() );
+
+		return is_array( $sections ) ? $sections : [];
+	}
+
+	/**
+	 * Handle the unified settings form submission.
+	 *
+	 * @since 1.1.0
 	 *
 	 * @return void
-	 * @since 1.0.0
 	 */
-	public function handle_save_external_url(): void {
-		// Verify nonce.
-		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['albert_external_url_nonce'] ?? '' ) ), 'albert_save_external_url' ) ) {
-			wp_die( esc_html__( 'Security check failed.', 'albert-ai-butler' ) );
-		}
+	public function handle_save_settings(): void {
+		check_admin_referer( 'albert_save_settings', 'albert_save_settings_nonce' );
 
-		// Check permissions.
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to change this setting.', 'albert-ai-butler' ) );
+			wp_die( esc_html__( 'You do not have permission to change these settings.', 'albert-ai-butler' ) );
 		}
 
-		// Check if clearing.
-		if ( isset( $_POST['albert_clear_url'] ) ) {
-			delete_option( 'albert_external_url' );
-		} else {
-			$url = isset( $_POST['albert_external_url'] ) ? esc_url_raw( wp_unslash( $_POST['albert_external_url'] ) ) : '';
+		$sections  = $this->collect_sections();
+		$sanitizer = new SettingsSanitizer();
+		$saved     = [];
 
-			// Remove trailing slash for consistency.
-			$url = rtrim( $url, '/' );
+		foreach ( $sections as $section ) {
+			$capability = isset( $section['capability'] ) && is_string( $section['capability'] ) && $section['capability'] !== ''
+				? $section['capability']
+				: 'manage_options';
+			if ( ! current_user_can( $capability ) ) {
+				continue;
+			}
+			$show_if = $section['show_if'] ?? null;
+			if ( is_callable( $show_if ) && ! (bool) call_user_func( $show_if ) ) {
+				continue;
+			}
 
-			if ( ! empty( $url ) ) {
-				update_option( 'albert_external_url', $url );
-			} else {
-				delete_option( 'albert_external_url' );
+			$section_id = isset( $section['id'] ) && is_string( $section['id'] ) ? $section['id'] : '';
+			$fields     = isset( $section['fields'] ) && is_array( $section['fields'] ) ? $section['fields'] : [];
+
+			foreach ( $fields as $field ) {
+				if ( ! is_array( $field ) ) {
+					continue;
+				}
+				$field_show_if = $field['show_if'] ?? null;
+				if ( is_callable( $field_show_if ) && ! (bool) call_user_func( $field_show_if ) ) {
+					continue;
+				}
+
+				$type     = isset( $field['type'] ) && is_string( $field['type'] ) ? $field['type'] : '';
+				$callback = $field['sanitize_callback'] ?? null;
+				// Read-only custom fields opt out of persistence with the `__return_null` callback.
+				if ( $type === 'custom' && is_string( $callback ) && $callback === '__return_null' ) {
+					continue;
+				}
+
+				$field_id    = isset( $field['id'] ) && is_string( $field['id'] ) ? $field['id'] : '';
+				$override    = isset( $field['option_name'] ) && is_string( $field['option_name'] ) ? $field['option_name'] : null;
+				$option_name = SettingsRegistry::get_option_name( $section_id, $field_id, $override );
+
+				// $_POST is read raw here; sanitization happens in SettingsSanitizer per field type.
+				// Nonce verified at top of method via check_admin_referer().
+				// phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized,WordPress.Security.ValidatedSanitizedInput.MissingUnslash
+				$raw_value = array_key_exists( $option_name, $_POST ) ? wp_unslash( $_POST[ $option_name ] ) : null;
+
+				$sanitized = $sanitizer->sanitize_field( $field, $raw_value );
+
+				if ( $sanitized === null || $sanitized === '' ) {
+					// Empty URL / text — delete to keep wp_options tidy and match prior behaviour.
+					if ( in_array( $type, [ 'url', 'text', 'textarea' ], true ) ) {
+						delete_option( $option_name );
+					} else {
+						update_option( $option_name, $sanitized );
+					}
+				} else {
+					update_option( $option_name, $sanitized );
+				}
+
+				$saved[ $option_name ] = $sanitized;
 			}
 		}
 
-		// Redirect back.
+		/**
+		 * Fires after the unified settings form has been saved.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param array<string, mixed> $saved Map of option_name => sanitized value.
+		 */
+		do_action( 'albert/settings/saved', $saved );
+
+		add_settings_error(
+			'albert_settings',
+			'settings_saved',
+			__( 'Settings saved.', 'albert-ai-butler' ),
+			'success'
+		);
+		// Standard WP Settings API pattern — persist notices across the redirect.
+		set_transient( 'settings_errors', get_settings_errors(), 30 );
+
 		wp_safe_redirect(
 			add_query_arg(
-				[ 'page' => $this->page_slug ],
+				[
+					'page'             => $this->page_slug,
+					'settings-updated' => 'true',
+				],
 				admin_url( 'admin.php' )
 			)
 		);
@@ -364,51 +500,6 @@ class Settings implements Hookable {
 				],
 			]
 		);
-	}
-
-	/**
-	 * Render the licenses section.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @return void
-	 */
-	private function render_licenses_section(): void {
-		$has_addons = class_exists( '\Albert\Abstracts\AbstractAddon' )
-			&& ! empty( \Albert\Abstracts\AbstractAddon::get_registered_addons() );
-		?>
-		<section class="albert-settings-card albert-license-card">
-			<div class="albert-settings-card-header">
-				<span class="dashicons dashicons-admin-network" aria-hidden="true"></span>
-				<h2><?php esc_html_e( 'Licenses', 'albert-ai-butler' ); ?></h2>
-			</div>
-			<div class="albert-settings-card-body">
-				<?php if ( $has_addons ) { ?>
-					<div id="albert-license-notice" class="albert-license-notice" hidden></div>
-					<div class="albert-license-form">
-						<input
-							type="text"
-							id="albert-license-key"
-							class="albert-text-input"
-							placeholder="<?php esc_attr_e( 'Enter your license key', 'albert-ai-butler' ); ?>"
-							autocomplete="off"
-						/>
-						<button type="button" id="albert-activate-btn" class="button button-primary">
-							<?php esc_html_e( 'Activate', 'albert-ai-butler' ); ?>
-						</button>
-					</div>
-					<p class="albert-field-description albert-license-hint">
-						<?php esc_html_e( 'Enter your license key. It will be automatically matched to the correct addon.', 'albert-ai-butler' ); ?>
-					</p>
-					<div id="albert-addons-table-wrap">
-						<?php self::render_licenses_table(); ?>
-					</div>
-				<?php } else { ?>
-					<?php self::render_licenses_empty_state(); ?>
-				<?php } ?>
-			</div>
-		</section>
-		<?php
 	}
 
 	/**
@@ -574,7 +665,7 @@ class Settings implements Hookable {
 	 *
 	 * @return void
 	 */
-	private static function render_licenses_empty_state(): void {
+	public static function render_licenses_empty_state(): void {
 		?>
 		<div class="albert-empty-state">
 			<span class="dashicons dashicons-admin-plugins" aria-hidden="true"></span>
