@@ -845,13 +845,46 @@
 	padding: var(--albert-spacing-lg);
 }
 
-/* Field groups */
+/* Field groups — two-column compact row for built-in types */
 .albert-field-group {
-	margin-bottom: var(--albert-spacing-lg);
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+	gap: var(--albert-spacing-lg);
+	align-items: start;
+	margin-block-end: var(--albert-spacing-lg);
 }
 
 .albert-field-group:last-child {
-	margin-bottom: 0;
+	margin-block-end: 0;
+}
+
+/*
+ * Custom fields keep a single-column flow so existing render callbacks
+ * (licenses table, copy-to-clipboard widgets) aren't squeezed into the
+ * narrower input column.
+ */
+.albert-field-group--custom {
+	display: block;
+}
+
+.albert-field-label-wrap {
+	display: flex;
+	flex-direction: column;
+	gap: var(--albert-spacing-xs);
+}
+
+.albert-field-input-wrap {
+	min-width: 0;
+}
+
+.albert-field-input-wrap input[type="text"],
+.albert-field-input-wrap input[type="url"],
+.albert-field-input-wrap input[type="number"],
+.albert-field-input-wrap select,
+.albert-field-input-wrap textarea {
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
 }
 
 .albert-field-label {
@@ -859,14 +892,43 @@
 	font-weight: 600;
 	font-size: var(--albert-font-base);
 	color: var(--albert-text-primary);
+	margin-bottom: 0;
+}
+
+/* Legacy one-column layout for custom fields still needs a small gap below the label. */
+.albert-field-group--custom .albert-field-label {
 	margin-bottom: var(--albert-spacing-xs);
+}
+
+.albert-field-badge {
+	display: inline-block;
+	margin-inline-start: var(--albert-spacing-xs);
+	padding: 1px 6px;
+	font-size: var(--albert-font-2xs);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: var(--albert-primary);
+	background: color-mix(in oklab, var(--albert-primary) 12%, transparent);
+	border-radius: 3px;
+	vertical-align: middle;
 }
 
 .albert-field-description {
 	font-size: var(--albert-font-sm);
 	color: var(--albert-text-secondary);
-	margin: 0 0 var(--albert-spacing-sm) 0;
+	margin: 0;
 	line-height: 1.5;
+}
+
+.albert-field-group--custom .albert-field-description {
+	margin: 0 0 var(--albert-spacing-sm) 0;
+}
+
+@media (max-width: 782px) {
+	.albert-field-group {
+		grid-template-columns: 1fr;
+	}
 }
 
 /* URL field with copy button */
@@ -902,6 +964,54 @@
 	border: 1px solid var(--albert-border);
 	border-radius: var(--albert-border-radius);
 	font-size: var(--albert-font-base);
+}
+
+.albert-text-input--block {
+	display: block;
+	width: 100%;
+	max-width: 100%;
+}
+
+/* Developer-mode field (e.g. MCP External URL) */
+.albert-developer-field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--albert-spacing-md);
+}
+
+.albert-developer-info {
+	display: flex;
+	gap: var(--albert-spacing-md);
+	align-items: flex-start;
+	padding: var(--albert-spacing-md) var(--albert-spacing-lg);
+	background: color-mix(in oklab, var(--albert-bg-light, #f6f7f7) 60%, transparent);
+	border-inline-start: 3px solid var(--albert-border, #c3c4c7);
+	border-radius: var(--albert-border-radius);
+}
+
+.albert-developer-info .dashicons {
+	flex-shrink: 0;
+	margin-block-start: 2px;
+	color: var(--albert-text-secondary);
+}
+
+.albert-developer-info p {
+	margin: 0;
+	font-size: var(--albert-font-sm);
+	color: var(--albert-text-secondary);
+	line-height: 1.5;
+}
+
+.albert-developer-info p + p {
+	margin-block-start: var(--albert-spacing-xs);
+}
+
+.albert-developer-info code {
+	padding: 1px 6px;
+	background: var(--albert-bg-white, #fff);
+	border: 1px solid var(--albert-border, #c3c4c7);
+	border-radius: 3px;
+	font-size: 0.95em;
 }
 
 .albert-select-input {
@@ -1683,6 +1793,45 @@
 
 .albert-endpoint-bar-field .albert-copy-button {
 	flex-shrink: 0;
+}
+
+/* Endpoint filter notice (albert/mcp/external_url state) */
+.albert-endpoint-notice {
+	margin: calc(-1 * var(--albert-spacing-sm)) 0 var(--albert-spacing-lg);
+	padding: var(--albert-spacing-md) var(--albert-spacing-lg);
+	border: 1px solid var(--albert-border-light);
+	border-inline-start-width: 4px;
+	border-radius: var(--albert-border-radius);
+	background: var(--albert-bg-white);
+	font-size: var(--albert-font-sm);
+	line-height: 1.5;
+	color: var(--albert-text-primary);
+}
+
+.albert-endpoint-notice p {
+	margin: 0;
+}
+
+.albert-endpoint-notice p + p {
+	margin-block-start: var(--albert-spacing-xs);
+}
+
+.albert-endpoint-notice code {
+	padding: 1px 6px;
+	background: var(--albert-bg-light);
+	border: 1px solid var(--albert-border-light);
+	border-radius: 3px;
+	font-size: 0.95em;
+}
+
+.albert-endpoint-notice--info {
+	border-inline-start-color: var(--albert-primary);
+	background: var(--albert-info-10);
+}
+
+.albert-endpoint-notice--warning {
+	border-inline-start-color: var(--albert-warning);
+	background: var(--albert-warning-10);
 }
 
 /* Resources List */
