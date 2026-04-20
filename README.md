@@ -98,11 +98,11 @@ Website: https://yourmark.nl
 ### 1.1.0
 
 **New features**
-- **Unified abilities page** — Core, ACF and WooCommerce pages merged into one filterable list of every registered ability. Search, filter by category or supplier, read/write/delete at a glance.
+- **Unified abilities page** — one filterable list of every registered ability, whether it comes from WordPress core, WooCommerce, or any third-party plugin. Search, filter by category or supplier, read/write/delete at a glance.
 - **Instant per-row save** — toggles save immediately via AJAX. No Save Changes button, no lost work.
 - **Activity logging** — dashboard widget showing the most recent ability execution, and a "Last run" line on every ability. Gated by the `albert/logging/enabled` filter so Premium can replace it with extended logging.
 - **Plain-language annotation chips** — each ability is labelled **Read**, **Write**, or **Delete** with accessible tooltips (replaces the developer-facing "Destructive / Idempotent / Readonly" terms).
-- **Curated supplier registry** — new `albert/abilities/suppliers` filter lets addons register branded supplier names for the filter dropdown (WordPress core, Albert, WooCommerce, ACF).
+- **Curated supplier registry** — new `albert/abilities/suppliers` filter lets third-party plugins register branded supplier names for the filter dropdown (WordPress core, Albert, WooCommerce, and any other plugin that adds abilities).
 - **List / Paginated view toggle** — preference persisted server-side, no flash of content on page load.
 
 **Bug fixes**

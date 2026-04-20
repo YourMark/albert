@@ -136,11 +136,11 @@ Major admin redesign, new activity logging, and a stack of reliability fixes.
 
 **New features**
 
-* **Unified abilities page** — the three separate admin pages (Core, ACF, WooCommerce) are now one filterable list of every registered ability. Search, filter by category or supplier, and see read/write/delete at a glance.
+* **Unified abilities page** — one filterable list of every registered ability from WordPress core, WooCommerce, and any other plugin that registers abilities. Search, filter by category or supplier, and see read/write/delete at a glance.
 * **Instant save** — toggle an ability on or off and it saves immediately. No more Save Changes button or lost progress.
 * **Activity logging** — a new dashboard widget shows the most recent ability execution, and every ability now displays its "Last run" time in the expanded details.
 * **Plain-language labels** — each ability is tagged Read, Write, or Delete (replacing developer-facing "Destructive / Idempotent / Readonly" terms). Hover or keyboard-focus a label for a full explanation.
-* **Supplier filtering** — the filter dropdown shows "WordPress core", "Albert", "WooCommerce", "ACF" instead of raw prefixes. Addons can register their own branded supplier name via the `albert/abilities/suppliers` filter.
+* **Supplier filtering** — the filter dropdown shows branded names like "WordPress core", "Albert", and "WooCommerce" instead of raw prefixes. Third-party plugins can register their own supplier name via the `albert/abilities/suppliers` filter.
 * **List / Paginated view** — switch between one long list and 25-per-page pagination. Your choice is persisted on the server, so no flash of the wrong view on page load.
 
 **Bug fixes**
