@@ -4,7 +4,7 @@ Tags: ai, mcp, oauth, claude, chatgpt
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.1
-Stable tag: 1.0.1
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -95,7 +95,7 @@ When WooCommerce is active, additional abilities are available for products, ord
 
 = Can I control what my AI assistant is allowed to do? =
 
-Yes. The abilities page lets you toggle read and write permissions per content type. Write abilities are disabled by default — you choose exactly what to enable. All actions also respect WordPress user capabilities, so your AI assistant can never do more than the authorized user could do manually.
+Yes. The abilities page lists every action your AI assistant can perform on your site, clearly labelled as Read, Write, or Delete. You toggle each one on or off individually — changes save instantly, no form to submit. Filter the list by text, category, or supplier to find what you're looking for. Write and delete abilities are off by default — you choose exactly what to enable. All actions also respect WordPress user capabilities, so your AI assistant can never do more than the authorized user could do manually.
 
 = Do I need WooCommerce? =
 
@@ -112,7 +112,7 @@ Albert is designed for single-site installations. Multisite support is on the ro
 = What are the system requirements? =
 
 * WordPress 6.9 or higher
-* PHP 8.2 or higher (8.3+ recommended)
+* PHP 8.1 or higher (8.3+ recommended)
 * MySQL 8.0+ or MariaDB 10.5+
 * HTTPS (required for OAuth 2.0)
 
@@ -125,11 +125,44 @@ Albert is designed for single-site installations. Multisite support is on the ro
 == Screenshots ==
 
 1. Albert dashboard with setup checklist and status overview
-2. Abilities page — toggle read and write permissions per content type
+2. Abilities page — every ability as a filterable list with instant-save toggles and Read / Write / Delete labels
 3. Connections page — manage allowed users and active AI assistant connections
 4. An active connection with Claude Desktop
 
 == Changelog ==
+
+= 1.1.0 =
+Major admin redesign, new activity logging, and a stack of reliability fixes.
+
+**New features**
+
+* **Unified abilities page** — one filterable list of every registered ability from WordPress core, WooCommerce, and any other plugin that registers abilities. Search, filter by category or supplier, and see read/write/delete at a glance.
+* **Instant save** — toggle an ability on or off and it saves immediately. No more Save Changes button or lost progress.
+* **Activity logging** — a new dashboard widget shows the most recent ability execution, and every ability now displays its "Last run" time in the expanded details.
+* **Plain-language labels** — each ability is tagged Read, Write, or Delete (replacing developer-facing "Destructive / Idempotent / Readonly" terms). Hover or keyboard-focus a label for a full explanation.
+* **Supplier filtering** — the filter dropdown shows branded names like "WordPress core", "Albert", and "WooCommerce" instead of raw prefixes. Third-party plugins can register their own supplier name via the `albert/abilities/suppliers` filter.
+* **List / Paginated view** — switch between one long list and 25-per-page pagination. Your choice is persisted on the server, so no flash of the wrong view on page load.
+
+**Bug fixes**
+
+* Ability categories now register at the default hook priority, preventing collisions with WordPress core's built-in categories on WP 6.9+.
+* Fixed a missing 'user' category that Users abilities depend on — abilities now register reliably on fresh installs.
+* The `password` field on the Create User ability is now correctly flagged as required, so AI assistants get a clear validation error when it's missing instead of a vague failure.
+* OAuth endpoints, MCP, and discovery metadata now share one consistent REST namespace reference.
+
+**Accessibility**
+
+* Keyboard-reachable tooltips on every annotation chip.
+* WCAG 2.2 AA contrast on all chip colours.
+* aria-live stats announcements debounced during search.
+* Visible focus indicators on pagination buttons and dropdown caret indicators on filter selects.
+
+**Under the hood**
+
+* Comprehensive automated test suite covering input validation, output schema, permissions, and per-parameter behaviour on every ability.
+* Continuous integration now runs against PHP 8.1–8.4, WordPress 6.9 and latest, and WooCommerce 10.5–latest.
+* Removed redundant manual input validation from every ability — WordPress core validates the schema before the ability runs.
+* Unified internal settings API for cleaner state management.
 
 = 1.0.1 =
 Bug fix release.
@@ -150,6 +183,9 @@ Initial release.
 * **Extensible** — Register custom abilities with the WordPress Abilities API. Hookable architecture with filters and actions.
 
 == Upgrade Notice ==
+
+= 1.1.0 =
+Redesigned abilities page, new activity logging, and several reliability fixes. Existing enabled / disabled settings are preserved; no migration needed.
 
 = 1.0.1 =
 Fixes a connection failure caused by mismatched OAuth endpoint namespaces. Recommended for all users.

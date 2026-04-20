@@ -40,13 +40,12 @@ albert-ai-butler/
 │   │
 │   ├── Core/
 │   │   ├── Plugin.php                  # Main singleton, bootstraps everything
-│   │   └── AbilitiesManager.php        # Registers abilities with WordPress
+│   │   ├── AbilitiesManager.php        # Registers abilities with WordPress
+│   │   ├── AbilitiesRegistry.php       # Supplier map, category grouping, source lookup
+│   │   └── AnnotationPresenter.php     # Annotation → chip DTO mapping for the admin UI
 │   │
 │   ├── Admin/
-│   │   ├── AbstractAbilitiesPage.php   # Base class for abilities admin pages
-│   │   ├── CoreAbilities.php           # Core abilities page (albert/*, core/*)
-│   │   ├── AcfAbilities.php            # ACF abilities page (acf/*)
-│   │   ├── WooCommerceAbilities.php    # WooCommerce abilities page (albert/woo-*)
+│   │   ├── AbilitiesPage.php           # Unified flat-list abilities page (Core/ACF/Woo merged)
 │   │   ├── Connections.php             # Allowed users & active connections
 │   │   ├── Settings.php                # Plugin settings page
 │   │   └── UserSessions.php            # OAuth sessions management
@@ -211,6 +210,99 @@ Then register in `Plugin::register_abilities()`:
 $this->abilities_manager->add_ability( new MyAbility() );
 ```
 
+### Extensibility Hooks
+
+Albert provides hooks for addon plugins or themes to register custom abilities, add admin pages, and observe ability execution.
+
+#### Registering Custom Abilities (`albert/abilities/register`)
+
+**Action** — Fires after built-in abilities are registered on the `init` hook. Addons (or themes via `functions.php`) hook here to register their own abilities by extending `BaseAbility` directly — the same pattern built-in abilities use.
+
+```php
+// In an addon plugin or theme functions.php:
+add_action( 'albert/abilities/register', function ( $manager ) {
+    $manager->add_ability( new MyCustomAbility() );
+} );
+```
+
+The `$manager` parameter is the `AbilitiesManager` instance. Custom abilities extend `Albert\Abstracts\BaseAbility` and implement `execute()` and `check_permission()`. They flow through the same admin UI, enabled/disabled toggle, and `guarded_execute()` pipeline as built-in abilities.
+
+This works from any context that loads before `init`:
+- **Addon plugins** — The recommended approach for distributing abilities.
+- **Theme `functions.php`** — Works because themes load before the `init` hook fires.
+- **Must-use plugins** — Also supported.
+
+#### Execution Hooks
+
+All execution hooks are wrapped in try/catch — observer errors never break ability execution.
+
+**`albert/abilities/before_execute`** (action) — Fires before any ability executes. Useful for logging, rate limiting, or audit trails.
+
+```php
+add_action( 'albert/abilities/before_execute', function ( string $ability_id, array $args, int $user_id ) {
+    // Log, validate, track, etc.
+}, 10, 3 );
+```
+
+**`albert/abilities/before_execute/{ability_id}`** (action) — Fires before a specific ability executes. The ability ID is appended to the hook name (e.g. `albert/abilities/before_execute/core/posts/create`).
+
+```php
+add_action( 'albert/abilities/before_execute/core/posts/create', function ( array $args, int $user_id ) {
+    // Runs only before the core/posts/create ability.
+}, 10, 2 );
+```
+
+**`albert/abilities/after_execute`** (action) — Fires after any ability executes. Receives the result (array or WP_Error).
+
+```php
+add_action( 'albert/abilities/after_execute', function ( string $ability_id, array $args, $result, int $user_id ) {
+    // Log result, send notifications, etc.
+}, 10, 4 );
+```
+
+**`albert/abilities/after_execute/{ability_id}`** (action) — Fires after a specific ability executes. The ability ID is appended to the hook name (e.g. `albert/abilities/after_execute/albert/woo-find-products`).
+
+```php
+add_action( 'albert/abilities/after_execute/core/posts/create', function ( array $args, $result, int $user_id ) {
+    // Runs only after the core/posts/create ability.
+}, 10, 3 );
+```
+
+#### Admin Submenu Pages (`albert/admin/submenu_pages`)
+
+**Filter** — Addon plugins can add pages to the Albert admin menu. Fires at `admin_menu` priority 15 (after abilities pages, before Settings at priority 20).
+
+```php
+add_filter( 'albert/admin/submenu_pages', function ( array $pages ) {
+    $pages[] = [
+        'slug'       => 'my-addon-settings',  // Required.
+        'callback'   => 'render_my_page',      // Required, callable.
+        'page_title' => 'My Addon',            // Optional (defaults to slug).
+        'menu_title' => 'My Addon',            // Optional (defaults to slug).
+        'capability' => 'manage_options',       // Optional (default: manage_options).
+        'position'   => 100,                   // Optional (default: 100).
+    ];
+    return $pages;
+} );
+```
+
+#### Unified AbilitiesPage (1.1+)
+
+Since 1.1, the Core / ACF / WooCommerce admin pages are merged into a single `Albert → Abilities` page rendered by `src/Admin/AbilitiesPage.php`. Every registered ability appears as a row in a flat, filterable list. Filtering (text search, category, supplier) is entirely client-side; pagination and view-mode (list vs paginated) are server-rendered on every request to avoid a flash of content. Toggles save instantly via `wp_ajax_albert_toggle_ability` — there is no Save Changes button. Custom abilities registered via `albert/abilities/register` appear in the same list automatically.
+
+#### Supplier Registry (`albert/abilities/suppliers`)
+
+The filter dropdown's supplier labels come from a curated prefix→label map in `AbilitiesRegistry::get_suppliers()`. Built-in entries cover `core` → "WordPress core", `albert` → "Albert", `woo` → "WooCommerce", and `acf` → "ACF". Addons can register their own prefix under a branded name via the `albert/abilities/suppliers` filter:
+
+```php
+add_filter( 'albert/abilities/suppliers', function ( array $suppliers ): array {
+    $suppliers['mycompany'] = 'My Company';
+    return $suppliers;
+} );
+```
+
+Unknown prefixes fall back to a prettified version of the prefix itself, so every ability always has a sensible supplier label.
+
 #### 3. OAuth 2.0 Server
 Full OAuth 2.0 implementation using `league/oauth2-server`.
 
@@ -238,6 +330,32 @@ wp_set_current_user( $user->ID );
 
 #### 4. MCP Server (`src/MCP/Server.php`)
 Handles MCP protocol communication with AI assistants. Authenticated via OAuth.
+
+#### 5. Logging (`src/Logging/`)
+Minimal ability execution logging for the Free tier.
+
+**Hook used:** `wp_after_execute_ability` (WP core hook, fires on success only)
+
+**Filter:** `albert/logging/enabled` (bool, default `true`) — return `false` to suppress Free's writes. Premium uses this filter to disable Free's logger and use its own extended logging instead.
+
+**Schema (frozen):**
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `BIGINT UNSIGNED AUTO_INCREMENT` | PK |
+| `ability_name` | `VARCHAR(191)` | Ability identifier |
+| `user_id` | `BIGINT UNSIGNED` | `get_current_user_id()`, 0 if unauthenticated |
+| `created_at` | `DATETIME` | Default `CURRENT_TIMESTAMP` |
+
+**Retention:** Last 2 records per `ability_name`, pruned on insert.
+
+**Components:**
+- `Installer.php` — Creates/upgrades `{$wpdb->prefix}albert_ability_log` table
+- `Repository.php` — CRUD operations, bulk fetch, auto-prune
+- `Logger.php` — Hooks `wp_after_execute_ability`, gated by filter
+
+**Admin surfaces:**
+- Dashboard widget: "Albert - Last Activity" showing most recent execution
+- Abilities page: "Last run" line in each ability's expanded details
 
 ### Current Abilities
 
@@ -309,6 +427,7 @@ wp plugin activate albert
 ### Version Control
 - **Never commit without explicit request**
 - **Never bump version without approval**
+- **Version bumps only happen in release branches** — never on `development`, feature branches, or `main`
 - Run `composer phpcs` before committing
 
 ## Known Compatibility Issues

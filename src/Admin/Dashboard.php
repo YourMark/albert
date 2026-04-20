@@ -12,6 +12,7 @@ namespace Albert\Admin;
 defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
+use Albert\Logging\Repository as LoggingRepository;
 use Albert\MCP\Server as McpServer;
 use Albert\OAuth\Database\Installer;
 
@@ -40,6 +41,25 @@ class Dashboard implements Hookable {
 	 * @var string
 	 */
 	private string $page_slug = 'albert';
+
+	/**
+	 * Ability log repository.
+	 *
+	 * @since 1.1.0
+	 * @var LoggingRepository
+	 */
+	private LoggingRepository $logging_repository;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param LoggingRepository $logging_repository Ability log repository.
+	 *
+	 * @since 1.1.0
+	 */
+	public function __construct( LoggingRepository $logging_repository ) {
+		$this->logging_repository = $logging_repository;
+	}
 
 	/**
 	 * Register WordPress hooks.
@@ -106,9 +126,17 @@ class Dashboard implements Hookable {
 		);
 
 		wp_enqueue_script(
+			'albert-admin-utils',
+			ALBERT_PLUGIN_URL . 'assets/js/albert-admin-utils.js',
+			[],
+			ALBERT_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
 			'albert-dashboard',
 			ALBERT_PLUGIN_URL . 'assets/js/admin-dashboard.js',
-			[],
+			[ 'albert-admin-utils' ],
 			ALBERT_VERSION,
 			true
 		);
@@ -326,7 +354,7 @@ class Dashboard implements Hookable {
 	 * @since 1.0.0
 	 */
 	private function get_enabled_abilities_count(): string {
-		$disabled_abilities = AbstractAbilitiesPage::get_disabled_abilities();
+		$disabled_abilities = AbilitiesPage::get_disabled_abilities();
 		$all_abilities      = wp_get_abilities();
 
 		$enabled_count = 0;
@@ -353,9 +381,9 @@ class Dashboard implements Hookable {
 		global $wpdb;
 		$tables = Installer::get_table_names();
 
-		// Get most recent token creations.
+		// Get most recent token creations (new connections).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$results = $wpdb->get_results(
+		$connections = $wpdb->get_results(
 			$wpdb->prepare(
 				'SELECT t.client_id, t.user_id, t.created_at, c.name
 				FROM %i t
@@ -368,23 +396,57 @@ class Dashboard implements Hookable {
 			)
 		);
 
-		$activity = [];
-		foreach ( $results as $result ) {
-			$user        = get_userdata( $result->user_id );
-			$client_name = $result->name ?? __( 'Unknown Client', 'albert-ai-butler' );
-			$time_diff   = human_time_diff( strtotime( $result->created_at ), time() );
-			$activity[]  = [
-				'icon' => '🔗',
-				'text' => sprintf(
+		$events = [];
+
+		foreach ( $connections as $row ) {
+			$user        = get_userdata( $row->user_id );
+			$client_name = $row->name ?? __( 'Unknown Client', 'albert-ai-butler' );
+			$events[]    = [
+				'icon'      => '🔗',
+				'timestamp' => strtotime( $row->created_at ),
+				'text'      => sprintf(
 					/* translators: 1: Client name, 2: Username */
 					__( '%1$s connected by %2$s', 'albert-ai-butler' ),
 					$client_name,
 					$user ? $user->display_name : __( 'Unknown', 'albert-ai-butler' )
 				),
+			];
+		}
+
+		// Merge in recent ability executions.
+		foreach ( $this->logging_repository->recent( 5 ) as $row ) {
+			$user     = get_userdata( (int) $row->user_id );
+			$events[] = [
+				'icon'      => '⚡',
+				'timestamp' => strtotime( $row->created_at ),
+				'text'      => sprintf(
+					/* translators: 1: Ability identifier, 2: Username */
+					__( '%1$s executed by %2$s', 'albert-ai-butler' ),
+					$row->ability_name,
+					$user ? $user->display_name : __( 'Unknown', 'albert-ai-butler' )
+				),
+			];
+		}
+
+		// Sort by timestamp DESC and keep the most recent 5.
+		usort(
+			$events,
+			static function ( array $a, array $b ): int {
+				return $b['timestamp'] <=> $a['timestamp'];
+			}
+		);
+		$events = array_slice( $events, 0, 5 );
+
+		$now      = time();
+		$activity = [];
+		foreach ( $events as $event ) {
+			$activity[] = [
+				'icon' => $event['icon'],
+				'text' => $event['text'],
 				'time' => sprintf(
 					/* translators: %s: Time difference */
 					__( '%s ago', 'albert-ai-butler' ),
-					$time_diff
+					human_time_diff( $event['timestamp'], $now )
 				),
 			];
 		}

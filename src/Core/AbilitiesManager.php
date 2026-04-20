@@ -37,9 +37,14 @@ class AbilitiesManager implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function register_hooks(): void {
-		// Register ability categories first.
-		add_action( 'abilities_api_categories_init', [ $this, 'register_categories' ], 5 );
-		add_action( 'wp_abilities_api_categories_init', [ $this, 'register_categories' ], 5 );
+		// Register ability categories on the standard hook at default priority.
+		// WP 6.9 registers its built-in categories (e.g. 'site', 'user') via
+		// default-filters on the same action, so using the default priority
+		// guarantees we run AFTER core in the same turn of the hook — and
+		// wp_has_ability_category() inside register_categories() skips anything
+		// already in place.
+		add_action( 'abilities_api_categories_init', [ $this, 'register_categories' ] );
+		add_action( 'wp_abilities_api_categories_init', [ $this, 'register_categories' ] );
 
 		// Register abilities on WordPress abilities API init hooks.
 		add_action( 'abilities_api_init', [ $this, 'register_abilities' ] );
@@ -64,10 +69,21 @@ class AbilitiesManager implements Hookable {
 			return;
 		}
 
+		// Albert's own categories. WP 6.9 ships 'site' and 'user' as
+		// built-ins on the same hook at default priority; the
+		// wp_has_ability_category() guard below skips slugs core (or any
+		// other plugin) has already registered. 'user' is kept here as a
+		// defensive fallback for environments where core's registration
+		// has not (yet) fired — without it, our Users abilities cannot
+		// register because their category does not exist.
 		$categories = [
 			'content'     => [
 				'label'       => __( 'Content', 'albert-ai-butler' ),
 				'description' => __( 'Posts, pages, and media management.', 'albert-ai-butler' ),
+			],
+			'user'        => [
+				'label'       => __( 'Users', 'albert-ai-butler' ),
+				'description' => __( 'User accounts, roles, and profiles.', 'albert-ai-butler' ),
 			],
 			'taxonomy'    => [
 				'label'       => __( 'Taxonomies', 'albert-ai-butler' ),

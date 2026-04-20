@@ -42,16 +42,15 @@ use Albert\Abilities\WooCommerce\FindProducts;
 use Albert\Abilities\WooCommerce\ViewCustomer;
 use Albert\Abilities\WooCommerce\ViewOrder;
 use Albert\Abilities\WooCommerce\ViewProduct;
-use Albert\Admin\AcfAbilities;
-use Albert\Admin\CoreAbilities;
+use Albert\Admin\AbilitiesPage;
 use Albert\Admin\Connections;
-use Albert\Admin\WooCommerceAbilities;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
-use Albert\Contracts\Interfaces\Hookable;
+use Albert\Logging\Installer as LoggingInstaller;
+use Albert\Logging\Logger;
+use Albert\Logging\Repository as LoggingRepository;
 use Albert\MCP\Server as McpServer;
 use Albert\OAuth\Database\Installer as OAuthInstaller;
-use Albert\Core\SettingsMigration;
 use Albert\OAuth\Endpoints\AuthorizationPage;
 use Albert\OAuth\Endpoints\ClientRegistration;
 use Albert\OAuth\Endpoints\OAuthController;
@@ -144,31 +143,32 @@ class Plugin {
 	public function init(): void {
 		// Check for database updates (handles upgrades without re-activation).
 		OAuthInstaller::install();
+		LoggingInstaller::install();
 
-		// Migrate settings from old format to new format (one-time).
-		SettingsMigration::maybe_migrate();
+		// One-time cleanup of legacy options on upgrade from pre-1.1.0 installs.
+		$this->maybe_cleanup_legacy_options();
+
+		// Initialize the logging system (hooks wp_after_execute_ability).
+		$logging_repository = new LoggingRepository();
+		$logger             = new Logger( $logging_repository );
+		$logger->register_hooks();
 
 		// Register admin components.
 		if ( is_admin() ) {
 			// Dashboard page (creates top-level menu and first submenu).
-			( new Dashboard() )->register_hooks();
+			( new Dashboard( $logging_repository ) )->register_hooks();
 
-			// Abilities pages (toggle abilities on/off).
-			( new CoreAbilities() )->register_hooks();
-
-			if ( class_exists( 'ACF' ) ) {
-				( new AcfAbilities() )->register_hooks();
-			}
-
-			if ( class_exists( 'WooCommerce' ) ) {
-				( new WooCommerceAbilities() )->register_hooks();
-			}
+			// Unified abilities page (toggle abilities on/off).
+			( new AbilitiesPage() )->register_hooks();
 
 			// Connections page (allowed users + active sessions).
 			( new Connections() )->register_hooks();
 
-			// Settings page (MCP endpoint, developer options).
+			// Settings page (MCP endpoint, developer options, licenses).
 			( new Settings() )->register_hooks();
+
+			// Addon submenu pages (registered via filter at priority 15).
+			add_action( 'admin_menu', [ $this, 'register_addon_admin_pages' ], 15 );
 		}
 
 		// Register OAuth controller (REST API endpoints for token exchange).
@@ -259,18 +259,119 @@ class Plugin {
 			$this->abilities_manager->add_ability( new ViewCustomer() );
 		}
 
+		/**
+		 * Fires after built-in abilities are registered.
+		 *
+		 * Addon plugins hook here to register their own abilities by calling
+		 * $manager->add_ability() with a BaseAbility subclass.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param AbilitiesManager $manager The abilities manager instance.
+		 */
+		do_action( 'albert/abilities/register', $this->abilities_manager );
+
 		// Register abilities manager hooks.
 		$this->abilities_manager->register_hooks();
 	}
 
 	/**
-	 * Get the abilities manager instance.
+	 * Register addon admin submenu pages.
 	 *
-	 * @return AbilitiesManager|null The abilities manager instance.
-	 * @since 1.0.0
+	 * Addon plugins can add pages to the Albert admin menu via the
+	 * 'albert_admin_submenu_pages' filter. Each page definition must
+	 * include a 'slug' and a callable 'callback'.
+	 *
+	 * @return void
+	 * @since 1.1.0
 	 */
-	public function get_abilities_manager(): ?AbilitiesManager {
-		return $this->abilities_manager;
+	public function register_addon_admin_pages(): void {
+		/**
+		 * Filters the list of addon admin submenu page definitions.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param array[] $pages Array of page definitions. Each should have:
+		 *                       - string   'slug'       Page slug (required).
+		 *                       - callable 'callback'   Render callback (required).
+		 *                       - string   'page_title' Browser/page title (optional).
+		 *                       - string   'menu_title' Sidebar menu title (optional).
+		 *                       - string   'capability' Required capability (optional, default 'manage_options').
+		 *                       - int      'position'   Menu position (optional, default 100).
+		 */
+		$pages = apply_filters( 'albert/admin/submenu_pages', [] );
+
+		if ( ! is_array( $pages ) || empty( $pages ) ) {
+			return;
+		}
+
+		// Validate and set defaults.
+		$valid_pages = [];
+		foreach ( $pages as $page ) {
+			if ( empty( $page['slug'] ) || ! is_callable( $page['callback'] ?? null ) ) {
+				continue;
+			}
+
+			$page['position'] = (int) ( $page['position'] ?? 100 );
+			$valid_pages[]    = $page;
+		}
+
+		// Sort by position.
+		usort(
+			$valid_pages,
+			function ( $a, $b ) {
+				return $a['position'] <=> $b['position'];
+			}
+		);
+
+		foreach ( $valid_pages as $page ) {
+			add_submenu_page(
+				'albert',
+				$page['page_title'] ?? $page['slug'],
+				$page['menu_title'] ?? $page['slug'],
+				$page['capability'] ?? 'manage_options',
+				$page['slug'],
+				$page['callback']
+			);
+		}
+	}
+
+	/**
+	 * Run one-time cleanup of legacy options when the plugin upgrades.
+	 *
+	 * Tracks the last-seen plugin version in the `albert_installed_version`
+	 * option. When the stored version is lower than the current
+	 * {@see ALBERT_VERSION} constant, removes options that no longer drive
+	 * any behaviour:
+	 *
+	 *  - `albert_external_url` — replaced by the `albert/mcp/external_url` filter.
+	 *
+	 * The stored version is bumped after cleanup so the block only runs once
+	 * per upgrade.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return void
+	 */
+	private function maybe_cleanup_legacy_options(): void {
+		if ( ! defined( 'ALBERT_VERSION' ) ) {
+			return;
+		}
+
+		$current_version = (string) ALBERT_VERSION;
+		$stored_version  = (string) get_option( 'albert_installed_version', '0.0.0' );
+
+		if ( version_compare( $stored_version, $current_version, '>=' ) ) {
+			return;
+		}
+
+		// Legacy options removed in 1.1.0 — delete unconditionally, `delete_option()`
+		// is a no-op if the option doesn't exist.
+		if ( version_compare( $stored_version, '1.1.0', '<' ) ) {
+			delete_option( 'albert_external_url' );
+		}
+
+		update_option( 'albert_installed_version', $current_version, false );
 	}
 
 	/**
@@ -284,6 +385,9 @@ class Plugin {
 	public static function activate(): void {
 		// Install OAuth database tables.
 		OAuthInstaller::install();
+
+		// Install logging database table.
+		LoggingInstaller::install();
 
 		// Register OAuth discovery rewrite rules.
 		OAuthDiscovery::activate();

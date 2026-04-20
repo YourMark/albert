@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Albert 0.0.1\n"
-"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/albert-ai-butler\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/albert\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
@@ -15,7 +15,7 @@ msgstr ""
 "X-Domain: albert\n"
 
 #. Plugin Name of the plugin
-#: albert-ai-butler.php
+#: albert.php
 #: src/Admin/Settings.php:67
 #: src/Admin/Settings.php:68
 msgid "Albert"
@@ -23,22 +23,22 @@ msgstr ""
 
 #. Plugin URI of the plugin
 #. Author URI of the plugin
-#: albert-ai-butler.php
+#: albert.php
 msgid "https://yourmark.nl"
 msgstr ""
 
 #. Description of the plugin
-#: albert-ai-butler.php
+#: albert.php
 msgid "Connect your WordPress site to AI assistants with secure OAuth 2.0 authentication and the Model Context Protocol (MCP)."
 msgstr ""
 
 #. Author of the plugin
-#: albert-ai-butler.php
+#: albert.php
 msgid "Mark Jansen - Your Mark Media"
 msgstr ""
 
 #. translators: %s: error message
-#: albert-ai-butler.php:59
+#: albert.php:59
 msgid "Albert Plugin Error: %s"
 msgstr ""
 
