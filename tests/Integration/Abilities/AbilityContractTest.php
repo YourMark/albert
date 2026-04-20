@@ -154,6 +154,46 @@ class AbilityContractTest extends TestCase {
 	}
 
 	/**
+	 * WooCommerce abilities must NOT be registered when WooCommerce is inactive.
+	 *
+	 * Locks the guard in Plugin::register_abilities() — WC abilities depend on
+	 * wc_get_product(), wc_get_order(), etc., so registering them without WC
+	 * would cause fatals at call time. This test only runs in the non-WC CI
+	 * jobs; it's skipped when WooCommerce is active.
+	 *
+	 * @dataProvider provideAbilities
+	 *
+	 * @param class-string<BaseAbility> $ability_class Ability class.
+	 *
+	 * @return void
+	 */
+	public function test_woocommerce_ability_not_registered_without_woocommerce( string $ability_class ): void {
+		if ( ! function_exists( 'wp_get_ability' ) ) {
+			$this->markTestSkipped( 'wp_get_ability not available.' );
+		}
+
+		if ( ! self::is_woocommerce_ability( $ability_class ) ) {
+			$this->markTestSkipped( 'Only applies to WooCommerce abilities.' );
+		}
+
+		if ( class_exists( 'WooCommerce' ) ) {
+			$this->markTestSkipped( 'WooCommerce is active — this test verifies the inactive case.' );
+		}
+
+		$ability    = new $ability_class();
+		$registered = wp_get_ability( $ability->get_id() );
+
+		$this->assertNull(
+			$registered,
+			sprintf(
+				'%s (%s) must not be registered when WooCommerce is inactive — it depends on WC functions and would fatal at call time.',
+				$ability_class,
+				$ability->get_id()
+			)
+		);
+	}
+
+	/**
 	 * The input_schema is a valid JSON Schema object.
 	 *
 	 * @dataProvider provideAbilities
