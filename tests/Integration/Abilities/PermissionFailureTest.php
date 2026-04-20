@@ -37,14 +37,6 @@ class PermissionFailureTest extends TestCase {
 	public function set_up(): void {
 		parent::set_up();
 
-		// WC_Install::install() runs in bootstrap, but the WP test framework
-		// rolls back options between tests — including wp_user_roles — so
-		// the WC caps added to the administrator role at bootstrap don't
-		// persist. Re-apply them per test to match a real WC-active site.
-		if ( class_exists( 'WC_Install' ) ) {
-			\WC_Install::create_roles();
-		}
-
 		// Subscriber: has only 'read' capability.
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'subscriber' ] ) );
 
@@ -124,7 +116,22 @@ class PermissionFailureTest extends TestCase {
 	public function test_administrator_is_granted( string $ability_class ): void {
 		$this->skip_if_woocommerce_required( $ability_class );
 
-		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
+		$admin_id = self::factory()->user->create( [ 'role' => 'administrator' ] );
+
+		// WC custom caps (edit_products, edit_shop_orders) are defined by WC
+		// on its custom post types. WC_Install::create_roles() maps them to
+		// the admin role — but that mapping doesn't reliably survive the WP
+		// test framework's transactions and $wp_roles caching. Grant them
+		// directly to the user so the test depends only on user meta, not
+		// on the role system's state.
+		if ( self::is_woocommerce_ability( $ability_class ) ) {
+			$user = get_userdata( $admin_id );
+			foreach ( [ 'edit_products', 'edit_shop_orders', 'manage_woocommerce' ] as $cap ) {
+				$user->add_cap( $cap );
+			}
+		}
+
+		wp_set_current_user( $admin_id );
 
 		$ability = new $ability_class();
 		$result  = $ability->check_permission();
