@@ -224,6 +224,41 @@ class BaseAbilityTest extends TestCase {
 		$this->assertSame( 'test', $args['category'] );
 	}
 
+	/**
+	 * Object-typed input schemas get a `default => []` injected so
+	 * WP_Ability::normalize_input(null) can rescue the upstream mcp-adapter
+	 * ExecuteAbilityAbility bug where empty `{}` parameters become null.
+	 *
+	 * @return void
+	 */
+	public function test_register_ability_injects_root_default_for_object_schemas(): void {
+		$ability = new ObjectSchemaAbility();
+		$ability->register_ability();
+
+		$args   = $GLOBALS['albert_test_registered_abilities']['albert/object-schema'];
+		$schema = $args['input_schema'];
+
+		$this->assertSame( 'object', $schema['type'] );
+		$this->assertArrayHasKey( 'default', $schema );
+		$this->assertSame( [], $schema['default'] );
+	}
+
+	/**
+	 * A child class that already declared a `default` at the schema root
+	 * keeps its own value — the workaround does not overwrite explicit defaults.
+	 *
+	 * @return void
+	 */
+	public function test_register_ability_keeps_existing_root_default(): void {
+		$ability = new ExplicitDefaultAbility();
+		$ability->register_ability();
+
+		$args   = $GLOBALS['albert_test_registered_abilities']['albert/explicit-default'];
+		$schema = $args['input_schema'];
+
+		$this->assertSame( [ 'preset' => 'value' ], $schema['default'] );
+	}
+
 	// ─── Accessors ──────────────────────────────────────────────────
 
 	/**
@@ -263,6 +298,97 @@ class BaseAbilityTest extends TestCase {
 }
 
 // phpcs:disable Generic.Files.OneObjectStructurePerFile.MultipleFound, Squiz.Commenting.ClassComment.Missing
+
+/**
+ * Ability that declares an object-typed input schema with no root default.
+ *
+ * Used to verify prepare_input_schema() injects `default => []` so the
+ * upstream mcp-adapter's empty-parameters-as-null path is rescued.
+ */
+final class ObjectSchemaAbility extends \Albert\Abstracts\BaseAbility {
+
+	/**
+	 * Constructor.
+	 */
+	public function __construct() {
+		$this->id           = 'albert/object-schema';
+		$this->label        = 'Object Schema';
+		$this->description  = 'Object-typed schema, no explicit default.';
+		$this->category     = 'test';
+		$this->input_schema = [
+			'type'       => 'object',
+			'properties' => [
+				'foo' => [ 'type' => 'string' ],
+			],
+		];
+
+		parent::__construct();
+	}
+
+	/**
+	 * Execute — unused by these tests.
+	 *
+	 * @param array<string, mixed> $args Input parameters.
+	 *
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	public function execute( array $args ): array|\WP_Error {
+		return [ 'ok' => true ];
+	}
+
+	/**
+	 * Permission callback — open for tests.
+	 *
+	 * @return bool
+	 */
+	public function check_permission(): bool|\WP_Error {
+		return true;
+	}
+}
+
+/**
+ * Ability that declares its own root-level `default` on the input schema.
+ *
+ * Used to verify prepare_input_schema() does not overwrite explicit defaults.
+ */
+final class ExplicitDefaultAbility extends \Albert\Abstracts\BaseAbility {
+
+	/**
+	 * Constructor.
+	 */
+	public function __construct() {
+		$this->id           = 'albert/explicit-default';
+		$this->label        = 'Explicit Default';
+		$this->description  = 'Declares its own root default.';
+		$this->category     = 'test';
+		$this->input_schema = [
+			'type'    => 'object',
+			'default' => [ 'preset' => 'value' ],
+		];
+
+		parent::__construct();
+	}
+
+	/**
+	 * Execute — unused by these tests.
+	 *
+	 * @param array<string, mixed> $args Input parameters.
+	 *
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	public function execute( array $args ): array|\WP_Error {
+		return [ 'ok' => true ];
+	}
+
+	/**
+	 * Permission callback — open for tests.
+	 *
+	 * @return bool
+	 */
+	public function check_permission(): bool|\WP_Error {
+		return true;
+	}
+}
 
 /**
  * Ability that does NOT override check_permission().
