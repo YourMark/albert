@@ -90,13 +90,11 @@ class EnforceDisabledTest extends TestCase {
 		$ability = new EnforceDisabledStubAbility( $id );
 		$this->manager->add_ability( $ability );
 
-		add_action(
-			'wp_abilities_api_init',
-			static function () use ( $ability ): void {
-				$ability->register_ability();
-			}
-		);
-		do_action( 'wp_abilities_api_init' );
+		// Register directly. Re-firing wp_abilities_api_init would replay every
+		// callback the real plugin already attached during bootstrap, causing
+		// every Albert ability to be re-registered and tripping WP 6.9's
+		// _doing_it_wrong notice for "Ability X is already registered".
+		$ability->register_ability();
 
 		$this->registered_ids[] = $id;
 		return $ability;
@@ -110,22 +108,16 @@ class EnforceDisabledTest extends TestCase {
 	 * @return void
 	 */
 	private function register_third_party_ability( string $id ): void {
-		add_action(
-			'wp_abilities_api_init',
-			static function () use ( $id ): void {
-				wp_register_ability(
-					$id,
-					[
-						'label'               => 'Third Party',
-						'description'         => 'Registered directly, not via Albert.',
-						'category'            => 'site',
-						'execute_callback'    => static fn(): array => [ 'ok' => true ],
-						'permission_callback' => '__return_true',
-					]
-				);
-			}
+		wp_register_ability(
+			$id,
+			[
+				'label'               => 'Third Party',
+				'description'         => 'Registered directly, not via Albert.',
+				'category'            => 'site',
+				'execute_callback'    => static fn(): array => [ 'ok' => true ],
+				'permission_callback' => '__return_true',
+			]
 		);
-		do_action( 'wp_abilities_api_init' );
 
 		$this->registered_ids[] = $id;
 	}
