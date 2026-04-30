@@ -120,7 +120,7 @@ abstract class BaseAbility implements Ability {
 			[
 				'label'               => $this->label,
 				'description'         => $this->description,
-				'input_schema'        => $this->input_schema,
+				'input_schema'        => $this->prepare_input_schema( $this->input_schema ),
 				'output_schema'       => $this->output_schema,
 				'category'            => $this->category !== '' ? $this->category : 'albert',
 				'execute_callback'    => [ $this, 'guarded_execute' ],
@@ -128,6 +128,36 @@ abstract class BaseAbility implements Ability {
 				'meta'                => $this->meta,
 			]
 		);
+	}
+
+	/**
+	 * Prepare the input schema for registration.
+	 *
+	 * Ensures an object-typed root schema carries a `default` of an empty
+	 * object so WP_Ability::normalize_input() can rescue calls that arrive
+	 * with a null payload. The mcp-adapter ExecuteAbilityAbility coerces
+	 * empty `{}` parameters to null via `empty()` before invoking
+	 * `WP_Ability::execute()`; without a root default, validate_input(null)
+	 * fails with "input is not of type object" and the assistant sees an
+	 * unhelpful error for any tool call made without arguments.
+	 *
+	 * Child classes that already declare a root `default` keep theirs.
+	 *
+	 * @param array<string, mixed> $schema Input schema declared by the ability.
+	 *
+	 * @return array<string, mixed> Schema safe to pass through the registry.
+	 * @since 1.1.1
+	 */
+	protected function prepare_input_schema( array $schema ): array {
+		if ( empty( $schema ) ) {
+			return $schema;
+		}
+
+		if ( ( $schema['type'] ?? null ) === 'object' && ! array_key_exists( 'default', $schema ) ) {
+			$schema['default'] = [];
+		}
+
+		return $schema;
 	}
 
 	/**
