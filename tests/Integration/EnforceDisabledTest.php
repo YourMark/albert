@@ -90,14 +90,34 @@ class EnforceDisabledTest extends TestCase {
 		$ability = new EnforceDisabledStubAbility( $id );
 		$this->manager->add_ability( $ability );
 
-		// Register directly. Re-firing wp_abilities_api_init would replay every
-		// callback the real plugin already attached during bootstrap, causing
-		// every Albert ability to be re-registered and tripping WP 6.9's
-		// _doing_it_wrong notice for "Ability X is already registered".
-		$ability->register_ability();
+		// wp_register_ability() requires doing_action( 'wp_abilities_api_init' ),
+		// but the singleton fires that action only once at boot — re-firing it
+		// would replay every plugin callback and re-register every Albert
+		// ability. Mirror WP core's own test pattern: push the action onto
+		// $wp_current_filter so doing_action() returns true, register, pop.
+		$this->register_during_init( fn() => $ability->register_ability() );
 
 		$this->registered_ids[] = $id;
 		return $ability;
+	}
+
+	/**
+	 * Run a registration callback while doing_action( 'wp_abilities_api_init' )
+	 * returns true, without firing the action's other callbacks.
+	 *
+	 * @param callable $register Registration callback.
+	 *
+	 * @return void
+	 */
+	private function register_during_init( callable $register ): void {
+		global $wp_current_filter;
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- WP core's own abilities tests use this exact pattern to satisfy doing_action() in isolation.
+		$wp_current_filter[] = 'wp_abilities_api_init';
+		try {
+			$register();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
 	}
 
 	/**
@@ -108,15 +128,19 @@ class EnforceDisabledTest extends TestCase {
 	 * @return void
 	 */
 	private function register_third_party_ability( string $id ): void {
-		wp_register_ability(
-			$id,
-			[
-				'label'               => 'Third Party',
-				'description'         => 'Registered directly, not via Albert.',
-				'category'            => 'site',
-				'execute_callback'    => static fn(): array => [ 'ok' => true ],
-				'permission_callback' => '__return_true',
-			]
+		$this->register_during_init(
+			static function () use ( $id ): void {
+				wp_register_ability(
+					$id,
+					[
+						'label'               => 'Third Party',
+						'description'         => 'Registered directly, not via Albert.',
+						'category'            => 'site',
+						'execute_callback'    => static fn(): array => [ 'ok' => true ],
+						'permission_callback' => '__return_true',
+					]
+				);
+			}
 		);
 
 		$this->registered_ids[] = $id;
