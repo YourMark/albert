@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Core\Plugin;
+use WP;
 
 /**
  * OAuthDiscovery class
@@ -33,6 +34,7 @@ class OAuthDiscovery implements Hookable {
 	public function register_hooks(): void {
 		add_action( 'init', [ $this, 'add_rewrite_rules' ] );
 		add_action( 'init', [ $this, 'maybe_flush_rewrite_rules' ], 20 );
+		add_action( 'parse_request', [ $this, 'maybe_intercept_well_known' ] );
 		add_action( 'template_redirect', [ $this, 'handle_discovery_request' ] );
 		add_filter( 'query_vars', [ $this, 'add_query_vars' ] );
 
@@ -43,8 +45,14 @@ class OAuthDiscovery implements Hookable {
 	/**
 	 * Prevent WordPress canonical redirect for .well-known endpoints.
 	 *
-	 * This is needed when accessing the site through a tunnel/proxy,
-	 * as WordPress would otherwise redirect to the canonical (local) URL.
+	 * Suppresses canonical redirects that would otherwise strip the trailing
+	 * slash (or perform other URL rewrites) on Albert's OAuth discovery URLs.
+	 * Some hosts — notably Kinsta — add a trailing slash at the edge, and the
+	 * WordPress canonical redirect would bounce it back, producing a redirect
+	 * loop or a 404. We check the requested URL directly rather than the
+	 * `albert_oauth_discovery` query var, so the suppression works even when
+	 * the rewrite rule has not matched yet (for example, with a stale stored
+	 * rewrite-rules option).
 	 *
 	 * @param string $redirect_url  The redirect URL.
 	 * @param string $requested_url The requested URL.
@@ -53,13 +61,80 @@ class OAuthDiscovery implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function prevent_canonical_redirect( string $redirect_url, string $requested_url ): string|false {
-		$discovery = get_query_var( 'albert_oauth_discovery' );
-
-		if ( $discovery ) {
+		if ( $this->is_well_known_request( $requested_url ) ) {
 			return false;
 		}
 
 		return $redirect_url;
+	}
+
+	/**
+	 * Intercept .well-known requests at parse_request to set the discovery query var.
+	 *
+	 * Bypasses the rewrite rule layer, which can fail to match when the stored
+	 * `rewrite_rules` option pre-dates the optional-trailing-slash pattern, or
+	 * when the request reaches WordPress with a trailing slash added by an
+	 * upstream proxy. By setting the query var here, the existing
+	 * `handle_discovery_request()` callback on `template_redirect` runs as
+	 * normal.
+	 *
+	 * @param WP $wp Current WordPress environment instance.
+	 *
+	 * @return void
+	 * @since 1.1.1
+	 */
+	public function maybe_intercept_well_known( WP $wp ): void {
+		// Read the raw request path. The value is passed through wp_parse_url()
+		// and string-compared to two literal endpoint names; it is never echoed
+		// or persisted, so per-character sanitization is not appropriate.
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+
+		$path = $this->extract_well_known_path( $request_uri );
+
+		if ( $path === 'oauth-protected-resource' ) {
+			$wp->query_vars['albert_oauth_discovery'] = 'protected-resource';
+		} elseif ( $path === 'oauth-authorization-server' ) {
+			$wp->query_vars['albert_oauth_discovery'] = 'authorization-server';
+		}
+	}
+
+	/**
+	 * Determine whether a URL targets one of Albert's .well-known endpoints.
+	 *
+	 * @param string $url The URL to inspect.
+	 *
+	 * @return bool True when the URL path is an Albert OAuth discovery endpoint.
+	 * @since 1.1.1
+	 */
+	private function is_well_known_request( string $url ): bool {
+		$path = $this->extract_well_known_path( $url );
+
+		return $path === 'oauth-protected-resource' || $path === 'oauth-authorization-server';
+	}
+
+	/**
+	 * Extract the discovery suffix from a .well-known URL path.
+	 *
+	 * Returns the segment after `.well-known/` with any trailing slash
+	 * removed, or an empty string if the URL does not target a .well-known
+	 * path. Example: `/.well-known/oauth-protected-resource/` returns
+	 * `oauth-protected-resource`.
+	 *
+	 * @param string $url The URL to inspect.
+	 *
+	 * @return string The discovery suffix or an empty string.
+	 * @since 1.1.1
+	 */
+	private function extract_well_known_path( string $url ): string {
+		$path = (string) wp_parse_url( $url, PHP_URL_PATH );
+		$path = trim( $path, '/' );
+
+		if ( ! str_starts_with( $path, '.well-known/' ) ) {
+			return '';
+		}
+
+		return substr( $path, strlen( '.well-known/' ) );
 	}
 
 	/**

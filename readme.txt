@@ -4,7 +4,7 @@ Tags: ai, mcp, oauth, claude, chatgpt
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.1
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -131,6 +131,12 @@ Albert is designed for single-site installations. Multisite support is on the ro
 
 == Changelog ==
 
+= 1.1.1 =
+Bug fix release.
+
+* **Fix:** OAuth discovery endpoints (`/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`) are now reachable when the request arrives with a trailing slash. Some hosts add a trailing slash at the edge, after which WordPress's canonical redirect would strip it again, producing a redirect loop or a 404. The endpoints now respond identically with or without the slash.
+* Discovered by [Marinus Klasen](https://profiles.wordpress.org/mklasen/).
+
 = 1.1.0 =
 Major admin redesign, new activity logging, and a stack of reliability fixes.
 
@@ -183,6 +189,9 @@ Initial release.
 * **Extensible** — Register custom abilities with the WordPress Abilities API. Hookable architecture with filters and actions.
 
 == Upgrade Notice ==
+
+= 1.1.1 =
+Fixes OAuth discovery endpoints when the request URL has a trailing slash. Recommended for sites where the host or CDN adds a trailing slash to .well-known URLs.
 
 = 1.1.0 =
 Redesigned abilities page, new activity logging, and several reliability fixes. Existing enabled / disabled settings are preserved; no migration needed.
