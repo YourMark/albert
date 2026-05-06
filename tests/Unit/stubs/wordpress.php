@@ -16,6 +16,7 @@
 // functions-only (keeps PHPCS's OO/function separation rule happy).
 require_once __DIR__ . '/WP_Error.php';
 require_once __DIR__ . '/WP_REST_Request.php';
+require_once __DIR__ . '/WP.php';
 
 if ( ! function_exists( 'is_wp_error' ) ) {
 	/**
@@ -148,6 +149,37 @@ if ( ! function_exists( 'wp_register_ability' ) ) {
 		}
 
 		$GLOBALS['albert_test_registered_abilities'][ $name ] = $args;
+	}
+}
+
+if ( ! function_exists( 'wp_unslash' ) ) {
+	/**
+	 * Stub wp_unslash that mirrors WordPress's stripslashes_deep behaviour.
+	 *
+	 * @param mixed $value Value to unslash.
+	 *
+	 * @return mixed
+	 */
+	function wp_unslash( mixed $value ): mixed {
+		if ( is_array( $value ) ) {
+			return array_map( 'wp_unslash', $value );
+		}
+
+		return is_string( $value ) ? stripslashes( $value ) : $value;
+	}
+}
+
+if ( ! function_exists( 'wp_parse_url' ) ) {
+	/**
+	 * Stub wp_parse_url that delegates to PHP's parse_url.
+	 *
+	 * @param string $url       The URL to parse.
+	 * @param int    $component The component to retrieve, or -1 for the full array.
+	 *
+	 * @return mixed
+	 */
+	function wp_parse_url( string $url, int $component = -1 ): mixed {
+		return parse_url( $url, $component );
 	}
 }
 
