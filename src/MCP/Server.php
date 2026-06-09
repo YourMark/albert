@@ -130,7 +130,7 @@ class Server implements Hookable {
 	 *
 	 * Uses the same core abilities as the default MCP server.
 	 *
-	 * @return array<int, string> The tool names.
+	 * @return list<string> The tool names.
 	 * @since 1.0.0
 	 */
 	private function get_tools(): array {
