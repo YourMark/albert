@@ -2,7 +2,7 @@
 Contributors: albertai, mark-jansen
 Tags: ai, mcp, oauth, claude, chatgpt
 Requires at least: 6.9
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 8.1
 Stable tag: 1.1.1
 License: GPLv2 or later
