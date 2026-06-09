@@ -85,7 +85,7 @@ class Plugin {
 	 *
 	 * @since 1.0.1
 	 *
-	 * @return string
+	 * @return non-falsy-string
 	 */
 	public static function rest_namespace(): string {
 		static $namespace = null;
@@ -98,7 +98,8 @@ class Plugin {
 			 *
 			 * @param string $namespace Default namespace ('albert/v1').
 			 */
-			$namespace = (string) apply_filters( 'albert/rest_namespace', self::REST_NAMESPACE );
+			$filtered  = apply_filters( 'albert/rest_namespace', self::REST_NAMESPACE );
+			$namespace = ( is_string( $filtered ) && $filtered !== '' && $filtered !== '0' ) ? $filtered : self::REST_NAMESPACE;
 		}
 
 		return $namespace;

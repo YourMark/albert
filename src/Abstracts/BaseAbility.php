@@ -115,8 +115,14 @@ abstract class BaseAbility implements Ability {
 			return;
 		}
 
+		// Ability IDs must be a non-empty, lowercase string per the Abilities API.
+		$ability_id = strtolower( $this->id );
+		if ( $ability_id === '' || $ability_id === '0' ) {
+			return;
+		}
+
 		wp_register_ability(
-			$this->id,
+			$ability_id,
 			[
 				'label'               => $this->label,
 				'description'         => $this->description,
