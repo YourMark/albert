@@ -30,15 +30,17 @@ class Repository {
 	const RETENTION_COUNT = 2;
 
 	/**
-	 * Insert a log entry and prune old entries for the ability.
+	 * Insert a log entry and prune old entries for the ability/status partition.
 	 *
-	 * @param string $ability_name The ability identifier.
-	 * @param int    $user_id      The user ID who executed the ability.
+	 * @param string      $ability_name The ability identifier.
+	 * @param int         $user_id      The user ID who executed the ability.
+	 * @param string      $status       Execution status: 'success' or 'error'. Default 'success'.
+	 * @param string|null $error_code   WP_Error code when status is 'error'. Default null.
 	 *
 	 * @return void
 	 * @since 1.1.0
 	 */
-	public function insert( string $ability_name, int $user_id ): void {
+	public function insert( string $ability_name, int $user_id, string $status = 'success', ?string $error_code = null ): void {
 		global $wpdb;
 
 		$table_name = Installer::get_table_name();
@@ -49,20 +51,24 @@ class Repository {
 			[
 				'ability_name' => $ability_name,
 				'user_id'      => $user_id,
+				'status'       => $status,
+				'error_code'   => $error_code,
 			],
-			[ '%s', '%d' ]
+			[ '%s', '%d', '%s', '%s' ]
 		);
 
-		// Prune old entries after insert.
-		$this->prune_for_ability( $ability_name );
+		// Prune old entries within the same status partition after insert.
+		$this->prune_for_ability( $ability_name, self::RETENTION_COUNT, $status );
 	}
 
 	/**
 	 * Get the latest log entry for a specific ability.
 	 *
+	 * Returns the most recent row regardless of status.
+	 *
 	 * @param string $ability_name The ability identifier.
 	 *
-	 * @return object|null The log entry or null if none found.
+	 * @return object{id: string, ability_name: string, user_id: string, created_at: string, status: string, error_code: string|null}|null The log entry or null if none found.
 	 * @since 1.1.0
 	 */
 	public function latest_for_ability( string $ability_name ): ?object {
@@ -73,7 +79,7 @@ class Repository {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct query required for fetching latest log entry.
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				'SELECT id, ability_name, user_id, created_at FROM %i WHERE ability_name = %s ORDER BY created_at DESC, id DESC LIMIT 1',
+				'SELECT id, ability_name, user_id, created_at, status, error_code FROM %i WHERE ability_name = %s ORDER BY created_at DESC, id DESC LIMIT 1',
 				$table_name,
 				$ability_name
 			)
@@ -85,7 +91,7 @@ class Repository {
 	/**
 	 * Get the latest log entry overall.
 	 *
-	 * @return object|null The log entry or null if none found.
+	 * @return object{id: string, ability_name: string, user_id: string, created_at: string, status: string, error_code: string|null}|null The log entry or null if none found.
 	 * @since 1.1.0
 	 */
 	public function latest_overall(): ?object {
@@ -96,7 +102,7 @@ class Repository {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct query required for fetching latest log entry.
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				'SELECT id, ability_name, user_id, created_at FROM %i ORDER BY created_at DESC, id DESC LIMIT 1',
+				'SELECT id, ability_name, user_id, created_at, status, error_code FROM %i ORDER BY created_at DESC, id DESC LIMIT 1',
 				$table_name
 			)
 		);
@@ -109,7 +115,7 @@ class Repository {
 	 *
 	 * @param int $limit Maximum number of rows to return.
 	 *
-	 * @return array<int, object{id: int, ability_name: string, user_id: int, created_at: string}> List of log rows, newest first.
+	 * @return array<int, object{id: string, ability_name: string, user_id: string, created_at: string, status: string, error_code: string|null}> List of log rows, newest first.
 	 * @since 1.1.0
 	 */
 	public function recent( int $limit = 5 ): array {
@@ -120,7 +126,7 @@ class Repository {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct query required for dashboard recent activity.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				'SELECT id, ability_name, user_id, created_at FROM %i ORDER BY created_at DESC, id DESC LIMIT %d',
+				'SELECT id, ability_name, user_id, created_at, status, error_code FROM %i ORDER BY created_at DESC, id DESC LIMIT %d',
 				$table_name,
 				$limit
 			)
@@ -133,12 +139,12 @@ class Repository {
 	 * Get the latest log entry for each ability in a list.
 	 *
 	 * Returns an associative array keyed by ability_name, each value being
-	 * the most recent log row for that ability. Abilities with no log
-	 * entries are omitted from the result.
+	 * the most recent log row (regardless of status) for that ability.
+	 * Abilities with no log entries are omitted from the result.
 	 *
 	 * @param array<int, string> $ability_names List of ability identifiers.
 	 *
-	 * @return array<string, object> Map of ability_name => log row object.
+	 * @return array<string, object{id: string, ability_name: string, user_id: string, created_at: string, status: string, error_code: string|null}> Map of ability_name => log row object.
 	 * @since 1.1.0
 	 */
 	public function latest_bulk( array $ability_names ): array {
@@ -165,7 +171,7 @@ class Repository {
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- IN clause built from esc_sql() escaped values.
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT l.id, l.ability_name, l.user_id, l.created_at
+				"SELECT l.id, l.ability_name, l.user_id, l.created_at, l.status, l.error_code
 				FROM %i l
 				INNER JOIN (
 					SELECT ability_name, MAX(id) as max_id
@@ -190,23 +196,25 @@ class Repository {
 	}
 
 	/**
-	 * Prune old log entries for an ability, keeping only the most recent.
+	 * Prune old log entries for an ability/status partition, keeping only the most recent.
 	 *
 	 * Uses a derived table pattern to work around MySQL's restriction on
-	 * specifying the target table in a subquery within DELETE.
+	 * specifying the target table in a subquery within DELETE. Pruning is
+	 * status-aware so a burst of failures cannot evict the last success row.
 	 *
 	 * @param string $ability_name The ability identifier.
-	 * @param int    $keep         Number of entries to keep (default: 2).
+	 * @param int    $keep         Number of entries to keep per status partition (default: RETENTION_COUNT).
+	 * @param string $status       Status partition to prune ('success' or 'error'). Default 'success'.
 	 *
 	 * @return void
 	 * @since 1.1.0
 	 */
-	public function prune_for_ability( string $ability_name, int $keep = self::RETENTION_COUNT ): void {
+	public function prune_for_ability( string $ability_name, int $keep = self::RETENTION_COUNT, string $status = 'success' ): void {
 		global $wpdb;
 
 		$table_name = Installer::get_table_name();
 
-		// Delete all rows for this ability except the most recent $keep rows.
+		// Delete all rows for this ability+status except the most recent $keep rows.
 		// The subselect-in-derived-table pattern avoids MySQL's "can't specify
 		// target table for update in FROM clause" error.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct query required for pruning.
@@ -214,18 +222,22 @@ class Repository {
 			$wpdb->prepare(
 				'DELETE FROM %i
 				WHERE ability_name = %s
+				AND status = %s
 				AND id NOT IN (
 					SELECT id FROM (
 						SELECT id FROM %i
 						WHERE ability_name = %s
+						AND status = %s
 						ORDER BY created_at DESC, id DESC
 						LIMIT %d
 					) AS keep
 				)',
 				$table_name,
 				$ability_name,
+				$status,
 				$table_name,
 				$ability_name,
+				$status,
 				$keep
 			)
 		);

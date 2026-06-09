@@ -45,23 +45,44 @@ class LoggerTest extends TestCase {
 	}
 
 	/**
-	 * A successful ability execution writes one log row.
+	 * A successful ability execution writes one log row with status='success'.
 	 *
-	 * Fires the wp_after_execute_ability action directly to verify the
-	 * hooked Logger instance (registered during plugin bootstrap) writes
-	 * the expected row.
+	 * Fires the albert/abilities/after_execute action directly (the hook the
+	 * Logger now uses) to verify the hooked Logger instance writes the expected row.
 	 *
 	 * @return void
 	 */
 	public function test_hook_writes_log_row_on_ability_execution(): void {
-		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
+		$user_id = self::factory()->user->create( [ 'role' => 'administrator' ] );
+		wp_set_current_user( $user_id );
 
-		do_action( 'wp_after_execute_ability', 'albert/create-post', [], [ 'id' => 1 ] );
+		do_action( 'albert/abilities/after_execute', 'albert/create-post', [], [ 'id' => 1 ], $user_id );
 
 		$row = $this->repository->latest_for_ability( 'albert/create-post' );
 
 		$this->assertNotNull( $row );
 		$this->assertSame( 'albert/create-post', $row->ability_name );
+		$this->assertSame( 'success', $row->status );
+		$this->assertNull( $row->error_code );
+	}
+
+	/**
+	 * A WP_Error result writes a log row with status='error' and the error code.
+	 *
+	 * @return void
+	 */
+	public function test_hook_writes_error_row_on_wp_error_result(): void {
+		$user_id = self::factory()->user->create( [ 'role' => 'administrator' ] );
+		wp_set_current_user( $user_id );
+
+		$error = new \WP_Error( 'rest_forbidden', 'You are not allowed.' );
+		do_action( 'albert/abilities/after_execute', 'albert/create-post', [], $error, $user_id );
+
+		$row = $this->repository->latest_for_ability( 'albert/create-post' );
+
+		$this->assertNotNull( $row );
+		$this->assertSame( 'error', $row->status );
+		$this->assertSame( 'rest_forbidden', $row->error_code );
 	}
 
 	/**
@@ -73,7 +94,7 @@ class LoggerTest extends TestCase {
 		add_filter( 'albert/logging/enabled', '__return_false' );
 
 		try {
-			do_action( 'wp_after_execute_ability', 'albert/create-post', [], [ 'id' => 1 ] );
+			do_action( 'albert/abilities/after_execute', 'albert/create-post', [], [ 'id' => 1 ], 1 );
 		} finally {
 			remove_filter( 'albert/logging/enabled', '__return_false' );
 		}
@@ -90,13 +111,13 @@ class LoggerTest extends TestCase {
 	public function test_filter_is_evaluated_per_call(): void {
 		// First call: disabled.
 		add_filter( 'albert/logging/enabled', '__return_false' );
-		do_action( 'wp_after_execute_ability', 'albert/first', [], [] );
+		do_action( 'albert/abilities/after_execute', 'albert/first', [], [], 1 );
 		remove_filter( 'albert/logging/enabled', '__return_false' );
 
 		$this->assertNull( $this->repository->latest_for_ability( 'albert/first' ) );
 
 		// Second call: re-enabled.
-		do_action( 'wp_after_execute_ability', 'albert/second', [], [] );
+		do_action( 'albert/abilities/after_execute', 'albert/second', [], [], 1 );
 
 		$this->assertNotNull( $this->repository->latest_for_ability( 'albert/second' ) );
 	}
@@ -115,12 +136,14 @@ class LoggerTest extends TestCase {
 			/**
 			 * Always throws — simulates a wpdb failure during insert().
 			 *
-			 * @param string $ability_name Ability id.
-			 * @param int    $user_id      User id.
+			 * @param string      $ability_name Ability id.
+			 * @param int         $user_id      User id.
+			 * @param string      $status       Status.
+			 * @param string|null $error_code   Error code.
 			 *
 			 * @throws RuntimeException Always.
 			 */
-			public function insert( string $ability_name, int $user_id ): void {
+			public function insert( string $ability_name, int $user_id, string $status = 'success', ?string $error_code = null ): void {
 				throw new RuntimeException( 'simulated wpdb failure' );
 			}
 		};
@@ -128,7 +151,7 @@ class LoggerTest extends TestCase {
 		$logger = new Logger( $throwing_repo );
 
 		// Should not throw.
-		$logger->log_execution( 'albert/boom', [], [] );
+		$logger->log_execution( 'albert/boom', [], [], 1 );
 
 		$this->assertTrue( true, 'Logger swallowed the exception.' );
 	}

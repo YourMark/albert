@@ -47,7 +47,7 @@ class RepositoryTest extends TestCase {
 	// ─── insert() + auto-prune ───────────────────────────────────────
 
 	/**
-	 * Insert writes a row with the expected columns.
+	 * Insert writes a row with the expected columns including status and error_code.
 	 *
 	 * @return void
 	 */
@@ -60,10 +60,27 @@ class RepositoryTest extends TestCase {
 		$this->assertSame( 'albert/create-post', $row->ability_name );
 		$this->assertSame( 42, (int) $row->user_id );
 		$this->assertNotEmpty( $row->created_at );
+		$this->assertSame( 'success', $row->status );
+		$this->assertNull( $row->error_code );
 	}
 
 	/**
-	 * Retention keeps exactly RETENTION_COUNT (2) rows per ability.
+	 * Insert with status='error' writes the error_code correctly.
+	 *
+	 * @return void
+	 */
+	public function test_insert_with_error_status_writes_error_code(): void {
+		$this->repository->insert( 'albert/create-post', 5, 'error', 'rest_forbidden' );
+
+		$row = $this->repository->latest_for_ability( 'albert/create-post' );
+
+		$this->assertNotNull( $row );
+		$this->assertSame( 'error', $row->status );
+		$this->assertSame( 'rest_forbidden', $row->error_code );
+	}
+
+	/**
+	 * Retention keeps exactly RETENTION_COUNT (2) rows per ability per status.
 	 *
 	 * @return void
 	 */
@@ -76,6 +93,33 @@ class RepositoryTest extends TestCase {
 		$rows = $this->all_rows_for( 'albert/same' );
 
 		$this->assertCount( Repository::RETENTION_COUNT, $rows );
+	}
+
+	/**
+	 * Per-status retention: a burst of errors does not evict the last success row.
+	 *
+	 * Each status partition keeps up to RETENTION_COUNT rows independently so
+	 * a flood of failures cannot push out the success history.
+	 *
+	 * @return void
+	 */
+	public function test_per_status_retention_keeps_success_rows_when_errors_flood(): void {
+		// Insert two success rows (fills the success partition).
+		$this->repository->insert( 'albert/mixed', 1, 'success' );
+		$this->repository->insert( 'albert/mixed', 2, 'success' );
+
+		// Insert four error rows (fills + prunes the error partition).
+		$this->repository->insert( 'albert/mixed', 10, 'error', 'err_a' );
+		$this->repository->insert( 'albert/mixed', 11, 'error', 'err_b' );
+		$this->repository->insert( 'albert/mixed', 12, 'error', 'err_c' );
+		$this->repository->insert( 'albert/mixed', 13, 'error', 'err_d' );
+
+		$success_rows = $this->all_rows_for_status( 'albert/mixed', 'success' );
+		$error_rows   = $this->all_rows_for_status( 'albert/mixed', 'error' );
+
+		// Both partitions should have exactly RETENTION_COUNT rows.
+		$this->assertCount( Repository::RETENTION_COUNT, $success_rows, 'Success partition must retain its rows.' );
+		$this->assertCount( Repository::RETENTION_COUNT, $error_rows, 'Error partition must prune to RETENTION_COUNT.' );
 	}
 
 	/**
@@ -134,6 +178,7 @@ class RepositoryTest extends TestCase {
 		$table = Installer::get_table_name();
 		$now   = current_time( 'mysql' );
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test setup.
 		$wpdb->insert(
 			$table,
 			[
@@ -143,6 +188,7 @@ class RepositoryTest extends TestCase {
 			],
 			[ '%s', '%d', '%s' ]
 		);
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test setup.
 		$wpdb->insert(
 			$table,
 			[
@@ -185,6 +231,24 @@ class RepositoryTest extends TestCase {
 		$this->assertArrayHasKey( 'albert/two', $map );
 		$this->assertSame( 10, (int) $map['albert/one']->user_id );
 		$this->assertSame( 2, (int) $map['albert/two']->user_id );
+	}
+
+	/**
+	 * Returns the new status and error_code fields via latest_bulk().
+	 *
+	 * @return void
+	 */
+	public function test_latest_bulk_returns_status_and_error_code_fields(): void {
+		$this->repository->insert( 'albert/success-ability', 1, 'success' );
+		$this->repository->insert( 'albert/error-ability', 2, 'error', 'rest_forbidden' );
+
+		$map = $this->repository->latest_bulk( [ 'albert/success-ability', 'albert/error-ability' ] );
+
+		$this->assertSame( 'success', $map['albert/success-ability']->status );
+		$this->assertNull( $map['albert/success-ability']->error_code );
+
+		$this->assertSame( 'error', $map['albert/error-ability']->status );
+		$this->assertSame( 'rest_forbidden', $map['albert/error-ability']->error_code );
 	}
 
 	/**
@@ -315,6 +379,30 @@ class RepositoryTest extends TestCase {
 				'SELECT * FROM %i WHERE ability_name = %s ORDER BY id DESC',
 				$table,
 				$ability_name
+			)
+		);
+	}
+
+	/**
+	 * Fetch every row for an ability filtered by status — test helper.
+	 *
+	 * @param string $ability_name Ability id.
+	 * @param string $status       Status value ('success' or 'error').
+	 *
+	 * @return array<int, object>
+	 */
+	private function all_rows_for_status( string $ability_name, string $status ): array {
+		global $wpdb;
+
+		$table = Installer::get_table_name();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test helper.
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				'SELECT * FROM %i WHERE ability_name = %s AND status = %s ORDER BY id DESC',
+				$table,
+				$ability_name,
+				$status
 			)
 		);
 	}

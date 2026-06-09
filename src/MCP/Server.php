@@ -16,7 +16,7 @@ use Albert\Core\Plugin;
 use Albert\OAuth\Server\TokenValidator;
 use WP\MCP\Core\McpAdapter;
 use WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
-use WP\MCP\Infrastructure\Observability\NullMcpObservabilityHandler;
+use Albert\Logging\ObservabilityHandler;
 use WP\MCP\Transport\HttpTransport;
 use WP_Error;
 use WP_REST_Request;
@@ -117,7 +117,7 @@ class Server implements Hookable {
 			ALBERT_VERSION,
 			[ HttpTransport::class ],
 			ErrorLogMcpErrorHandler::class,
-			NullMcpObservabilityHandler::class,
+			ObservabilityHandler::class,
 			$this->get_tools(),
 			[], // Resources.
 			[], // Prompts.

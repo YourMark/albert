@@ -416,16 +416,31 @@ class Dashboard implements Hookable {
 		// Merge in recent ability executions.
 		foreach ( $this->logging_repository->recent( 5 ) as $row ) {
 			$user     = get_userdata( (int) $row->user_id );
-			$events[] = [
-				'icon'      => '⚡',
-				'timestamp' => strtotime( $row->created_at ),
-				'text'      => sprintf(
-					/* translators: 1: Ability identifier, 2: Username */
-					__( '%1$s executed by %2$s', 'albert-ai-butler' ),
-					$row->ability_name,
-					$user ? $user->display_name : __( 'Unknown', 'albert-ai-butler' )
-				),
-			];
+			$is_error = isset( $row->status ) && $row->status === 'error';
+
+			if ( $is_error ) {
+				$events[] = [
+					'icon'      => '⚠',
+					'timestamp' => strtotime( $row->created_at ),
+					'text'      => sprintf(
+						/* translators: 1: Ability identifier, 2: Username */
+						__( '%1$s failed for %2$s', 'albert-ai-butler' ),
+						$row->ability_name,
+						$user ? $user->display_name : __( 'Unknown', 'albert-ai-butler' )
+					),
+				];
+			} else {
+				$events[] = [
+					'icon'      => '⚡',
+					'timestamp' => strtotime( $row->created_at ),
+					'text'      => sprintf(
+						/* translators: 1: Ability identifier, 2: Username */
+						__( '%1$s executed by %2$s', 'albert-ai-butler' ),
+						$row->ability_name,
+						$user ? $user->display_name : __( 'Unknown', 'albert-ai-butler' )
+					),
+				];
+			}
 		}
 
 		// Sort by timestamp DESC and keep the most recent 5.

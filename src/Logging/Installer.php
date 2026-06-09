@@ -26,7 +26,7 @@ class Installer {
 	 * @since 1.1.0
 	 * @var string
 	 */
-	const DB_VERSION = '1.0.0';
+	const DB_VERSION = '1.1.0';
 
 	/**
 	 * Option name for storing database version.
@@ -68,8 +68,11 @@ class Installer {
 			ability_name varchar(191) NOT NULL,
 			user_id bigint(20) unsigned NOT NULL DEFAULT 0,
 			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			status varchar(20) NOT NULL DEFAULT 'success',
+			error_code varchar(100) DEFAULT NULL,
 			PRIMARY KEY  (id),
-			KEY ability_created (ability_name, created_at)
+			KEY ability_created (ability_name, created_at),
+			KEY ability_status (ability_name, status, created_at)
 		) $charset_collate;\n\n";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
