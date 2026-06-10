@@ -5,6 +5,7 @@ parameters:
 		- src/
 	excludePaths:
 		- vendor/
+		- vendor-prefixed/
 		- tests/
 		- bin/
 	bootstrapFiles:

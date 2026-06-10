@@ -36,6 +36,10 @@ CLAUDE.md
 DEVELOPER_GUIDE.md
 plan.md
 
+# Build-only: bundled (Mozart-scoped into src/Dependencies/). Never ship the
+# unscoped copy — it would re-collide with WooCommerce's WP\MCP\ namespace.
+vendor/wordpress/
+
 # Non-permitted vendor files
 vendor/bin/
 vendor/*/bin/

@@ -14,10 +14,10 @@ defined( 'ABSPATH' ) || exit;
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Core\Plugin;
 use Albert\OAuth\Server\TokenValidator;
-use WP\MCP\Core\McpAdapter;
-use WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
-use WP\MCP\Infrastructure\Observability\NullMcpObservabilityHandler;
-use WP\MCP\Transport\HttpTransport;
+use Albert\Vendor\WP\MCP\Core\McpAdapter;
+use Albert\Vendor\WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
+use Albert\Vendor\WP\MCP\Infrastructure\Observability\NullMcpObservabilityHandler;
+use Albert\Vendor\WP\MCP\Transport\HttpTransport;
 use WP_Error;
 use WP_REST_Request;
 
