@@ -45,7 +45,14 @@ phpunit-wp.xml
 ############
 
 /vendor/
-composer.lock
+
+# Mozart-scoped dependencies — generated from vendor/ at install/build time
+# (composer post-install/post-update runs `mozart compose`). Not committed.
+/vendor-prefixed/
+
+# composer.lock IS committed (this is a deployable plugin, not a library) so
+# every environment — dev, CI, release — resolves identical versions, which
+# also pins what Mozart generates.
 
 ############
 ## Node/NPM

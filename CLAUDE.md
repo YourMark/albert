@@ -402,9 +402,46 @@ composer phpcbf
 # Run tests
 composer test
 
+# Regenerate the Mozart-scoped MCP adapter (run after bumping wordpress/mcp-adapter)
+composer mozart
+
 # Activate plugin
 wp plugin activate albert
 ```
+
+## Bundled MCP adapter (Mozart scoping)
+
+`wordpress/mcp-adapter` (and its dep `wordpress/php-mcp-schema`) ship the `WP\MCP\*`
+namespace. **WooCommerce bundles its own, older copy of the same package**, and whichever
+plugin's autoloader registers first wins — so when WC is active, Albert's code would silently
+run WooCommerce's `0.1.0` instead of its own `0.5.0` (a hard-to-spot bug: "unknown error" to the
+LLM, failures not logged).
+
+The fix is **dependency scoping with Mozart** (`coenjacobs/mozart`), set up the standard way:
+
+- Both packages are in **`require-dev`** — they exist only as the *source* to be scoped, and are
+  never shipped unscoped.
+- Mozart copies them into **`vendor-prefixed/`** (the WP-ecosystem convention), rewritten under the
+  **`Albert\Vendor\`** prefix (`Albert\Vendor\WP\MCP\…`), and deletes the originals from `vendor/`
+  (`delete_vendor_directories: true`). Config lives in `composer.json`'s `extra.mozart`.
+- **Generated, not committed.** `vendor-prefixed/` is **gitignored** and regenerated automatically by
+  the `post-install-cmd` / `post-update-cmd` Composer hooks (which run `mozart compose` +
+  `composer dump-autoload`, guarded so they no-op on `--no-dev`). `composer.lock` **is** committed, so
+  every environment resolves identical versions — which also pins what Mozart generates.
+- Autoloaded via the `Albert\\Vendor\\ => vendor-prefixed/` PSR-4 entry (Mozart 1.1.x has no
+  `generate_autoloader`, so a Composer PSR-4 entry is the documented method).
+- Albert's own code references `Albert\Vendor\WP\MCP\…` (never bare `WP\MCP\…`), so it always runs its
+  own copy regardless of WooCommerce. Verify:
+  `wp eval 'echo Albert\Vendor\WP\MCP\Core\McpAdapter::VERSION;'` → `0.5.0`.
+- `vendor-prefixed/` is outside `src/` so the gates skip it naturally; it's also excluded in
+  `phpcs.xml.dist` / `phpstan.neon` for the bare-invocation case.
+- **Bumping `wordpress/mcp-adapter`:** `composer update wordpress/mcp-adapter` — the post-update hook
+  regenerates `vendor-prefixed/` and the lock pins it. Nothing to hand-commit (it's gitignored).
+- **Release/CI:** `release.yml` installs with dev (hook generates `vendor-prefixed/`), then
+  `--no-dev` (strips dev + the unscoped packages), and ships `vendor-prefixed/`.
+- **Caveat (not handled by scoping):** the adapter still fires the global hooks `mcp_adapter_init` /
+  `wp_mcp_init`. Harmless while WooCommerce's MCP *feature* is disabled; if it's ever enabled
+  alongside Albert, those hook names need prefixing too.
 
 ## Development Guidelines
 

@@ -55,7 +55,7 @@ use Albert\OAuth\Endpoints\AuthorizationPage;
 use Albert\OAuth\Endpoints\ClientRegistration;
 use Albert\OAuth\Endpoints\OAuthController;
 use Albert\OAuth\Endpoints\OAuthDiscovery;
-use WP\MCP\Core\McpAdapter;
+use Albert\Vendor\WP\MCP\Core\McpAdapter;
 
 /**
  * Main Plugin Class
