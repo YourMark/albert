@@ -13,10 +13,11 @@ defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Core\Plugin;
+use Albert\Logging\ObservabilityHandler;
 use Albert\OAuth\Server\TokenValidator;
 use Albert\Vendor\WP\MCP\Core\McpAdapter;
 use Albert\Vendor\WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
-use Albert\Vendor\WP\MCP\Infrastructure\Observability\NullMcpObservabilityHandler;
+use Albert\Vendor\WP\MCP\Infrastructure\Observability\Contracts\McpObservabilityHandlerInterface;
 use Albert\Vendor\WP\MCP\Transport\HttpTransport;
 use WP_Error;
 use WP_REST_Request;
@@ -65,6 +66,10 @@ class Server implements Hookable {
 	public function register_hooks(): void {
 		add_action( 'mcp_adapter_init', [ $this, 'create_server' ] );
 		add_filter( 'rest_request_before_callbacks', [ $this, 'add_oauth_discovery_headers' ], 10, 3 );
+
+		// Improve LLM-facing tool errors and log failures rejected before the
+		// ability runs (e.g. input-schema validation).
+		( new ToolCallObserver() )->register_hooks();
 	}
 
 	/**
@@ -108,6 +113,34 @@ class Server implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function create_server( McpAdapter $adapter ): void {
+		/**
+		 * Filters the MCP observability handler class used for the Albert server.
+		 *
+		 * Premium (or any addon) can replace Free's handler by returning a
+		 * class-string that implements McpObservabilityHandlerInterface.
+		 * The class must be instantiable with no constructor arguments.
+		 * Classes that do not implement the interface are ignored and the
+		 * default handler is used instead.
+		 *
+		 * @since 1.2.0
+		 *
+		 * @param class-string<McpObservabilityHandlerInterface> $handler_class Fully-qualified class name. Default ObservabilityHandler::class.
+		 */
+		$filtered = apply_filters( 'albert/mcp/observability_handler', ObservabilityHandler::class );
+
+		// Validate the filtered value implements the required interface.
+		// Fall back to the default handler if the value is invalid.
+		// Validate the filtered value implements the required interface;
+		// fall back to the default handler if the class is unknown or invalid.
+		$observability_handler = ObservabilityHandler::class;
+		if (
+			is_string( $filtered )
+			&& class_exists( $filtered )
+			&& is_a( $filtered, McpObservabilityHandlerInterface::class, true )
+		) {
+			$observability_handler = $filtered;
+		}
+
 		$adapter->create_server(
 			self::SERVER_ID,
 			Plugin::rest_namespace(),
@@ -117,7 +150,7 @@ class Server implements Hookable {
 			ALBERT_VERSION,
 			[ HttpTransport::class ],
 			ErrorLogMcpErrorHandler::class,
-			NullMcpObservabilityHandler::class,
+			$observability_handler,
 			$this->get_tools(),
 			[], // Resources.
 			[], // Prompts.

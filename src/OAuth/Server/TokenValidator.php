@@ -63,6 +63,10 @@ class TokenValidator {
 				);
 			}
 
+			// Record the authenticating connection so it can be attributed at
+			// logging time. Best-effort: never let it affect authentication.
+			ConnectionContext::set( (string) $validated_request->getAttribute( 'oauth_client_id' ) );
+
 			return $user;
 		} catch ( OAuthServerException $e ) {
 			return new WP_Error(

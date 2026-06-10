@@ -60,29 +60,35 @@ albert-ai-butler/
 │   │   │   └── ViewCustomer.php        # albert/woo-view-customer
 │   │   └── WordPress/
 │   │       ├── Posts/
-│   │       │   ├── ListPosts.php       # core/posts/list
-│   │       │   ├── Create.php          # core/posts/create
-│   │       │   ├── Update.php          # core/posts/update
-│   │       │   └── Delete.php          # core/posts/delete
+│   │       │   ├── FindPosts.php       # albert/find-posts
+│   │       │   ├── ViewPost.php        # albert/view-post
+│   │       │   ├── Create.php          # albert/create-post
+│   │       │   ├── Update.php          # albert/update-post
+│   │       │   └── Delete.php          # albert/delete-post
 │   │       ├── Pages/
-│   │       │   ├── ListPages.php       # core/pages/list
-│   │       │   ├── Create.php          # core/pages/create
-│   │       │   ├── Update.php          # core/pages/update
-│   │       │   └── Delete.php          # core/pages/delete
+│   │       │   ├── FindPages.php       # albert/find-pages
+│   │       │   ├── ViewPage.php        # albert/view-page
+│   │       │   ├── Create.php          # albert/create-page
+│   │       │   ├── Update.php          # albert/update-page
+│   │       │   └── Delete.php          # albert/delete-page
 │   │       ├── Users/
-│   │       │   ├── ListUsers.php       # core/users/list
-│   │       │   ├── Create.php          # core/users/create
-│   │       │   ├── Update.php          # core/users/update
-│   │       │   └── Delete.php          # core/users/delete
+│   │       │   ├── FindUsers.php       # albert/find-users
+│   │       │   ├── ViewUser.php        # albert/view-user
+│   │       │   ├── Create.php          # albert/create-user
+│   │       │   ├── Update.php          # albert/update-user
+│   │       │   └── Delete.php          # albert/delete-user
 │   │       ├── Media/
-│   │       │   ├── UploadMedia.php     # core/media/upload
-│   │       │   └── SetFeaturedImage.php # core/media/set-featured-image
+│   │       │   ├── FindMedia.php       # albert/find-media
+│   │       │   ├── ViewMedia.php       # albert/view-media
+│   │       │   ├── UploadMedia.php     # albert/upload-media
+│   │       │   └── SetFeaturedImage.php # albert/set-featured-image
 │   │       └── Taxonomies/
-│   │           ├── ListTaxonomies.php  # core/taxonomies/list
-│   │           ├── ListTerms.php       # core/terms/list
-│   │           ├── CreateTerm.php      # core/terms/create
-│   │           ├── UpdateTerm.php      # core/terms/update
-│   │           └── DeleteTerm.php      # core/terms/delete
+│   │           ├── FindTaxonomies.php  # albert/find-taxonomies
+│   │           ├── FindTerms.php       # albert/find-terms
+│   │           ├── ViewTerm.php        # albert/view-term
+│   │           ├── CreateTerm.php      # albert/create-term
+│   │           ├── UpdateTerm.php      # albert/update-term
+│   │           └── DeleteTerm.php      # albert/delete-term
 │   │
 │   ├── MCP/
 │   │   └── Server.php                  # MCP protocol handler
@@ -170,7 +176,7 @@ use WP_Error;
 
 class MyAbility extends BaseAbility {
     public function __construct() {
-        $this->id          = 'core/example/my-ability';
+        $this->id          = 'albert/my-ability';
         $this->label       = __( 'My Ability', 'albert' );
         $this->description = __( 'Description of what it does.', 'albert' );
         $this->category    = 'core';
@@ -244,11 +250,11 @@ add_action( 'albert/abilities/before_execute', function ( string $ability_id, ar
 }, 10, 3 );
 ```
 
-**`albert/abilities/before_execute/{ability_id}`** (action) — Fires before a specific ability executes. The ability ID is appended to the hook name (e.g. `albert/abilities/before_execute/core/posts/create`).
+**`albert/abilities/before_execute/{ability_id}`** (action) — Fires before a specific ability executes. The ability ID is appended to the hook name (e.g. `albert/abilities/before_execute/albert/create-post`).
 
 ```php
-add_action( 'albert/abilities/before_execute/core/posts/create', function ( array $args, int $user_id ) {
-    // Runs only before the core/posts/create ability.
+add_action( 'albert/abilities/before_execute/albert/create-post', function ( array $args, int $user_id ) {
+    // Runs only before the albert/create-post ability.
 }, 10, 2 );
 ```
 
@@ -263,8 +269,8 @@ add_action( 'albert/abilities/after_execute', function ( string $ability_id, arr
 **`albert/abilities/after_execute/{ability_id}`** (action) — Fires after a specific ability executes. The ability ID is appended to the hook name (e.g. `albert/abilities/after_execute/albert/woo-find-products`).
 
 ```php
-add_action( 'albert/abilities/after_execute/core/posts/create', function ( array $args, $result, int $user_id ) {
-    // Runs only after the core/posts/create ability.
+add_action( 'albert/abilities/after_execute/albert/create-post', function ( array $args, $result, int $user_id ) {
+    // Runs only after the albert/create-post ability.
 }, 10, 3 );
 ```
 
@@ -332,54 +338,92 @@ wp_set_current_user( $user->ID );
 Handles MCP protocol communication with AI assistants. Authenticated via OAuth.
 
 #### 5. Logging (`src/Logging/`)
-Minimal ability execution logging for the Free tier.
+Minimal ability execution logging for the Free tier. When Premium is active it takes over the same shared table with richer columns and time-based retention.
 
-**Hook used:** `wp_after_execute_ability` (WP core hook, fires on success only)
+**Hook used:** `albert/abilities/after_execute` (Albert hook, fires on both success and failure, covers WP_Error results). `ObservabilityHandler` also captures MCP-level errors that never reach a BaseAbility.
 
-**Filter:** `albert/logging/enabled` (bool, default `true`) — return `false` to suppress Free's writes. Premium uses this filter to disable Free's logger and use its own extended logging instead.
+**Filter:** `albert/logging/enabled` (bool, default `true`) — means "Free's DB writers are active". Premium returns `false` from this filter to suppress Free's writes and take over logging itself. Returning `false` does **not** disable logging globally — Premium's own writers still run. The `albert/logging/ability_failed` notification action fires regardless of this value so Premium always receives failure signals.
 
-**Schema (frozen):**
+**Schema (DB_VERSION 1.4.0, option `albert_logging_db_version`):**
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `BIGINT UNSIGNED AUTO_INCREMENT` | PK |
 | `ability_name` | `VARCHAR(191)` | Ability identifier |
 | `user_id` | `BIGINT UNSIGNED` | `get_current_user_id()`, 0 if unauthenticated |
 | `created_at` | `DATETIME` | Default `CURRENT_TIMESTAMP` |
+| `status` | `VARCHAR(20)` | `'success'` or `'error'` |
+| `error_code` | `VARCHAR(100)` | WP_Error code, NULL on success |
+| `error_message` | `LONGTEXT` | WP_Error message (1.3.0+), NULL on success. Captured by both Free and Premium loggers; rides in the `$context` array, surfaced in Premium's Activity Log expandable error detail |
+| `duration_ms` | `INT UNSIGNED` | Execution ms; NULL unless Premium populates |
+| `ip_address` | `VARCHAR(45)` | Client IP; NULL unless Premium populates |
+| `user_agent` | `TEXT` | Client UA; NULL unless Premium populates |
+| `referrer` | `TEXT` | HTTP Referer; NULL unless Premium populates |
+| `request_id` | `VARCHAR(36)` | UUID; NULL unless Premium populates |
+| `input` | `LONGTEXT` | JSON input payload; capped by default; NULL unless Premium populates |
+| `output` | `LONGTEXT` | JSON success result payload (1.4.0+); capped by default; NULL on error / unless Premium populates |
+| `client_id` | `VARCHAR(80)` | OAuth client id of the calling connection (1.4.0+); NULL for non-MCP calls / unless Premium populates |
+| `client_name` | `VARCHAR(255)` | Snapshotted OAuth client name at call time (1.4.0+); NULL for non-MCP calls / unless Premium populates |
 
-**Retention:** Last 2 records per `ability_name`, pruned on insert.
+**Indexes:** `ability_created (ability_name, created_at)`, `ability_status (ability_name, status, created_at)`
+
+**Retention:** Free hard-codes 2 records per `(ability_name, status)` partition, pruned on insert — only when `albert/logging/enabled` is true (i.e. Free is the writer). Premium uses time-based retention (default 90 days) via `Cron/LogCleanup`.
 
 **Components:**
-- `Installer.php` — Creates/upgrades `{$wpdb->prefix}albert_ability_log` table
-- `Repository.php` — CRUD operations, bulk fetch, auto-prune
-- `Logger.php` — Hooks `wp_after_execute_ability`, gated by filter
+- `Installer.php` — Creates/upgrades `{$wpdb->prefix}albert_ability_log` table (dbDelta, idempotent)
+- `Repository.php` — CRUD operations, bulk fetch, auto-prune; `insert()` accepts optional `$context` array for the rich columns
+- `Logger.php` — Hooks `albert/abilities/after_execute`; gated by `albert/logging/enabled` filter; fires `albert/logging/ability_failed` before the gate
+- `ObservabilityHandler.php` — MCP-level error recorder; gated by same filter
+- `ExecutionLogMarker.php` — request-scoped dedup marker; set by the loggers when they write a row, checked by the observers so a single call never logs twice
+
+**Failure capture (1.4.0+):** Failures that happen *before* the ability runs are now logged too.
+Input rejected by the WordPress Abilities API (`WP_Ability::execute()` validates `input_schema`
+*before* the registered callback, so `guarded_execute`/`after_execute` never fire) is caught by
+`MCP/ToolCallObserver` on the adapter's `mcp_adapter_tool_call_result` filter. It (1) rewrites the
+verbose `ability_invalid_input` error into an actionable message for the LLM — e.g. *"Missing
+required parameter: `title`."* — and never returns a blank/"unknown error"; and (2) fires
+`albert/abilities/after_execute` for the failure so it logs through the normal path (status `error`,
+`error_code`, `error_message`, `input`, connection identity). The `ExecutionLogMarker` keeps an
+ability that *did* execute from being logged twice. `ObservabilityHandler` (Free + Premium) now also
+captures the error message (from the adapter's `failure_reason` tag) and is dedup-guarded by the same
+marker, covering permission/transport/unknown failures the adapter surfaces via `record_event`.
+
+**Connection identity (1.4.0+):** `OAuth/Server/ConnectionContext` is a request-scoped holder set by `TokenValidator::validate_request()` when a Bearer token is validated. It records the OAuth `client_id` (and lazily resolves a snapshot `client_name`) so Premium's logger can attribute each row to the connection that made the call. Public accessors `ConnectionContext::client_id()` / `client_name()` are how add-ons read it — true end-user IPs are not obtainable for MCP calls (requests originate from the assistant's servers), so the OAuth connection is the meaningful "who" signal.
+
+**Payload capture (Premium, 1.4.0+):** Premium captures `input` and `output` (success result only). Both are byte-capped by default (`Logger::DEFAULT_PAYLOAD_LIMIT`, 65535) with a `…[truncated, N more characters]` marker; truncated payloads render raw. Filters: `albert/premium/logging/full_capture` (bool, default false — store uncapped; the Activity Log page shows a warning when active) and `albert/premium/logging/payload_limit` (int bytes).
 
 **Admin surfaces:**
-- Dashboard widget: "Albert - Last Activity" showing most recent execution
-- Abilities page: "Last run" line in each ability's expanded details
+- Dashboard widget: "Recent Activity" showing most recent executions with status pills
+- Abilities page: "Last run" line in each ability's expanded details with status pill + upsell when Premium is not active
 
 ### Current Abilities
 
 | ID | Description | Group |
 |----|-------------|-------|
-| `core/posts/list` | List posts with filters | posts |
-| `core/posts/create` | Create a new post | posts |
-| `core/posts/update` | Update existing post | posts |
-| `core/posts/delete` | Delete a post | posts |
-| `core/pages/list` | List pages | pages |
-| `core/pages/create` | Create a page | pages |
-| `core/pages/update` | Update a page | pages |
-| `core/pages/delete` | Delete a page | pages |
-| `core/users/list` | List users | users |
-| `core/users/create` | Create a user | users |
-| `core/users/update` | Update a user | users |
-| `core/users/delete` | Delete a user | users |
-| `core/media/upload` | Sideload media from URL | media |
-| `core/media/set-featured-image` | Set post featured image | media |
-| `core/taxonomies/list` | List taxonomies | taxonomies |
-| `core/terms/list` | List taxonomy terms | taxonomies |
-| `core/terms/create` | Create a term | taxonomies |
-| `core/terms/update` | Update a term | taxonomies |
-| `core/terms/delete` | Delete a term | taxonomies |
+| `albert/find-posts` | Find posts with filters | posts |
+| `albert/view-post` | View a single post | posts |
+| `albert/create-post` | Create a new post | posts |
+| `albert/update-post` | Update existing post | posts |
+| `albert/delete-post` | Delete a post | posts |
+| `albert/find-pages` | Find pages | pages |
+| `albert/view-page` | View a single page | pages |
+| `albert/create-page` | Create a page | pages |
+| `albert/update-page` | Update a page | pages |
+| `albert/delete-page` | Delete a page | pages |
+| `albert/find-users` | Find users | users |
+| `albert/view-user` | View a single user | users |
+| `albert/create-user` | Create a user | users |
+| `albert/update-user` | Update a user | users |
+| `albert/delete-user` | Delete a user | users |
+| `albert/find-media` | Find media items | media |
+| `albert/view-media` | View a single media item | media |
+| `albert/upload-media` | Sideload media from URL | media |
+| `albert/set-featured-image` | Set post featured image | media |
+| `albert/find-taxonomies` | Find taxonomies | taxonomies |
+| `albert/find-terms` | Find taxonomy terms | terms |
+| `albert/view-term` | View a single term | terms |
+| `albert/create-term` | Create a term | terms |
+| `albert/update-term` | Update a term | terms |
+| `albert/delete-term` | Delete a term | terms |
 | `albert/woo-find-products` | Search/list WooCommerce products | products |
 | `albert/woo-view-product` | View a single product | products |
 | `albert/woo-find-orders` | Search/list WooCommerce orders | orders |

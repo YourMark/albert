@@ -580,6 +580,10 @@ class AbilitiesPage implements Hookable {
 	/**
 	 * Render the log line for an ability.
 	 *
+	 * Shows a glowing status dot paired with a visible word (Success / Failed)
+	 * so status is never conveyed by colour alone (WCAG 2.2 AA, 1.4.1),
+	 * followed by "x ago by {name}" and — for failures — the error code.
+	 *
 	 * @param string                $ability_id      The ability identifier.
 	 * @param array<string, object> $ability_log_map Map of ability_name => latest log row.
 	 *
@@ -599,15 +603,51 @@ class AbilitiesPage implements Hookable {
 		/**
 		 * Log entry from the map.
 		 *
-		 * @var object{id: string, ability_name: string, user_id: string, created_at: string} $log
+		 * @var object{id: string, ability_name: string, user_id: string, created_at: string, status: string, error_code: string|null} $log
 		 */
 		$log          = $ability_log_map[ $ability_id ];
 		$user         = get_userdata( (int) $log->user_id );
 		$display_name = $user ? $user->display_name : __( 'Unknown user', 'albert-ai-butler' );
 		$created_utc  = get_gmt_from_date( $log->created_at, 'U' );
 		$time_diff    = human_time_diff( (int) $created_utc, time() );
+		$is_error     = isset( $log->status ) && $log->status === 'error';
+
+		if ( $is_error ) {
+			$error_code = isset( $log->error_code ) && $log->error_code !== '' ? $log->error_code : null;
+			?>
+			<span class="albert-ability__log-line albert-ability__log-line--error">
+				<span class="albert-status-dot albert-status-dot--error">
+					<span class="albert-status-dot__dot" aria-hidden="true"></span>
+					<span class="albert-status-dot__label"><?php esc_html_e( 'Failed', 'albert-ai-butler' ); ?></span>
+				</span>
+				<?php
+				if ( $error_code !== null ) {
+					printf(
+						/* translators: 1: human time diff, 2: user display name, 3: error code. */
+						esc_html__( '%1$s ago by %2$s (%3$s)', 'albert-ai-butler' ),
+						esc_html( $time_diff ),
+						'<strong>' . esc_html( $display_name ) . '</strong>',
+						'<code>' . esc_html( $error_code ) . '</code>'
+					);
+				} else {
+					printf(
+						/* translators: 1: human time diff, 2: user display name. */
+						esc_html__( '%1$s ago by %2$s', 'albert-ai-butler' ),
+						esc_html( $time_diff ),
+						'<strong>' . esc_html( $display_name ) . '</strong>'
+					);
+				}
+				?>
+			</span>
+			<?php
+			return;
+		}
 		?>
 		<span class="albert-ability__log-line">
+			<span class="albert-status-dot albert-status-dot--success">
+				<span class="albert-status-dot__dot" aria-hidden="true"></span>
+				<span class="albert-status-dot__label"><?php esc_html_e( 'Success', 'albert-ai-butler' ); ?></span>
+			</span>
 			<?php
 			printf(
 				/* translators: 1: human time diff, 2: user display name. */
