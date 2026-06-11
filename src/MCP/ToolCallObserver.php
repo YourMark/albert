@@ -45,6 +45,19 @@ class ToolCallObserver {
 	const META_TOOL_PREFIX = 'mcp-adapter/';
 
 	/**
+	 * Error codes for input rejected by schema validation before the ability ran.
+	 *
+	 * These are self-correcting: the assistant is handed an actionable message
+	 * and retries with the fix. Their message is improved for the LLM, but they
+	 * are intentionally NOT logged — a self-correcting rejection is noise in an
+	 * owner-facing activity log.
+	 *
+	 * @since 1.2.0
+	 * @var array<int, string>
+	 */
+	const VALIDATION_REJECTION_CODES = [ 'ability_invalid_input', 'rest_invalid_param', 'rest_missing_callback_param' ];
+
+	/**
 	 * Register the adapter result filter.
 	 *
 	 * @return void
@@ -76,11 +89,13 @@ class ToolCallObserver {
 
 		$improved = $this->improve_message( $result, $tool_name );
 
-		// If the ability never executed (input rejected by schema validation
-		// before guarded_execute ran), after_execute never fired and nothing
-		// was logged. Surface it through the normal logging path. Abilities that
-		// did execute are already marked, so we never double-log them here.
-		if ( ! ExecutionLogMarker::has( $tool_name ) ) {
+		// A missing/invalid-parameter rejection is self-correcting — the assistant
+		// gets the improved message and retries — so it is NOT logged; doing so
+		// would only add noise. Every other unmarked pre-execute failure still
+		// logs through after_execute (abilities that did execute are already
+		// marked, so we never double-log them here).
+		$is_rejection = in_array( (string) $result->get_error_code(), self::VALIDATION_REJECTION_CODES, true );
+		if ( ! $is_rejection && ! ExecutionLogMarker::has( $tool_name ) ) {
 			do_action(
 				'albert/abilities/after_execute',
 				$tool_name,
@@ -107,7 +122,7 @@ class ToolCallObserver {
 		$raw     = trim( (string) $error->get_error_message() );
 		$message = '';
 
-		if ( in_array( $code, [ 'ability_invalid_input', 'rest_invalid_param', 'rest_missing_callback_param' ], true ) ) {
+		if ( in_array( $code, self::VALIDATION_REJECTION_CODES, true ) ) {
 			$message = $this->format_validation_message( $raw );
 		}
 

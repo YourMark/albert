@@ -46,6 +46,19 @@ class ObservabilityHandler implements McpObservabilityHandlerInterface {
 	const META_TOOL_PREFIX = 'mcp-adapter/';
 
 	/**
+	 * Validation-rejection error codes that are deliberately not logged.
+	 *
+	 * A missing/invalid-parameter rejection is self-correcting — the assistant
+	 * gets an actionable message and retries — so it is excluded here as well as
+	 * in {@see \Albert\MCP\ToolCallObserver}. Logging it would only add noise to
+	 * an owner-facing activity log.
+	 *
+	 * @since 1.2.0
+	 * @var array<int, string>
+	 */
+	const VALIDATION_REJECTION_CODES = [ 'ability_invalid_input', 'rest_invalid_param', 'rest_missing_callback_param' ];
+
+	/**
 	 * Record an MCP observability event.
 	 *
 	 * Only processes `mcp.request` events with status=error that carry a
@@ -111,7 +124,14 @@ class ObservabilityHandler implements McpObservabilityHandlerInterface {
 				return;
 			}
 
-			$error_code    = isset( $tags['error_code'] ) ? (string) $tags['error_code'] : null;
+			$error_code = isset( $tags['error_code'] ) ? (string) $tags['error_code'] : null;
+
+			// A self-correcting input rejection is not logged (noise); the
+			// assistant still gets the improved message via ToolCallObserver.
+			if ( $error_code !== null && in_array( $error_code, self::VALIDATION_REJECTION_CODES, true ) ) {
+				return;
+			}
+
 			$error_message = self::extract_message( $tags );
 			$user_id       = get_current_user_id();
 			$context       = $error_message !== null ? [ 'error_message' => $error_message ] : [];

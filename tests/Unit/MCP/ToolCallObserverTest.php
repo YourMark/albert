@@ -141,12 +141,13 @@ class ToolCallObserverTest extends TestCase {
 	}
 
 	/**
-	 * A pre-execute failure fires after_execute so it gets logged.
+	 * A genuine (non-validation) pre-execute failure fires after_execute so it
+	 * gets logged.
 	 *
 	 * @return void
 	 */
 	public function test_fires_after_execute_when_unmarked(): void {
-		$this->observer->handle( $this->invalid_input( 'title is a required property of input.' ), [ 'a' => 1 ], 'albert/create-post' );
+		$this->observer->handle( new WP_Error( 'rest_cannot_create', 'Sorry, you are not allowed to create posts.' ), [ 'a' => 1 ], 'albert/create-post' );
 
 		$fired = array_filter(
 			$GLOBALS['albert_test_hooks'],
@@ -158,6 +159,28 @@ class ToolCallObserverTest extends TestCase {
 	}
 
 	/**
+	 * A self-correcting validation rejection still improves the message, but is
+	 * NOT logged — it would only add noise to an owner-facing log.
+	 *
+	 * @return void
+	 */
+	public function test_validation_rejection_improves_message_but_is_not_logged(): void {
+		$out = $this->observer->handle( $this->invalid_input( 'title is a required property of input.' ), [ 'a' => 1 ], 'albert/create-post' );
+
+		// Message is still improved for the assistant.
+		$this->assertSame( 'Missing required parameter: `title`.', $out->get_error_message() );
+
+		// But nothing is logged.
+		$fired = array_filter(
+			$GLOBALS['albert_test_hooks'],
+			static function ( array $h ): bool {
+				return $h['hook'] === 'albert/abilities/after_execute';
+			}
+		);
+		$this->assertCount( 0, $fired );
+	}
+
+	/**
 	 * An already-logged ability is not re-fired (no double-log).
 	 *
 	 * @return void
@@ -165,7 +188,7 @@ class ToolCallObserverTest extends TestCase {
 	public function test_skips_after_execute_when_marked(): void {
 		ExecutionLogMarker::mark( 'albert/create-post' );
 
-		$this->observer->handle( $this->invalid_input( 'title is a required property of input.' ), [], 'albert/create-post' );
+		$this->observer->handle( new WP_Error( 'rest_cannot_create', 'Sorry.' ), [], 'albert/create-post' );
 
 		$fired = array_filter(
 			$GLOBALS['albert_test_hooks'],
