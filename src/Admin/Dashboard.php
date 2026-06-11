@@ -421,17 +421,24 @@ class Dashboard implements Hookable {
 		global $wpdb;
 		$tables = Installer::get_table_names();
 
-		// Get most recent token creations (new connections).
+		// Get the most recent distinct connections — one row per client, not per
+		// token. A new access-token row is created on every silent refresh (about
+		// hourly), so keying on the client and its registration time avoids
+		// surfacing a "new connection" each time the session merely refreshes.
+		// INNER JOIN ensures the client actually obtained a token, MAX(user_id)
+		// recovers the authorizing user (clients register anonymously), and
+		// UNIX_TIMESTAMP() yields a time-zone-safe epoch.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$connections = $wpdb->get_results(
 			$wpdb->prepare(
-				'SELECT t.client_id, t.user_id, t.created_at, c.name
-				FROM %i t
-				LEFT JOIN %i c ON t.client_id = c.client_id
-				ORDER BY t.created_at DESC
+				'SELECT c.client_id, c.name, UNIX_TIMESTAMP( c.created_at ) AS created_ts, MAX( t.user_id ) AS user_id
+				FROM %i c
+				INNER JOIN %i t ON t.client_id = c.client_id
+				GROUP BY c.client_id, c.name, c.created_at
+				ORDER BY c.created_at DESC
 				LIMIT %d',
-				$tables['access_tokens'],
 				$tables['clients'],
+				$tables['access_tokens'],
 				5
 			)
 		);
@@ -454,7 +461,7 @@ class Dashboard implements Hookable {
 
 			$events[] = [
 				'status'    => 'connection',
-				'timestamp' => strtotime( $row->created_at ),
+				'timestamp' => (int) $row->created_ts,
 				'event'     => $event,
 				'actor'     => $user ? $user->display_name : __( 'System', 'albert-ai-butler' ),
 			];
@@ -467,7 +474,7 @@ class Dashboard implements Hookable {
 
 			$events[] = [
 				'status'    => $is_error ? 'error' : 'success',
-				'timestamp' => strtotime( $row->created_at ),
+				'timestamp' => (int) $row->created_ts,
 				'event'     => $this->resolve_ability_label( $row->ability_name ),
 				'actor'     => $user ? $user->display_name : __( 'Unknown', 'albert-ai-butler' ),
 			];

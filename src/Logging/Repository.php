@@ -148,7 +148,11 @@ class Repository {
 	 *
 	 * @param int $limit Maximum number of rows to return.
 	 *
-	 * @return array<int, object{id: string, ability_name: string, user_id: string, created_at: string, status: string, error_code: string|null}> List of log rows, newest first.
+	 * `created_ts` is the row's created_at converted to a Unix timestamp by the
+	 * database, which sidesteps any mismatch between the MySQL server time zone
+	 * (used by CURRENT_TIMESTAMP) and PHP's time zone.
+	 *
+	 * @return array<int, object{id: string, ability_name: string, user_id: string, created_at: string, created_ts: string, status: string, error_code: string|null}> List of log rows, newest first.
 	 * @since 1.1.0
 	 */
 	public function recent( int $limit = 5 ): array {
@@ -159,7 +163,7 @@ class Repository {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct query required for dashboard recent activity.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				'SELECT id, ability_name, user_id, created_at, status, error_code FROM %i ORDER BY created_at DESC, id DESC LIMIT %d',
+				'SELECT id, ability_name, user_id, created_at, UNIX_TIMESTAMP( created_at ) AS created_ts, status, error_code FROM %i ORDER BY created_at DESC, id DESC LIMIT %d',
 				$table_name,
 				$limit
 			)
