@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\MCP\Server as McpServer;
-use Albert\OAuth\Database\Installer;
+use Albert\Database\Tables;
 use Albert\OAuth\Repositories\RefreshTokenRepository;
 
 /**
@@ -762,7 +762,7 @@ class Connections implements Hookable {
 	private function render_active_connections_section(): void {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// List the currently-active sessions (non-revoked, unexpired access
 		// tokens). "Connected" reflects when the connection was first established
@@ -937,7 +937,7 @@ class Connections implements Hookable {
 			return;
 		}
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// Get active sessions grouped by client, with first connection time.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -1089,7 +1089,7 @@ class Connections implements Hookable {
 	 */
 	private function get_user_session_count( int $user_id ): int {
 		global $wpdb;
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// Count distinct clients with non-revoked tokens (sessions persist via refresh tokens).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching

@@ -9,7 +9,7 @@
 
 namespace Albert\OAuth\Repositories;
 
-use Albert\OAuth\Database\Installer;
+use Albert\Database\Tables;
 use Albert\OAuth\Entities\RefreshTokenEntity;
 use League\OAuth2\Server\Entities\RefreshTokenEntityInterface;
 use League\OAuth2\Server\Repositories\RefreshTokenRepositoryInterface;
@@ -44,7 +44,7 @@ class RefreshTokenRepository implements RefreshTokenRepositoryInterface {
 	public function persistNewRefreshToken( RefreshTokenEntityInterface $refresh_token_entity ): void {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table, no caching needed.
 		$wpdb->insert(
@@ -70,7 +70,7 @@ class RefreshTokenRepository implements RefreshTokenRepositoryInterface {
 	public function revokeRefreshToken( $token_id ): void {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
 		$wpdb->update(
@@ -93,7 +93,7 @@ class RefreshTokenRepository implements RefreshTokenRepositoryInterface {
 	public function isRefreshTokenRevoked( $token_id ): bool {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$revoked = $wpdb->get_var(
@@ -123,7 +123,7 @@ class RefreshTokenRepository implements RefreshTokenRepositoryInterface {
 	public function revokeRefreshTokensByAccessToken( string $access_token_id ): void {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
 		$wpdb->update(
@@ -144,7 +144,7 @@ class RefreshTokenRepository implements RefreshTokenRepositoryInterface {
 	public function cleanupExpiredTokens(): int {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->query(

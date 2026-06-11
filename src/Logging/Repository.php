@@ -11,6 +11,8 @@ namespace Albert\Logging;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Database\Tables;
+
 /**
  * Repository class
  *
@@ -64,7 +66,7 @@ class Repository {
 	public function insert( string $ability_name, int $user_id, string $status = 'success', ?string $error_code = null, array $context = [] ): void {
 		global $wpdb;
 
-		$table_name = Installer::get_table_name();
+		$table_name = Tables::ability_log();
 
 		$data    = [
 			'ability_name' => $ability_name,
@@ -107,7 +109,7 @@ class Repository {
 	public function latest_for_ability( string $ability_name ): ?object {
 		global $wpdb;
 
-		$table_name = Installer::get_table_name();
+		$table_name = Tables::ability_log();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct query required for fetching latest log entry.
 		$row = $wpdb->get_row(
@@ -130,7 +132,7 @@ class Repository {
 	public function latest_overall(): ?object {
 		global $wpdb;
 
-		$table_name = Installer::get_table_name();
+		$table_name = Tables::ability_log();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct query required for fetching latest log entry.
 		$row = $wpdb->get_row(
@@ -158,7 +160,7 @@ class Repository {
 	public function recent( int $limit = 5 ): array {
 		global $wpdb;
 
-		$table_name = Installer::get_table_name();
+		$table_name = Tables::ability_log();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct query required for dashboard recent activity.
 		$rows = $wpdb->get_results(
@@ -191,7 +193,7 @@ class Repository {
 			return [];
 		}
 
-		$table_name = Installer::get_table_name();
+		$table_name = Tables::ability_log();
 
 		// Sanitize ability names for direct use in the query.
 		// Each name is escaped via esc_sql() and wrapped in quotes.
@@ -249,7 +251,7 @@ class Repository {
 	public function prune_for_ability( string $ability_name, int $keep = self::RETENTION_COUNT, string $status = 'success' ): void {
 		global $wpdb;
 
-		$table_name = Installer::get_table_name();
+		$table_name = Tables::ability_log();
 
 		// Delete all rows for this ability+status except the most recent $keep rows.
 		// The subselect-in-derived-table pattern avoids MySQL's "can't specify
@@ -291,7 +293,7 @@ class Repository {
 	public function truncate(): void {
 		global $wpdb;
 
-		$table_name = Installer::get_table_name();
+		$table_name = Tables::ability_log();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct query required for truncate.
 		$wpdb->query( $wpdb->prepare( 'TRUNCATE TABLE %i', $table_name ) );

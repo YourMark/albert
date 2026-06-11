@@ -12,7 +12,7 @@ namespace Albert\Admin;
 defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
-use Albert\OAuth\Database\Installer;
+use Albert\Database\Tables;
 
 /**
  * Settings class
@@ -358,7 +358,7 @@ class Settings implements Hookable {
 	public static function revoke_user_tokens( int $user_id ): void {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// Get all access token IDs for this user.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching

@@ -9,7 +9,7 @@
 
 namespace Albert\OAuth\Repositories;
 
-use Albert\OAuth\Database\Installer;
+use Albert\Database\Tables;
 use Albert\OAuth\Entities\AccessTokenEntity;
 use League\OAuth2\Server\Entities\AccessTokenEntityInterface;
 use League\OAuth2\Server\Entities\ClientEntityInterface;
@@ -64,7 +64,7 @@ class AccessTokenRepository implements AccessTokenRepositoryInterface {
 	public function persistNewAccessToken( AccessTokenEntityInterface $access_token_entity ): void {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 		$scopes = [];
 
 		foreach ( $access_token_entity->getScopes() as $scope ) {
@@ -98,7 +98,7 @@ class AccessTokenRepository implements AccessTokenRepositoryInterface {
 	public function revokeAccessToken( $token_id ): void {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
 		$wpdb->update(
@@ -121,7 +121,7 @@ class AccessTokenRepository implements AccessTokenRepositoryInterface {
 	public function isAccessTokenRevoked( $token_id ): bool {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$revoked = $wpdb->get_var(
@@ -151,7 +151,7 @@ class AccessTokenRepository implements AccessTokenRepositoryInterface {
 	public function getAccessTokensByUser( ?int $user_id = null ): array {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		if ( $user_id === null ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -185,7 +185,7 @@ class AccessTokenRepository implements AccessTokenRepositoryInterface {
 	public function deleteAccessToken( string $token_id ): bool {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
 		$result = $wpdb->delete(
@@ -206,7 +206,7 @@ class AccessTokenRepository implements AccessTokenRepositoryInterface {
 	public function cleanupExpiredTokens(): int {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->query(
