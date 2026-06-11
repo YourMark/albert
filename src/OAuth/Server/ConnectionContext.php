@@ -4,7 +4,7 @@
  *
  * @package Albert
  * @subpackage OAuth\Server
- * @since      1.4.0
+ * @since      1.2.0
  */
 
 namespace Albert\OAuth\Server;
@@ -27,14 +27,14 @@ defined( 'ABSPATH' ) || exit;
  * This lives in Core (Free) so add-ons can read the connection identity through
  * the public accessors without reaching into the OAuth internals.
  *
- * @since 1.4.0
+ * @since 1.2.0
  */
 class ConnectionContext {
 
 	/**
 	 * The current connection's OAuth client identifier, or null.
 	 *
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 * @var string|null
 	 */
 	private static ?string $client_id = null;
@@ -42,7 +42,7 @@ class ConnectionContext {
 	/**
 	 * The resolved client name snapshot, or null.
 	 *
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 * @var string|null
 	 */
 	private static ?string $client_name = null;
@@ -50,7 +50,7 @@ class ConnectionContext {
 	/**
 	 * Whether the client name has been resolved for the current client id.
 	 *
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 * @var bool
 	 */
 	private static bool $name_resolved = false;
@@ -61,7 +61,7 @@ class ConnectionContext {
 	 * @param string|null $client_id The OAuth client identifier, or null/empty to clear.
 	 *
 	 * @return void
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 */
 	public static function set( ?string $client_id ): void {
 		$client_id = ( is_string( $client_id ) && $client_id !== '' ) ? $client_id : null;
@@ -78,7 +78,7 @@ class ConnectionContext {
 	 * Get the current connection's OAuth client identifier.
 	 *
 	 * @return string|null The client id, or null when the request is not OAuth-authenticated.
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 */
 	public static function client_id(): ?string {
 		return self::$client_id;
@@ -91,7 +91,7 @@ class ConnectionContext {
 	 * time it is requested, so requests that never log pay no query cost.
 	 *
 	 * @return string|null The client name, or null when unknown / not OAuth-authenticated.
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 */
 	public static function client_name(): ?string {
 		if ( self::$client_id === null ) {
@@ -110,7 +110,7 @@ class ConnectionContext {
 	 * Reset the holder. Primarily for test isolation.
 	 *
 	 * @return void
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 */
 	public static function reset(): void {
 		self::$client_id     = null;
@@ -124,7 +124,7 @@ class ConnectionContext {
 	 * @param string $client_id The OAuth client identifier.
 	 *
 	 * @return string|null The client name, or null when not found.
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 */
 	private static function resolve_name( string $client_id ): ?string {
 		global $wpdb;

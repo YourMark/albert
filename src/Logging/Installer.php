@@ -23,10 +23,10 @@ class Installer {
 	/**
 	 * Database version.
 	 *
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 * @var string
 	 */
-	const DB_VERSION = '1.4.0';
+	const DB_VERSION = '1.2.0';
 
 	/**
 	 * Option name for storing database version.

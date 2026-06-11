@@ -4,7 +4,7 @@
  *
  * @package Albert
  * @subpackage MCP
- * @since      1.4.0
+ * @since      1.2.0
  */
 
 namespace Albert\MCP;
@@ -32,14 +32,14 @@ use WP_Error;
  *     {@see ExecutionLogMarker} prevents double-logging an ability that *did*
  *     execute and was already logged.
  *
- * @since 1.4.0
+ * @since 1.2.0
  */
 class ToolCallObserver {
 
 	/**
 	 * Meta-tool prefix that is not a real ability and must be ignored.
 	 *
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 * @var string
 	 */
 	const META_TOOL_PREFIX = 'mcp-adapter/';
@@ -48,7 +48,7 @@ class ToolCallObserver {
 	 * Register the adapter result filter.
 	 *
 	 * @return void
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 */
 	public function register_hooks(): void {
 		add_filter( 'mcp_adapter_tool_call_result', [ $this, 'handle' ], 10, 3 );
@@ -62,7 +62,7 @@ class ToolCallObserver {
 	 * @param string $tool_name The tool (ability) name that was called.
 	 *
 	 * @return mixed The (possibly improved) result.
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 */
 	public function handle( $result, $args, string $tool_name ) {
 		if ( ! is_wp_error( $result ) ) {
@@ -100,7 +100,7 @@ class ToolCallObserver {
 	 * @param string   $tool_name The ability name.
 	 *
 	 * @return WP_Error A new error carrying the original code/data and a clearer message.
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 */
 	private function improve_message( WP_Error $error, string $tool_name ): WP_Error {
 		$code    = (string) $error->get_error_code();
@@ -134,7 +134,7 @@ class ToolCallObserver {
 	 * @param string $raw The raw validation message.
 	 *
 	 * @return string A concise, LLM-friendly message (empty if not parseable).
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 */
 	private function format_validation_message( string $raw ): string {
 		$reason = $raw;

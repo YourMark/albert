@@ -137,7 +137,7 @@ class ObservabilityHandler implements McpObservabilityHandlerInterface {
 	 * @param array<string, mixed> $tags Event tags from the adapter router.
 	 *
 	 * @return string|null The message, or null when none is present.
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 */
 	protected static function extract_message( array $tags ): ?string {
 		foreach ( [ 'failure_reason', 'error_message' ] as $key ) {

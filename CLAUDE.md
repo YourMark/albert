@@ -344,7 +344,7 @@ Minimal ability execution logging for the Free tier. When Premium is active it t
 
 **Filter:** `albert/logging/enabled` (bool, default `true`) — means "Free's DB writers are active". Premium returns `false` from this filter to suppress Free's writes and take over logging itself. Returning `false` does **not** disable logging globally — Premium's own writers still run. The `albert/logging/ability_failed` notification action fires regardless of this value so Premium always receives failure signals.
 
-**Schema (DB_VERSION 1.4.0, option `albert_logging_db_version`):**
+**Schema (DB_VERSION 1.2.0, option `albert_logging_db_version`):**
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `BIGINT UNSIGNED AUTO_INCREMENT` | PK |
@@ -353,16 +353,16 @@ Minimal ability execution logging for the Free tier. When Premium is active it t
 | `created_at` | `DATETIME` | Default `CURRENT_TIMESTAMP` |
 | `status` | `VARCHAR(20)` | `'success'` or `'error'` |
 | `error_code` | `VARCHAR(100)` | WP_Error code, NULL on success |
-| `error_message` | `LONGTEXT` | WP_Error message (1.3.0+), NULL on success. Captured by both Free and Premium loggers; rides in the `$context` array, surfaced in Premium's Activity Log expandable error detail |
+| `error_message` | `LONGTEXT` | WP_Error message (1.2.0+), NULL on success. Captured by both Free and Premium loggers; rides in the `$context` array, surfaced in Premium's Activity Log expandable error detail |
 | `duration_ms` | `INT UNSIGNED` | Execution ms; NULL unless Premium populates |
 | `ip_address` | `VARCHAR(45)` | Client IP; NULL unless Premium populates |
 | `user_agent` | `TEXT` | Client UA; NULL unless Premium populates |
 | `referrer` | `TEXT` | HTTP Referer; NULL unless Premium populates |
 | `request_id` | `VARCHAR(36)` | UUID; NULL unless Premium populates |
 | `input` | `LONGTEXT` | JSON input payload; capped by default; NULL unless Premium populates |
-| `output` | `LONGTEXT` | JSON success result payload (1.4.0+); capped by default; NULL on error / unless Premium populates |
-| `client_id` | `VARCHAR(80)` | OAuth client id of the calling connection (1.4.0+); NULL for non-MCP calls / unless Premium populates |
-| `client_name` | `VARCHAR(255)` | Snapshotted OAuth client name at call time (1.4.0+); NULL for non-MCP calls / unless Premium populates |
+| `output` | `LONGTEXT` | JSON success result payload (1.2.0+); capped by default; NULL on error / unless Premium populates |
+| `client_id` | `VARCHAR(80)` | OAuth client id of the calling connection (1.2.0+); NULL for non-MCP calls / unless Premium populates |
+| `client_name` | `VARCHAR(255)` | Snapshotted OAuth client name at call time (1.2.0+); NULL for non-MCP calls / unless Premium populates |
 
 **Indexes:** `ability_created (ability_name, created_at)`, `ability_status (ability_name, status, created_at)`
 
@@ -375,7 +375,7 @@ Minimal ability execution logging for the Free tier. When Premium is active it t
 - `ObservabilityHandler.php` — MCP-level error recorder; gated by same filter
 - `ExecutionLogMarker.php` — request-scoped dedup marker; set by the loggers when they write a row, checked by the observers so a single call never logs twice
 
-**Failure capture (1.4.0+):** Failures that happen *before* the ability runs are now logged too.
+**Failure capture (1.2.0+):** Failures that happen *before* the ability runs are now logged too.
 Input rejected by the WordPress Abilities API (`WP_Ability::execute()` validates `input_schema`
 *before* the registered callback, so `guarded_execute`/`after_execute` never fire) is caught by
 `MCP/ToolCallObserver` on the adapter's `mcp_adapter_tool_call_result` filter. It (1) rewrites the
@@ -387,9 +387,9 @@ ability that *did* execute from being logged twice. `ObservabilityHandler` (Free
 captures the error message (from the adapter's `failure_reason` tag) and is dedup-guarded by the same
 marker, covering permission/transport/unknown failures the adapter surfaces via `record_event`.
 
-**Connection identity (1.4.0+):** `OAuth/Server/ConnectionContext` is a request-scoped holder set by `TokenValidator::validate_request()` when a Bearer token is validated. It records the OAuth `client_id` (and lazily resolves a snapshot `client_name`) so Premium's logger can attribute each row to the connection that made the call. Public accessors `ConnectionContext::client_id()` / `client_name()` are how add-ons read it — true end-user IPs are not obtainable for MCP calls (requests originate from the assistant's servers), so the OAuth connection is the meaningful "who" signal.
+**Connection identity (1.2.0+):** `OAuth/Server/ConnectionContext` is a request-scoped holder set by `TokenValidator::validate_request()` when a Bearer token is validated. It records the OAuth `client_id` (and lazily resolves a snapshot `client_name`) so Premium's logger can attribute each row to the connection that made the call. Public accessors `ConnectionContext::client_id()` / `client_name()` are how add-ons read it — true end-user IPs are not obtainable for MCP calls (requests originate from the assistant's servers), so the OAuth connection is the meaningful "who" signal.
 
-**Payload capture (Premium, 1.4.0+):** Premium captures `input` and `output` (success result only). Both are byte-capped by default (`Logger::DEFAULT_PAYLOAD_LIMIT`, 65535) with a `…[truncated, N more characters]` marker; truncated payloads render raw. Filters: `albert/premium/logging/full_capture` (bool, default false — store uncapped; the Activity Log page shows a warning when active) and `albert/premium/logging/payload_limit` (int bytes).
+**Payload capture (Premium, 1.2.0+):** Premium captures `input` and `output` (success result only). Both are byte-capped by default (`Logger::DEFAULT_PAYLOAD_LIMIT`, 65535) with a `…[truncated, N more characters]` marker; truncated payloads render raw. Filters: `albert/premium/logging/full_capture` (bool, default false — store uncapped; the Activity Log page shows a warning when active) and `albert/premium/logging/payload_limit` (int bytes).
 
 **Admin surfaces:**
 - Dashboard widget: "Recent Activity" showing most recent executions with status pills

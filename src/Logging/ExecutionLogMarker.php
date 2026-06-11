@@ -4,7 +4,7 @@
  *
  * @package Albert
  * @subpackage Logging
- * @since      1.4.0
+ * @since      1.2.0
  */
 
 namespace Albert\Logging;
@@ -25,14 +25,14 @@ defined( 'ABSPATH' ) || exit;
  * A single PHP request serves a single MCP tool call, but the marker is keyed
  * by ability name to stay correct under any batching.
  *
- * @since 1.4.0
+ * @since 1.2.0
  */
 class ExecutionLogMarker {
 
 	/**
 	 * Ability names already logged this request.
 	 *
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 * @var array<string, true>
 	 */
 	private static array $logged = [];
@@ -43,7 +43,7 @@ class ExecutionLogMarker {
 	 * @param string $ability_name The ability identifier.
 	 *
 	 * @return void
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 */
 	public static function mark( string $ability_name ): void {
 		if ( $ability_name !== '' ) {
@@ -57,7 +57,7 @@ class ExecutionLogMarker {
 	 * @param string $ability_name The ability identifier.
 	 *
 	 * @return bool True when a row was already written for this ability.
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 */
 	public static function has( string $ability_name ): bool {
 		return isset( self::$logged[ $ability_name ] );
@@ -67,7 +67,7 @@ class ExecutionLogMarker {
 	 * Reset the marker. Primarily for test isolation.
 	 *
 	 * @return void
-	 * @since 1.4.0
+	 * @since 1.2.0
 	 */
 	public static function reset(): void {
 		self::$logged = [];
