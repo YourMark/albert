@@ -143,7 +143,7 @@ class LoggerTest extends TestCase {
 			 *
 			 * @throws RuntimeException Always.
 			 */
-			public function insert( string $ability_name, int $user_id, string $status = 'success', ?string $error_code = null ): void {
+			public function insert( string $ability_name, int $user_id, string $status = 'success', ?string $error_code = null, array $context = [] ): void {
 				throw new RuntimeException( 'simulated wpdb failure' );
 			}
 		};
