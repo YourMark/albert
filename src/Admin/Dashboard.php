@@ -340,13 +340,13 @@ class Dashboard implements Hookable {
 					<?php } ?>
 					<?php if ( $premium_not_active ) { ?>
 						<div class="albert-upsell-cta">
-							<h3 class="albert-upsell-cta__title"><?php esc_html_e( 'See your full activity history', 'albert-ai-butler' ); ?></h3>
+							<h3 class="albert-upsell-cta__title"><?php esc_html_e( 'Your complete activity log', 'albert-ai-butler' ); ?></h3>
 							<ul class="albert-upsell-cta__benefits">
-								<li><?php esc_html_e( 'Every request kept — not just the last 2', 'albert-ai-butler' ); ?></li>
-								<li><?php esc_html_e( 'Execution time & input per call', 'albert-ai-butler' ); ?></li>
-								<li><?php esc_html_e( 'Filter by user, ability & date', 'albert-ai-butler' ); ?></li>
+								<li><?php esc_html_e( 'Keep months or years of history', 'albert-ai-butler' ); ?></li>
+								<li><?php esc_html_e( 'Filter by user, assistant or date', 'albert-ai-butler' ); ?></li>
+								<li><?php esc_html_e( 'See the details of each action, including errors', 'albert-ai-butler' ); ?></li>
 							</ul>
-							<a class="button button-primary albert-upsell-cta__button" href="<?php echo esc_url( 'https://wordpress.org/plugins/albert/' ); ?>" target="_blank" rel="noopener noreferrer">
+							<a class="button button-primary albert-upsell-cta__button" href="<?php echo esc_url( 'https://albertwp.com/add-ons/premium-service/' ); ?>" target="_blank" rel="noopener noreferrer">
 								<?php esc_html_e( 'Upgrade to Premium', 'albert-ai-butler' ); ?>
 								<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'albert-ai-butler' ); ?></span>
 							</a>
