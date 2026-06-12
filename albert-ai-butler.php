@@ -100,8 +100,9 @@ function albert_deactivate(): void {
 
 register_deactivation_hook( __FILE__, 'albert_deactivate' );
 
-// Register uninstall hooks for database cleanup.
-register_uninstall_hook( __FILE__, [ 'Albert\Logging\Installer', 'uninstall' ] );
+// Drop all Albert tables (ability log + OAuth) on uninstall. Fires only when the
+// plugin is deleted — not on update or deactivate.
+register_uninstall_hook( __FILE__, [ 'Albert\Database\Installer', 'uninstall' ] );
 
 /**
  * Add settings link to plugin action links.

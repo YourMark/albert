@@ -14,36 +14,32 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Installer class
  *
- * Owns creation and versioned upgrades of every Albert table (the ability log
- * and the OAuth tables). One DB version, one upgrade path:
+ * Owns creation and upgrades of every Albert table (the ability log and the
+ * OAuth tables). Migrations are keyed on the plugin version, not a separate
+ * schema number:
  *
- *  - {@see self::install()} runs on activation — creates/updates all tables.
- *  - {@see self::maybe_upgrade()} runs on every load (`plugins_loaded`) and is
- *    a cheap no-op until {@see self::DB_VERSION} moves ahead of the stored
- *    version, at which point it re-runs the idempotent `dbDelta` so updates
- *    apply without re-activating the plugin.
+ *  - {@see self::install()} runs on activation — creates the tables and stamps
+ *    the current plugin version.
+ *  - {@see self::maybe_upgrade()} runs on every load (`plugins_loaded`) and is a
+ *    cheap no-op until the plugin version advances, at which point it re-runs
+ *    the idempotent, additive `dbDelta` so updates apply without re-activating.
  *
- * Bump {@see self::DB_VERSION} whenever a CREATE TABLE statement changes.
+ * Keying on the plugin version means there is no separate db-version to forget
+ * to bump: every release advances the gate, and `dbDelta` only adds what is
+ * missing, so the schema always converges. The cost is one harmless `dbDelta`
+ * on releases that did not touch the schema — negligible at Albert's cadence.
  *
  * @since 1.2.0
  */
 class Installer {
 
 	/**
-	 * Current schema version. Bump on any DDL change.
+	 * Option holding the plugin version the schema was last built for.
 	 *
 	 * @since 1.2.0
 	 * @var string
 	 */
-	const DB_VERSION = '1.0.0';
-
-	/**
-	 * Option storing the installed schema version.
-	 *
-	 * @since 1.2.0
-	 * @var string
-	 */
-	const DB_VERSION_OPTION = 'albert_db_version';
+	const VERSION_OPTION = 'albert_db_version';
 
 	/**
 	 * Create or update all tables and record the schema version.
@@ -56,24 +52,52 @@ class Installer {
 	 */
 	public static function install(): void {
 		self::create_tables();
-		update_option( self::DB_VERSION_OPTION, self::DB_VERSION );
+		self::stamp_version();
 	}
 
 	/**
-	 * Run the migration only when the stored version is behind the code version.
+	 * Re-run the schema build when the plugin version has advanced.
 	 *
 	 * Cheap enough for `plugins_loaded`: a single option read + version compare;
-	 * the `dbDelta` runs only when an upgrade is pending.
+	 * the idempotent `dbDelta` runs only on the first load after an update.
 	 *
 	 * @return void
 	 * @since 1.2.0
 	 */
 	public static function maybe_upgrade(): void {
-		$installed = (string) get_option( self::DB_VERSION_OPTION, '0' );
+		$current = self::plugin_version();
 
-		if ( version_compare( $installed, self::DB_VERSION, '<' ) ) {
+		if ( $current === '' ) {
+			return;
+		}
+
+		if ( version_compare( (string) get_option( self::VERSION_OPTION, '0' ), $current, '<' ) ) {
 			self::install();
 		}
+	}
+
+	/**
+	 * Stamp the running plugin version as the schema's built-for version.
+	 *
+	 * @return void
+	 * @since 1.2.0
+	 */
+	private static function stamp_version(): void {
+		$current = self::plugin_version();
+
+		if ( $current !== '' ) {
+			update_option( self::VERSION_OPTION, $current );
+		}
+	}
+
+	/**
+	 * The running plugin version, or '' when unavailable (e.g. unit context).
+	 *
+	 * @return string
+	 * @since 1.2.0
+	 */
+	private static function plugin_version(): string {
+		return defined( 'ALBERT_VERSION' ) ? (string) ALBERT_VERSION : '';
 	}
 
 	/**
@@ -90,7 +114,7 @@ class Installer {
 			$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', $table ) );
 		}
 
-		delete_option( self::DB_VERSION_OPTION );
+		delete_option( self::VERSION_OPTION );
 	}
 
 	/**

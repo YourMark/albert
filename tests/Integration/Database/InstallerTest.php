@@ -73,8 +73,8 @@ class InstallerTest extends TestCase {
 	 */
 	public function test_install_records_db_version_option(): void {
 		$this->assertSame(
-			Installer::DB_VERSION,
-			get_option( Installer::DB_VERSION_OPTION )
+			(string) ALBERT_VERSION,
+			get_option( Installer::VERSION_OPTION )
 		);
 	}
 
@@ -154,7 +154,7 @@ class InstallerTest extends TestCase {
 	public function test_uninstall_removes_version_option(): void {
 		Installer::uninstall();
 
-		$this->assertFalse( get_option( Installer::DB_VERSION_OPTION ) );
+		$this->assertFalse( get_option( Installer::VERSION_OPTION ) );
 
 		// Re-install for any downstream tests in the run.
 		Installer::install();
@@ -167,10 +167,10 @@ class InstallerTest extends TestCase {
 	 */
 	public function test_install_after_uninstall_recreates_option(): void {
 		Installer::uninstall();
-		$this->assertFalse( get_option( Installer::DB_VERSION_OPTION ) );
+		$this->assertFalse( get_option( Installer::VERSION_OPTION ) );
 
 		Installer::install();
 
-		$this->assertSame( Installer::DB_VERSION, get_option( Installer::DB_VERSION_OPTION ) );
+		$this->assertSame( (string) ALBERT_VERSION, get_option( Installer::VERSION_OPTION ) );
 	}
 }

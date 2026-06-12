@@ -386,6 +386,13 @@ class Plugin {
 			delete_option( 'albert_external_url' );
 		}
 
+		// The per-context schema-version options were superseded by the unified
+		// albert_db_version when the Database installer was centralised in 1.2.0.
+		if ( version_compare( $stored_version, '1.2.0', '<' ) ) {
+			delete_option( 'albert_logging_db_version' );
+			delete_option( 'albert_oauth_db_version' );
+		}
+
 		update_option( 'albert_installed_version', $current_version, false );
 	}
 
