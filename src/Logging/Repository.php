@@ -84,12 +84,14 @@ class Repository {
 		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Direct insert required for logging.
-		$wpdb->insert( $table_name, $data, $formats );
+		$inserted = $wpdb->insert( $table_name, $data, $formats );
 
-		// Prune only when Free is the writer (i.e. albert/logging/enabled is true).
-		// When Premium is active it returns false from this filter and manages
-		// its own time-based retention — Free must not apply its 2-row cap.
-		if ( apply_filters( 'albert/logging/enabled', true ) ) {
+		// Prune only when the row was actually written and Free is the writer
+		// (i.e. albert/logging/enabled is true). Skipping the prune on a failed
+		// insert avoids evicting a surviving row without adding a replacement.
+		// When Premium is active the filter returns false and it manages its own
+		// time-based retention — Free must not apply its 2-row cap.
+		if ( $inserted !== false && apply_filters( 'albert/logging/enabled', true ) ) {
 			$this->prune_for_ability( $ability_name, self::RETENTION_COUNT, $status );
 		}
 	}
@@ -181,7 +183,7 @@ class Repository {
 	 *
 	 * @param array<int, string> $ability_names List of ability identifiers.
 	 *
-	 * @return array<string, object{id: string, ability_name: string, user_id: string, created_at: string, status: string, error_code: string|null}> Map of ability_name => log row object.
+	 * @return array<string, object{id: string, ability_name: string, user_id: string, created_at: string, created_ts: string, status: string, error_code: string|null}> Map of ability_name => log row object.
 	 * @since 1.1.0
 	 */
 	public function latest_bulk( array $ability_names ): array {
@@ -208,7 +210,7 @@ class Repository {
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- IN clause built from esc_sql() escaped values.
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT l.id, l.ability_name, l.user_id, l.created_at, l.status, l.error_code
+				"SELECT l.id, l.ability_name, l.user_id, l.created_at, UNIX_TIMESTAMP( l.created_at ) AS created_ts, l.status, l.error_code
 				FROM %i l
 				INNER JOIN (
 					SELECT ability_name, MAX(id) as max_id

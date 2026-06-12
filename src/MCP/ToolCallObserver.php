@@ -77,7 +77,7 @@ class ToolCallObserver {
 	 * @return mixed The (possibly improved) result.
 	 * @since 1.2.0
 	 */
-	public function handle( $result, $args, string $tool_name ) {
+	public function handle( $result, $args, string $tool_name ): mixed {
 		if ( ! is_wp_error( $result ) ) {
 			return $result;
 		}
