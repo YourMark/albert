@@ -603,13 +603,12 @@ class AbilitiesPage implements Hookable {
 		/**
 		 * Log entry from the map.
 		 *
-		 * @var object{id: string, ability_name: string, user_id: string, created_at: string, status: string, error_code: string|null} $log
+		 * @var object{id: string, ability_name: string, user_id: string, created_at: string, created_ts: string, status: string, error_code: string|null} $log
 		 */
 		$log          = $ability_log_map[ $ability_id ];
 		$user         = get_userdata( (int) $log->user_id );
 		$display_name = $user ? $user->display_name : __( 'Unknown user', 'albert-ai-butler' );
-		$created_utc  = get_gmt_from_date( $log->created_at, 'U' );
-		$time_diff    = human_time_diff( (int) $created_utc, time() );
+		$time_diff    = human_time_diff( (int) $log->created_ts, time() );
 		$is_error     = isset( $log->status ) && $log->status === 'error';
 
 		if ( $is_error ) {

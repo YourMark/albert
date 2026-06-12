@@ -128,8 +128,6 @@ class Server implements Hookable {
 		 */
 		$filtered = apply_filters( 'albert/mcp/observability_handler', ObservabilityHandler::class );
 
-		// Validate the filtered value implements the required interface.
-		// Fall back to the default handler if the value is invalid.
 		// Validate the filtered value implements the required interface;
 		// fall back to the default handler if the class is unknown or invalid.
 		$observability_handler = ObservabilityHandler::class;

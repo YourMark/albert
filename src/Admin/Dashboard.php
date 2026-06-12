@@ -545,7 +545,7 @@ class Dashboard implements Hookable {
 	 * @param string $status One of `success`, `error`, or `connection`.
 	 *
 	 * @return void
-	 * @since 1.1.0
+	 * @since 1.2.0
 	 */
 	private function render_status_dot( string $status ): void {
 		switch ( $status ) {

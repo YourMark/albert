@@ -71,12 +71,13 @@ class LoggerTest extends TestCase {
 			->expects( $this->any() )
 			->method( 'insert' )
 			->willReturnCallback(
-				function ( string $ability_name, int $user_id, string $status = 'success', ?string $error_code = null ) use ( &$inserts_ref ): void {
+				function ( string $ability_name, int $user_id, string $status = 'success', ?string $error_code = null, array $context = [] ) use ( &$inserts_ref ): void {
 					$inserts_ref[] = [
 						'ability_name' => $ability_name,
 						'user_id'      => $user_id,
 						'status'       => $status,
 						'error_code'   => $error_code,
+						'context'      => $context,
 					];
 				}
 			);
@@ -115,6 +116,7 @@ class LoggerTest extends TestCase {
 		$this->assertCount( 1, $this->inserts );
 		$this->assertSame( 'error', $this->inserts[0]['status'] );
 		$this->assertSame( 'rest_forbidden', $this->inserts[0]['error_code'] );
+		$this->assertSame( 'You do not have permission.', $this->inserts[0]['context']['error_message'] );
 	}
 
 	/**
