@@ -309,6 +309,30 @@ class AbilitiesManager implements Hookable {
 	}
 
 	/**
+	 * Resolve an ability ID to its human-readable label.
+	 *
+	 * Reads the label from the in-memory ability instances the manager holds,
+	 * which are populated during bootstrap independently of the WordPress
+	 * Abilities API registration timing. This lets callers resolve labels in
+	 * contexts where wp_get_ability() is not yet safe to call (e.g. admin pages
+	 * that render before the abilities registry is populated).
+	 *
+	 * Returns null for IDs the manager does not hold (e.g. third-party
+	 * abilities registered directly with WordPress), so callers can fall back
+	 * to another resolver.
+	 *
+	 * @param string $id Ability ID.
+	 *
+	 * @return string|null Human-readable label, or null when not held.
+	 * @since 1.2.0
+	 */
+	public function get_label( string $id ): ?string {
+		$ability = $this->abilities[ $id ] ?? null;
+
+		return $ability?->get_label();
+	}
+
+	/**
 	 * Determine whether the current request is the abilities management context.
 	 *
 	 * The Albert → Abilities admin page must always show every registered

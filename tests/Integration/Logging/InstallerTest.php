@@ -75,6 +75,7 @@ class InstallerTest extends TestCase {
 		global $wpdb;
 
 		// Seed a row and capture its id.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test setup.
 		$wpdb->insert(
 			Installer::get_table_name(),
 			[
@@ -136,5 +137,63 @@ class InstallerTest extends TestCase {
 		Installer::install();
 
 		$this->assertSame( Installer::DB_VERSION, get_option( Installer::DB_VERSION_OPTION ) );
+	}
+
+	/**
+	 * Simulates an in-place upgrade from schema v1.0.0 to v1.1.0.
+	 *
+	 * Seeds the version option as '1.0.0' and inserts a row without the new
+	 * columns, then calls install() which runs dbDelta to add them. Verifies
+	 * that the new columns exist, old rows default to status='success', and
+	 * the db_version option reflects 1.1.0.
+	 *
+	 * @return void
+	 */
+	public function test_upgrade_from_1_0_0_adds_status_and_error_code_columns(): void {
+		global $wpdb;
+
+		$table = Installer::get_table_name();
+
+		// Simulate the pre-1.1.0 state: pretend db_version is '1.0.0'.
+		// dbDelta will add the new columns when install() runs.
+		update_option( Installer::DB_VERSION_OPTION, '1.0.0' );
+
+		// Insert a legacy row without the new columns (only base columns).
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test setup.
+		$wpdb->query(
+			$wpdb->prepare(
+				'INSERT INTO %i (ability_name, user_id) VALUES (%s, %d)',
+				$table,
+				'core/posts/list',
+				1
+			)
+		);
+		$legacy_id = (int) $wpdb->insert_id;
+
+		// Run the upgrade.
+		Installer::install();
+
+		// Verify db_version is now current.
+		$this->assertSame( Installer::DB_VERSION, get_option( Installer::DB_VERSION_OPTION ) );
+
+		// Verify new columns exist.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Schema introspection.
+		$columns = $wpdb->get_col( $wpdb->prepare( 'SHOW COLUMNS FROM %i', $table ) );
+		$this->assertContains( 'status', $columns );
+		$this->assertContains( 'error_code', $columns );
+
+		// Verify old row defaults to status='success'.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test verification.
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				'SELECT status, error_code FROM %i WHERE id = %d',
+				$table,
+				$legacy_id
+			)
+		);
+
+		$this->assertNotNull( $row );
+		$this->assertSame( 'success', $row->status );
+		$this->assertNull( $row->error_code );
 	}
 }

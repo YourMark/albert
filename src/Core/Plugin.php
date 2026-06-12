@@ -277,6 +277,22 @@ class Plugin {
 	}
 
 	/**
+	 * Get the abilities manager instance.
+	 *
+	 * Returns null until built-in abilities have been registered on the `init`
+	 * hook (see {@see self::register_abilities()}). Callers that run during
+	 * admin page render — well after `init` — can rely on the manager being
+	 * populated, and use it to resolve ability labels without touching the
+	 * WordPress Abilities API.
+	 *
+	 * @return AbilitiesManager|null The abilities manager, or null if not yet built.
+	 * @since 1.2.0
+	 */
+	public function get_abilities_manager(): ?AbilitiesManager {
+		return $this->abilities_manager;
+	}
+
+	/**
 	 * Register addon admin submenu pages.
 	 *
 	 * Addon plugins can add pages to the Albert admin menu via the
