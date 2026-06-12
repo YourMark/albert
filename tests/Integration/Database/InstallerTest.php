@@ -147,6 +147,48 @@ class InstallerTest extends TestCase {
 	}
 
 	/**
+	 * maybe_upgrade() runs the schema build when the stored version is behind,
+	 * advancing the version while preserving existing rows (additive migration).
+	 *
+	 * @return void
+	 */
+	public function test_maybe_upgrade_triggers_when_behind(): void {
+		global $wpdb;
+
+		// Pretend the site is on an older plugin version.
+		update_option( Installer::VERSION_OPTION, '0.0.0' );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test setup.
+		$wpdb->insert(
+			Tables::ability_log(),
+			[
+				'ability_name' => 'albert/sentinel',
+				'user_id'      => 1,
+			],
+			[ '%s', '%d' ]
+		);
+		$id_before = (int) $wpdb->insert_id;
+
+		Installer::maybe_upgrade();
+
+		// The version advanced to the running plugin version.
+		$this->assertSame( (string) ALBERT_VERSION, get_option( Installer::VERSION_OPTION ) );
+
+		// The additive migration preserved the existing row.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test verification.
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				'SELECT id FROM %i WHERE ability_name = %s',
+				Tables::ability_log(),
+				'albert/sentinel'
+			)
+		);
+
+		$this->assertNotNull( $row );
+		$this->assertSame( $id_before, (int) $row->id );
+	}
+
+	/**
 	 * Uninstall removes the version option.
 	 *
 	 * @return void

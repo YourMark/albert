@@ -28,6 +28,24 @@ use Albert\Database\Tables;
 class Installer {
 
 	/**
+	 * The schema version the OAuth tables were last built for.
+	 *
+	 * @deprecated 1.2.0 The schema version is now unified in Database\Installer.
+	 * @since 1.0.0
+	 * @var string
+	 */
+	const DB_VERSION = '1.0.0';
+
+	/**
+	 * Option that stored the OAuth schema version.
+	 *
+	 * @deprecated 1.2.0 Superseded by the unified `albert_db_version` option.
+	 * @since 1.0.0
+	 * @var string
+	 */
+	const DB_VERSION_OPTION = 'albert_oauth_db_version';
+
+	/**
 	 * The OAuth table names, keyed by role.
 	 *
 	 * @return array<string, string>

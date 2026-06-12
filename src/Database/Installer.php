@@ -42,6 +42,30 @@ class Installer {
 	const VERSION_OPTION = 'albert_db_version';
 
 	/**
+	 * Every option the plugin owns. Cleared wholesale on uninstall so deleting
+	 * the plugin leaves no state behind — including OAuth key material.
+	 *
+	 * @since 1.2.0
+	 * @var array<int, string>
+	 */
+	const OPTIONS = [
+		self::VERSION_OPTION,
+		'albert_installed_version',
+		'albert_allowed_users',
+		'albert_disabled_abilities',
+		'albert_abilities_saved',
+		'albert_abilities_view_mode',
+		'albert_rewrite_version',
+		'albert_oauth_encryption_key',
+		'albert_oauth_private_key',
+		'albert_oauth_public_key',
+		// Legacy options retired in earlier releases — cleared here for completeness.
+		'albert_logging_db_version',
+		'albert_oauth_db_version',
+		'albert_external_url',
+	];
+
+	/**
 	 * Create or update all tables and record the schema version.
 	 *
 	 * Idempotent — safe to call on every activation. `dbDelta` only issues the
@@ -101,7 +125,7 @@ class Installer {
 	}
 
 	/**
-	 * Drop every table and forget the schema version. Uninstall only.
+	 * Drop every table and delete every plugin option. Uninstall only.
 	 *
 	 * @return void
 	 * @since 1.2.0
@@ -114,7 +138,9 @@ class Installer {
 			$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', $table ) );
 		}
 
-		delete_option( self::VERSION_OPTION );
+		foreach ( self::OPTIONS as $option ) {
+			delete_option( $option );
+		}
 	}
 
 	/**

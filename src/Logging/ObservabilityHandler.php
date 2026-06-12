@@ -29,7 +29,7 @@ use Albert\Vendor\WP\MCP\Infrastructure\Observability\McpObservabilityHelperTrai
  * The Repository is instantiated inside `record_event()` because the adapter
  * resolves handler classes by name with no constructor args (mirrors
  * `ErrorLogMcpObservabilityHandler`). Repository is stateless — it uses the
- * global `$wpdb` and `Installer::get_table_name()`.
+ * global `$wpdb` and `Tables::ability_log()`.
  *
  * @since 1.2.0
  */
