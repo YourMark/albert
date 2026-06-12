@@ -16,7 +16,7 @@ use Albert\Core\AbilitiesRegistry;
 use Albert\Core\Plugin;
 use Albert\Logging\Repository as LoggingRepository;
 use Albert\MCP\Server as McpServer;
-use Albert\OAuth\Database\Installer;
+use Albert\Database\Tables;
 
 /**
  * Dashboard class
@@ -366,7 +366,7 @@ class Dashboard implements Hookable {
 	 */
 	private function get_active_connections_count(): int {
 		global $wpdb;
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// Count distinct clients with non-revoked tokens (sessions persist via refresh tokens).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -419,7 +419,7 @@ class Dashboard implements Hookable {
 	 */
 	private function get_recent_activity(): array {
 		global $wpdb;
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// Get the most recent distinct connections — one row per client, not per
 		// token. A new access-token row is created on every silent refresh (about

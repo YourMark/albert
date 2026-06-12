@@ -9,7 +9,7 @@
 
 namespace Albert\OAuth\Repositories;
 
-use Albert\OAuth\Database\Installer;
+use Albert\Database\Tables;
 use Albert\OAuth\Entities\ClientEntity;
 use League\OAuth2\Server\Repositories\ClientRepositoryInterface;
 
@@ -33,7 +33,7 @@ class ClientRepository implements ClientRepositoryInterface {
 	public function getClientEntity( $client_identifier ): ?ClientEntity {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
@@ -110,7 +110,7 @@ class ClientRepository implements ClientRepositoryInterface {
 	): ?array {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// Generate a unique client ID.
 		$client_id = $this->generate_client_id();
@@ -159,7 +159,7 @@ class ClientRepository implements ClientRepositoryInterface {
 	public function deleteClient( string $client_identifier ): bool {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
 		$result = $wpdb->delete(
@@ -182,7 +182,7 @@ class ClientRepository implements ClientRepositoryInterface {
 	public function getClientsByUser( ?int $user_id = null ): array {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		if ( $user_id === null ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching

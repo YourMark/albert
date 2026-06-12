@@ -11,7 +11,8 @@
 
 namespace Albert\Tests\Integration\Logging;
 
-use Albert\Logging\Installer;
+use Albert\Database\Installer;
+use Albert\Database\Tables;
 use Albert\Logging\Repository;
 use Albert\Tests\TestCase;
 
@@ -175,7 +176,7 @@ class RepositoryTest extends TestCase {
 	public function test_latest_for_ability_breaks_ties_on_id(): void {
 		global $wpdb;
 
-		$table = Installer::get_table_name();
+		$table = Tables::ability_log();
 		$now   = current_time( 'mysql' );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test setup.
@@ -371,7 +372,7 @@ class RepositoryTest extends TestCase {
 	private function all_rows_for( string $ability_name ): array {
 		global $wpdb;
 
-		$table = Installer::get_table_name();
+		$table = Tables::ability_log();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Test helper.
 		return $wpdb->get_results(
@@ -394,7 +395,7 @@ class RepositoryTest extends TestCase {
 	private function all_rows_for_status( string $ability_name, string $status ): array {
 		global $wpdb;
 
-		$table = Installer::get_table_name();
+		$table = Tables::ability_log();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test helper.
 		return $wpdb->get_results(

@@ -46,11 +46,10 @@ use Albert\Admin\AbilitiesPage;
 use Albert\Admin\Connections;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
-use Albert\Logging\Installer as LoggingInstaller;
+use Albert\Database\Installer as DatabaseInstaller;
 use Albert\Logging\Logger;
 use Albert\Logging\Repository as LoggingRepository;
 use Albert\MCP\Server as McpServer;
-use Albert\OAuth\Database\Installer as OAuthInstaller;
 use Albert\OAuth\Endpoints\AuthorizationPage;
 use Albert\OAuth\Endpoints\ClientRegistration;
 use Albert\OAuth\Endpoints\OAuthController;
@@ -142,9 +141,8 @@ class Plugin {
 	 * @since 1.0.0
 	 */
 	public function init(): void {
-		// Check for database updates (handles upgrades without re-activation).
-		OAuthInstaller::install();
-		LoggingInstaller::install();
+		// Apply any pending schema migration (a cheap no-op until DB_VERSION moves).
+		DatabaseInstaller::maybe_upgrade();
 
 		// One-time cleanup of legacy options on upgrade from pre-1.1.0 installs.
 		$this->maybe_cleanup_legacy_options();
@@ -388,6 +386,13 @@ class Plugin {
 			delete_option( 'albert_external_url' );
 		}
 
+		// The per-context schema-version options were superseded by the unified
+		// albert_db_version when the Database installer was centralised in 1.2.0.
+		if ( version_compare( $stored_version, '1.2.0', '<' ) ) {
+			delete_option( 'albert_logging_db_version' );
+			delete_option( 'albert_oauth_db_version' );
+		}
+
 		update_option( 'albert_installed_version', $current_version, false );
 	}
 
@@ -400,11 +405,8 @@ class Plugin {
 	 * @since 1.0.0
 	 */
 	public static function activate(): void {
-		// Install OAuth database tables.
-		OAuthInstaller::install();
-
-		// Install logging database table.
-		LoggingInstaller::install();
+		// Create/upgrade all database tables.
+		DatabaseInstaller::install();
 
 		// Register OAuth discovery rewrite rules.
 		OAuthDiscovery::activate();

@@ -10,7 +10,7 @@
 
 namespace Albert\Tests\Integration\Logging;
 
-use Albert\Logging\Installer;
+use Albert\Database\Installer;
 use Albert\Logging\Logger;
 use Albert\Logging\Repository;
 use Albert\Tests\TestCase;

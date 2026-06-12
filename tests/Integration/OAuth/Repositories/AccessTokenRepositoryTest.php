@@ -11,7 +11,8 @@
 
 namespace Albert\Tests\Integration\OAuth\Repositories;
 
-use Albert\OAuth\Database\Installer;
+use Albert\Database\Installer;
+use Albert\Database\Tables;
 use Albert\OAuth\Entities\AccessTokenEntity;
 use Albert\OAuth\Entities\ClientEntity;
 use Albert\OAuth\Entities\ScopeEntity;
@@ -45,7 +46,7 @@ class AccessTokenRepositoryTest extends TestCase {
 		$this->repository = new AccessTokenRepository();
 
 		global $wpdb;
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Test reset.
 		$wpdb->query( $wpdb->prepare( 'TRUNCATE TABLE %i', $tables['access_tokens'] ) );
 	}
@@ -185,7 +186,7 @@ class AccessTokenRepositoryTest extends TestCase {
 	private function fetch_row( string $token_id ): ?object {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test helper.
 		$row = $wpdb->get_row(
