@@ -25,5 +25,20 @@ if ( ! function_exists( '__' ) ) {
 	}
 }
 
+if ( ! function_exists( '_n' ) ) {
+	/**
+	 * Stub for WordPress _n() plural translation helper.
+	 *
+	 * @param string $single Singular form.
+	 * @param string $plural Plural form.
+	 * @param int    $number Count to decide the form.
+	 * @param string $domain Unused text domain.
+	 * @return string
+	 */
+	function _n( $single, $plural, $number, $domain = 'default' ) { // phpcs:ignore
+		return (int) $number === 1 ? $single : $plural;
+	}
+}
+
 // Composer autoloader for the plugin.
 require_once dirname( __DIR__ ) . '/vendor/autoload.php';
