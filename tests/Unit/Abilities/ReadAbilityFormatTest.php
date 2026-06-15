@@ -1,0 +1,194 @@
+<?php
+/**
+ * Unit tests for the `format` selector on the read abilities.
+ *
+ * Covers view-post and find-posts (the page variants share the same
+ * ContentFormatter path): default format is backward-compatible
+ * (content+blocks+plaintext); a narrow selector returns only that key; and
+ * requesting html/markdown adds those keys, with html reflecting rendered output.
+ *
+ * @package Albert\Tests\Unit\Abilities
+ */
+
+namespace Albert\Tests\Unit\Abilities;
+
+// WordPress + block stubs, REST plumbing, and the read-ability post stubs.
+require_once dirname( __DIR__ ) . '/stubs/wordpress.php';
+require_once dirname( __DIR__, 2 ) . '/wp-function-stubs.php';
+require_once __DIR__ . '/block-write-rest-stubs.php';
+require_once __DIR__ . '/read-ability-stubs.php';
+
+use Albert\Abilities\WordPress\Posts\FindPosts;
+use Albert\Abilities\WordPress\Posts\ViewPost;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * Read-ability format-selector tests.
+ */
+class ReadAbilityFormatTest extends TestCase {
+
+	private const MARKUP = '<!-- wp:heading --><h2 class="wp-block-heading">Hello</h2><!-- /wp:heading -->'
+		. '<!-- wp:paragraph --><p>World body</p><!-- /wp:paragraph -->';
+
+	/**
+	 * Seed a post and reset REST recorders before each test.
+	 *
+	 * @return void
+	 */
+	protected function setUp(): void {
+		parent::setUp();
+
+		$GLOBALS['albert_test_posts'] = [
+			5 => (object) [
+				'ID'            => 5,
+				'post_type'     => 'post',
+				'post_title'    => 'Hello',
+				'post_content'  => self::MARKUP,
+				'post_excerpt'  => '',
+				'post_status'   => 'publish',
+				'post_author'   => 1,
+				'post_date'     => '2026-01-01 00:00:00',
+				'post_modified' => '2026-01-02 00:00:00',
+				'post_name'     => 'hello',
+			],
+		];
+
+		$GLOBALS['albert_test_rest_calls']     = [];
+		$GLOBALS['albert_test_rest_responses'] = [];
+		unset( $GLOBALS['albert_test_caps'] );
+	}
+
+	/**
+	 * Clean up globals after each test.
+	 *
+	 * @return void
+	 */
+	protected function tearDown(): void {
+		unset(
+			$GLOBALS['albert_test_posts'],
+			$GLOBALS['albert_test_rest_calls'],
+			$GLOBALS['albert_test_rest_responses']
+		);
+		parent::tearDown();
+	}
+
+	// =====================================================================
+	// view-post
+	// =====================================================================
+
+	public function test_view_post_default_returns_content_blocks_plaintext(): void {
+		$result = ( new ViewPost() )->execute( [ 'id' => 5 ] );
+
+		$post = $result['post'];
+		$this->assertArrayHasKey( 'content', $post );
+		$this->assertArrayHasKey( 'blocks', $post );
+		$this->assertArrayHasKey( 'plaintext', $post );
+		$this->assertArrayNotHasKey( 'html', $post );
+		$this->assertArrayNotHasKey( 'markdown', $post );
+
+		$this->assertSame( self::MARKUP, $post['content'] );
+		$this->assertSame( "Hello\n\nWorld body", $post['plaintext'] );
+
+		// Surrounding metadata still present.
+		$this->assertSame( 5, $post['id'] );
+		$this->assertSame( 'Hello', $post['title'] );
+		$this->assertSame( 'publish', $post['status'] );
+	}
+
+	public function test_view_post_plaintext_only_returns_only_plaintext_content_field(): void {
+		$result = ( new ViewPost() )->execute(
+			[
+				'id'     => 5,
+				'format' => [ 'plaintext' ],
+			]
+		);
+
+		$post = $result['post'];
+		$this->assertArrayHasKey( 'plaintext', $post );
+		$this->assertArrayNotHasKey( 'content', $post );
+		$this->assertArrayNotHasKey( 'blocks', $post );
+		$this->assertArrayNotHasKey( 'html', $post );
+		$this->assertArrayNotHasKey( 'markdown', $post );
+
+		// Metadata is unaffected by the content selector.
+		$this->assertSame( 5, $post['id'] );
+	}
+
+	public function test_view_post_html_and_markdown_added_and_html_reflects_rendering(): void {
+		$result = ( new ViewPost() )->execute(
+			[
+				'id'     => 5,
+				'format' => [ 'html', 'markdown' ],
+			]
+		);
+
+		$post = $result['post'];
+		$this->assertArrayHasKey( 'html', $post );
+		$this->assertArrayHasKey( 'markdown', $post );
+		$this->assertArrayNotHasKey( 'content', $post );
+
+		$this->assertStringContainsString( '<h2 class="wp-block-heading">Hello</h2>', $post['html'] );
+		$this->assertStringContainsString( '<p>World body</p>', $post['html'] );
+		$this->assertSame( "## Hello\n\nWorld body", $post['markdown'] );
+	}
+
+	// =====================================================================
+	// find-posts
+	// =====================================================================
+
+	public function test_find_posts_default_returns_content_blocks_plaintext_per_item(): void {
+		$this->queue_find_response();
+
+		$result = ( new FindPosts() )->execute( [] );
+
+		$item = $result['posts'][0];
+		$this->assertArrayHasKey( 'content', $item );
+		$this->assertArrayHasKey( 'blocks', $item );
+		$this->assertArrayHasKey( 'plaintext', $item );
+		$this->assertArrayNotHasKey( 'html', $item );
+		$this->assertArrayNotHasKey( 'markdown', $item );
+		$this->assertSame( self::MARKUP, $item['content'] );
+	}
+
+	public function test_find_posts_html_markdown_added_when_requested(): void {
+		$this->queue_find_response();
+
+		$result = ( new FindPosts() )->execute( [ 'format' => [ 'html', 'markdown' ] ] );
+
+		$item = $result['posts'][0];
+		$this->assertArrayHasKey( 'html', $item );
+		$this->assertArrayHasKey( 'markdown', $item );
+		$this->assertArrayNotHasKey( 'content', $item );
+		$this->assertStringContainsString( '<h2 class="wp-block-heading">Hello</h2>', $item['html'] );
+		$this->assertSame( "## Hello\n\nWorld body", $item['markdown'] );
+
+		// Metadata still present.
+		$this->assertSame( 5, $item['id'] );
+		$this->assertSame( 'Hello', $item['title'] );
+	}
+
+	/**
+	 * Queue the canned REST list response find-posts reads (a single post id 5).
+	 *
+	 * @return void
+	 */
+	private function queue_find_response(): void {
+		$GLOBALS['albert_test_rest_responses']['get'] = [
+			'is_error' => false,
+			'data'     => [
+				[
+					'id'         => 5,
+					'title'      => [ 'rendered' => 'Hello' ],
+					'excerpt'    => [ 'rendered' => '' ],
+					'status'     => 'publish',
+					'date'       => '2026-01-01',
+					'modified'   => '2026-01-02',
+					'author'     => 1,
+					'link'       => 'https://example.com/hello',
+					'categories' => [],
+					'tags'       => [],
+				],
+			],
+		];
+	}
+}

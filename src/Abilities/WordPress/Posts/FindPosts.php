@@ -10,6 +10,7 @@
 namespace Albert\Abilities\WordPress\Posts;
 
 use Albert\Abstracts\BaseAbility;
+use Albert\Blocks\ContentFormatter;
 use Albert\Core\Annotations;
 use WP_Error;
 use WP_REST_Request;
@@ -100,6 +101,7 @@ class FindPosts extends BaseAbility {
 					'enum'        => [ 'date', 'modified', 'title', 'id' ],
 					'default'     => 'date',
 				],
+				'format'     => ContentFormatter::input_schema_property(),
 			],
 		];
 	}
@@ -121,7 +123,27 @@ class FindPosts extends BaseAbility {
 						'properties' => [
 							'id'         => [ 'type' => 'integer' ],
 							'title'      => [ 'type' => 'string' ],
-							'content'    => [ 'type' => 'string' ],
+							'content'    => [
+								'type'        => 'string',
+								'description' => 'Raw block markup (<!-- wp:... --> comment-delimited), consistent with view-post. Included when "content" is requested (default).',
+							],
+							'blocks'     => [
+								'type'        => 'array',
+								'description' => 'The post content parsed into a structured block tree. Each node has { name, attributes, innerBlocks, plaintext }. Included when "blocks" is requested (default).',
+								'items'       => [ 'type' => 'object' ],
+							],
+							'plaintext'  => [
+								'type'        => 'string',
+								'description' => 'Human-readable plain text of the whole post content. Included when "plaintext" is requested (default).',
+							],
+							'html'       => [
+								'type'        => 'string',
+								'description' => 'Rendered HTML produced by do_blocks() — reflects dynamic/server-rendered block output. Only included when "html" is requested.',
+							],
+							'markdown'   => [
+								'type'        => 'string',
+								'description' => 'Markdown rendering of the post content. Only included when "markdown" is requested.',
+							],
 							'excerpt'    => [ 'type' => 'string' ],
 							'status'     => [ 'type' => 'string' ],
 							'date'       => [ 'type' => 'string' ],
@@ -226,21 +248,45 @@ class FindPosts extends BaseAbility {
 		}
 
 		// Format posts data.
+		//
+		// Note: unlike rendered REST output, `content` here is the post's RAW
+		// block markup (post_content), mirrored by a structured `blocks` tree and
+		// `plaintext`. This keeps find-posts consistent with view-post so the
+		// assistant always sees the editable block format, not rendered HTML.
+		// The selectable representations are resolved by ContentFormatter; the
+		// default keeps the original content/blocks/plaintext fields, and the
+		// heavier html/markdown are only built when explicitly requested.
+		$format = isset( $args['format'] ) && is_array( $args['format'] ) ? $args['format'] : [];
+
+		// Prime the post cache once for the whole result set so the per-item
+		// get_post() calls below hit the cache instead of the database (avoids N+1).
+		$post_ids = array_values( array_map( static fn ( $post_data ): int => (int) $post_data['id'], $data ) );
+		if ( $post_ids !== [] ) {
+			_prime_post_caches( $post_ids );
+		}
+
 		$posts = [];
 		foreach ( $data as $post_data ) {
-			$posts[] = [
-				'id'         => $post_data['id'],
-				'title'      => $post_data['title']['rendered'] ?? '',
-				'content'    => $post_data['content']['rendered'] ?? '',
-				'excerpt'    => $post_data['excerpt']['rendered'] ?? '',
-				'status'     => $post_data['status'] ?? '',
-				'date'       => $post_data['date'] ?? '',
-				'modified'   => $post_data['modified'] ?? '',
-				'author'     => $post_data['author'] ?? 0,
-				'permalink'  => $post_data['link'] ?? '',
-				'categories' => $post_data['categories'] ?? [],
-				'tags'       => $post_data['tags'] ?? [],
-			];
+			$post        = get_post( (int) $post_data['id'] );
+			$raw_content = $post ? $post->post_content : '';
+
+			$posts[] = array_merge(
+				[
+					'id'    => $post_data['id'],
+					'title' => $post_data['title']['rendered'] ?? '',
+				],
+				ContentFormatter::build( $raw_content, $format ),
+				[
+					'excerpt'    => $post_data['excerpt']['rendered'] ?? '',
+					'status'     => $post_data['status'] ?? '',
+					'date'       => $post_data['date'] ?? '',
+					'modified'   => $post_data['modified'] ?? '',
+					'author'     => $post_data['author'] ?? 0,
+					'permalink'  => $post_data['link'] ?? '',
+					'categories' => $post_data['categories'] ?? [],
+					'tags'       => $post_data['tags'] ?? [],
+				]
+			);
 		}
 
 		// Get pagination headers.
