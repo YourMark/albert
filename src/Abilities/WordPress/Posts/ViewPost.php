@@ -10,6 +10,7 @@
 namespace Albert\Abilities\WordPress\Posts;
 
 use Albert\Abstracts\BaseAbility;
+use Albert\Blocks\ContentFormatter;
 use Albert\Core\Annotations;
 use WP_Error;
 use WP_REST_Request;
@@ -57,11 +58,12 @@ class ViewPost extends BaseAbility {
 		return [
 			'type'       => 'object',
 			'properties' => [
-				'id' => [
+				'id'     => [
 					'type'        => 'integer',
 					'description' => 'The post ID to retrieve.',
 					'minimum'     => 1,
 				],
+				'format' => ContentFormatter::input_schema_property(),
 			],
 			'required'   => [ 'id' ],
 		];
@@ -80,6 +82,29 @@ class ViewPost extends BaseAbility {
 				'post' => [
 					'type'        => 'object',
 					'description' => 'The requested post object.',
+					'properties'  => [
+						'content'   => [
+							'type'        => 'string',
+							'description' => 'Raw block markup (<!-- wp:... --> comment-delimited). Included when "content" is requested (default).',
+						],
+						'blocks'    => [
+							'type'        => 'array',
+							'description' => 'The post content parsed into a structured block tree. Each node has { name, attributes, innerBlocks, plaintext }; innerBlocks is the same shape recursively. Included when "blocks" is requested (default).',
+							'items'       => [ 'type' => 'object' ],
+						],
+						'plaintext' => [
+							'type'        => 'string',
+							'description' => 'Human-readable plain text of the whole post content. Included when "plaintext" is requested (default).',
+						],
+						'html'      => [
+							'type'        => 'string',
+							'description' => 'Rendered HTML produced by do_blocks() — reflects dynamic/server-rendered block output. Only included when "html" is requested.',
+						],
+						'markdown'  => [
+							'type'        => 'string',
+							'description' => 'Markdown rendering of the post content. Only included when "markdown" is requested.',
+						],
+					],
 				],
 			],
 		];
@@ -122,20 +147,27 @@ class ViewPost extends BaseAbility {
 			return new WP_Error( 'forbidden', __( 'You do not have permission to view this post.', 'albert-ai-butler' ) );
 		}
 
+		$format  = isset( $args['format'] ) && is_array( $args['format'] ) ? $args['format'] : [];
+		$content = ContentFormatter::build( $post->post_content, $format );
+
 		return [
-			'post' => [
-				'id'             => $post->ID,
-				'title'          => $post->post_title,
-				'content'        => $post->post_content,
-				'excerpt'        => $post->post_excerpt,
-				'status'         => $post->post_status,
-				'author_id'      => (int) $post->post_author,
-				'date'           => $post->post_date,
-				'modified'       => $post->post_modified,
-				'slug'           => $post->post_name,
-				'permalink'      => get_permalink( $post ),
-				'featured_image' => get_post_thumbnail_id( $post ) ? get_post_thumbnail_id( $post ) : null,
-			],
+			'post' => array_merge(
+				[
+					'id'    => $post->ID,
+					'title' => $post->post_title,
+				],
+				$content,
+				[
+					'excerpt'        => $post->post_excerpt,
+					'status'         => $post->post_status,
+					'author_id'      => (int) $post->post_author,
+					'date'           => $post->post_date,
+					'modified'       => $post->post_modified,
+					'slug'           => $post->post_name,
+					'permalink'      => get_permalink( $post ),
+					'featured_image' => get_post_thumbnail_id( $post ) ? get_post_thumbnail_id( $post ) : null,
+				]
+			),
 		];
 	}
 }

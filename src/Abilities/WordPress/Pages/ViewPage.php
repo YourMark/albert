@@ -10,6 +10,7 @@
 namespace Albert\Abilities\WordPress\Pages;
 
 use Albert\Abstracts\BaseAbility;
+use Albert\Blocks\ContentFormatter;
 use Albert\Core\Annotations;
 use WP_Error;
 use WP_REST_Request;
@@ -57,11 +58,12 @@ class ViewPage extends BaseAbility {
 		return [
 			'type'       => 'object',
 			'properties' => [
-				'id' => [
+				'id'     => [
 					'type'        => 'integer',
 					'description' => 'The page ID to retrieve.',
 					'minimum'     => 1,
 				],
+				'format' => ContentFormatter::input_schema_property(),
 			],
 			'required'   => [ 'id' ],
 		];
@@ -80,6 +82,29 @@ class ViewPage extends BaseAbility {
 				'page' => [
 					'type'        => 'object',
 					'description' => 'The requested page object.',
+					'properties'  => [
+						'content'   => [
+							'type'        => 'string',
+							'description' => 'Raw block markup (<!-- wp:... --> comment-delimited). Included when "content" is requested (default).',
+						],
+						'blocks'    => [
+							'type'        => 'array',
+							'description' => 'The page content parsed into a structured block tree. Each node has { name, attributes, innerBlocks, plaintext }; innerBlocks is the same shape recursively. Included when "blocks" is requested (default).',
+							'items'       => [ 'type' => 'object' ],
+						],
+						'plaintext' => [
+							'type'        => 'string',
+							'description' => 'Human-readable plain text of the whole page content. Included when "plaintext" is requested (default).',
+						],
+						'html'      => [
+							'type'        => 'string',
+							'description' => 'Rendered HTML produced by do_blocks() — reflects dynamic/server-rendered block output. Only included when "html" is requested.',
+						],
+						'markdown'  => [
+							'type'        => 'string',
+							'description' => 'Markdown rendering of the page content. Only included when "markdown" is requested.',
+						],
+					],
 				],
 			],
 		];
@@ -122,22 +147,29 @@ class ViewPage extends BaseAbility {
 			return new WP_Error( 'forbidden', __( 'You do not have permission to view this page.', 'albert-ai-butler' ) );
 		}
 
+		$format  = isset( $args['format'] ) && is_array( $args['format'] ) ? $args['format'] : [];
+		$content = ContentFormatter::build( $page->post_content, $format );
+
 		return [
-			'page' => [
-				'id'             => $page->ID,
-				'title'          => $page->post_title,
-				'content'        => $page->post_content,
-				'excerpt'        => $page->post_excerpt,
-				'status'         => $page->post_status,
-				'author_id'      => (int) $page->post_author,
-				'date'           => $page->post_date,
-				'modified'       => $page->post_modified,
-				'slug'           => $page->post_name,
-				'permalink'      => get_permalink( $page ),
-				'parent_id'      => (int) $page->post_parent,
-				'menu_order'     => (int) $page->menu_order,
-				'featured_image' => get_post_thumbnail_id( $page ) ? get_post_thumbnail_id( $page ) : null,
-			],
+			'page' => array_merge(
+				[
+					'id'    => $page->ID,
+					'title' => $page->post_title,
+				],
+				$content,
+				[
+					'excerpt'        => $page->post_excerpt,
+					'status'         => $page->post_status,
+					'author_id'      => (int) $page->post_author,
+					'date'           => $page->post_date,
+					'modified'       => $page->post_modified,
+					'slug'           => $page->post_name,
+					'permalink'      => get_permalink( $page ),
+					'parent_id'      => (int) $page->post_parent,
+					'menu_order'     => (int) $page->menu_order,
+					'featured_image' => get_post_thumbnail_id( $page ) ? get_post_thumbnail_id( $page ) : null,
+				]
+			),
 		];
 	}
 }

@@ -9,8 +9,9 @@
 
 namespace Albert\Abilities\WordPress\Pages;
 
-use Albert\Utilities\BlockConverter;
 use Albert\Abstracts\BaseAbility;
+use Albert\Blocks\BlockIssues;
+use Albert\Blocks\BlockSerializer;
 use Albert\Core\Annotations;
 use WP_Error;
 use WP_REST_Request;
@@ -67,8 +68,14 @@ class Create extends BaseAbility {
 				],
 				'content' => [
 					'type'        => 'string',
-					'description' => 'The page content (HTML allowed)',
+					'description' => 'The page content as a string. Accepts WordPress block markup (<!-- wp:... -->), HTML, or Markdown — converted to blocks automatically. For multi-block, nested layouts prefer the structured "blocks" field instead. Ignored when "blocks" is provided.',
 					'default'     => '',
+				],
+				'blocks'  => [
+					'type'        => 'array',
+					'description' => 'Structured block specs (preferred over "content"). Each item is { "name": "core/paragraph", "attributes": { ... }, "innerBlocks": [ ... ] }; innerBlocks is the same shape recursively for layout blocks (e.g. core/columns > core/column). Put text in attributes (content/text/value) or in "plaintext". Example: [ { "name": "core/heading", "attributes": { "level": 2, "content": "Intro" } }, { "name": "core/paragraph", "attributes": { "content": "Hello world." } } ]',
+					'items'       => [ 'type' => 'object' ],
+					'default'     => [],
 				],
 				'status'  => [
 					'type'        => 'string',
@@ -101,11 +108,16 @@ class Create extends BaseAbility {
 		return [
 			'type'       => 'object',
 			'properties' => [
-				'id'        => [ 'type' => 'integer' ],
-				'title'     => [ 'type' => 'string' ],
-				'status'    => [ 'type' => 'string' ],
-				'permalink' => [ 'type' => 'string' ],
-				'edit_url'  => [ 'type' => 'string' ],
+				'id'           => [ 'type' => 'integer' ],
+				'title'        => [ 'type' => 'string' ],
+				'status'       => [ 'type' => 'string' ],
+				'permalink'    => [ 'type' => 'string' ],
+				'edit_url'     => [ 'type' => 'string' ],
+				'block_issues' => [
+					'type'        => 'array',
+					'description' => 'Optional, non-fatal block validation warnings (the page was still saved). Each is an actionable message such as "content[0].attributes.url is required for core/image". Fatal block problems are not returned here — they come back as a WP_Error with code "block_validation_failed" and the page is not created.',
+					'items'       => [ 'type' => 'string' ],
+				],
 			],
 			'required'   => [ 'id', 'title', 'status' ],
 		];
@@ -139,8 +151,29 @@ class Create extends BaseAbility {
 	 * @since 1.0.0
 	 */
 	public function execute( array $args ): array|WP_Error {
-		// Process content with Block Converter.
-		$content = ! empty( $args['content'] ) ? ( new BlockConverter( $args['content'] ) )->convert() : '';
+		// Precedence: structured "blocks" specs win over the "content" string.
+		// Both routes go through BlockSerializer (specs → markup, or string →
+		// BlockConverter fallback for HTML/Markdown).
+		$serializer = new BlockSerializer();
+		if ( ! empty( $args['blocks'] ) && is_array( $args['blocks'] ) ) {
+			$serialized = $serializer->serialize_with_issues( $args['blocks'] );
+		} elseif ( ! empty( $args['content'] ) ) {
+			$serialized = $serializer->serialize_with_issues( (string) $args['content'] );
+		} else {
+			$serialized = [
+				'markup' => '',
+				'issues' => [],
+			];
+		}
+
+		// Block-validation errors abort the save; only warnings ride along.
+		$block_error = BlockIssues::to_wp_error( $serialized['issues'] );
+		if ( $block_error instanceof WP_Error ) {
+			return $block_error;
+		}
+
+		$content      = $serialized['markup'];
+		$block_issues = BlockIssues::warning_messages( $serialized['issues'] );
 
 		// Prepare REST API request data.
 		$request_data = [
@@ -182,12 +215,18 @@ class Create extends BaseAbility {
 		// Return formatted page data.
 		$page_id = $data['id'];
 
-		return [
+		$result = [
 			'id'        => $page_id,
 			'title'     => $data['title']['rendered'] ?? '',
 			'status'    => $data['status'],
 			'permalink' => $data['link'] ?? '',
 			'edit_url'  => admin_url( 'post.php?post=' . $page_id . '&action=edit' ),
 		];
+
+		if ( ! empty( $block_issues ) ) {
+			$result['block_issues'] = $block_issues;
+		}
+
+		return $result;
 	}
 }
