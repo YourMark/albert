@@ -101,7 +101,7 @@ Nested layout — two columns, each holding a paragraph:
 ## Workflow
 
 1. **Read** the existing content first with `albert/view-post` (or `albert/find-posts`
-   to locate it). Ask for the `blocks` format so you get the structured tree back.
+   to locate it). Pass `"format": ["blocks"]` so you get the structured tree back.
 2. **Edit** the structured blocks: change attributes, add or remove blocks, reorder them.
 3. **Write** with `albert/create-post` (new) or `albert/update-post` (existing), sending
    your block specs in the `blocks` field.
@@ -129,14 +129,19 @@ Do not ignore these. Read the message text and fix the specific block it names.
 
 ## Reading formats
 
-When reading, choose the `format` that fits the task:
+`format` is an **array** of format names, so you can request several at once — for
+example `"format": ["blocks", "plaintext"]`. A scalar string is ignored and the
+default format is returned instead, so always send an array, e.g. `"format": ["blocks"]`
+or `"format": ["markdown"]`.
 
-- `blocks` — the structured tree. Use this when you intend to edit and write back.
-- `content` — the raw stored block markup (block comments included). Use only when you
+Choose the format(s) that fit the task:
+
+- `["blocks"]` — the structured tree. Use this when you intend to edit and write back.
+- `["content"]` — the raw stored block markup (block comments included). Use only when you
   need the exact stored string.
-- `plaintext` — text with all markup stripped. Use for summarizing or analyzing wording.
-- `html` — rendered front-end HTML. Use to see what a visitor sees.
-- `markdown` — a Markdown rendering. Use for a compact, readable overview.
+- `["plaintext"]` — text with all markup stripped. Use for summarizing or analyzing wording.
+- `["html"]` — rendered front-end HTML. Use to see what a visitor sees.
+- `["markdown"]` — a Markdown rendering. Use for a compact, readable overview.
 
 ## Classic-editor sites
 

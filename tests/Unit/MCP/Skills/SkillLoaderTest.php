@@ -17,8 +17,8 @@ require_once dirname( __DIR__, 3 ) . '/Unit/stubs/wordpress.php';
 /**
  * SkillLoader unit tests.
  *
- * Verifies skill files are turned into MCP prompts, the `albert/skills` filter
- * extends the file list, and invalid files are skipped without fatalling.
+ * Verifies skill files are turned into MCP prompts, the `albert/skills/files`
+ * filter extends the file list, and invalid files are skipped without fatalling.
  */
 class SkillLoaderTest extends TestCase {
 
@@ -75,14 +75,14 @@ class SkillLoaderTest extends TestCase {
 	}
 
 	/**
-	 * Point the `albert/skills` filter at the given file list.
+	 * Point the `albert/skills/files` filter at the given file list.
 	 *
-	 * @param array<int, string> $files Absolute file paths.
+	 * @param mixed $files Absolute file paths (or any value, to test fallback).
 	 *
 	 * @return void
 	 */
-	private function set_skill_files( array $files ): void {
-		$GLOBALS['albert_test_filter_returns']['albert/skills'] = $files;
+	private function set_skill_files( mixed $files ): void {
+		$GLOBALS['albert_test_filter_returns']['albert/skills/files'] = $files;
 	}
 
 	/**
@@ -128,7 +128,7 @@ class SkillLoaderTest extends TestCase {
 	}
 
 	/**
-	 * The `albert/skills` filter can add external skill files.
+	 * The `albert/skills/files` filter can add external skill files.
 	 *
 	 * @return void
 	 */
@@ -204,5 +204,52 @@ class SkillLoaderTest extends TestCase {
 
 		$this->assertCount( 1, $arguments );
 		$this->assertSame( 'slug', $arguments[0]->getName() );
+	}
+
+	/**
+	 * A named skill with an empty body is skipped, not registered.
+	 *
+	 * @return void
+	 */
+	public function test_skips_named_skill_with_empty_body(): void {
+		$empty = $this->write_skill( 'empty', "---\nname: empty\n---\n   \n" );
+		$valid = $this->write_skill( 'valid', "---\nname: valid\n---\nBody." );
+		$this->set_skill_files( [ $empty, $valid ] );
+
+		$prompts = ( new SkillLoader() )->prompts();
+
+		$this->assertCount( 1, $prompts );
+		$this->assertSame( 'valid', $prompts[0]->get_protocol_dto()->getName() );
+	}
+
+	/**
+	 * The same absolute path passed twice yields a single prompt (dedup).
+	 *
+	 * @return void
+	 */
+	public function test_duplicate_paths_yield_single_prompt(): void {
+		$file = $this->write_skill( 'dupe', "---\nname: dupe\n---\nBody." );
+		$this->set_skill_files( [ $file, $file ] );
+
+		$prompts = ( new SkillLoader() )->prompts();
+
+		$this->assertCount( 1, $prompts );
+		$this->assertSame( 'dupe', $prompts[0]->get_protocol_dto()->getName() );
+	}
+
+	/**
+	 * A non-array filter return falls back to the default skill list.
+	 *
+	 * With no bundled skills available in the unit context the default list is
+	 * empty, so the loader yields no prompts — and crucially does not fatal.
+	 *
+	 * @return void
+	 */
+	public function test_non_array_filter_falls_back_to_default(): void {
+		$this->set_skill_files( false );
+		$this->assertSame( [], ( new SkillLoader() )->prompts() );
+
+		$this->set_skill_files( 'not-an-array' );
+		$this->assertSame( [], ( new SkillLoader() )->prompts() );
 	}
 }

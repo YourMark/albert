@@ -1,28 +1,28 @@
 <?php
 /**
- * Tests for the FrontmatterParser.
+ * Tests for the SkillFileParser.
  *
  * @package Albert\Tests\Unit\MCP\Skills
  */
 
 namespace Albert\Tests\Unit\MCP\Skills;
 
-use Albert\MCP\Skills\FrontmatterParser;
+use Albert\MCP\Skills\SkillFileParser;
 use PHPUnit\Framework\TestCase;
 
 /**
- * FrontmatterParser unit tests.
+ * SkillFileParser unit tests.
  *
  * Verifies the parser splits a skill file into its frontmatter fields and body.
  */
-class FrontmatterParserTest extends TestCase {
+class SkillFileParserTest extends TestCase {
 
 	/**
 	 * Parser instance under test.
 	 *
-	 * @var FrontmatterParser
+	 * @var SkillFileParser
 	 */
-	private FrontmatterParser $parser;
+	private SkillFileParser $parser;
 
 	/**
 	 * Set up a fresh parser for each test.
@@ -31,7 +31,7 @@ class FrontmatterParserTest extends TestCase {
 	 */
 	protected function setUp(): void {
 		parent::setUp();
-		$this->parser = new FrontmatterParser();
+		$this->parser = new SkillFileParser();
 	}
 
 	/**
@@ -146,5 +146,34 @@ class FrontmatterParserTest extends TestCase {
 		$result = $this->parser->parse( $contents );
 
 		$this->assertSame( 'skill', $result['name'] );
+	}
+
+	/**
+	 * Trailing whitespace on the opening fence still parses the frontmatter.
+	 *
+	 * @return void
+	 */
+	public function test_tolerates_trailing_space_on_opening_fence(): void {
+		$contents = "--- \nname: skill\ndescription: Desc.\n---\nBody.";
+
+		$result = $this->parser->parse( $contents );
+
+		$this->assertSame( 'skill', $result['name'] );
+		$this->assertSame( 'Desc.', $result['description'] );
+		$this->assertSame( 'Body.', $result['body'] );
+	}
+
+	/**
+	 * A `---` line inside the body does not truncate the frontmatter or body.
+	 *
+	 * @return void
+	 */
+	public function test_dashes_in_body_keep_full_body(): void {
+		$contents = "---\nname: skill\n---\nIntro line.\n\n---\n\nAfter the rule.";
+
+		$result = $this->parser->parse( $contents );
+
+		$this->assertSame( 'skill', $result['name'] );
+		$this->assertSame( "Intro line.\n\n---\n\nAfter the rule.", $result['body'] );
 	}
 }

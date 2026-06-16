@@ -22,7 +22,7 @@ use Albert\Vendor\WP\MCP\Domain\Prompts\McpPrompt;
  * single user message) that teach assistants how to use Albert.
  *
  * By default it loads the plugin's own `skills/` directory; add-ons and themes
- * can contribute their own files via the `albert/skills` filter.
+ * can contribute their own files via the `albert/skills/files` filter.
  *
  * The loader is deliberately defensive: a missing file, an unreadable file, or
  * a file without a `name` is skipped rather than fatalling, so one bad skill
@@ -33,22 +33,22 @@ use Albert\Vendor\WP\MCP\Domain\Prompts\McpPrompt;
 class SkillLoader {
 
 	/**
-	 * The frontmatter parser.
+	 * The skill-file parser.
 	 *
 	 * @since 1.2.0
-	 * @var FrontmatterParser
+	 * @var SkillFileParser
 	 */
-	private FrontmatterParser $parser;
+	private SkillFileParser $parser;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param FrontmatterParser|null $parser Optional parser (injectable for tests).
+	 * @param SkillFileParser|null $parser Optional parser (injectable for tests).
 	 *
 	 * @since 1.2.0
 	 */
-	public function __construct( ?FrontmatterParser $parser = null ) {
-		$this->parser = $parser ?? new FrontmatterParser();
+	public function __construct( ?SkillFileParser $parser = null ) {
+		$this->parser = $parser ?? new SkillFileParser();
 	}
 
 	/**
@@ -77,7 +77,7 @@ class SkillLoader {
 	 * Resolve the absolute paths of all skill files to load.
 	 *
 	 * Starts with the plugin's bundled `skills/` directory and lets add-ons or
-	 * themes extend the list via the `albert/skills` filter. The result is
+	 * themes extend the list via the `albert/skills/files` filter. The result is
 	 * de-duplicated; non-string entries are dropped.
 	 *
 	 * @return array<int, string> Absolute file paths.
@@ -98,7 +98,7 @@ class SkillLoader {
 		 *
 		 * @param array<int, string> $files Absolute paths to skill files. Defaults to the plugin's bundled skills.
 		 */
-		$files = apply_filters( 'albert/skills', $default );
+		$files = apply_filters( 'albert/skills/files', $default );
 
 		if ( ! is_array( $files ) ) {
 			$files = $default;
@@ -132,10 +132,22 @@ class SkillLoader {
 	}
 
 	/**
+	 * Maximum size (in bytes) of a skill file we are willing to read.
+	 *
+	 * Bundled skills are a few kilobytes; this only guards against a bad
+	 * filter-contributed path pointing at something huge.
+	 *
+	 * @since 1.2.0
+	 * @var int
+	 */
+	private const MAX_SKILL_BYTES = 524288; // 512 KB.
+
+	/**
 	 * Build a single MCP prompt from a skill file.
 	 *
-	 * Returns null when the file is missing/unreadable, has no `name`, or the
-	 * adapter rejects the configuration — the caller skips nulls.
+	 * Returns null when the file is missing/unreadable, too large, has no
+	 * `name`, parses to an empty body, or the adapter rejects the
+	 * configuration — the caller skips nulls.
 	 *
 	 * @param string $file Absolute path to a skill file.
 	 *
@@ -144,6 +156,12 @@ class SkillLoader {
 	 */
 	private function build_prompt( string $file ): ?McpPrompt {
 		if ( ! is_file( $file ) || ! is_readable( $file ) ) {
+			return null;
+		}
+
+		// Guard against an oversized (likely filter-supplied) path before reading.
+		$size = filesize( $file );
+		if ( $size === false || $size > self::MAX_SKILL_BYTES ) {
 			return null;
 		}
 
@@ -160,6 +178,13 @@ class SkillLoader {
 		}
 
 		$body = $skill['body'];
+
+		// A named skill with an empty body would register a useless empty
+		// prompt; skip it the same way a nameless file is skipped.
+		if ( trim( $body ) === '' ) {
+			error_log( sprintf( 'Albert: skipping skill "%s" — empty body in %s', $skill['name'], $file ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Concise admin-facing warning for a misconfigured skill file.
+			return null;
+		}
 
 		$config = [
 			'name'        => $skill['name'],
@@ -178,6 +203,8 @@ class SkillLoader {
 				];
 			},
 			'permission'  => static function (): bool {
+				// Skills are static playbooks; the transport-level OAuth gate
+				// already enforces authentication, so no per-prompt check is needed.
 				return true;
 			},
 		];

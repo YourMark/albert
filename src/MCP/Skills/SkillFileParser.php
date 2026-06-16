@@ -1,6 +1,6 @@
 <?php
 /**
- * Frontmatter parser for skill files.
+ * Skill-file parser — reads a skill file's frontmatter and body.
  *
  * @package Albert
  * @subpackage MCP\Skills
@@ -12,7 +12,7 @@ namespace Albert\MCP\Skills;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * FrontmatterParser class
+ * SkillFileParser class
  *
  * Parses a skill Markdown file into its YAML-ish frontmatter fields and body.
  * Intentionally small and dependency-free so it can be unit-tested without
@@ -22,7 +22,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @since 1.2.0
  */
-class FrontmatterParser {
+class SkillFileParser {
 
 	/**
 	 * Parse raw skill-file contents into frontmatter fields and body.
@@ -47,8 +47,10 @@ class FrontmatterParser {
 		// Normalise line endings so the fence regex is reliable.
 		$normalised = str_replace( [ "\r\n", "\r" ], "\n", $contents );
 
-		// Require the frontmatter fence at the very start of the file.
-		if ( ! preg_match( '/\A---\n(.*?)\n---\n?(.*)\z/s', $normalised, $matches ) ) {
+		// Require the frontmatter fence at the very start of the file. The
+		// opening fence tolerates trailing horizontal whitespace (e.g. "--- \n")
+		// so a stray space never makes the whole file parse as body-only.
+		if ( ! preg_match( '/\A---[^\S\n]*\n(.*?)\n---\n?(.*)\z/s', $normalised, $matches ) ) {
 			$result['body'] = trim( $normalised );
 			return $result;
 		}
