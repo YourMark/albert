@@ -42,15 +42,6 @@ class Server implements Hookable {
 	const SERVER_ID = 'albert';
 
 	/**
-	 * Server route namespace.
-	 *
-	 * @deprecated 1.0.1 Use {@see Plugin::rest_namespace()} instead.
-	 * @since      1.0.0
-	 * @var string
-	 */
-	const ROUTE_NAMESPACE = 'albert/v1';
-
-	/**
 	 * Server route.
 	 *
 	 * @since 1.0.0
