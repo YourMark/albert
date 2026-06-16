@@ -47,10 +47,10 @@ Heading with a level:
 { "name": "core/heading", "attributes": { "level": 2, "content": "Section title" } }
 ```
 
-Image:
+Image (a media library reference — include the attachment `id`, its `url`, and `alt`):
 
 ```json
-{ "name": "core/image", "attributes": { "url": "https://example.com/cat.jpg", "alt": "A grey cat" } }
+{ "name": "core/image", "attributes": { "id": 123, "url": "https://your-site.com/wp-content/uploads/2026/06/cat.jpg", "alt": "A grey cat" } }
 ```
 
 Button (buttons live inside a `core/buttons` container):
@@ -97,6 +97,19 @@ Nested layout — two columns, each holding a paragraph:
   ]
 }
 ```
+
+## Images
+
+`core/image` is a reference to the **media library**, not an arbitrary URL. An image
+block needs both the attachment `id` and its `url` (plus `alt`):
+
+- To use or change an image, find it with `albert/find-media` (search by title,
+  filename, caption, or description) and use the `id` and `url` it returns.
+- **When updating a post, never change the `id` of an existing image.** Read the current
+  blocks first and keep each image block's `id` and `url` exactly as they are, unless the
+  user explicitly asks for a different image.
+- A bare external `url` with no `id` works but is discouraged — it is not linked to the
+  media library.
 
 ## Workflow
 
