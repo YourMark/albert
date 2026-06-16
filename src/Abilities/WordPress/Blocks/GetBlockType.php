@@ -160,6 +160,21 @@ class GetBlockType extends BaseAbility {
 			);
 		}
 
+		// The block is registered, but the current user may not be allowed to use
+		// it. Mirror albert/list-block-types, which only lists allowed blocks, so
+		// the detail and the catalog stay consistent.
+		if ( ! $this->catalog->is_allowed( $name ) ) {
+			return new WP_Error(
+				'block_not_allowed',
+				sprintf(
+					/* translators: %s: requested block name */
+					__( "Block '%s' is not available to you on this site. Call albert/list-block-types to see the blocks you may use.", 'albert-ai-butler' ),
+					$name
+				),
+				[ 'status' => 403 ]
+			);
+		}
+
 		return $block;
 	}
 }

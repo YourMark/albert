@@ -115,6 +115,18 @@ class BlockCatalogAbilityTest extends TestCase {
 		$this->assertSame( 'block_not_registered', $result->get_error_code() );
 	}
 
+	public function test_get_block_type_disallowed_name_returns_error(): void {
+		// core/image is registered (seeded in setUp) but excluded from the
+		// per-user allowed set, so detail must be withheld to stay consistent
+		// with albert/list-block-types.
+		$GLOBALS['albert_test_allowed_block_types'] = [ 'core/paragraph' ];
+
+		$result = ( new GetBlockType( new BlockCatalog() ) )->execute( [ 'name' => 'core/image' ] );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'block_not_allowed', $result->get_error_code() );
+	}
+
 	public function test_get_block_type_missing_name_returns_error(): void {
 		$result = ( new GetBlockType( new BlockCatalog() ) )->execute( [] );
 
