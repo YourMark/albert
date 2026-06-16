@@ -14,6 +14,7 @@ defined( 'ABSPATH' ) || exit;
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Core\Plugin;
 use Albert\Logging\ObservabilityHandler;
+use Albert\MCP\Skills\SkillLoader;
 use Albert\OAuth\Server\TokenValidator;
 use Albert\Vendor\WP\MCP\Core\McpAdapter;
 use Albert\Vendor\WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
@@ -151,7 +152,7 @@ class Server implements Hookable {
 			$observability_handler,
 			$this->get_tools(),
 			[], // Resources.
-			[], // Prompts.
+			( new SkillLoader() )->prompts(), // Prompts (skills).
 			[ $this, 'permission_callback' ]
 		);
 	}
