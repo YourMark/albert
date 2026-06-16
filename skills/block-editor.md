@@ -29,9 +29,14 @@ Every block is an object with three keys:
 - `attributes` — the block's settings (heading level, image URL, etc.). Optional.
 - `innerBlocks` — child blocks, for container blocks like columns or lists. Optional.
 
-Use only block names that are actually registered on the site. Do not invent names.
-If you need arbitrary HTML that has no matching block, use `core/html` and put the
-markup in its `content` attribute.
+Use only block names that are actually registered on the site. Do not invent names — an
+unregistered name comes back as a `block_validation_failed` error naming it, so you can
+fix it and retry. If you need arbitrary HTML that has no matching block, use `core/html`
+and put the markup in its `html` attribute.
+
+Text attributes (`content`, a button's `text`, a quote's `citation`) accept inline HTML —
+`<strong>`, `<em>`, `<a href="…">`, `<code>` — which Albert sanitizes. Use them for inline
+emphasis and for links inside text.
 
 ## Examples
 
@@ -76,6 +81,8 @@ List (a `core/list` wraps `core/list-item` children):
 }
 ```
 
+For a numbered list, add `"ordered": true` to the `core/list` attributes (it renders as `<ol>`).
+
 Nested layout — two columns, each holding a paragraph:
 
 ```json
@@ -110,6 +117,16 @@ block needs both the attachment `id` and its `url` (plus `alt`):
   user explicitly asks for a different image.
 - A bare external `url` with no `id` works but is discouraged — it is not linked to the
   media library.
+
+## Links and buttons
+
+Links use a plain **URL** — there is no id-based link reference (unlike images). This applies
+to `core/button` (its `url` attribute) and to `<a href>` links inside text attributes.
+
+- For an **internal** page or post, use its real **permalink** as the URL. Look it up with
+  `albert/find-posts` / `albert/view-post` (or the `*-page` abilities) — they return a
+  `permalink`; use that. Never guess a slug or put a post id in a link.
+- For an **external** link, use the full absolute URL.
 
 ## Workflow
 
