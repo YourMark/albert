@@ -16,6 +16,7 @@ require_once dirname( __DIR__ ) . '/stubs/wordpress.php';
 require_once dirname( __DIR__, 2 ) . '/wp-function-stubs.php';
 require_once dirname( __DIR__ ) . '/stubs/WP_Block_Type_Registry.php';
 
+use Albert\MCP\BlockTypesResource;
 use Albert\MCP\ResourceLoader;
 use Albert\Vendor\WP\MCP\Domain\Resources\McpResource;
 use PHPUnit\Framework\TestCase;
@@ -96,18 +97,29 @@ class ResourceLoaderTest extends TestCase {
 	}
 
 	/**
-	 * The albert/mcp/resources filter can contribute resources.
+	 * The albert/mcp/resources filter additively contributes resources.
+	 *
+	 * Add-ons are expected to append to the passed list (i.e.
+	 * `$resources[] = $addon; return $resources;`), keeping the built-ins. The
+	 * stub apply_filters returns a fixed override and cannot see the passed
+	 * value, so the override array is built as [ built-in, addon ] to genuinely
+	 * assert the built-in is preserved alongside the addon.
 	 *
 	 * @return void
 	 */
-	public function test_filter_can_contribute_resources(): void {
+	public function test_filter_additively_contributes_resources(): void {
+		$built_in = ( new BlockTypesResource() )->build();
+		$this->assertInstanceOf( McpResource::class, $built_in );
+
 		$GLOBALS['albert_test_filter_returns']['albert/mcp/resources'] = [
+			$built_in,
 			$this->make_resource( 'albert://addon/thing' ),
 		];
 
 		$uris = $this->uris( ( new ResourceLoader() )->resources() );
 
-		$this->assertSame( [ 'albert://addon/thing' ], $uris );
+		$this->assertContains( 'albert://blocks/types', $uris );
+		$this->assertContains( 'albert://addon/thing', $uris );
 	}
 
 	/**

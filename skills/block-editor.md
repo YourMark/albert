@@ -21,6 +21,14 @@ you are allowed to save. Use `albert/get-block-type` to inspect a single block's
 attributes. Composing a block that is not in your allowed set returns a
 `block_validation_failed` error naming it, and nothing is saved.
 
+Allowed-block enforcement applies only to the structured `blocks` field. The raw
+`content` string path is not allow-list-enforced, so prefer `blocks` whenever you want
+the allowed set honoured.
+
+The `albert://blocks/types` resource returns the site-wide (post-less) allowed list. For
+a specific target, the `list-block-types` tool with a `post_type` is authoritative, since
+some sites allow different blocks per post type.
+
 ## Block spec shape
 
 Every block is an object with three keys:

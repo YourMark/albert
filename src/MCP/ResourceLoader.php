@@ -47,8 +47,12 @@ class ResourceLoader {
 		/**
 		 * Filters the MCP resources Albert registers.
 		 *
-		 * Add-ons and themes can append their own built McpResource instances.
-		 * Non-McpResource entries are dropped.
+		 * Add-ons and themes should **append** their own built McpResource
+		 * instances to the provided list (e.g. `$resources[] = $my_resource;`).
+		 * The filter is replace-capable (standard WordPress semantics): returning
+		 * a list that omits the built-ins will drop them, so always extend the
+		 * passed array rather than replacing it. Non-McpResource entries are
+		 * dropped.
 		 *
 		 * @since 1.2.0
 		 *

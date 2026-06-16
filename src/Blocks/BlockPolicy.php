@@ -70,6 +70,15 @@ class BlockPolicy {
 	 * disallowed name, shaped exactly like BlockSerializer issues so the caller
 	 * can hand them straight to {@see BlockIssues::to_wp_error()}.
 	 *
+	 * The update exemption is by block **name**, not per instance. If a now-
+	 * disallowed block type already exists anywhere in the target post, every
+	 * instance of that same type is permitted on this update — including any new
+	 * instances the submitted specs add. This is intentional for the
+	 * whole-content-replace edit model: a write replaces the entire post body, so
+	 * there is no stable per-instance identity to grandfather individually. The
+	 * grandfathered set is the distinct names already present in the post, and the
+	 * exemption follows the name, not a specific occurrence of it.
+	 *
 	 * When enforcement is disabled via the `albert/blocks/enforce_allowed`
 	 * filter, or the input is not a list of specs, an empty list is returned.
 	 *
