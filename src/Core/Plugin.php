@@ -30,6 +30,8 @@ use Albert\Abilities\WordPress\Media\FindMedia;
 use Albert\Abilities\WordPress\Media\ViewMedia;
 use Albert\Abilities\WordPress\Media\SetFeaturedImage;
 use Albert\Abilities\WordPress\Media\UploadMedia;
+use Albert\Abilities\WordPress\Blocks\GetBlockType;
+use Albert\Abilities\WordPress\Blocks\ListBlockTypes;
 use Albert\Abilities\WordPress\Taxonomies\FindTaxonomies;
 use Albert\Abilities\WordPress\Taxonomies\FindTerms;
 use Albert\Abilities\WordPress\Taxonomies\ViewTerm;
@@ -247,6 +249,10 @@ class Plugin {
 		$this->abilities_manager->add_ability( new CreateTerm() );
 		$this->abilities_manager->add_ability( new UpdateTerm() );
 		$this->abilities_manager->add_ability( new DeleteTerm() );
+
+		// Block abilities (block type discovery).
+		$this->abilities_manager->add_ability( new ListBlockTypes() );
+		$this->abilities_manager->add_ability( new GetBlockType() );
 
 		// WooCommerce abilities (only when WooCommerce is active).
 		if ( class_exists( 'WooCommerce' ) ) {

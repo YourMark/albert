@@ -17,6 +17,8 @@ use Albert\Logging\ObservabilityHandler;
 use Albert\MCP\Skills\SkillLoader;
 use Albert\OAuth\Server\TokenValidator;
 use Albert\Vendor\WP\MCP\Core\McpAdapter;
+use Albert\Vendor\WP\MCP\Domain\Prompts\McpPrompt;
+use Albert\Vendor\WP\MCP\Domain\Resources\McpResource;
 use Albert\Vendor\WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
 use Albert\Vendor\WP\MCP\Infrastructure\Observability\Contracts\McpObservabilityHandlerInterface;
 use Albert\Vendor\WP\MCP\Transport\HttpTransport;
@@ -151,8 +153,8 @@ class Server implements Hookable {
 			ErrorLogMcpErrorHandler::class,
 			$observability_handler,
 			$this->get_tools(),
-			[], // Resources.
-			( new SkillLoader() )->prompts(), // Prompts (skills).
+			$this->get_resources(),
+			$this->get_prompts(),
 			[ $this, 'permission_callback' ]
 		);
 	}
@@ -171,6 +173,32 @@ class Server implements Hookable {
 			'mcp-adapter/get-ability-info',
 			'mcp-adapter/execute-ability',
 		];
+	}
+
+	/**
+	 * Get the resources to register for this server.
+	 *
+	 * Resources are built McpResource instances (not abilities), assembled by
+	 * {@see ResourceLoader} — mirroring how prompts are supplied.
+	 *
+	 * @return list<McpResource> The resource instances to expose.
+	 * @since 1.2.0
+	 */
+	private function get_resources(): array {
+		return ( new ResourceLoader() )->resources();
+	}
+
+	/**
+	 * Get the prompts (skills) to register for this server.
+	 *
+	 * Skills are bundled Markdown playbooks loaded as built McpPrompt instances
+	 * (not abilities), mirroring how resources are supplied. See {@see SkillLoader}.
+	 *
+	 * @return array<int, McpPrompt> The prompt instances to expose.
+	 * @since 1.2.0
+	 */
+	private function get_prompts(): array {
+		return ( new SkillLoader() )->prompts();
 	}
 
 	/**

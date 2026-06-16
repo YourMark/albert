@@ -440,3 +440,100 @@ if ( ! function_exists( 'albert_test_register_default_block_types' ) ) {
 		albert_test_register_block_type( 'core/latest-posts', true );
 	}
 }
+
+if ( ! function_exists( 'sanitize_key' ) ) {
+	/**
+	 * Stub of sanitize_key(): lowercase, allow only a-z0-9_- .
+	 *
+	 * @param string $key Raw key.
+	 * @return string Sanitised key.
+	 */
+	function sanitize_key( $key ) {
+		return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $key ) );
+	}
+}
+
+if ( ! function_exists( 'get_post' ) ) {
+	/**
+	 * Stub of get_post(): resolve a post object from
+	 * $GLOBALS['albert_test_posts'] keyed by ID, or null.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return object|null Post-like object or null.
+	 */
+	function get_post( $post_id = 0 ) {
+		$posts = (array) ( $GLOBALS['albert_test_posts'] ?? [] );
+
+		return $posts[ (int) $post_id ] ?? null;
+	}
+}
+
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedClassFound
+if ( ! class_exists( 'WP_Block_Editor_Context' ) ) {
+	/**
+	 * Minimal stub of WP_Block_Editor_Context used by BlockCatalog.
+	 *
+	 * Records the settings it was constructed with so the get_allowed_block_types
+	 * stub can branch on the context if a test needs to.
+	 */
+	class WP_Block_Editor_Context {
+
+		/**
+		 * The post attached to the context, if any.
+		 *
+		 * @var object|null
+		 */
+		public $post = null;
+
+		/**
+		 * Constructor.
+		 *
+		 * @param array<string, mixed> $settings Context settings.
+		 */
+		public function __construct( $settings = [] ) {
+			if ( isset( $settings['post'] ) ) {
+				$this->post = $settings['post'];
+			}
+		}
+	}
+}
+// phpcs:enable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedClassFound
+
+if ( ! function_exists( 'wp_json_encode' ) ) {
+	/**
+	 * Stub of wp_json_encode(): plain json_encode() for unit tests.
+	 *
+	 * @param mixed $data    Value to encode.
+	 * @param int   $options JSON encode options.
+	 * @param int   $depth   Maximum depth.
+	 * @return string|false JSON string, or false on failure.
+	 */
+	function wp_json_encode( $data, $options = 0, $depth = 512 ) {
+		return json_encode( $data, $options, $depth ); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
+	}
+}
+
+if ( ! function_exists( 'get_allowed_block_types' ) ) {
+	/**
+	 * Stub of get_allowed_block_types(): returns
+	 * $GLOBALS['albert_test_allowed_block_types'] when set, otherwise true
+	 * (all registered blocks allowed). When the value is callable it is invoked
+	 * with the context so tests can branch on post type.
+	 *
+	 * @param object $context Block editor context.
+	 * @return true|array<int, string> Allowed block names, or true for all.
+	 */
+	function get_allowed_block_types( $context = null ) {
+		if ( ! array_key_exists( 'albert_test_allowed_block_types', $GLOBALS ) ) {
+			return true;
+		}
+
+		$allowed = $GLOBALS['albert_test_allowed_block_types'];
+
+		if ( is_callable( $allowed ) ) {
+			return $allowed( $context );
+		}
+
+		return $allowed;
+	}
+}
