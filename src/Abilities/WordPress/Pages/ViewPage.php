@@ -96,7 +96,7 @@ class ViewPage extends BaseAbility {
 					'properties'  => [
 						'content'    => [
 							'type'        => 'string',
-							'description' => 'The stored page content: raw block markup (<!-- wp:... --> comment-delimited) for block-editor pages, plain HTML for classic-editor pages (see "has_blocks" / "editor"). Included when "content" is requested (default).',
+							'description' => 'The stored page content: raw block markup (<!-- wp:... --> comment-delimited) for block-editor pages, plain HTML for classic-editor pages (see "has_blocks" / "editor"). When a block window is applied (see "_meta"), this is the re-serialised window, not a verbatim excerpt of the stored markup. Included when "content" is requested (default).',
 						],
 						'blocks'     => [
 							'type'        => 'array',
@@ -204,10 +204,10 @@ class ViewPage extends BaseAbility {
 		$format  = isset( $args['format'] ) && is_array( $args['format'] ) ? $args['format'] : [];
 		$options = [ 'paginate' => true ];
 		if ( isset( $args['offset'] ) ) {
-			$options['offset'] = absint( $args['offset'] );
+			$options['offset'] = max( 0, (int) $args['offset'] );
 		}
 		if ( isset( $args['limit'] ) ) {
-			$options['limit'] = absint( $args['limit'] );
+			$options['limit'] = max( 0, (int) $args['limit'] );
 		}
 		$content = ContentFormatter::build( $page->post_content, $format, $options );
 

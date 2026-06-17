@@ -156,6 +156,37 @@ class ReadAbilityFormatTest extends TestCase {
 		$this->assertSame( "## Hello\n\nWorld body", $post['markdown'] );
 	}
 
+	public function test_view_post_surfaces_meta_window_in_result(): void {
+		// The _meta window object must survive the array_merge into the post object.
+		$result = ( new ViewPost() )->execute( [ 'id' => 5 ] );
+
+		$post = $result['post'];
+		$this->assertArrayHasKey( '_meta', $post );
+		$this->assertSame( 2, $post['_meta']['total_blocks'] );
+		$this->assertSame( 0, $post['_meta']['offset'] );
+		$this->assertSame( 2, $post['_meta']['returned_blocks'] );
+		$this->assertFalse( $post['_meta']['truncated'] );
+		$this->assertArrayNotHasKey( 'next_offset', $post['_meta'] );
+	}
+
+	public function test_view_post_offset_limit_window_reports_next_offset(): void {
+		$result = ( new ViewPost() )->execute(
+			[
+				'id'     => 5,
+				'offset' => 0,
+				'limit'  => 1,
+			]
+		);
+
+		$post = $result['post'];
+		$this->assertSame( 1, $post['_meta']['returned_blocks'] );
+		$this->assertTrue( $post['_meta']['truncated'] );
+		$this->assertSame( 1, $post['_meta']['next_offset'] );
+		// Only the first block is in the window.
+		$this->assertCount( 1, $post['blocks'] );
+		$this->assertSame( 'Hello', $post['blocks'][0]['plaintext'] );
+	}
+
 	// =====================================================================
 	// find-posts
 	// =====================================================================

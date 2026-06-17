@@ -227,6 +227,31 @@ class ContentFormatterTest extends TestCase {
 		$this->assertSame( 2, $meta['returned_blocks'] );
 		$this->assertFalse( $meta['truncated'] );
 		$this->assertArrayNotHasKey( 'next_offset', $meta );
+		// A partial last slice must report its actual range, never "showing all".
+		$this->assertStringContainsString( 'Showing blocks 4–5 of 6', $meta['note'] );
+		$this->assertStringNotContainsString( 'all', $meta['note'] );
+	}
+
+	public function test_window_note_combines_more_blocks_and_byte_cap(): void {
+		// A window that both leaves more blocks AND byte-caps its text must tell the
+		// model both: where the next slice is, and that the current text is partial.
+		$out  = ContentFormatter::build(
+			$this->paragraphs( 10 ),
+			[ 'plaintext' ],
+			[
+				'paginate'  => true,
+				'offset'    => 0,
+				'limit'     => 3,
+				'max_bytes' => 5,
+			]
+		);
+		$meta = $out['_meta'];
+
+		$this->assertTrue( $meta['truncated'] );
+		$this->assertSame( 3, $meta['next_offset'] );
+		$this->assertStringContainsString( 'offset=3', $meta['note'] );
+		$this->assertStringContainsString( 'byte-capped', $meta['note'] );
+		$this->assertStringContainsString( '…[truncated,', $out['plaintext'] );
 	}
 
 	public function test_window_past_the_end_returns_empty_and_not_truncated(): void {

@@ -82,11 +82,9 @@ class BlockReader {
 		$shaped = [];
 
 		foreach ( $blocks as $block ) {
-			$name = $block['blockName'] ?? null;
-
 			// Skip the empty whitespace "freeform" separators parse_blocks emits
 			// between real blocks. Keep genuine classic content (null name + text).
-			if ( $name === null && trim( (string) ( $block['innerHTML'] ?? '' ) ) === '' ) {
+			if ( self::is_empty_separator( $block ) ) {
 				continue;
 			}
 
@@ -94,6 +92,27 @@ class BlockReader {
 		}
 
 		return $shaped;
+	}
+
+	/**
+	 * Whether a parsed block is an empty whitespace "freeform" separator.
+	 *
+	 * The parser emits these (a null block name with only whitespace inner HTML)
+	 * between real blocks. They are skipped from the shaped tree, and the
+	 * ContentFormatter block window applies the SAME rule so its block index lines
+	 * up with the `blocks` representation — keeping the predicate here means the two
+	 * cannot drift apart. Genuine classic content (null name + real text) is not a
+	 * separator and is preserved.
+	 *
+	 * @param array<string, mixed> $block Parsed block from parse_blocks().
+	 * @return bool True when the block is an empty freeform separator.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function is_empty_separator( array $block ): bool {
+		$name = $block['blockName'] ?? null;
+
+		return $name === null && trim( (string) ( $block['innerHTML'] ?? '' ) ) === '';
 	}
 
 	/**

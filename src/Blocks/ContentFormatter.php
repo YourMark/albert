@@ -264,8 +264,7 @@ class ContentFormatter {
 			array_filter(
 				$parsed,
 				static function ( $block ): bool {
-					$name = $block['blockName'] ?? null;
-					return ! ( $name === null && trim( (string) ( $block['innerHTML'] ?? '' ) ) === '' );
+					return ! BlockReader::is_empty_separator( $block );
 				}
 			)
 		);
@@ -282,49 +281,91 @@ class ContentFormatter {
 		$trimmed = false;
 		self::apply_byte_cap( $out, $max_bytes, $trimmed );
 
-		$has_more  = ( $offset + $returned ) < $total_blocks;
-		$truncated = $has_more || $trimmed;
+		$has_more    = ( $offset + $returned ) < $total_blocks;
+		$next_offset = $has_more ? $offset + $returned : null;
 
 		$meta = [
 			'total_blocks'    => $total_blocks,
 			'offset'          => $offset,
 			'limit'           => $limit,
 			'returned_blocks' => $returned,
-			'truncated'       => $truncated,
+			'truncated'       => $has_more || $trimmed,
 		];
 
-		if ( $has_more ) {
-			$next_offset         = $offset + $returned;
+		if ( $next_offset !== null ) {
 			$meta['next_offset'] = $next_offset;
-			$meta['note']        = sprintf(
-				/* translators: 1: first block index, 2: last block index, 3: total blocks, 4: next offset. */
-				'Showing blocks %1$d–%2$d of %3$d. Re-request with offset=%4$d for the next slice.',
-				$offset,
-				$offset + $returned - 1,
-				$total_blocks,
-				$next_offset
-			);
-		} elseif ( $trimmed ) {
-			$meta['note'] = 'A representation was byte-capped. Request fewer blocks (smaller limit) or a single representation to see the full text.';
-		} elseif ( $offset >= $total_blocks && $total_blocks > 0 ) {
-			$meta['note'] = sprintf(
+		}
+
+		$meta['note'] = self::window_note( $offset, $returned, $total_blocks, $next_offset, $trimmed );
+
+		$out['_meta'] = $meta;
+
+		return $out;
+	}
+
+	/**
+	 * Build the actionable `_meta.note` for a read window.
+	 *
+	 * The signals are composed (not mutually exclusive) so a single window can
+	 * carry several at once — e.g. "more blocks remain" AND "text was byte-capped"
+	 * together, which the model needs both of to behave correctly. The note always
+	 * states the slice it actually returned (never "showing all" for a partial
+	 * slice), appends the next-offset hint when more blocks remain, and appends a
+	 * byte-cap warning when a text representation was trimmed.
+	 *
+	 * @param int      $offset       The window start that was applied.
+	 * @param int      $returned     How many blocks this window contains.
+	 * @param int      $total_blocks Total top-level blocks in the post.
+	 * @param int|null $next_offset  Offset to request next, or null when none remain.
+	 * @param bool     $trimmed      Whether a text representation was byte-capped.
+	 * @return string Actionable note for the model.
+	 *
+	 * @since 1.2.0
+	 */
+	private static function window_note( int $offset, int $returned, int $total_blocks, ?int $next_offset, bool $trimmed ): string {
+		if ( $total_blocks === 0 ) {
+			return 'The post has no blocks.';
+		}
+
+		if ( $returned === 0 ) {
+			return sprintf(
 				/* translators: 1: requested offset, 2: total blocks, 3: highest valid offset. */
 				'Offset %1$d is past the end of the post (%2$d block(s) total). Use an offset between 0 and %3$d.',
 				$offset,
 				$total_blocks,
 				$total_blocks - 1
 			);
-		} else {
-			$meta['note'] = sprintf(
+		}
+
+		if ( $offset === 0 && $returned === $total_blocks ) {
+			$note = sprintf(
 				/* translators: %d: total blocks. */
 				'Showing all %d block(s).',
 				$total_blocks
 			);
+		} else {
+			$note = sprintf(
+				/* translators: 1: first block index, 2: last block index, 3: total blocks. */
+				'Showing blocks %1$d–%2$d of %3$d.',
+				$offset,
+				$offset + $returned - 1,
+				$total_blocks
+			);
 		}
 
-		$out['_meta'] = $meta;
+		if ( $next_offset !== null ) {
+			$note .= sprintf(
+				/* translators: %d: next offset to request. */
+				' Re-request with offset=%d for the next slice.',
+				$next_offset
+			);
+		}
 
-		return $out;
+		if ( $trimmed ) {
+			$note .= ' Some text was byte-capped; request a smaller limit or a single representation to see the full text.';
+		}
+
+		return $note;
 	}
 
 	/**

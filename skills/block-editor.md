@@ -212,12 +212,20 @@ Each result carries a `_meta` object:
 - `next_offset` — present only when more blocks remain; the `offset` to request next.
 - `note` — a short, actionable summary.
 
-When `_meta.truncated` is `true`, fetch the rest by re-requesting the same ability
-with `"offset": <next_offset>` (and optionally a `"limit"`). Keep going until
-`_meta.truncated` is `false`. To read a specific section, pass `offset`/`limit`
-directly. The `find-*` abilities don't take `offset`/`limit` (they page at the post
-level), but each item may carry a `truncated: true` flag when its text was capped —
-call `view-post` / `view-page` for that item's full, paginated content.
+When `_meta.truncated` is `true`, look at `_meta.next_offset`:
+
+- **If `next_offset` is present**, more blocks remain — re-request the same ability
+  with `"offset": <next_offset>` (and optionally a `"limit"`). Keep going until
+  `_meta.truncated` is `false`.
+- **If `next_offset` is absent** (but `truncated` is still `true`), the block window
+  was complete but a text representation was **byte-capped**. Request a smaller
+  `"limit"`, or ask for a single representation (e.g. only `plaintext`), to get the
+  full text.
+
+To read a specific section, pass `offset`/`limit` directly. The `find-*` abilities
+don't take `offset`/`limit` (they page at the post level), but each item may carry a
+`truncated: true` flag when its text was capped — call `view-post` / `view-page` for
+that item's full, paginated content.
 
 ## Classic-editor sites
 
