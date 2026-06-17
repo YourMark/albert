@@ -205,6 +205,7 @@ if ( ! function_exists( 'rest_do_request' ) ) {
 		$GLOBALS['albert_test_rest_calls'][] = [
 			'method' => $method,
 			'route'  => $route,
+			'params' => method_exists( $request, 'get_params' ) ? $request->get_params() : [],
 		];
 
 		$responses = (array) ( $GLOBALS['albert_test_rest_responses'] ?? [] );

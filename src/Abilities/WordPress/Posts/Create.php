@@ -10,9 +10,7 @@
 namespace Albert\Abilities\WordPress\Posts;
 
 use Albert\Abstracts\BaseAbility;
-use Albert\Blocks\BlockIssues;
-use Albert\Blocks\BlockPolicy;
-use Albert\Blocks\BlockSerializer;
+use Albert\Blocks\WriteContentResolver;
 use Albert\Core\Annotations;
 use WP_Error;
 use WP_REST_Request;
@@ -160,35 +158,19 @@ class Create extends BaseAbility {
 	 * @since 1.0.0
 	 */
 	public function execute( array $args ): array|WP_Error {
-		// Precedence: structured "blocks" specs win over the "content" string.
-		// Both routes go through BlockSerializer, which serializes specs to valid
-		// block markup or (for a string) falls back to BlockConverter for
-		// HTML/Markdown. Any non-fatal issues are surfaced in the result.
-		$serializer    = new BlockSerializer();
-		$policy_issues = [];
-		if ( ! empty( $args['blocks'] ) && is_array( $args['blocks'] ) ) {
-			// Reject any block the user isn't allowed to use before serializing.
-			// Create has no existing content, so nothing is exempt.
-			$policy_issues = ( new BlockPolicy() )->enforce( $args['blocks'], 'post' );
-			$serialized    = $serializer->serialize_with_issues( $args['blocks'] );
-		} else {
-			$serialized = $serializer->serialize_with_issues( (string) ( $args['content'] ?? '' ) );
+		// Resolve the content to store from the content/blocks input (classic
+		// rejection, block serialization, allowed-block enforcement, issues).
+		$resolved = ( new WriteContentResolver() )->resolve( $args, 'post' );
+		if ( is_wp_error( $resolved ) ) {
+			return $resolved;
 		}
 
-		// Enforcement errors and serializer errors both abort the save; only
-		// warnings ride along.
-		$block_error = BlockIssues::to_wp_error( array_merge( $policy_issues, $serialized['issues'] ) );
-		if ( $block_error instanceof WP_Error ) {
-			return $block_error;
-		}
-
-		$content      = $serialized['markup'];
-		$block_issues = BlockIssues::warning_messages( $serialized['issues'] );
+		$block_issues = $resolved['block_issues'];
 
 		// Prepare REST API request data.
 		$request_data = [
 			'title'   => sanitize_text_field( $args['title'] ),
-			'content' => $content,
+			'content' => $resolved['content'],
 			'status'  => sanitize_key( $args['status'] ?? 'draft' ),
 			'excerpt' => sanitize_textarea_field( $args['excerpt'] ?? '' ),
 		];

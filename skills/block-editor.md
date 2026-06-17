@@ -196,7 +196,23 @@ Choose the format(s) that fit the task:
 
 ## Classic-editor sites
 
-If the site or post uses the **classic editor** (not the block editor), block specs do
-not apply — send plain HTML in the `content` field instead of `blocks`. (A machine-readable
-signal for the active editor arrives in a later release; for now, treat the classic editor
-as the exception and default to `blocks` everywhere else.)
+Some posts and pages use the **classic editor** instead of the block editor. The choice can
+be made per post type or even per individual post, so always check before writing.
+
+Every read ability exposes two signals on each post or page:
+
+- **`editor`** — `"block"` or `"classic"`. This is the editor the target uses.
+- **`has_blocks`** — whether the stored content currently contains block markup. It can differ
+  from `editor` (for example, block content saved on a post later switched to classic), so
+  treat `editor` as the instruction for how to write.
+
+When `editor` is `"classic"`, block specs do not apply: send plain **HTML in the `content`
+field**, not `blocks`. If you send `blocks` to a classic target, the write fails with a
+`classic_editor_blocks_unsupported` error and nothing is saved. The allowed-block list does
+not apply to classic targets either — any valid HTML is accepted (WordPress sanitizes it per
+your permissions).
+
+When `editor` is `"block"`, write structured `blocks` as described above.
+
+So the workflow is: read the target first, check its `editor` field, then write `blocks` for a
+block target or HTML in `content` for a classic target.

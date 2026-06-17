@@ -10,9 +10,7 @@
 namespace Albert\Abilities\WordPress\Posts;
 
 use Albert\Abstracts\BaseAbility;
-use Albert\Blocks\BlockIssues;
-use Albert\Blocks\BlockPolicy;
-use Albert\Blocks\BlockSerializer;
+use Albert\Blocks\WriteContentResolver;
 use Albert\Core\Annotations;
 use WP_Error;
 use WP_REST_Request;
@@ -181,35 +179,22 @@ class Update extends BaseAbility {
 			$request_data['title'] = sanitize_text_field( $args['title'] );
 		}
 
-		// Precedence: structured "blocks" specs win over the "content" string.
-		// Both routes go through BlockSerializer (specs → markup, or string →
-		// BlockConverter fallback). Content is only touched when one is provided.
-		$policy_issues = [];
-		if ( ! empty( $args['blocks'] ) && is_array( $args['blocks'] ) ) {
-			// Reject any block the user isn't allowed to use, but exempt block
-			// names already present in the post so a now-disallowed legacy block
-			// does not block edits.
-			$policy = new BlockPolicy();
-			$exempt = $policy->existing_block_names( $post_id );
+		// Content is only touched when structured "blocks" or a "content" string
+		// is provided; otherwise the existing post body is left untouched.
+		$has_blocks_input  = ! empty( $args['blocks'] ) && is_array( $args['blocks'] );
+		$has_content_input = $has_blocks_input || isset( $args['content'] );
 
-			$policy_issues = $policy->enforce( $args['blocks'], 'post', $post_id, $exempt );
-			$serialized    = ( new BlockSerializer() )->serialize_with_issues( $args['blocks'] );
-		} elseif ( isset( $args['content'] ) ) {
-			$serialized = ( new BlockSerializer() )->serialize_with_issues( (string) $args['content'] );
-		} else {
-			$serialized = null;
-		}
-
-		if ( $serialized !== null ) {
-			// Enforcement errors and serializer errors both abort the save; only
-			// warnings ride along.
-			$block_error = BlockIssues::to_wp_error( array_merge( $policy_issues, $serialized['issues'] ) );
-			if ( $block_error instanceof WP_Error ) {
-				return $block_error;
+		if ( $has_content_input ) {
+			// Resolve the content to store (classic rejection, block
+			// serialization, allowed-block enforcement with the Update exemption,
+			// and any block issues).
+			$resolved = ( new WriteContentResolver() )->resolve( $args, 'post', $post_id );
+			if ( is_wp_error( $resolved ) ) {
+				return $resolved;
 			}
 
-			$request_data['content'] = $serialized['markup'];
-			$block_issues            = BlockIssues::warning_messages( $serialized['issues'] );
+			$request_data['content'] = $resolved['content'];
+			$block_issues            = $resolved['block_issues'];
 		}
 
 		if ( isset( $args['status'] ) ) {
