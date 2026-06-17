@@ -121,6 +121,76 @@ class EditorModeTest extends TestCase {
 	}
 
 	// =====================================================================
+	// Read-side signal.
+	// =====================================================================
+
+	public function test_signal_reports_editor_and_block_markup(): void {
+		$GLOBALS['albert_test_posts']              = [
+			20 => (object) [
+				'ID'        => 20,
+				'post_type' => 'post',
+			],
+		];
+		$GLOBALS['albert_test_block_editor_posts'] = [ 20 => true ];
+
+		$post = (object) [
+			'ID'           => 20,
+			'post_type'    => 'post',
+			'post_content' => '<!-- wp:paragraph --><p>Hi</p><!-- /wp:paragraph -->',
+		];
+
+		$this->assertSame(
+			[
+				'editor'     => 'block',
+				'has_blocks' => true,
+			],
+			EditorMode::signal( $post )
+		);
+	}
+
+	public function test_signal_reports_classic_content_without_block_markup(): void {
+		$GLOBALS['albert_test_posts']              = [
+			21 => (object) [
+				'ID'        => 21,
+				'post_type' => 'post',
+			],
+		];
+		$GLOBALS['albert_test_block_editor_posts'] = [ 21 => false ];
+
+		$post = (object) [
+			'ID'           => 21,
+			'post_type'    => 'post',
+			'post_content' => '<p>Plain classic HTML</p>',
+		];
+
+		$this->assertSame(
+			[
+				'editor'     => 'classic',
+				'has_blocks' => false,
+			],
+			EditorMode::signal( $post )
+		);
+	}
+
+	public function test_signal_for_content_defaults_to_block_and_detects_markup(): void {
+		$this->assertSame(
+			[
+				'editor'     => 'block',
+				'has_blocks' => true,
+			],
+			EditorMode::signal_for_content( '<!-- wp:heading --><h2>Title</h2><!-- /wp:heading -->' )
+		);
+
+		$this->assertSame(
+			[
+				'editor'     => 'block',
+				'has_blocks' => false,
+			],
+			EditorMode::signal_for_content( '<p>No block markup here</p>' )
+		);
+	}
+
+	// =====================================================================
 	// Caching.
 	// =====================================================================
 

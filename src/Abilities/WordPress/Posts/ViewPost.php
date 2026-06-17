@@ -86,7 +86,7 @@ class ViewPost extends BaseAbility {
 					'properties'  => [
 						'content'    => [
 							'type'        => 'string',
-							'description' => 'Raw block markup (<!-- wp:... --> comment-delimited). Included when "content" is requested (default).',
+							'description' => 'The stored post content: raw block markup (<!-- wp:... --> comment-delimited) for block-editor posts, plain HTML for classic-editor posts (see "has_blocks" / "editor"). Included when "content" is requested (default).',
 						],
 						'blocks'     => [
 							'type'        => 'array',

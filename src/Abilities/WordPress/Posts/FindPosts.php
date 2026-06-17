@@ -126,7 +126,7 @@ class FindPosts extends BaseAbility {
 							'title'      => [ 'type' => 'string' ],
 							'content'    => [
 								'type'        => 'string',
-								'description' => 'Raw block markup (<!-- wp:... --> comment-delimited), consistent with view-post. Included when "content" is requested (default).',
+								'description' => 'The stored post content: raw block markup (<!-- wp:... --> comment-delimited) for block-editor posts, plain HTML for classic-editor posts (see "has_blocks" / "editor"). Consistent with view-post. Included when "content" is requested (default).',
 							],
 							'blocks'     => [
 								'type'        => 'array',
@@ -286,10 +286,7 @@ class FindPosts extends BaseAbility {
 					'title' => $post_data['title']['rendered'] ?? '',
 				],
 				ContentFormatter::build( $raw_content, $format ),
-				$post ? EditorMode::signal( $post ) : [
-					'editor'     => 'block',
-					'has_blocks' => has_blocks( $raw_content ),
-				],
+				$post ? EditorMode::signal( $post ) : EditorMode::signal_for_content( $raw_content ),
 				[
 					'excerpt'    => $post_data['excerpt']['rendered'] ?? '',
 					'status'     => $post_data['status'] ?? '',

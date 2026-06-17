@@ -88,12 +88,44 @@ class EditorMode {
 	 * @since 1.2.0
 	 */
 	public static function signal( object $post ): array {
-		$content = (string) $post->post_content;
-
 		return [
 			'editor'     => self::editor( (string) $post->post_type, (int) $post->ID ),
-			'has_blocks' => function_exists( 'has_blocks' ) ? has_blocks( $content ) : false,
+			'has_blocks' => self::content_has_blocks( (string) $post->post_content ),
 		];
+	}
+
+	/**
+	 * Build the editor signal for content that has no resolvable post.
+	 *
+	 * Used as a fallback by the find abilities: when `get_post()` does not return
+	 * a post for a row in the REST response the per-instance editor cannot be
+	 * determined, so the block-editor default is reported alongside the actual
+	 * block-markup flag of the content. Keeps `has_blocks` guarded the same way
+	 * {@see self::signal()} does, so both code paths behave identically.
+	 *
+	 * @param string $content Stored post content to test for block markup.
+	 * @return array{editor: string, has_blocks: bool} Editor name and block-markup flag.
+	 * @since 1.2.0
+	 */
+	public static function signal_for_content( string $content ): array {
+		return [
+			'editor'     => 'block',
+			'has_blocks' => self::content_has_blocks( $content ),
+		];
+	}
+
+	/**
+	 * Whether the given content contains block markup.
+	 *
+	 * Wraps `has_blocks()` with a `function_exists()` guard so callers behave
+	 * sanely in a stripped or test environment where the function is absent.
+	 *
+	 * @param string $content Stored post content.
+	 * @return bool True when the content contains block markup.
+	 * @since 1.2.0
+	 */
+	private static function content_has_blocks( string $content ): bool {
+		return function_exists( 'has_blocks' ) ? has_blocks( $content ) : false;
 	}
 
 	/**

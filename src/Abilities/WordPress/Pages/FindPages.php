@@ -125,7 +125,7 @@ class FindPages extends BaseAbility {
 							'title'      => [ 'type' => 'string' ],
 							'content'    => [
 								'type'        => 'string',
-								'description' => 'Raw block markup (<!-- wp:... --> comment-delimited), consistent with view-page. Included when "content" is requested (default).',
+								'description' => 'The stored page content: raw block markup (<!-- wp:... --> comment-delimited) for block-editor pages, plain HTML for classic-editor pages (see "has_blocks" / "editor"). Consistent with view-page. Included when "content" is requested (default).',
 							],
 							'blocks'     => [
 								'type'        => 'array',
@@ -279,10 +279,7 @@ class FindPages extends BaseAbility {
 					'title' => $page_data['title']['rendered'] ?? '',
 				],
 				ContentFormatter::build( $raw_content, $format ),
-				$page ? EditorMode::signal( $page ) : [
-					'editor'     => 'block',
-					'has_blocks' => has_blocks( $raw_content ),
-				],
+				$page ? EditorMode::signal( $page ) : EditorMode::signal_for_content( $raw_content ),
 				[
 					'excerpt'    => $page_data['excerpt']['rendered'] ?? '',
 					'status'     => $page_data['status'] ?? '',

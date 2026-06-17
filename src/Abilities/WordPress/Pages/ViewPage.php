@@ -86,7 +86,7 @@ class ViewPage extends BaseAbility {
 					'properties'  => [
 						'content'    => [
 							'type'        => 'string',
-							'description' => 'Raw block markup (<!-- wp:... --> comment-delimited). Included when "content" is requested (default).',
+							'description' => 'The stored page content: raw block markup (<!-- wp:... --> comment-delimited) for block-editor pages, plain HTML for classic-editor pages (see "has_blocks" / "editor"). Included when "content" is requested (default).',
 						],
 						'blocks'     => [
 							'type'        => 'array',
