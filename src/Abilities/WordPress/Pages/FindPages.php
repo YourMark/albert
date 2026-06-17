@@ -11,6 +11,7 @@ namespace Albert\Abilities\WordPress\Pages;
 
 use Albert\Abstracts\BaseAbility;
 use Albert\Blocks\ContentFormatter;
+use Albert\Blocks\EditorMode;
 use Albert\Core\Annotations;
 use WP_Error;
 use WP_REST_Request;
@@ -124,7 +125,7 @@ class FindPages extends BaseAbility {
 							'title'      => [ 'type' => 'string' ],
 							'content'    => [
 								'type'        => 'string',
-								'description' => 'Raw block markup (<!-- wp:... --> comment-delimited), consistent with view-page. Included when "content" is requested (default).',
+								'description' => 'The stored page content: raw block markup (<!-- wp:... --> comment-delimited) for block-editor pages, plain HTML for classic-editor pages (see "has_blocks" / "editor"). Consistent with view-page. Included when "content" is requested (default).',
 							],
 							'blocks'     => [
 								'type'        => 'array',
@@ -142,6 +143,15 @@ class FindPages extends BaseAbility {
 							'markdown'   => [
 								'type'        => 'string',
 								'description' => 'Markdown rendering of the page content. Only included when "markdown" is requested.',
+							],
+							'editor'     => [
+								'type'        => 'string',
+								'enum'        => [ 'block', 'classic' ],
+								'description' => 'Which editor this page uses. "block" means send structured "blocks" when writing; "classic" means send plain HTML in "content" instead.',
+							],
+							'has_blocks' => [
+								'type'        => 'boolean',
+								'description' => 'Whether the stored content actually contains block markup.',
 							],
 							'excerpt'    => [ 'type' => 'string' ],
 							'status'     => [ 'type' => 'string' ],
@@ -269,6 +279,7 @@ class FindPages extends BaseAbility {
 					'title' => $page_data['title']['rendered'] ?? '',
 				],
 				ContentFormatter::build( $raw_content, $format ),
+				$page ? EditorMode::signal( $page ) : EditorMode::signal_for_content( $raw_content ),
 				[
 					'excerpt'    => $page_data['excerpt']['rendered'] ?? '',
 					'status'     => $page_data['status'] ?? '',

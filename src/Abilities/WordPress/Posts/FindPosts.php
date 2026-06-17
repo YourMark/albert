@@ -11,6 +11,7 @@ namespace Albert\Abilities\WordPress\Posts;
 
 use Albert\Abstracts\BaseAbility;
 use Albert\Blocks\ContentFormatter;
+use Albert\Blocks\EditorMode;
 use Albert\Core\Annotations;
 use WP_Error;
 use WP_REST_Request;
@@ -125,7 +126,7 @@ class FindPosts extends BaseAbility {
 							'title'      => [ 'type' => 'string' ],
 							'content'    => [
 								'type'        => 'string',
-								'description' => 'Raw block markup (<!-- wp:... --> comment-delimited), consistent with view-post. Included when "content" is requested (default).',
+								'description' => 'The stored post content: raw block markup (<!-- wp:... --> comment-delimited) for block-editor posts, plain HTML for classic-editor posts (see "has_blocks" / "editor"). Consistent with view-post. Included when "content" is requested (default).',
 							],
 							'blocks'     => [
 								'type'        => 'array',
@@ -143,6 +144,15 @@ class FindPosts extends BaseAbility {
 							'markdown'   => [
 								'type'        => 'string',
 								'description' => 'Markdown rendering of the post content. Only included when "markdown" is requested.',
+							],
+							'editor'     => [
+								'type'        => 'string',
+								'enum'        => [ 'block', 'classic' ],
+								'description' => 'Which editor this post uses. "block" means send structured "blocks" when writing; "classic" means send plain HTML in "content" instead.',
+							],
+							'has_blocks' => [
+								'type'        => 'boolean',
+								'description' => 'Whether the stored content actually contains block markup.',
 							],
 							'excerpt'    => [ 'type' => 'string' ],
 							'status'     => [ 'type' => 'string' ],
@@ -276,6 +286,7 @@ class FindPosts extends BaseAbility {
 					'title' => $post_data['title']['rendered'] ?? '',
 				],
 				ContentFormatter::build( $raw_content, $format ),
+				$post ? EditorMode::signal( $post ) : EditorMode::signal_for_content( $raw_content ),
 				[
 					'excerpt'    => $post_data['excerpt']['rendered'] ?? '',
 					'status'     => $post_data['status'] ?? '',

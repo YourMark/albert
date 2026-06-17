@@ -20,6 +20,7 @@ require_once __DIR__ . '/read-ability-stubs.php';
 
 use Albert\Abilities\WordPress\Posts\FindPosts;
 use Albert\Abilities\WordPress\Posts\ViewPost;
+use Albert\Blocks\EditorMode;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -55,7 +56,12 @@ class ReadAbilityFormatTest extends TestCase {
 
 		$GLOBALS['albert_test_rest_calls']     = [];
 		$GLOBALS['albert_test_rest_responses'] = [];
-		unset( $GLOBALS['albert_test_caps'] );
+		unset(
+			$GLOBALS['albert_test_caps'],
+			$GLOBALS['albert_test_block_editor_post_types'],
+			$GLOBALS['albert_test_block_editor_posts']
+		);
+		EditorMode::reset_cache();
 	}
 
 	/**
@@ -93,6 +99,24 @@ class ReadAbilityFormatTest extends TestCase {
 		$this->assertSame( 5, $post['id'] );
 		$this->assertSame( 'Hello', $post['title'] );
 		$this->assertSame( 'publish', $post['status'] );
+
+		// Editor signal exposed: block-editor default, content is block markup.
+		$this->assertArrayHasKey( 'editor', $post );
+		$this->assertArrayHasKey( 'has_blocks', $post );
+		$this->assertSame( 'block', $post['editor'] );
+		$this->assertTrue( $post['has_blocks'] );
+	}
+
+	public function test_view_post_reports_classic_editor_and_has_blocks_mismatch(): void {
+		// Classic post type, but the stored content is still block markup — the
+		// editor signal and has_blocks are independent and both surface.
+		$GLOBALS['albert_test_block_editor_post_types'] = [ 'post' => false ];
+
+		$result = ( new ViewPost() )->execute( [ 'id' => 5 ] );
+
+		$post = $result['post'];
+		$this->assertSame( 'classic', $post['editor'] );
+		$this->assertTrue( $post['has_blocks'] );
 	}
 
 	public function test_view_post_plaintext_only_returns_only_plaintext_content_field(): void {
@@ -148,6 +172,12 @@ class ReadAbilityFormatTest extends TestCase {
 		$this->assertArrayNotHasKey( 'html', $item );
 		$this->assertArrayNotHasKey( 'markdown', $item );
 		$this->assertSame( self::MARKUP, $item['content'] );
+
+		// Editor signal exposed per item.
+		$this->assertArrayHasKey( 'editor', $item );
+		$this->assertArrayHasKey( 'has_blocks', $item );
+		$this->assertSame( 'block', $item['editor'] );
+		$this->assertTrue( $item['has_blocks'] );
 	}
 
 	public function test_find_posts_html_markdown_added_when_requested(): void {

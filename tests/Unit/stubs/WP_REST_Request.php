@@ -101,6 +101,15 @@ if ( ! class_exists( 'WP_REST_Request' ) ) {
 		}
 
 		/**
+		 * Get all request parameters.
+		 *
+		 * @return array<string, mixed>
+		 */
+		public function get_params(): array {
+			return $this->params;
+		}
+
+		/**
 		 * Get the request method.
 		 *
 		 * @return string

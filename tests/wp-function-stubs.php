@@ -513,6 +513,68 @@ if ( ! function_exists( 'wp_json_encode' ) ) {
 	}
 }
 
+if ( ! function_exists( 'has_blocks' ) ) {
+	/**
+	 * Stub of has_blocks(): detects block markup in a content string.
+	 *
+	 * Mirrors core's check for the block delimiter comment. Tests pass a content
+	 * string directly (the post-object overload is not needed in the unit suite).
+	 *
+	 * @param string $content Post content.
+	 * @return bool Whether the content contains block markup.
+	 */
+	function has_blocks( $content = '' ) {
+		return str_contains( (string) $content, '<!-- wp:' );
+	}
+}
+
+if ( ! function_exists( 'use_block_editor_for_post_type' ) ) {
+	/**
+	 * Stub of use_block_editor_for_post_type().
+	 *
+	 * Driven by $GLOBALS['albert_test_block_editor_post_types']: a map of
+	 * post type → bool. When the map is unset, or a post type is missing from it,
+	 * the block editor is assumed (the WordPress default).
+	 *
+	 * @param string $post_type Post type slug.
+	 * @return bool Whether the post type uses the block editor.
+	 */
+	function use_block_editor_for_post_type( $post_type ) {
+		$map = $GLOBALS['albert_test_block_editor_post_types'] ?? null;
+
+		if ( ! is_array( $map ) || ! array_key_exists( $post_type, $map ) ) {
+			return true;
+		}
+
+		return (bool) $map[ $post_type ];
+	}
+}
+
+if ( ! function_exists( 'use_block_editor_for_post' ) ) {
+	/**
+	 * Stub of use_block_editor_for_post().
+	 *
+	 * Driven by $GLOBALS['albert_test_block_editor_posts']: a map of post id →
+	 * bool. When the map is unset, or a post id is missing from it, the decision
+	 * falls back to the post type via use_block_editor_for_post_type().
+	 *
+	 * @param object|int $post Post object or ID.
+	 * @return bool Whether the post uses the block editor.
+	 */
+	function use_block_editor_for_post( $post ) {
+		$id  = is_object( $post ) ? (int) ( $post->ID ?? 0 ) : (int) $post;
+		$map = $GLOBALS['albert_test_block_editor_posts'] ?? null;
+
+		if ( is_array( $map ) && array_key_exists( $id, $map ) ) {
+			return (bool) $map[ $id ];
+		}
+
+		$post_type = is_object( $post ) ? (string) ( $post->post_type ?? 'post' ) : 'post';
+
+		return use_block_editor_for_post_type( $post_type );
+	}
+}
+
 if ( ! function_exists( 'get_allowed_block_types' ) ) {
 	/**
 	 * Stub of get_allowed_block_types(): returns
