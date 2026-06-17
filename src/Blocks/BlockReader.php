@@ -47,8 +47,23 @@ class BlockReader {
 			return [];
 		}
 
-		$parsed = parse_blocks( $post_content );
+		return $this->shape( parse_blocks( $post_content ) );
+	}
 
+	/**
+	 * Shape an already-parsed block list into the shaped tree.
+	 *
+	 * Exposes the same shaping code path used by {@see read()} so a caller that
+	 * has already run parse_blocks() (and possibly sliced the result, e.g. the
+	 * ContentFormatter block window) can shape it without re-serialising and
+	 * re-parsing. The empty-freeform-separator skip rule is applied identically.
+	 *
+	 * @param array<int|string, array<string, mixed>> $parsed Parsed blocks from parse_blocks().
+	 * @return array<int, array<string, mixed>> Shaped block tree.
+	 *
+	 * @since 1.2.0
+	 */
+	public function shape( array $parsed ): array {
 		return $this->shape_blocks( $parsed );
 	}
 
