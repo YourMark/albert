@@ -11,6 +11,7 @@ namespace Albert\Abilities\WordPress\Pages;
 
 use Albert\Abstracts\BaseAbility;
 use Albert\Blocks\ContentFormatter;
+use Albert\Blocks\EditorMode;
 use Albert\Core\Annotations;
 use WP_Error;
 use WP_REST_Request;
@@ -143,6 +144,15 @@ class FindPages extends BaseAbility {
 								'type'        => 'string',
 								'description' => 'Markdown rendering of the page content. Only included when "markdown" is requested.',
 							],
+							'editor'     => [
+								'type'        => 'string',
+								'enum'        => [ 'block', 'classic' ],
+								'description' => 'Which editor this page uses. "block" means send structured "blocks" when writing; "classic" means send plain HTML in "content" instead.',
+							],
+							'has_blocks' => [
+								'type'        => 'boolean',
+								'description' => 'Whether the stored content actually contains block markup.',
+							],
 							'excerpt'    => [ 'type' => 'string' ],
 							'status'     => [ 'type' => 'string' ],
 							'date'       => [ 'type' => 'string' ],
@@ -269,6 +279,10 @@ class FindPages extends BaseAbility {
 					'title' => $page_data['title']['rendered'] ?? '',
 				],
 				ContentFormatter::build( $raw_content, $format ),
+				$page ? EditorMode::signal( $page ) : [
+					'editor'     => 'block',
+					'has_blocks' => has_blocks( $raw_content ),
+				],
 				[
 					'excerpt'    => $page_data['excerpt']['rendered'] ?? '',
 					'status'     => $page_data['status'] ?? '',

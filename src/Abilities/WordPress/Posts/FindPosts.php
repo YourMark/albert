@@ -11,6 +11,7 @@ namespace Albert\Abilities\WordPress\Posts;
 
 use Albert\Abstracts\BaseAbility;
 use Albert\Blocks\ContentFormatter;
+use Albert\Blocks\EditorMode;
 use Albert\Core\Annotations;
 use WP_Error;
 use WP_REST_Request;
@@ -144,6 +145,15 @@ class FindPosts extends BaseAbility {
 								'type'        => 'string',
 								'description' => 'Markdown rendering of the post content. Only included when "markdown" is requested.',
 							],
+							'editor'     => [
+								'type'        => 'string',
+								'enum'        => [ 'block', 'classic' ],
+								'description' => 'Which editor this post uses. "block" means send structured "blocks" when writing; "classic" means send plain HTML in "content" instead.',
+							],
+							'has_blocks' => [
+								'type'        => 'boolean',
+								'description' => 'Whether the stored content actually contains block markup.',
+							],
 							'excerpt'    => [ 'type' => 'string' ],
 							'status'     => [ 'type' => 'string' ],
 							'date'       => [ 'type' => 'string' ],
@@ -276,6 +286,10 @@ class FindPosts extends BaseAbility {
 					'title' => $post_data['title']['rendered'] ?? '',
 				],
 				ContentFormatter::build( $raw_content, $format ),
+				$post ? EditorMode::signal( $post ) : [
+					'editor'     => 'block',
+					'has_blocks' => has_blocks( $raw_content ),
+				],
 				[
 					'excerpt'    => $post_data['excerpt']['rendered'] ?? '',
 					'status'     => $post_data['status'] ?? '',

@@ -11,6 +11,7 @@ namespace Albert\Abilities\WordPress\Posts;
 
 use Albert\Abstracts\BaseAbility;
 use Albert\Blocks\ContentFormatter;
+use Albert\Blocks\EditorMode;
 use Albert\Core\Annotations;
 use WP_Error;
 use WP_REST_Request;
@@ -83,26 +84,35 @@ class ViewPost extends BaseAbility {
 					'type'        => 'object',
 					'description' => 'The requested post object.',
 					'properties'  => [
-						'content'   => [
+						'content'    => [
 							'type'        => 'string',
 							'description' => 'Raw block markup (<!-- wp:... --> comment-delimited). Included when "content" is requested (default).',
 						],
-						'blocks'    => [
+						'blocks'     => [
 							'type'        => 'array',
 							'description' => 'The post content parsed into a structured block tree. Each node has { name, attributes, innerBlocks, plaintext }; innerBlocks is the same shape recursively. Included when "blocks" is requested (default).',
 							'items'       => [ 'type' => 'object' ],
 						],
-						'plaintext' => [
+						'plaintext'  => [
 							'type'        => 'string',
 							'description' => 'Human-readable plain text of the whole post content. Included when "plaintext" is requested (default).',
 						],
-						'html'      => [
+						'html'       => [
 							'type'        => 'string',
 							'description' => 'Rendered HTML produced by do_blocks() — reflects dynamic/server-rendered block output. Only included when "html" is requested.',
 						],
-						'markdown'  => [
+						'markdown'   => [
 							'type'        => 'string',
 							'description' => 'Markdown rendering of the post content. Only included when "markdown" is requested.',
+						],
+						'editor'     => [
+							'type'        => 'string',
+							'enum'        => [ 'block', 'classic' ],
+							'description' => 'Which editor this post uses. "block" means send structured "blocks" when writing; "classic" means send plain HTML in "content" instead.',
+						],
+						'has_blocks' => [
+							'type'        => 'boolean',
+							'description' => 'Whether the stored content actually contains block markup. May differ from "editor" (e.g. classic content saved on a block-editor type).',
 						],
 					],
 				],
@@ -157,6 +167,7 @@ class ViewPost extends BaseAbility {
 					'title' => $post->post_title,
 				],
 				$content,
+				EditorMode::signal( $post ),
 				[
 					'excerpt'        => $post->post_excerpt,
 					'status'         => $post->post_status,
