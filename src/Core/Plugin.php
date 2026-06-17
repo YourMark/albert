@@ -16,11 +16,19 @@ use Albert\Abilities\WordPress\Posts\ViewPost;
 use Albert\Abilities\WordPress\Posts\Create as CreatePost;
 use Albert\Abilities\WordPress\Posts\Update as UpdatePost;
 use Albert\Abilities\WordPress\Posts\Delete as DeletePost;
+use Albert\Abilities\WordPress\Posts\EditBlock as EditPostBlock;
+use Albert\Abilities\WordPress\Posts\AddBlock as AddPostBlock;
+use Albert\Abilities\WordPress\Posts\RemoveBlock as RemovePostBlock;
+use Albert\Abilities\WordPress\Posts\MoveBlock as MovePostBlock;
 use Albert\Abilities\WordPress\Pages\FindPages;
 use Albert\Abilities\WordPress\Pages\ViewPage;
 use Albert\Abilities\WordPress\Pages\Create as CreatePage;
 use Albert\Abilities\WordPress\Pages\Update as UpdatePage;
 use Albert\Abilities\WordPress\Pages\Delete as DeletePage;
+use Albert\Abilities\WordPress\Pages\EditBlock as EditPageBlock;
+use Albert\Abilities\WordPress\Pages\AddBlock as AddPageBlock;
+use Albert\Abilities\WordPress\Pages\RemoveBlock as RemovePageBlock;
+use Albert\Abilities\WordPress\Pages\MoveBlock as MovePageBlock;
 use Albert\Abilities\WordPress\Users\FindUsers;
 use Albert\Abilities\WordPress\Users\ViewUser;
 use Albert\Abilities\WordPress\Users\Create as CreateUser;
@@ -222,12 +230,24 @@ class Plugin {
 		$this->abilities_manager->add_ability( new UpdatePost() );
 		$this->abilities_manager->add_ability( new DeletePost() );
 
+		// Posts: granular per-block edits.
+		$this->abilities_manager->add_ability( new EditPostBlock() );
+		$this->abilities_manager->add_ability( new AddPostBlock() );
+		$this->abilities_manager->add_ability( new RemovePostBlock() );
+		$this->abilities_manager->add_ability( new MovePostBlock() );
+
 		// Pages abilities.
 		$this->abilities_manager->add_ability( new FindPages() );
 		$this->abilities_manager->add_ability( new ViewPage() );
 		$this->abilities_manager->add_ability( new CreatePage() );
 		$this->abilities_manager->add_ability( new UpdatePage() );
 		$this->abilities_manager->add_ability( new DeletePage() );
+
+		// Pages: granular per-block edits.
+		$this->abilities_manager->add_ability( new EditPageBlock() );
+		$this->abilities_manager->add_ability( new AddPageBlock() );
+		$this->abilities_manager->add_ability( new RemovePageBlock() );
+		$this->abilities_manager->add_ability( new MovePageBlock() );
 
 		// Users abilities.
 		$this->abilities_manager->add_ability( new FindUsers() );

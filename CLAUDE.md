@@ -404,11 +404,19 @@ marker, covering permission/transport/unknown failures the adapter surfaces via 
 | `albert/create-post` | Create a new post | posts |
 | `albert/update-post` | Update existing post | posts |
 | `albert/delete-post` | Delete a post | posts |
+| `albert/edit-post-block` | Replace one block in a post by path | posts |
+| `albert/add-post-block` | Insert one block into a post (before/after/inside) | posts |
+| `albert/remove-post-block` | Delete one block from a post by path | posts |
+| `albert/move-post-block` | Reorder one block within a post by path | posts |
 | `albert/find-pages` | Find pages | pages |
 | `albert/view-page` | View a single page | pages |
 | `albert/create-page` | Create a page | pages |
 | `albert/update-page` | Update a page | pages |
 | `albert/delete-page` | Delete a page | pages |
+| `albert/edit-page-block` | Replace one block in a page by path | pages |
+| `albert/add-page-block` | Insert one block into a page (before/after/inside) | pages |
+| `albert/remove-page-block` | Delete one block from a page by path | pages |
+| `albert/move-page-block` | Reorder one block within a page by path | pages |
 | `albert/find-users` | Find users | users |
 | `albert/view-user` | View a single user | users |
 | `albert/create-user` | Create a user | users |
