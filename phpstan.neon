@@ -26,3 +26,10 @@ parameters:
 		# which is regenerated and cannot be patched.
 		- message: '#Parameter \#12 \$prompts of method Albert\\Vendor\\WP\\MCP\\Core\\McpAdapter::create_server\(\) expects list<string>, array<int, Albert\\Vendor\\WP\\MCP\\Domain\\Prompts\\McpPrompt> given\.#'
 		  path: src/MCP/Server.php
+		# The bundled MCP adapter documents create_server()'s $resources as list<string>,
+		# but McpComponentRegistry::register_resources() also accepts McpResource instances
+		# directly (its register_single_resource() handles McpResource objects). The narrow
+		# PHPDoc is a third-party imprecision in the generated vendor-prefixed/ tree,
+		# which is regenerated and cannot be patched.
+		- message: '#Parameter \#11 \$resources of method Albert\\Vendor\\WP\\MCP\\Core\\McpAdapter::create_server\(\) expects list<string>, list<Albert\\Vendor\\WP\\MCP\\Domain\\Resources\\McpResource> given\.#'
+		  path: src/MCP/Server.php

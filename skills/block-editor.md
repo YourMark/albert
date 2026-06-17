@@ -13,6 +13,22 @@ correct block-editor markup for you — you never hand-write block comments or i
 Always prefer the structured `blocks` field over a raw `content` string. The exception
 is the classic editor (see "Classic-editor sites" at the end).
 
+## Know which blocks you may use
+
+Before composing blocks, call `albert/list-block-types` to see the block types you
+may use on this site — the list reflects your permissions, so it only contains blocks
+you are allowed to save. Use `albert/get-block-type` to inspect a single block's
+attributes. Composing a block that is not in your allowed set returns a
+`block_validation_failed` error naming it, and nothing is saved.
+
+Allowed-block enforcement applies only to the structured `blocks` field. The raw
+`content` string path is not allow-list-enforced, so prefer `blocks` whenever you want
+the allowed set honoured.
+
+The `albert://blocks/types` resource returns the site-wide (post-less) allowed list. For
+a specific target, the `list-block-types` tool with a `post_type` is authoritative, since
+some sites allow different blocks per post type.
+
 ## Block spec shape
 
 Every block is an object with three keys:
@@ -29,10 +45,12 @@ Every block is an object with three keys:
 - `attributes` — the block's settings (heading level, image URL, etc.). Optional.
 - `innerBlocks` — child blocks, for container blocks like columns or lists. Optional.
 
-Use only block names that are actually registered on the site. Do not invent names — an
-unregistered name comes back as a `block_validation_failed` error naming it, so you can
-fix it and retry. If you need arbitrary HTML that has no matching block, use `core/html`
-and put the markup in its `html` attribute.
+Use only block names that `albert/list-block-types` reports as available to you — that
+is how you know what is registered and allowed on this site. Do not invent names, and do
+not use a block missing from that list: either case comes back as a
+`block_validation_failed` error naming the block, so you can fix it and retry. If you need
+arbitrary HTML that has no matching block, use `core/html` and put the markup in its
+`html` attribute.
 
 Text attributes (`content`, a button's `text`, a quote's `citation`) accept inline HTML —
 `<strong>`, `<em>`, `<a href="…">`, `<code>` — which Albert sanitizes. Use them for inline
@@ -132,8 +150,10 @@ to `core/button` (its `url` attribute) and to `<a href>` links inside text attri
 
 1. **Read** the existing content first with `albert/view-post` (or `albert/find-posts`
    to locate it). Pass `"format": ["blocks"]` so you get the structured tree back.
-2. **Edit** the structured blocks: change attributes, add or remove blocks, reorder them.
-3. **Write** with `albert/create-post` (new) or `albert/update-post` (existing), sending
+2. **Check** which blocks you may use with `albert/list-block-types` before composing
+   anything new (use `albert/get-block-type` for a block's attributes).
+3. **Edit** the structured blocks: change attributes, add or remove blocks, reorder them.
+4. **Write** with `albert/create-post` (new) or `albert/update-post` (existing), sending
    your block specs in the `blocks` field.
 
 For pages, use the equivalent `albert/*-page` abilities.
@@ -141,7 +161,8 @@ For pages, use the equivalent `albert/*-page` abilities.
 ## Rules
 
 - Prefer `blocks` over a raw `content` string.
-- Use only registered block names. Use `core/html` for raw HTML; never invent names.
+- Use only block names from `albert/list-block-types`; a block you are not allowed to use
+  returns a `block_validation_failed` error. Use `core/html` for raw HTML; never invent names.
 - Do not hand-write block comments (`<!-- wp:... -->`) or inner HTML. Send attributes
   and `innerBlocks` and let Albert serialize the markup.
 - Put child blocks in `innerBlocks`, not in attributes.

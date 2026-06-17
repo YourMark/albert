@@ -11,6 +11,7 @@ namespace Albert\Abilities\WordPress\Posts;
 
 use Albert\Abstracts\BaseAbility;
 use Albert\Blocks\BlockIssues;
+use Albert\Blocks\BlockPolicy;
 use Albert\Blocks\BlockSerializer;
 use Albert\Core\Annotations;
 use WP_Error;
@@ -163,15 +164,20 @@ class Create extends BaseAbility {
 		// Both routes go through BlockSerializer, which serializes specs to valid
 		// block markup or (for a string) falls back to BlockConverter for
 		// HTML/Markdown. Any non-fatal issues are surfaced in the result.
-		$serializer = new BlockSerializer();
+		$serializer    = new BlockSerializer();
+		$policy_issues = [];
 		if ( ! empty( $args['blocks'] ) && is_array( $args['blocks'] ) ) {
-			$serialized = $serializer->serialize_with_issues( $args['blocks'] );
+			// Reject any block the user isn't allowed to use before serializing.
+			// Create has no existing content, so nothing is exempt.
+			$policy_issues = ( new BlockPolicy() )->enforce( $args['blocks'], 'post' );
+			$serialized    = $serializer->serialize_with_issues( $args['blocks'] );
 		} else {
 			$serialized = $serializer->serialize_with_issues( (string) ( $args['content'] ?? '' ) );
 		}
 
-		// Block-validation errors abort the save; only warnings ride along.
-		$block_error = BlockIssues::to_wp_error( $serialized['issues'] );
+		// Enforcement errors and serializer errors both abort the save; only
+		// warnings ride along.
+		$block_error = BlockIssues::to_wp_error( array_merge( $policy_issues, $serialized['issues'] ) );
 		if ( $block_error instanceof WP_Error ) {
 			return $block_error;
 		}

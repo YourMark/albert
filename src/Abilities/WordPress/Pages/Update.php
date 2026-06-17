@@ -11,6 +11,7 @@ namespace Albert\Abilities\WordPress\Pages;
 
 use Albert\Abstracts\BaseAbility;
 use Albert\Blocks\BlockIssues;
+use Albert\Blocks\BlockPolicy;
 use Albert\Blocks\BlockSerializer;
 use Albert\Core\Annotations;
 use WP_Error;
@@ -176,8 +177,16 @@ class Update extends BaseAbility {
 		// Precedence: structured "blocks" specs win over the "content" string.
 		// Both routes go through BlockSerializer (specs → markup, or string →
 		// BlockConverter fallback). Content is only touched when one is provided.
+		$policy_issues = [];
 		if ( ! empty( $args['blocks'] ) && is_array( $args['blocks'] ) ) {
-			$serialized = ( new BlockSerializer() )->serialize_with_issues( $args['blocks'] );
+			// Reject any block the user isn't allowed to use, but exempt block
+			// names already present in the page so a now-disallowed legacy block
+			// does not block edits.
+			$policy = new BlockPolicy();
+			$exempt = $policy->existing_block_names( $page_id );
+
+			$policy_issues = $policy->enforce( $args['blocks'], 'page', $page_id, $exempt );
+			$serialized    = ( new BlockSerializer() )->serialize_with_issues( $args['blocks'] );
 		} elseif ( isset( $args['content'] ) ) {
 			$serialized = ( new BlockSerializer() )->serialize_with_issues( (string) $args['content'] );
 		} else {
@@ -185,8 +194,9 @@ class Update extends BaseAbility {
 		}
 
 		if ( $serialized !== null ) {
-			// Block-validation errors abort the save; only warnings ride along.
-			$block_error = BlockIssues::to_wp_error( $serialized['issues'] );
+			// Enforcement errors and serializer errors both abort the save; only
+			// warnings ride along.
+			$block_error = BlockIssues::to_wp_error( array_merge( $policy_issues, $serialized['issues'] ) );
 			if ( $block_error instanceof WP_Error ) {
 				return $block_error;
 			}
