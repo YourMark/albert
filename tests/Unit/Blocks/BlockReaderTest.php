@@ -90,6 +90,13 @@ class BlockReaderTest extends TestCase {
 
 		$right = $tree[0]['innerBlocks'][1];
 		$this->assertSame( 'Right', $right['innerBlocks'][0]['plaintext'] );
+
+		// Additive `path` field addresses the separator-filtered tree.
+		$this->assertSame( [ 0 ], $tree[0]['path'] );
+		$this->assertSame( [ 0, 0 ], $left['path'] );
+		$this->assertSame( [ 0, 0, 0 ], $left['innerBlocks'][0]['path'] );
+		$this->assertSame( [ 0, 1 ], $right['path'] );
+		$this->assertSame( [ 0, 1, 0 ], $right['innerBlocks'][0]['path'] );
 	}
 
 	public function test_freeform_whitespace_blocks_are_skipped(): void {
@@ -103,6 +110,20 @@ class BlockReaderTest extends TestCase {
 		$this->assertCount( 2, $tree );
 		$this->assertSame( 'One', $tree[0]['plaintext'] );
 		$this->assertSame( 'Two', $tree[1]['plaintext'] );
+	}
+
+	public function test_top_level_paths_skip_separators(): void {
+		// The separator between the two paragraphs must NOT advance the logical
+		// path, so the second paragraph is [1] (matching what BlockTreeEditor
+		// navigates), not [2].
+		$markup = '<!-- wp:paragraph --><p>One</p><!-- /wp:paragraph -->'
+			. "\n\n"
+			. '<!-- wp:paragraph --><p>Two</p><!-- /wp:paragraph -->';
+
+		$tree = $this->reader->read( $markup );
+
+		$this->assertSame( [ 0 ], $tree[0]['path'] );
+		$this->assertSame( [ 1 ], $tree[1]['path'] );
 	}
 
 	public function test_classic_freeform_content_is_preserved(): void {

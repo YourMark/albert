@@ -135,6 +135,36 @@ class BlockSerializer {
 	}
 
 	/**
+	 * Build a single parsed block from one block spec.
+	 *
+	 * The write-side counterpart used by the granular block-edit abilities
+	 * ({@see BlockTreeEditor}) — they need exactly one ParsedBlock to splice into
+	 * a parse_blocks() tree, not a full top-level serialize. This wraps the same
+	 * private {@see build_block()} the whole-content path uses, so the resulting
+	 * block carries the same per-block-template innerHTML/innerContent and is
+	 * byte-correct when serialize_blocks() rebuilds it next to untouched siblings.
+	 *
+	 * Returns the built block (or null when the spec produced nothing, e.g. an
+	 * unknown block name with no content to preserve) alongside the same
+	 * severity-tagged issue list {@see serialize_with_issues()} reports, so callers
+	 * can fold them through {@see BlockIssues} exactly as whole-content writes do.
+	 *
+	 * @param array<string, mixed> $spec Single block spec ({ name, attributes, innerBlocks }).
+	 * @return array{block: ParsedBlock|null, issues: array<int, Issue>} Built block (or null) and issues.
+	 *
+	 * @since 1.2.0
+	 */
+	public function build_one( array $spec ): array {
+		$issues = [];
+		$block  = $this->build_block( $spec, 'block', $issues );
+
+		return [
+			'block'  => $block,
+			'issues' => $issues,
+		];
+	}
+
+	/**
 	 * Build an issue array.
 	 *
 	 * @param string $severity One of the SEVERITY_* constants.
