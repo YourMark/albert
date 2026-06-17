@@ -24,7 +24,13 @@ defined( 'ABSPATH' ) || exit;
  *     'attributes'  => array<string, mixed>,    // block attributes
  *     'innerBlocks' => array<int, array>,       // recursive list of the same shape
  *     'plaintext'   => string,                  // human-readable text derived from innerHTML
+ *     'path'        => array<int, int>,         // logical position over the separator-filtered tree
  *   ]
+ *
+ * The `path` is the address the granular block-edit abilities use: `[0]` is the
+ * first top-level block, `[2]` the third, `[2,0]` the first child of the third,
+ * and so on. It indexes the SAME separator-filtered tree the reader exposes, so
+ * a path read here addresses exactly the block that {@see BlockTreeEditor} edits.
  *
  * @since 1.2.0
  */
@@ -73,13 +79,19 @@ class BlockReader {
 	 * The key type is int|string to match the shape parse_blocks() declares in
 	 * the WordPress stub; numeric string keys never actually occur at runtime.
 	 *
+	 * The logical index advances only for kept (non-separator) blocks, so the
+	 * `path` it builds addresses the same separator-filtered tree the granular
+	 * block-edit abilities navigate.
+	 *
 	 * @param array<int|string, array<string, mixed>> $blocks Parsed blocks from parse_blocks().
+	 * @param array<int, int>                         $prefix Logical path prefix for this level.
 	 * @return array<int, array<string, mixed>> Shaped block tree.
 	 *
 	 * @since 1.2.0
 	 */
-	private function shape_blocks( array $blocks ): array {
+	private function shape_blocks( array $blocks, array $prefix = [] ): array {
 		$shaped = [];
+		$index  = 0;
 
 		foreach ( $blocks as $block ) {
 			// Skip the empty whitespace "freeform" separators parse_blocks emits
@@ -88,7 +100,8 @@ class BlockReader {
 				continue;
 			}
 
-			$shaped[] = $this->shape_block( $block );
+			$shaped[] = $this->shape_block( $block, array_merge( $prefix, [ $index ] ) );
+			++$index;
 		}
 
 		return $shaped;
@@ -119,11 +132,12 @@ class BlockReader {
 	 * Shape a single parsed block (recursing into inner blocks).
 	 *
 	 * @param array<string, mixed> $block Parsed block.
+	 * @param array<int, int>      $path  Logical path of this node over the separator-filtered tree.
 	 * @return array<string, mixed> Shaped block node.
 	 *
 	 * @since 1.2.0
 	 */
-	private function shape_block( array $block ): array {
+	private function shape_block( array $block, array $path = [] ): array {
 		$inner = isset( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] )
 			? $block['innerBlocks']
 			: [];
@@ -131,8 +145,9 @@ class BlockReader {
 		return [
 			'name'        => $block['blockName'] ?? null,
 			'attributes'  => isset( $block['attrs'] ) && is_array( $block['attrs'] ) ? $block['attrs'] : [],
-			'innerBlocks' => $this->shape_blocks( $inner ),
+			'innerBlocks' => $this->shape_blocks( $inner, $path ),
 			'plaintext'   => $this->plaintext( (string) ( $block['innerHTML'] ?? '' ) ),
+			'path'        => $path,
 		];
 	}
 
