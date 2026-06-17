@@ -247,13 +247,15 @@ class AbilitiesManager implements Hookable {
 	/**
 	 * Reconcile abilities added since the site last saved its toggles.
 	 *
-	 * Albert's safe default is "read abilities on, write/destructive abilities
-	 * off until the admin opts in". That default is only consulted on a fresh
-	 * install. Once a site has saved its toggles, any ability added later by a
-	 * plugin upgrade is absent from the persisted disabled list and would fall
-	 * through to enabled — even write/destructive ones. This method closes that
-	 * gap by disabling newly-seen abilities that should be off by default,
-	 * without ever retroactively changing toggles the admin already set.
+	 * Albert's fresh-install default gives an out-of-the-box starting point
+	 * (reads on, writes off). But once a site has saved its toggles, an upgrade
+	 * must not silently expand what a connected AI can reach: any ability added
+	 * later is absent from the persisted disabled list and would fall through to
+	 * enabled. Expanding the agent's reach — even a new read, which can expose a
+	 * new category of data — should be the admin's explicit choice. So on an
+	 * already-configured site this method disables EVERY newly-seen ability by
+	 * default (the admin opts in), without ever retroactively changing toggles
+	 * the admin already set.
 	 *
 	 * Keyed off the `albert_known_abilities` option (the set of ability IDs the
 	 * site has already accounted for):
@@ -268,9 +270,8 @@ class AbilitiesManager implements Hookable {
 	 *     first reconcile right after the admin's first save.
 	 *  4. Compute the newly-seen IDs. None → return (no option writes in the
 	 *     steady state).
-	 *  5. Of the new IDs, disable the ones the fresh-install default would have
-	 *     disabled (writes/destructive) by merging them into the persisted
-	 *     disabled option, and flag them in a transient so the admin can be told.
+	 *  5. Disable ALL the new IDs by merging them into the persisted disabled
+	 *     option, and flag them in a transient so the admin can be told.
 	 *  6. Fold the new IDs into the known set.
 	 *
 	 * Hooked on `wp_abilities_api_init` / `abilities_api_init` at
@@ -311,15 +312,14 @@ class AbilitiesManager implements Hookable {
 			return;
 		}
 
-		$to_disable = array_values( array_intersect( $new, AbilitiesRegistry::get_default_disabled_abilities() ) );
+		// Every newly-seen ability on an already-configured site is disabled by
+		// default — the admin opts in. Expanding what the AI can reach (even a new
+		// read, which may expose new data) requires explicit review.
+		$disabled = (array) get_option( AbilitiesPage::DISABLED_ABILITIES_OPTION, [] );
+		$disabled = array_values( array_unique( array_merge( array_map( 'strval', $disabled ), $new ) ) );
+		update_option( AbilitiesPage::DISABLED_ABILITIES_OPTION, $disabled );
 
-		if ( $to_disable !== [] ) {
-			$disabled = (array) get_option( AbilitiesPage::DISABLED_ABILITIES_OPTION, [] );
-			$disabled = array_values( array_unique( array_merge( array_map( 'strval', $disabled ), $to_disable ) ) );
-			update_option( AbilitiesPage::DISABLED_ABILITIES_OPTION, $disabled );
-
-			set_transient( 'albert_new_abilities_disabled', $to_disable, DAY_IN_SECONDS );
-		}
+		set_transient( 'albert_new_abilities_disabled', $new, DAY_IN_SECONDS );
 
 		update_option( 'albert_known_abilities', array_values( array_unique( array_merge( $known, $new ) ) ), false );
 	}

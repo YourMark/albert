@@ -2,9 +2,9 @@
 /**
  * Unit tests for AbilitiesManager::reconcile_new_abilities().
  *
- * Covers the upgrade default-state reconciliation: abilities added after a site
- * has saved its toggles must inherit the fresh-install default (writes off,
- * reads on) without ever retroactively changing toggles the admin already set.
+ * Covers the upgrade default-state reconciliation: every ability added after a
+ * site has saved its toggles is disabled by default (the admin opts in), without
+ * ever retroactively changing toggles the admin already set.
  *
  * @package Albert
  */
@@ -207,12 +207,13 @@ class AbilitiesReconcileTest extends TestCase {
 	// ─── New read ability appears ───────────────────────────────────
 
 	/**
-	 * A new read ability is left enabled: not added to the disabled option,
-	 * no transient set, but still folded into known so it is not reconsidered.
+	 * A new READ ability is also disabled by default on an already-configured
+	 * site: expanding what the AI can reach (even a read, which may expose a new
+	 * category of data) is the admin's explicit choice.
 	 *
 	 * @return void
 	 */
-	public function test_new_read_ability_stays_enabled(): void {
+	public function test_new_read_ability_is_also_disabled(): void {
 		$GLOBALS['albert_test_options']['albert_abilities_saved']                   = true;
 		$GLOBALS['albert_test_options']['albert_known_abilities']                   = [ 'albert/find-posts' ];
 		$GLOBALS['albert_test_options'][ AbilitiesPage::DISABLED_ABILITIES_OPTION ] = [];
@@ -220,15 +221,15 @@ class AbilitiesReconcileTest extends TestCase {
 		$this->set_registered(
 			[
 				$this->read( 'albert/find-posts' ),
-				$this->read( 'albert/view-page-block' ),
+				$this->read( 'albert/find-customers' ),
 			]
 		);
 
 		( new AbilitiesManager() )->reconcile_new_abilities();
 
-		$this->assertSame( [], $GLOBALS['albert_test_options'][ AbilitiesPage::DISABLED_ABILITIES_OPTION ] );
-		$this->assertArrayNotHasKey( 'albert_new_abilities_disabled', $GLOBALS['albert_test_transients'] );
-		$this->assertContains( 'albert/view-page-block', $GLOBALS['albert_test_options']['albert_known_abilities'] );
+		$this->assertSame( [ 'albert/find-customers' ], $GLOBALS['albert_test_options'][ AbilitiesPage::DISABLED_ABILITIES_OPTION ] );
+		$this->assertSame( [ 'albert/find-customers' ], $GLOBALS['albert_test_transients']['albert_new_abilities_disabled'] );
+		$this->assertContains( 'albert/find-customers', $GLOBALS['albert_test_options']['albert_known_abilities'] );
 	}
 
 	// ─── Steady state ───────────────────────────────────────────────
