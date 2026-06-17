@@ -123,4 +123,39 @@ class BlockReaderTest extends TestCase {
 		$this->assertSame( [ 'height' => '40px' ], $tree[0]['attributes'] );
 		$this->assertSame( '', $tree[0]['plaintext'] );
 	}
+
+	public function test_shape_shapes_a_preparsed_list(): void {
+		$markup = '<!-- wp:paragraph --><p>Pre-parsed</p><!-- /wp:paragraph -->';
+		$parsed = parse_blocks( $markup );
+
+		$tree = $this->reader->shape( $parsed );
+
+		$this->assertCount( 1, $tree );
+		$this->assertSame( 'core/paragraph', $tree[0]['name'] );
+		$this->assertSame( 'Pre-parsed', $tree[0]['plaintext'] );
+	}
+
+	public function test_shape_and_read_produce_the_same_tree(): void {
+		$markup = '<!-- wp:heading {"level":3} --><h3>Title</h3><!-- /wp:heading -->'
+			. "\n\n"
+			. '<!-- wp:paragraph --><p>Body</p><!-- /wp:paragraph -->';
+
+		$via_read  = $this->reader->read( $markup );
+		$via_shape = $this->reader->shape( parse_blocks( $markup ) );
+
+		$this->assertSame( $via_read, $via_shape );
+	}
+
+	public function test_shape_skips_empty_freeform_separators(): void {
+		// A sliced list may carry the whitespace separators parse_blocks emits.
+		$parsed = parse_blocks(
+			'<!-- wp:paragraph --><p>One</p><!-- /wp:paragraph -->'
+			. "\n\n"
+			. '<!-- wp:paragraph --><p>Two</p><!-- /wp:paragraph -->'
+		);
+
+		$tree = $this->reader->shape( $parsed );
+
+		$this->assertCount( 2, $tree );
+	}
 }

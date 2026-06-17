@@ -92,5 +92,7 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | `albert/abilities_icons` | filter | Customize category icons |
 | `albert/developer_mode` | filter | Toggle developer mode |
 | `albert/logging/enabled` | filter | Disable Free's ability log (Premium uses this) |
+| `albert/blocks/read_block_limit` | filter | Default top-level blocks per read window (default 200; 0 = unlimited) |
+| `albert/blocks/read_max_bytes` | filter | Per-field byte cap on read text representations (default 50000) |
 | `albert/activated` | action | Plugin activated |
 | `albert/deactivated` | action | Plugin deactivated |

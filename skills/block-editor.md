@@ -194,6 +194,39 @@ Choose the format(s) that fit the task:
 - `["html"]` — rendered front-end HTML. Use to see what a visitor sees.
 - `["markdown"]` — a Markdown rendering. Use for a compact, readable overview.
 
+## Large posts are paginated by block
+
+Ordinary posts are returned **whole** in a single call. Only when a post is large
+enough to risk the assistant's tool-result size limit do `albert/view-post` and
+`albert/view-page` return a **window of top-level blocks** instead. When a window
+is applied, every representation you request (`content`, `blocks`, `plaintext`,
+`html`, `markdown`) reflects **only that window**, so the slices stay consistent
+with each other.
+
+Each result carries a `_meta` object:
+
+- `total_blocks` — how many top-level blocks the post has.
+- `offset` / `limit` — the window that was applied.
+- `returned_blocks` — how many blocks this response contains.
+- `truncated` — `true` if more blocks remain, or a text field was byte-capped.
+- `next_offset` — present only when more blocks remain; the `offset` to request next.
+- `note` — a short, actionable summary.
+
+When `_meta.truncated` is `true`, look at `_meta.next_offset`:
+
+- **If `next_offset` is present**, more blocks remain — re-request the same ability
+  with `"offset": <next_offset>` (and optionally a `"limit"`). Keep going until
+  `_meta.truncated` is `false`.
+- **If `next_offset` is absent** (but `truncated` is still `true`), the block window
+  was complete but a text representation was **byte-capped**. Request a smaller
+  `"limit"`, or ask for a single representation (e.g. only `plaintext`), to get the
+  full text.
+
+To read a specific section, pass `offset`/`limit` directly. The `find-*` abilities
+don't take `offset`/`limit` (they page at the post level), but each item may carry a
+`truncated: true` flag when its text was capped — call `view-post` / `view-page` for
+that item's full, paginated content.
+
 ## Classic-editor sites
 
 Some posts and pages use the **classic editor** instead of the block editor. The choice can
