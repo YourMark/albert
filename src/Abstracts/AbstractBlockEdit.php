@@ -334,6 +334,15 @@ abstract class AbstractBlockEdit extends BaseAbility {
 		return [
 			'type'        => 'object',
 			'description' => 'The complete intended block spec for this one block: { "name": "core/paragraph", "attributes": { ... }, "innerBlocks": [ ... ] }. innerBlocks is the same shape recursively for layout blocks (e.g. core/columns > core/column). Put text in attributes (content/text/value) or in "plaintext". The server regenerates this one block; untouched blocks are preserved byte-for-byte.',
+			'properties'  => [
+				'name'        => [
+					'type'        => 'string',
+					'description' => 'Block type, e.g. core/paragraph.',
+				],
+				'attributes'  => [ 'type' => 'object' ],
+				'innerBlocks' => [ 'type' => 'array' ],
+			],
+			'required'    => [ 'name' ],
 		];
 	}
 
@@ -402,5 +411,42 @@ abstract class AbstractBlockEdit extends BaseAbility {
 		$expect = $args['expect'] ?? null;
 
 		return is_string( $expect ) && $expect !== '' ? $expect : null;
+	}
+
+	/**
+	 * Build the one block spec from the `block` arg, or return an error.
+	 *
+	 * Shared by the edit and add operations: validates the `block` input, builds it
+	 * through {@see BlockSerializer::build_one()}, and on a null result surfaces the
+	 * serializer issues as `block_validation_failed` — the same fatal error the
+	 * whole-content write path returns — so the model gets an actionable,
+	 * block-naming message rather than an opaque "could not build" error.
+	 *
+	 * @param array<string, mixed> $args Ability input.
+	 * @return array<string, mixed>|WP_Error The built ParsedBlock, or an error to return without saving.
+	 * @since 1.2.0
+	 */
+	protected function build_block_or_error( array $args ): array|WP_Error {
+		$spec = $args['block'] ?? null;
+		if ( ! is_array( $spec ) ) {
+			return new WP_Error(
+				'block_required',
+				__( 'The `block` parameter is required and must be a block spec object.', 'albert-ai-butler' ),
+				[ 'status' => 400 ]
+			);
+		}
+
+		$built = ( new BlockSerializer() )->build_one( $spec );
+		if ( $built['block'] === null ) {
+			$error = BlockIssues::to_wp_error( $built['issues'] );
+
+			return $error instanceof WP_Error ? $error : new WP_Error(
+				'block_validation_failed',
+				__( 'The submitted block could not be built. Check the block name and attributes.', 'albert-ai-butler' ),
+				[ 'status' => 400 ]
+			);
+		}
+
+		return $built['block'];
 	}
 }

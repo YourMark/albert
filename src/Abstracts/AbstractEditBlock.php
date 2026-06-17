@@ -13,8 +13,6 @@
 
 namespace Albert\Abstracts;
 
-use Albert\Blocks\BlockIssues;
-use Albert\Blocks\BlockSerializer;
 use Albert\Blocks\BlockTreeEditor;
 use WP_Error;
 
@@ -54,31 +52,11 @@ abstract class AbstractEditBlock extends AbstractBlockEdit {
 	 * @since 1.2.0
 	 */
 	protected function apply( BlockTreeEditor $editor, array $tree, array $args ): array|WP_Error {
-		$spec = $args['block'] ?? null;
-		if ( ! is_array( $spec ) ) {
-			return new WP_Error(
-				'block_required',
-				__( 'The `block` parameter is required and must be a block spec object.', 'albert-ai-butler' ),
-				[ 'status' => 400 ]
-			);
+		$built = $this->build_block_or_error( $args );
+		if ( $built instanceof WP_Error ) {
+			return $built;
 		}
 
-		$built = ( new BlockSerializer() )->build_one( $spec );
-		if ( $built['block'] === null ) {
-			// The spec produced no block (e.g. an unknown block name with no
-			// content to preserve). Surface its issues as block_validation_failed
-			// — the same fatal error the whole-content write path returns — so the
-			// model gets the actionable, block-naming message rather than an opaque
-			// "could not build" error.
-			$error = BlockIssues::to_wp_error( $built['issues'] );
-
-			return $error instanceof WP_Error ? $error : new WP_Error(
-				'block_validation_failed',
-				__( 'The submitted block could not be built. Check the block name and attributes.', 'albert-ai-butler' ),
-				[ 'status' => 400 ]
-			);
-		}
-
-		return $editor->edit( $tree, $this->read_path( $args ), $built['block'], $this->read_expect( $args ) );
+		return $editor->edit( $tree, $this->read_path( $args ), $built, $this->read_expect( $args ) );
 	}
 }

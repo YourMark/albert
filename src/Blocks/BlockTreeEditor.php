@@ -506,12 +506,23 @@ class BlockTreeEditor {
 		// Wrapper opening = everything before the first child marker; wrapper
 		// closing = everything after the last. With the literal chunks collapsed
 		// to before/after, rebuild: before, null, null, …, after.
-		$before = $strings[0] ?? '';
-		$after  = count( $strings ) > 1 ? (string) end( $strings ) : '';
-
-		// Avoid duplicating when there was exactly one literal chunk (before only).
-		if ( count( $strings ) <= 1 ) {
-			$after = '';
+		if ( count( $strings ) > 1 ) {
+			$before = $strings[0];
+			$after  = (string) end( $strings );
+		} else {
+			// A single literal chunk holds the whole wrapper — e.g. a container the
+			// block editor stored empty as "<div class="wp-block-group"></div>".
+			// Split it at the final close tag so inserted children land INSIDE the
+			// wrapper, not after its closing tag.
+			$chunk = $strings[0] ?? '';
+			$split = strrpos( $chunk, '</' );
+			if ( $split !== false ) {
+				$before = substr( $chunk, 0, $split );
+				$after  = substr( $chunk, $split );
+			} else {
+				$before = $chunk;
+				$after  = '';
+			}
 		}
 
 		$content = [ $before ];

@@ -125,6 +125,30 @@ class BlockTreeEditorTest extends TestCase {
 		$this->assertStringNotContainsString( 'Inner B', $out );
 	}
 
+	public function test_edit_three_levels_deep_bubbles_through_wrappers(): void {
+		// group[0] > columns[0,0] > column[0,0,0] > paragraph[0,0,0,0]; edit the
+		// paragraph. Exercises sync_inner_content bubbling up through THREE wrappers.
+		$markup = '<!-- wp:group --><div class="wp-block-group">'
+			. '<!-- wp:columns --><div class="wp-block-columns">'
+			. '<!-- wp:column --><div class="wp-block-column">'
+			. '<!-- wp:paragraph --><p>Deep</p><!-- /wp:paragraph -->'
+			. '</div><!-- /wp:column -->'
+			. '</div><!-- /wp:columns -->'
+			. '</div><!-- /wp:group -->';
+		$tree   = parse_blocks( $markup );
+
+		$result = $this->editor->edit( $tree, [ 0, 0, 0, 0 ], $this->heading_block() );
+		$this->assertIsArray( $result );
+
+		$out = serialize_blocks( $result );
+		// All three wrappers survive and only the deep child was replaced.
+		$this->assertStringContainsString( '<div class="wp-block-group">', $out );
+		$this->assertStringContainsString( '<div class="wp-block-columns">', $out );
+		$this->assertStringContainsString( '<div class="wp-block-column">', $out );
+		$this->assertStringContainsString( '<h2 class="wp-block-heading">Hi</h2>', $out );
+		$this->assertStringNotContainsString( '<p>Deep</p>', $out );
+	}
+
 	// =====================================================================
 	// add
 	// =====================================================================
@@ -200,14 +224,25 @@ class BlockTreeEditorTest extends TestCase {
 	}
 
 	public function test_add_inside_empty_container_is_allowed(): void {
-		// An empty group has no inner blocks yet but is a known container.
+		// An empty group (stored by the editor as one merged "<div…></div>" chunk)
+		// is a known container; the inserted child must land INSIDE the wrapper.
 		$markup = '<!-- wp:group --><div class="wp-block-group"></div><!-- /wp:group -->';
 		$tree   = parse_blocks( $markup );
 
 		$result = $this->editor->add( $tree, [ 0 ], 'inside_end', $this->heading_block() );
 
 		$this->assertIsArray( $result );
-		$this->assertStringContainsString( '<h2 class="wp-block-heading">Hi</h2>', serialize_blocks( $result ) );
+		$out = serialize_blocks( $result );
+
+		$open  = strpos( $out, '<div class="wp-block-group">' );
+		$child = strpos( $out, '<h2 class="wp-block-heading">Hi</h2>' );
+		$close = strpos( $out, '</div>' );
+
+		$this->assertNotFalse( $open );
+		$this->assertNotFalse( $child );
+		$this->assertNotFalse( $close );
+		// The child must sit between the opening and closing wrapper tags.
+		$this->assertTrue( $open < $child && $child < $close, 'Inserted child must be inside the wrapper, not after it.' );
 	}
 
 	// =====================================================================

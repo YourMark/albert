@@ -14,8 +14,6 @@
 
 namespace Albert\Abstracts;
 
-use Albert\Blocks\BlockIssues;
-use Albert\Blocks\BlockSerializer;
 use Albert\Blocks\BlockTreeEditor;
 use WP_Error;
 
@@ -60,28 +58,13 @@ abstract class AbstractAddBlock extends AbstractBlockEdit {
 	 * @since 1.2.0
 	 */
 	protected function apply( BlockTreeEditor $editor, array $tree, array $args ): array|WP_Error {
-		$spec = $args['block'] ?? null;
-		if ( ! is_array( $spec ) ) {
-			return new WP_Error(
-				'block_required',
-				__( 'The `block` parameter is required and must be a block spec object.', 'albert-ai-butler' ),
-				[ 'status' => 400 ]
-			);
+		$built = $this->build_block_or_error( $args );
+		if ( $built instanceof WP_Error ) {
+			return $built;
 		}
 
 		$position = isset( $args['position'] ) ? (string) $args['position'] : '';
 
-		$built = ( new BlockSerializer() )->build_one( $spec );
-		if ( $built['block'] === null ) {
-			$error = BlockIssues::to_wp_error( $built['issues'] );
-
-			return $error instanceof WP_Error ? $error : new WP_Error(
-				'block_validation_failed',
-				__( 'The submitted block could not be built. Check the block name and attributes.', 'albert-ai-butler' ),
-				[ 'status' => 400 ]
-			);
-		}
-
-		return $editor->add( $tree, $this->read_path( $args ), $position, $built['block'] );
+		return $editor->add( $tree, $this->read_path( $args ), $position, $built );
 	}
 }
