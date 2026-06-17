@@ -153,6 +153,10 @@ class FindPages extends BaseAbility {
 								'type'        => 'boolean',
 								'description' => 'Whether the stored content actually contains block markup.',
 							],
+							'truncated'  => [
+								'type'        => 'boolean',
+								'description' => 'Present and true only when a text representation for this item was byte-capped (a "…[truncated, N more characters]" marker was appended). For the full content of a large page, call view-page, which paginates by block.',
+							],
 							'excerpt'    => [ 'type' => 'string' ],
 							'status'     => [ 'type' => 'string' ],
 							'date'       => [ 'type' => 'string' ],
@@ -278,7 +282,7 @@ class FindPages extends BaseAbility {
 					'id'    => $page_data['id'],
 					'title' => $page_data['title']['rendered'] ?? '',
 				],
-				ContentFormatter::build( $raw_content, $format ),
+				ContentFormatter::build( $raw_content, $format, [ 'paginate' => false ] ),
 				$page ? EditorMode::signal( $page ) : EditorMode::signal_for_content( $raw_content ),
 				[
 					'excerpt'    => $page_data['excerpt']['rendered'] ?? '',

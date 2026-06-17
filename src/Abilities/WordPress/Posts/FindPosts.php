@@ -154,6 +154,10 @@ class FindPosts extends BaseAbility {
 								'type'        => 'boolean',
 								'description' => 'Whether the stored content actually contains block markup.',
 							],
+							'truncated'  => [
+								'type'        => 'boolean',
+								'description' => 'Present and true only when a text representation for this item was byte-capped (a "…[truncated, N more characters]" marker was appended). For the full content of a large post, call view-post, which paginates by block.',
+							],
 							'excerpt'    => [ 'type' => 'string' ],
 							'status'     => [ 'type' => 'string' ],
 							'date'       => [ 'type' => 'string' ],
@@ -285,7 +289,7 @@ class FindPosts extends BaseAbility {
 					'id'    => $post_data['id'],
 					'title' => $post_data['title']['rendered'] ?? '',
 				],
-				ContentFormatter::build( $raw_content, $format ),
+				ContentFormatter::build( $raw_content, $format, [ 'paginate' => false ] ),
 				$post ? EditorMode::signal( $post ) : EditorMode::signal_for_content( $raw_content ),
 				[
 					'excerpt'    => $post_data['excerpt']['rendered'] ?? '',

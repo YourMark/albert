@@ -65,6 +65,16 @@ class ViewPost extends BaseAbility {
 					'minimum'     => 1,
 				],
 				'format' => ContentFormatter::input_schema_property(),
+				'offset' => [
+					'type'        => 'integer',
+					'description' => 'Block-window start: index of the first top-level block to return. Long posts are paginated by block; use this with "limit" to page through them. Check "_meta.next_offset" in the result and re-request with that value to fetch the next slice. Optional; default 0 (start).',
+					'minimum'     => 0,
+				],
+				'limit'  => [
+					'type'        => 'integer',
+					'description' => 'Block-window size: maximum number of top-level blocks to return. Optional; 0 or omitted uses the server default window. Each returned representation (content/blocks/plaintext/html/markdown) reflects only this window.',
+					'minimum'     => 0,
+				],
 			],
 			'required'   => [ 'id' ],
 		];
@@ -114,6 +124,40 @@ class ViewPost extends BaseAbility {
 							'type'        => 'boolean',
 							'description' => 'Whether the stored content actually contains block markup. May differ from "editor" (e.g. classic content saved on a block-editor type).',
 						],
+						'_meta'      => [
+							'type'        => 'object',
+							'description' => 'Block-window pagination metadata. The returned content/blocks/plaintext/html/markdown reflect only the requested window of top-level blocks. When "truncated" is true, fetch the rest by re-requesting with the suggested "next_offset".',
+							'properties'  => [
+								'total_blocks'    => [
+									'type'        => 'integer',
+									'description' => 'Total number of top-level blocks in the post (after dropping empty separators).',
+								],
+								'offset'          => [
+									'type'        => 'integer',
+									'description' => 'The window start that was applied.',
+								],
+								'limit'           => [
+									'type'        => 'integer',
+									'description' => 'The window size that was applied (0 means no windowing).',
+								],
+								'returned_blocks' => [
+									'type'        => 'integer',
+									'description' => 'How many top-level blocks this response contains.',
+								],
+								'truncated'       => [
+									'type'        => 'boolean',
+									'description' => 'True if more blocks remain beyond this window, or a text representation was byte-capped.',
+								],
+								'next_offset'     => [
+									'type'        => 'integer',
+									'description' => 'Suggested "offset" for the next request. Present only when more blocks remain.',
+								],
+								'note'            => [
+									'type'        => 'string',
+									'description' => 'Human-readable, actionable summary of the window and how to fetch more.',
+								],
+							],
+						],
 					],
 				],
 			],
@@ -158,7 +202,14 @@ class ViewPost extends BaseAbility {
 		}
 
 		$format  = isset( $args['format'] ) && is_array( $args['format'] ) ? $args['format'] : [];
-		$content = ContentFormatter::build( $post->post_content, $format );
+		$options = [ 'paginate' => true ];
+		if ( isset( $args['offset'] ) ) {
+			$options['offset'] = absint( $args['offset'] );
+		}
+		if ( isset( $args['limit'] ) ) {
+			$options['limit'] = absint( $args['limit'] );
+		}
+		$content = ContentFormatter::build( $post->post_content, $format, $options );
 
 		return [
 			'post' => array_merge(
