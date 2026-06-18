@@ -136,7 +136,7 @@ class AbilitiesRegistry {
 	 * @param string $slug Ability slug, e.g. `albert/woo-find-products`.
 	 *
 	 * @return string Human-readable label.
-	 * @since 1.1.0
+	 * @since 1.2.0
 	 */
 	public static function label_for( string $slug ): string {
 		if ( function_exists( 'wp_get_ability' ) && did_action( 'wp_abilities_api_init' ) ) {

@@ -152,7 +152,7 @@ abstract class BaseAbility implements Ability {
 	 * @param array<string, mixed> $schema Input schema declared by the ability.
 	 *
 	 * @return array<string, mixed> Schema safe to pass through the registry.
-	 * @since 1.1.1
+	 * @since 1.2.0
 	 */
 	protected function prepare_input_schema( array $schema ): array {
 		if ( empty( $schema ) ) {
