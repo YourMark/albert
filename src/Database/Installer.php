@@ -54,6 +54,7 @@ class Installer {
 		'albert_allowed_users',
 		'albert_disabled_abilities',
 		'albert_abilities_saved',
+		'albert_known_abilities',
 		'albert_abilities_view_mode',
 		'albert_rewrite_version',
 		'albert_oauth_encryption_key',

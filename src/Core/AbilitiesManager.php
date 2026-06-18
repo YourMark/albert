@@ -51,10 +51,22 @@ class AbilitiesManager implements Hookable {
 		add_action( 'abilities_api_init', [ $this, 'register_abilities' ] );
 		add_action( 'wp_abilities_api_init', [ $this, 'register_abilities' ] );
 
+		// Reconcile abilities added by an upgrade against the persisted baseline
+		// so newly-seen write/destructive abilities inherit the fresh-install
+		// default (off) instead of silently turning on. Runs after every
+		// registration (default priority) but before enforce_disabled
+		// (PHP_INT_MAX) so any newly-disabled ability is pruned this same
+		// request — including the MCP REST request.
+		add_action( 'abilities_api_init', [ $this, 'reconcile_new_abilities' ], PHP_INT_MAX - 1 );
+		add_action( 'wp_abilities_api_init', [ $this, 'reconcile_new_abilities' ], PHP_INT_MAX - 1 );
+
 		// Remove disabled abilities from the registry after every plugin has
 		// registered. PHP_INT_MAX guarantees we run last so we can also strip
 		// abilities registered directly by third-party plugins.
 		add_action( 'wp_abilities_api_init', [ $this, 'enforce_disabled' ], PHP_INT_MAX );
+
+		// Tell the admin when an upgrade disabled newly-added abilities by default.
+		add_action( 'admin_notices', [ $this, 'render_new_abilities_notice' ] );
 
 		// Add abilities to settings page filters.
 		add_filter( 'albert/abilities/wordpress', [ $this, 'add_wordpress_abilities_to_settings' ] );
@@ -230,6 +242,142 @@ class AbilitiesManager implements Hookable {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Reconcile abilities added since the site last saved its toggles.
+	 *
+	 * Albert's fresh-install default gives an out-of-the-box starting point
+	 * (reads on, writes off). But once a site has saved its toggles, an upgrade
+	 * must not silently expand what a connected AI can reach: any ability added
+	 * later is absent from the persisted disabled list and would fall through to
+	 * enabled. Expanding the agent's reach — even a new read, which can expose a
+	 * new category of data — should be the admin's explicit choice. So on an
+	 * already-configured site this method disables EVERY newly-seen ability by
+	 * default (the admin opts in), without ever retroactively changing toggles
+	 * the admin already set.
+	 *
+	 * Keyed off the `albert_known_abilities` option (the set of ability IDs the
+	 * site has already accounted for):
+	 *
+	 *  1. Fresh install (`albert_abilities_saved` unset) → return; the existing
+	 *     default fallback already covers it.
+	 *  2. Capture every currently registered ability ID. Runs before
+	 *     enforce_disabled() prunes the registry, so the set is complete.
+	 *  3. Baseline (`albert_known_abilities` unset) → record the current set as
+	 *     known and return WITHOUT touching the disabled list. The current state
+	 *     is the baseline; we never retroactively re-disable. Also covers the
+	 *     first reconcile right after the admin's first save.
+	 *  4. Compute the newly-seen IDs. None → return (no option writes in the
+	 *     steady state).
+	 *  5. Disable ALL the new IDs by merging them into the persisted disabled
+	 *     option, and flag them in a transient so the admin can be told.
+	 *  6. Fold the new IDs into the known set.
+	 *
+	 * Hooked on `wp_abilities_api_init` / `abilities_api_init` at
+	 * `PHP_INT_MAX - 1`.
+	 *
+	 * @return void
+	 * @since 1.2.0
+	 */
+	public function reconcile_new_abilities(): void {
+		if ( ! get_option( 'albert_abilities_saved' ) ) {
+			return;
+		}
+
+		if ( ! function_exists( 'wp_get_abilities' ) ) {
+			return;
+		}
+
+		$registered = [];
+		foreach ( wp_get_abilities() as $ability ) {
+			$registered[] = $ability->get_name();
+		}
+		$registered = array_values( array_unique( array_map( 'strval', $registered ) ) );
+
+		$known = get_option( 'albert_known_abilities', null );
+
+		// Baseline: an already-configured site seeing this feature for the first
+		// time (or the first reconcile right after the admin's first save). Record
+		// the current set and stop — never retroactively disable.
+		if ( $known === null ) {
+			update_option( 'albert_known_abilities', $registered, false );
+			return;
+		}
+
+		$known = array_values( array_unique( array_map( 'strval', (array) $known ) ) );
+		$new   = array_values( array_diff( $registered, $known ) );
+
+		if ( $new === [] ) {
+			return;
+		}
+
+		// Every newly-seen ability on an already-configured site is disabled by
+		// default — the admin opts in. Expanding what the AI can reach (even a new
+		// read, which may expose new data) requires explicit review.
+		$disabled = (array) get_option( AbilitiesPage::DISABLED_ABILITIES_OPTION, [] );
+		$disabled = array_values( array_unique( array_merge( array_map( 'strval', $disabled ), $new ) ) );
+		update_option( AbilitiesPage::DISABLED_ABILITIES_OPTION, $disabled );
+
+		set_transient( 'albert_new_abilities_disabled', $new, DAY_IN_SECONDS );
+
+		update_option( 'albert_known_abilities', array_values( array_unique( array_merge( $known, $new ) ) ), false );
+	}
+
+	/**
+	 * Show a one-time admin notice when an upgrade disabled new abilities.
+	 *
+	 * Reads the transient set by {@see self::reconcile_new_abilities()} and, when
+	 * present, tells the admin that newly-added abilities were disabled by default
+	 * for safety, linking to the Abilities page. The transient is cleared once the
+	 * notice has been rendered so it shows only once. The richer per-item review
+	 * UX belongs to the abilities-page redo, not here.
+	 *
+	 * Note: this follows the standard single-shot transient pattern — the first
+	 * `manage_options` user to load any admin page consumes it. On a multi-admin
+	 * site a second admin may not see the notice; the safe default state still
+	 * applies regardless, and the Abilities page remains the source of truth.
+	 *
+	 * @return void
+	 * @since 1.2.0
+	 */
+	public function render_new_abilities_notice(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$disabled = get_transient( 'albert_new_abilities_disabled' );
+
+		if ( empty( $disabled ) || ! is_array( $disabled ) ) {
+			return;
+		}
+
+		delete_transient( 'albert_new_abilities_disabled' );
+
+		$count = count( $disabled );
+		$url   = menu_page_url( AbilitiesPage::PAGE_SLUG, false );
+
+		$message = sprintf(
+			/* translators: %s: number of new abilities. */
+			_n(
+				'Albert added %s new ability and disabled it by default for safety.',
+				'Albert added %s new abilities and disabled them by default for safety.',
+				$count,
+				'albert-ai-butler'
+			),
+			number_format_i18n( $count )
+		);
+
+		?>
+		<div class="notice notice-info is-dismissible">
+			<p>
+				<?php echo esc_html( $message ); ?>
+				<a href="<?php echo esc_url( $url ); ?>">
+					<?php esc_html_e( 'Review them on the Abilities page.', 'albert-ai-butler' ); ?>
+				</a>
+			</p>
+		</div>
+		<?php
 	}
 
 	/**
