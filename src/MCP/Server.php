@@ -101,12 +101,24 @@ class Server implements Hookable {
 	/**
 	 * Create the MCP server.
 	 *
-	 * @param McpAdapter $adapter The MCP adapter instance.
+	 * Bound to the global `mcp_adapter_init` action, which is fired by EVERY loaded
+	 * copy of the MCP adapter — including the unscoped `WP\MCP\…` copy WooCommerce
+	 * bundles. Mozart only rewrites class names, not the literal hook string, so
+	 * both our scoped adapter and a foreign one fire the same action. We must build
+	 * the Albert server only against our own Mozart-scoped adapter; any other
+	 * instance is ignored (otherwise a foreign copy triggers a TypeError here, or
+	 * we'd build our server against the wrong adapter).
+	 *
+	 * @param object $adapter The MCP adapter instance fired on the global hook.
 	 *
 	 * @return void
 	 * @since 1.0.0
 	 */
-	public function create_server( McpAdapter $adapter ): void {
+	public function create_server( object $adapter ): void {
+		if ( ! $adapter instanceof McpAdapter ) {
+			return;
+		}
+
 		/**
 		 * Filters the MCP observability handler class used for the Albert server.
 		 *
