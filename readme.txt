@@ -20,7 +20,8 @@ Every well-run site deserves a proper butler. Albert stands at the door, welcome
 
 Once connected, an AI assistant can take real action on your site through a curated set of abilities:
 
-* **Write and manage content** — Create, edit, find, and delete posts and pages.
+* **Write and manage content** — Create, edit, find, and delete posts and pages, working directly in the **block editor** (headings, lists, columns, images and more) or the classic editor.
+* **Edit individual blocks** — Change, add, move, or remove a single block without rewriting the whole page.
 * **Organize media** — Upload images, browse the media library, and set featured images.
 * **Manage users and taxonomies** — Find and manage users, categories, tags, and custom terms.
 * **Run your store** — When WooCommerce is active, look up products, orders, and customers.
@@ -95,10 +96,11 @@ Yes. Albert uses OAuth 2.0 — the same standard used by Google, GitHub, and oth
 
 = What abilities are included? =
 
-Albert ships with 25+ abilities covering WordPress core:
+Albert ships with 35+ abilities covering WordPress core:
 
 * **Posts** — Find, view, create, update, and delete posts
 * **Pages** — Find, view, create, update, and delete pages
+* **Block editing** — Edit, add, move, and remove individual blocks in posts and pages
 * **Users** — Find, view, create, update, and delete users
 * **Media** — Find, view, upload media, and set featured images
 * **Taxonomies** — Find taxonomies, find/view/create/update/delete terms
@@ -142,6 +144,32 @@ Albert is designed for single-site installations. Multisite support is on the ro
 4. An active MCP connection with Claude Desktop
 
 == Changelog ==
+
+= 1.2.0-beta1 =
+Albert now understands the WordPress block editor — a big step up in how AI assistants read and write your content. This is a beta pre-release for testing ahead of 1.2.0.
+
+**Block editor support**
+
+* AI assistants now work with real WordPress blocks instead of raw HTML. They can read a post as a clean, structured outline and compose new content with proper blocks — headings, paragraphs, lists, quotes, images, buttons, columns, and groups.
+* **Edit one block at a time** — change, add, move, or remove a single block without disturbing the rest of the page. No more rewriting a whole post to fix one paragraph.
+* **Cleaner content, fewer errors** — Albert validates blocks as they're written and steers the assistant to correct mistakes, so you avoid the block editor's "this block contains unexpected content" warnings.
+* **Stays within your palette** — assistants only use the blocks your site (and the connected user) are actually allowed to use.
+
+**Classic editor support**
+
+* Sites, posts, and pages using the classic editor are handled correctly — content is read and saved as HTML — so Albert works whichever editor you use.
+
+**Built-in guidance for assistants**
+
+* Albert now ships a built-in playbook and reference data that teach connected assistants how your site's blocks work, so they produce better content out of the box.
+
+**Handles large content**
+
+* Long posts are paged automatically, so big content is never cut off mid-way when an assistant reads it.
+
+**Safer updates**
+
+* When a plugin update adds new abilities, they now start switched off — you decide what to turn on. An update will never silently expand what an AI assistant can do on a site you've already set up.
 
 = 1.1.1 =
 Bug fix release.
@@ -201,6 +229,9 @@ Initial release.
 * **Extensible** — Register custom abilities with the WordPress Abilities API. Hookable architecture with filters and actions.
 
 == Upgrade Notice ==
+
+= 1.2.0-beta1 =
+Beta pre-release for testing ahead of 1.2.0. Adds full block-editor support (read, write, and edit individual blocks), classic-editor handling, automatic paging for long posts, and safer defaults — newly added abilities now start switched off. Your existing enabled/disabled settings are preserved.
 
 = 1.1.1 =
 Fixes OAuth discovery endpoints when the request URL has a trailing slash. Recommended for sites where the host or CDN adds a trailing slash to .well-known URLs.
