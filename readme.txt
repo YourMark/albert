@@ -145,8 +145,8 @@ Albert is designed for single-site installations. Multisite support is on the ro
 
 == Changelog ==
 
-= 1.2.0-beta1 =
-Albert now understands the WordPress block editor — a big step up in how AI assistants read and write your content. This is a beta pre-release for testing ahead of 1.2.0.
+= 1.2.0 =
+Albert now understands the WordPress block editor — a big step up in how AI assistants read and write your content.
 
 **Block editor support**
 
@@ -230,8 +230,8 @@ Initial release.
 
 == Upgrade Notice ==
 
-= 1.2.0-beta1 =
-Beta pre-release for testing ahead of 1.2.0. Adds full block-editor support (read, write, and edit individual blocks), classic-editor handling, automatic paging for long posts, and safer defaults — newly added abilities now start switched off. Your existing enabled/disabled settings are preserved.
+= 1.2.0 =
+Adds full block-editor support (read, write, and edit individual blocks), classic-editor handling, automatic paging for long posts, and safer defaults — newly added abilities now start switched off. Your existing enabled/disabled settings are preserved.
 
 = 1.1.1 =
 Fixes OAuth discovery endpoints when the request URL has a trailing slash. Recommended for sites where the host or CDN adds a trailing slash to .well-known URLs.
