@@ -16,11 +16,19 @@ use Albert\Abilities\WordPress\Posts\ViewPost;
 use Albert\Abilities\WordPress\Posts\Create as CreatePost;
 use Albert\Abilities\WordPress\Posts\Update as UpdatePost;
 use Albert\Abilities\WordPress\Posts\Delete as DeletePost;
+use Albert\Abilities\WordPress\Posts\EditBlock as EditPostBlock;
+use Albert\Abilities\WordPress\Posts\AddBlock as AddPostBlock;
+use Albert\Abilities\WordPress\Posts\RemoveBlock as RemovePostBlock;
+use Albert\Abilities\WordPress\Posts\MoveBlock as MovePostBlock;
 use Albert\Abilities\WordPress\Pages\FindPages;
 use Albert\Abilities\WordPress\Pages\ViewPage;
 use Albert\Abilities\WordPress\Pages\Create as CreatePage;
 use Albert\Abilities\WordPress\Pages\Update as UpdatePage;
 use Albert\Abilities\WordPress\Pages\Delete as DeletePage;
+use Albert\Abilities\WordPress\Pages\EditBlock as EditPageBlock;
+use Albert\Abilities\WordPress\Pages\AddBlock as AddPageBlock;
+use Albert\Abilities\WordPress\Pages\RemoveBlock as RemovePageBlock;
+use Albert\Abilities\WordPress\Pages\MoveBlock as MovePageBlock;
 use Albert\Abilities\WordPress\Users\FindUsers;
 use Albert\Abilities\WordPress\Users\ViewUser;
 use Albert\Abilities\WordPress\Users\Create as CreateUser;
@@ -30,6 +38,8 @@ use Albert\Abilities\WordPress\Media\FindMedia;
 use Albert\Abilities\WordPress\Media\ViewMedia;
 use Albert\Abilities\WordPress\Media\SetFeaturedImage;
 use Albert\Abilities\WordPress\Media\UploadMedia;
+use Albert\Abilities\WordPress\Blocks\GetBlockType;
+use Albert\Abilities\WordPress\Blocks\ListBlockTypes;
 use Albert\Abilities\WordPress\Taxonomies\FindTaxonomies;
 use Albert\Abilities\WordPress\Taxonomies\FindTerms;
 use Albert\Abilities\WordPress\Taxonomies\ViewTerm;
@@ -46,16 +56,15 @@ use Albert\Admin\AbilitiesPage;
 use Albert\Admin\Connections;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
-use Albert\Logging\Installer as LoggingInstaller;
+use Albert\Database\Installer as DatabaseInstaller;
 use Albert\Logging\Logger;
 use Albert\Logging\Repository as LoggingRepository;
 use Albert\MCP\Server as McpServer;
-use Albert\OAuth\Database\Installer as OAuthInstaller;
 use Albert\OAuth\Endpoints\AuthorizationPage;
 use Albert\OAuth\Endpoints\ClientRegistration;
 use Albert\OAuth\Endpoints\OAuthController;
 use Albert\OAuth\Endpoints\OAuthDiscovery;
-use WP\MCP\Core\McpAdapter;
+use Albert\Vendor\WP\MCP\Core\McpAdapter;
 
 /**
  * Main Plugin Class
@@ -85,7 +94,7 @@ class Plugin {
 	 *
 	 * @since 1.0.1
 	 *
-	 * @return string
+	 * @return non-falsy-string
 	 */
 	public static function rest_namespace(): string {
 		static $namespace = null;
@@ -98,7 +107,8 @@ class Plugin {
 			 *
 			 * @param string $namespace Default namespace ('albert/v1').
 			 */
-			$namespace = (string) apply_filters( 'albert/rest_namespace', self::REST_NAMESPACE );
+			$filtered  = apply_filters( 'albert/rest_namespace', self::REST_NAMESPACE );
+			$namespace = ( is_string( $filtered ) && $filtered !== '' && $filtered !== '0' ) ? $filtered : self::REST_NAMESPACE;
 		}
 
 		return $namespace;
@@ -141,9 +151,8 @@ class Plugin {
 	 * @since 1.0.0
 	 */
 	public function init(): void {
-		// Check for database updates (handles upgrades without re-activation).
-		OAuthInstaller::install();
-		LoggingInstaller::install();
+		// Apply any pending schema migration (a cheap no-op until DB_VERSION moves).
+		DatabaseInstaller::maybe_upgrade();
 
 		// One-time cleanup of legacy options on upgrade from pre-1.1.0 installs.
 		$this->maybe_cleanup_legacy_options();
@@ -221,12 +230,24 @@ class Plugin {
 		$this->abilities_manager->add_ability( new UpdatePost() );
 		$this->abilities_manager->add_ability( new DeletePost() );
 
+		// Posts: granular per-block edits.
+		$this->abilities_manager->add_ability( new EditPostBlock() );
+		$this->abilities_manager->add_ability( new AddPostBlock() );
+		$this->abilities_manager->add_ability( new RemovePostBlock() );
+		$this->abilities_manager->add_ability( new MovePostBlock() );
+
 		// Pages abilities.
 		$this->abilities_manager->add_ability( new FindPages() );
 		$this->abilities_manager->add_ability( new ViewPage() );
 		$this->abilities_manager->add_ability( new CreatePage() );
 		$this->abilities_manager->add_ability( new UpdatePage() );
 		$this->abilities_manager->add_ability( new DeletePage() );
+
+		// Pages: granular per-block edits.
+		$this->abilities_manager->add_ability( new EditPageBlock() );
+		$this->abilities_manager->add_ability( new AddPageBlock() );
+		$this->abilities_manager->add_ability( new RemovePageBlock() );
+		$this->abilities_manager->add_ability( new MovePageBlock() );
 
 		// Users abilities.
 		$this->abilities_manager->add_ability( new FindUsers() );
@@ -248,6 +269,10 @@ class Plugin {
 		$this->abilities_manager->add_ability( new CreateTerm() );
 		$this->abilities_manager->add_ability( new UpdateTerm() );
 		$this->abilities_manager->add_ability( new DeleteTerm() );
+
+		// Block abilities (block type discovery).
+		$this->abilities_manager->add_ability( new ListBlockTypes() );
+		$this->abilities_manager->add_ability( new GetBlockType() );
 
 		// WooCommerce abilities (only when WooCommerce is active).
 		if ( class_exists( 'WooCommerce' ) ) {
@@ -273,6 +298,22 @@ class Plugin {
 
 		// Register abilities manager hooks.
 		$this->abilities_manager->register_hooks();
+	}
+
+	/**
+	 * Get the abilities manager instance.
+	 *
+	 * Returns null until built-in abilities have been registered on the `init`
+	 * hook (see {@see self::register_abilities()}). Callers that run during
+	 * admin page render — well after `init` — can rely on the manager being
+	 * populated, and use it to resolve ability labels without touching the
+	 * WordPress Abilities API.
+	 *
+	 * @return AbilitiesManager|null The abilities manager, or null if not yet built.
+	 * @since 1.2.0
+	 */
+	public function get_abilities_manager(): ?AbilitiesManager {
+		return $this->abilities_manager;
 	}
 
 	/**
@@ -371,6 +412,13 @@ class Plugin {
 			delete_option( 'albert_external_url' );
 		}
 
+		// The per-context schema-version options were superseded by the unified
+		// albert_db_version when the Database installer was centralised in 1.2.0.
+		if ( version_compare( $stored_version, '1.2.0', '<' ) ) {
+			delete_option( 'albert_logging_db_version' );
+			delete_option( 'albert_oauth_db_version' );
+		}
+
 		update_option( 'albert_installed_version', $current_version, false );
 	}
 
@@ -383,11 +431,8 @@ class Plugin {
 	 * @since 1.0.0
 	 */
 	public static function activate(): void {
-		// Install OAuth database tables.
-		OAuthInstaller::install();
-
-		// Install logging database table.
-		LoggingInstaller::install();
+		// Create/upgrade all database tables.
+		DatabaseInstaller::install();
 
 		// Register OAuth discovery rewrite rules.
 		OAuthDiscovery::activate();

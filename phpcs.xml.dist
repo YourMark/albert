@@ -10,6 +10,12 @@
 	<exclude-pattern>*/vendor/*</exclude-pattern>
 	<exclude-pattern>*/node_modules/*</exclude-pattern>
 
+	<!-- Exclude Mozart-scoped third-party dependencies (not our code). -->
+	<exclude-pattern>*/vendor-prefixed/*</exclude-pattern>
+
+	<!-- Exclude the verbatim WordPress core block parser copied into test stubs. -->
+	<exclude-pattern>*/tests/Unit/stubs/class-wp-block-parser*.php</exclude-pattern>
+
 	<!-- Use WordPress coding standards. -->
 	<rule ref="WordPress">
 		<!-- Allow short array syntax [] instead of array() -->
@@ -47,6 +53,14 @@
 		<exclude-pattern>*/tests/*</exclude-pattern>
 	</rule>
 	<rule ref="Generic.CodeAnalysis.UnusedFunctionParameter">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+
+	<!-- Test stubs legitimately group related function stubs and class doubles. -->
+	<rule ref="Universal.Files.SeparateFunctionsFromOO">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Generic.Files.OneObjectStructurePerFile">
 		<exclude-pattern>*/tests/*</exclude-pattern>
 	</rule>
 </ruleset>

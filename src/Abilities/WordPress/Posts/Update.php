@@ -9,8 +9,8 @@
 
 namespace Albert\Abilities\WordPress\Posts;
 
-use Albert\Utilities\BlockConverter;
 use Albert\Abstracts\BaseAbility;
+use Albert\Blocks\WriteContentResolver;
 use Albert\Core\Annotations;
 use WP_Error;
 use WP_REST_Request;
@@ -71,7 +71,12 @@ class Update extends BaseAbility {
 				],
 				'content'    => [
 					'type'        => 'string',
-					'description' => 'The post content (HTML allowed)',
+					'description' => 'The post content as a string. Accepts WordPress block markup (<!-- wp:... -->), HTML, or Markdown — converted to blocks automatically. For multi-block, nested layouts prefer the structured "blocks" field instead. Ignored when "blocks" is provided. Replaces the entire post body when set.',
+				],
+				'blocks'     => [
+					'type'        => 'array',
+					'description' => 'Structured block specs (preferred over "content"). Replaces the entire post body. Each item is { "name": "core/paragraph", "attributes": { ... }, "innerBlocks": [ ... ] }; innerBlocks is the same shape recursively for layout blocks (e.g. core/columns > core/column). Put text in attributes (content/text/value) or in "plaintext". Example: [ { "name": "core/heading", "attributes": { "level": 2, "content": "Intro" } }, { "name": "core/paragraph", "attributes": { "content": "Hello world." } } ]',
+					'items'       => [ 'type' => 'object' ],
 				],
 				'status'     => [
 					'type'        => 'string',
@@ -107,11 +112,16 @@ class Update extends BaseAbility {
 		return [
 			'type'       => 'object',
 			'properties' => [
-				'id'        => [ 'type' => 'integer' ],
-				'title'     => [ 'type' => 'string' ],
-				'status'    => [ 'type' => 'string' ],
-				'permalink' => [ 'type' => 'string' ],
-				'edit_url'  => [ 'type' => 'string' ],
+				'id'           => [ 'type' => 'integer' ],
+				'title'        => [ 'type' => 'string' ],
+				'status'       => [ 'type' => 'string' ],
+				'permalink'    => [ 'type' => 'string' ],
+				'edit_url'     => [ 'type' => 'string' ],
+				'block_issues' => [
+					'type'        => 'array',
+					'description' => 'Optional, non-fatal block validation warnings (the post was still saved). Each is an actionable message such as "content[0].attributes.url is required for core/image". Fatal block problems are not returned here — they come back as a WP_Error with code "block_validation_failed" and the post is not updated.',
+					'items'       => [ 'type' => 'string' ],
+				],
 			],
 			'required'   => [ 'id', 'title', 'status' ],
 		];
@@ -163,13 +173,28 @@ class Update extends BaseAbility {
 
 		// Prepare REST API request data (only include provided fields).
 		$request_data = [];
+		$block_issues = [];
 
 		if ( isset( $args['title'] ) ) {
 			$request_data['title'] = sanitize_text_field( $args['title'] );
 		}
 
-		if ( isset( $args['content'] ) ) {
-			$request_data['content'] = ( new BlockConverter( $args['content'] ) )->convert();
+		// Content is only touched when structured "blocks" or a "content" string
+		// is provided; otherwise the existing post body is left untouched.
+		$has_blocks_input  = ! empty( $args['blocks'] ) && is_array( $args['blocks'] );
+		$has_content_input = $has_blocks_input || isset( $args['content'] );
+
+		if ( $has_content_input ) {
+			// Resolve the content to store (classic rejection, block
+			// serialization, allowed-block enforcement with the Update exemption,
+			// and any block issues).
+			$resolved = ( new WriteContentResolver() )->resolve( $args, 'post', $post_id );
+			if ( is_wp_error( $resolved ) ) {
+				return $resolved;
+			}
+
+			$request_data['content'] = $resolved['content'];
+			$block_issues            = $resolved['block_issues'];
 		}
 
 		if ( isset( $args['status'] ) ) {
@@ -220,13 +245,19 @@ class Update extends BaseAbility {
 		// Return formatted post data.
 		$post_id = $data['id'];
 
-		return [
+		$result = [
 			'id'        => $post_id,
 			'title'     => $data['title']['rendered'] ?? '',
 			'status'    => $data['status'],
 			'permalink' => $data['link'] ?? '',
 			'edit_url'  => admin_url( 'post.php?post=' . $post_id . '&action=edit' ),
 		];
+
+		if ( ! empty( $block_issues ) ) {
+			$result['block_issues'] = $block_issues;
+		}
+
+		return $result;
 	}
 
 	/**

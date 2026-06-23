@@ -1,34 +1,43 @@
 === Albert - The AI Butler ===
 Contributors: albertai, mark-jansen
-Tags: ai, mcp, oauth, claude, chatgpt
+Tags: ai, mcp, claude, chatgpt, ai assistant
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.1.1
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-At your service — Albert connects AI assistants to your WordPress site so they can manage content, handle tasks, and keep things running smoothly.
+Connect Claude, ChatGPT and other AI assistants to your WordPress site via MCP — let them write posts, manage media and more, securely.
 
 == Description ==
 
-Every well-run site deserves a proper butler. Albert stands at the door of your WordPress site, ready to welcome AI assistants like Claude and ChatGPT and put them to work.
+Want Claude or ChatGPT to actually *do* things on your WordPress site instead of just talking about it? Albert is the AI assistant connector for WordPress. It exposes your site through the Model Context Protocol (MCP), so AI assistants can write and edit posts, organize media, manage products, and handle day-to-day tasks — all under your control.
 
-= An open door for AI assistants =
+Every well-run site deserves a proper butler. Albert stands at the door, welcomes AI assistants like Claude and ChatGPT, checks their credentials, and puts them to work — no custom code and no complicated setup.
 
-Install Albert, grant an AI assistant access, and it can start managing your site — writing and editing posts, organizing media, moderating comments, and handling day-to-day tasks. No custom code, no complicated setup. Albert takes care of the introductions.
+= What your AI assistant can do =
 
-= A well-stocked service tray =
+Once connected, an AI assistant can take real action on your site through a curated set of abilities:
 
-Albert presents AI assistants with a curated set of abilities — the tasks they're permitted to carry out on your site. When plugins like WooCommerce or Advanced Custom Fields are active, Albert extends the service with additional abilities tailored to each one.
+* **Write and manage content** — Create, edit, find, and delete posts and pages, working directly in the **block editor** (headings, lists, columns, images and more) or the classic editor.
+* **Edit individual blocks** — Change, add, move, or remove a single block without rewriting the whole page.
+* **Organize media** — Upload images, browse the media library, and set featured images.
+* **Manage users and taxonomies** — Find and manage users, categories, tags, and custom terms.
+* **Run your store** — When WooCommerce is active, look up products, orders, and customers.
+* **Extend it yourself** — Developers can register custom abilities with the WordPress Abilities API.
 
-= The butler manages the household =
+= Works with Claude, ChatGPT and any MCP client =
 
-Not every guest needs access to every room. From the admin panel, you decide exactly which abilities are on the tray and which stay behind closed doors. You remain in charge — Albert just makes sure your instructions are followed.
+Albert turns your WordPress site into an MCP server. Copy the endpoint URL, paste it into Claude Desktop, ChatGPT, or any MCP-compatible AI assistant, authorize, and you're connected. The same three steps work for every client.
 
-= Proper credentials at the door =
+= You decide what AI assistants can do =
 
-Every AI assistant must present proper credentials before Albert lets them in. Connections are secure, scoped, and fully under your control.
+Not every guest needs access to every room. From the admin panel, you choose exactly which abilities are switched on. Write and delete abilities are off by default, and every action still respects WordPress's own user roles and capabilities — an AI assistant can never do more than the authorized user could do by hand.
+
+= Secure by design =
+
+Every AI assistant must present proper credentials before Albert lets it in. Connections use OAuth 2.0 with time-limited, automatically refreshing tokens — no passwords are ever shared — and you can revoke any connection at any time.
 
 == Installation ==
 
@@ -69,6 +78,10 @@ Full setup guide available at [Documentation](https://github.com/YourMark/albert
 
 == Frequently Asked Questions ==
 
+= What is MCP? =
+
+MCP — the Model Context Protocol — is an open standard that lets AI assistants connect to external tools and data. Albert turns your WordPress site into an MCP server, so any MCP-compatible AI assistant, like Claude or ChatGPT, can work with it.
+
 = What AI assistants are supported? =
 
 Albert works with **Claude Desktop**, **ChatGPT**, and any AI assistant that supports the Model Context Protocol (MCP). The connection process is the same for all: copy the endpoint URL, paste it into your assistant, and authorize.
@@ -83,10 +96,11 @@ Yes. Albert uses OAuth 2.0 — the same standard used by Google, GitHub, and oth
 
 = What abilities are included? =
 
-Albert ships with 25+ abilities covering WordPress core:
+Albert ships with 35+ abilities covering WordPress core:
 
 * **Posts** — Find, view, create, update, and delete posts
 * **Pages** — Find, view, create, update, and delete pages
+* **Block editing** — Edit, add, move, and remove individual blocks in posts and pages
 * **Users** — Find, view, create, update, and delete users
 * **Media** — Find, view, upload media, and set featured images
 * **Taxonomies** — Find taxonomies, find/view/create/update/delete terms
@@ -124,12 +138,38 @@ Albert is designed for single-site installations. Multisite support is on the ro
 
 == Screenshots ==
 
-1. Albert dashboard with setup checklist and status overview
-2. Abilities page — every ability as a filterable list with instant-save toggles and Read / Write / Delete labels
+1. The Albert dashboard — setup checklist and connection status for your AI assistant
+2. Abilities page — control what each AI assistant can do, as a filterable list with instant-save Read / Write / Delete toggles
 3. Connections page — manage allowed users and active AI assistant connections
-4. An active connection with Claude Desktop
+4. An active MCP connection with Claude Desktop
 
 == Changelog ==
+
+= 1.2.0 =
+Albert now understands the WordPress block editor — a big step up in how AI assistants read and write your content.
+
+**Block editor support**
+
+* AI assistants now work with real WordPress blocks instead of raw HTML. They can read a post as a clean, structured outline and compose new content with proper blocks — headings, paragraphs, lists, quotes, images, buttons, columns, and groups.
+* **Edit one block at a time** — change, add, move, or remove a single block without disturbing the rest of the page. No more rewriting a whole post to fix one paragraph.
+* **Cleaner content, fewer errors** — Albert validates blocks as they're written and steers the assistant to correct mistakes, so you avoid the block editor's "this block contains unexpected content" warnings.
+* **Stays within your palette** — assistants only use the blocks your site (and the connected user) are actually allowed to use.
+
+**Classic editor support**
+
+* Sites, posts, and pages using the classic editor are handled correctly — content is read and saved as HTML — so Albert works whichever editor you use.
+
+**Built-in guidance for assistants**
+
+* Albert now ships a built-in playbook and reference data that teach connected assistants how your site's blocks work, so they produce better content out of the box.
+
+**Handles large content**
+
+* Long posts are paged automatically, so big content is never cut off mid-way when an assistant reads it.
+
+**Safer updates**
+
+* When a plugin update adds new abilities, they now start switched off — you decide what to turn on. An update will never silently expand what an AI assistant can do on a site you've already set up.
 
 = 1.1.1 =
 Bug fix release.
@@ -189,6 +229,9 @@ Initial release.
 * **Extensible** — Register custom abilities with the WordPress Abilities API. Hookable architecture with filters and actions.
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+Adds full block-editor support (read, write, and edit individual blocks), classic-editor handling, automatic paging for long posts, and safer defaults — newly added abilities now start switched off. Your existing enabled/disabled settings are preserved.
 
 = 1.1.1 =
 Fixes OAuth discovery endpoints when the request URL has a trailing slash. Recommended for sites where the host or CDN adds a trailing slash to .well-known URLs.

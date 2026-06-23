@@ -70,6 +70,7 @@ Never rename the legacy IDs — they are part of the public API.
 - **NEVER commit without explicit request.** Run `composer phpcs` and `composer phpstan` first.
 - **NEVER bump version without approval.**
 - **Version bumps only happen in release branches** — never on `development`, feature branches, or `main`.
+- **PR titles are plain, human-readable sentences** — NEVER use conventional-commit prefixes like `chore(deps):`, `feat(logging):`, `fix:`. Those belong in commit messages, not PR titles. Example: "Upgrade MCP adapter to 0.5.0", not "chore(deps): upgrade...".
 - The root `CLAUDE.md` is the canonical project reference (checked into git). This file supplements it.
 
 ## WooCommerce mcp-adapter Timing Bug
@@ -91,5 +92,7 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | `albert/abilities_icons` | filter | Customize category icons |
 | `albert/developer_mode` | filter | Toggle developer mode |
 | `albert/logging/enabled` | filter | Disable Free's ability log (Premium uses this) |
+| `albert/blocks/read_block_limit` | filter | Default top-level blocks per read window (default 200; 0 = unlimited) |
+| `albert/blocks/read_max_bytes` | filter | Per-field byte cap on read text representations (default 50000) |
 | `albert/activated` | action | Plugin activated |
 | `albert/deactivated` | action | Plugin deactivated |

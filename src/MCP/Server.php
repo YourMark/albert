@@ -13,11 +13,15 @@ defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Core\Plugin;
+use Albert\Logging\ObservabilityHandler;
+use Albert\MCP\Skills\SkillLoader;
 use Albert\OAuth\Server\TokenValidator;
-use WP\MCP\Core\McpAdapter;
-use WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
-use WP\MCP\Infrastructure\Observability\NullMcpObservabilityHandler;
-use WP\MCP\Transport\HttpTransport;
+use Albert\Vendor\WP\MCP\Core\McpAdapter;
+use Albert\Vendor\WP\MCP\Domain\Prompts\McpPrompt;
+use Albert\Vendor\WP\MCP\Domain\Resources\McpResource;
+use Albert\Vendor\WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
+use Albert\Vendor\WP\MCP\Infrastructure\Observability\Contracts\McpObservabilityHandlerInterface;
+use Albert\Vendor\WP\MCP\Transport\HttpTransport;
 use WP_Error;
 use WP_REST_Request;
 
@@ -40,15 +44,6 @@ class Server implements Hookable {
 	const SERVER_ID = 'albert';
 
 	/**
-	 * Server route namespace.
-	 *
-	 * @deprecated 1.0.1 Use {@see Plugin::rest_namespace()} instead.
-	 * @since      1.0.0
-	 * @var string
-	 */
-	const ROUTE_NAMESPACE = 'albert/v1';
-
-	/**
 	 * Server route.
 	 *
 	 * @since 1.0.0
@@ -65,6 +60,10 @@ class Server implements Hookable {
 	public function register_hooks(): void {
 		add_action( 'mcp_adapter_init', [ $this, 'create_server' ] );
 		add_filter( 'rest_request_before_callbacks', [ $this, 'add_oauth_discovery_headers' ], 10, 3 );
+
+		// Improve LLM-facing tool errors and log failures rejected before the
+		// ability runs (e.g. input-schema validation).
+		( new ToolCallObserver() )->register_hooks();
 	}
 
 	/**
@@ -102,12 +101,50 @@ class Server implements Hookable {
 	/**
 	 * Create the MCP server.
 	 *
-	 * @param McpAdapter $adapter The MCP adapter instance.
+	 * Bound to the global `mcp_adapter_init` action, which is fired by EVERY loaded
+	 * copy of the MCP adapter — including the unscoped `WP\MCP\…` copy WooCommerce
+	 * bundles. Mozart only rewrites class names, not the literal hook string, so
+	 * both our scoped adapter and a foreign one fire the same action. We must build
+	 * the Albert server only against our own Mozart-scoped adapter; any other
+	 * instance is ignored (otherwise a foreign copy triggers a TypeError here, or
+	 * we'd build our server against the wrong adapter).
+	 *
+	 * @param object $adapter The MCP adapter instance fired on the global hook.
 	 *
 	 * @return void
 	 * @since 1.0.0
 	 */
-	public function create_server( McpAdapter $adapter ): void {
+	public function create_server( object $adapter ): void {
+		if ( ! $adapter instanceof McpAdapter ) {
+			return;
+		}
+
+		/**
+		 * Filters the MCP observability handler class used for the Albert server.
+		 *
+		 * Premium (or any addon) can replace Free's handler by returning a
+		 * class-string that implements McpObservabilityHandlerInterface.
+		 * The class must be instantiable with no constructor arguments.
+		 * Classes that do not implement the interface are ignored and the
+		 * default handler is used instead.
+		 *
+		 * @since 1.2.0
+		 *
+		 * @param class-string<McpObservabilityHandlerInterface> $handler_class Fully-qualified class name. Default ObservabilityHandler::class.
+		 */
+		$filtered = apply_filters( 'albert/mcp/observability_handler', ObservabilityHandler::class );
+
+		// Validate the filtered value implements the required interface;
+		// fall back to the default handler if the class is unknown or invalid.
+		$observability_handler = ObservabilityHandler::class;
+		if (
+			is_string( $filtered )
+			&& class_exists( $filtered )
+			&& is_a( $filtered, McpObservabilityHandlerInterface::class, true )
+		) {
+			$observability_handler = $filtered;
+		}
+
 		$adapter->create_server(
 			self::SERVER_ID,
 			Plugin::rest_namespace(),
@@ -117,10 +154,10 @@ class Server implements Hookable {
 			ALBERT_VERSION,
 			[ HttpTransport::class ],
 			ErrorLogMcpErrorHandler::class,
-			NullMcpObservabilityHandler::class,
+			$observability_handler,
 			$this->get_tools(),
-			[], // Resources.
-			[], // Prompts.
+			$this->get_resources(),
+			$this->get_prompts(),
 			[ $this, 'permission_callback' ]
 		);
 	}
@@ -130,7 +167,7 @@ class Server implements Hookable {
 	 *
 	 * Uses the same core abilities as the default MCP server.
 	 *
-	 * @return array<int, string> The tool names.
+	 * @return list<string> The tool names.
 	 * @since 1.0.0
 	 */
 	private function get_tools(): array {
@@ -139,6 +176,32 @@ class Server implements Hookable {
 			'mcp-adapter/get-ability-info',
 			'mcp-adapter/execute-ability',
 		];
+	}
+
+	/**
+	 * Get the resources to register for this server.
+	 *
+	 * Resources are built McpResource instances (not abilities), assembled by
+	 * {@see ResourceLoader} — mirroring how prompts are supplied.
+	 *
+	 * @return list<McpResource> The resource instances to expose.
+	 * @since 1.2.0
+	 */
+	private function get_resources(): array {
+		return ( new ResourceLoader() )->resources();
+	}
+
+	/**
+	 * Get the prompts (skills) to register for this server.
+	 *
+	 * Skills are bundled Markdown playbooks loaded as built McpPrompt instances
+	 * (not abilities), mirroring how resources are supplied. See {@see SkillLoader}.
+	 *
+	 * @return array<int, McpPrompt> The prompt instances to expose.
+	 * @since 1.2.0
+	 */
+	private function get_prompts(): array {
+		return ( new SkillLoader() )->prompts();
 	}
 
 	/**

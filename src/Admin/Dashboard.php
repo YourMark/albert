@@ -12,9 +12,11 @@ namespace Albert\Admin;
 defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
+use Albert\Core\AbilitiesRegistry;
+use Albert\Core\Plugin;
 use Albert\Logging\Repository as LoggingRepository;
 use Albert\MCP\Server as McpServer;
-use Albert\OAuth\Database\Installer;
+use Albert\Database\Tables;
 
 /**
  * Dashboard class
@@ -302,22 +304,53 @@ class Dashboard implements Hookable {
 				<div class="albert-card albert-activity-card">
 					<h2><?php echo esc_html__( 'Recent Activity', 'albert-ai-butler' ); ?></h2>
 					<?php
-					$recent_activity = $this->get_recent_activity();
+					$recent_activity    = $this->get_recent_activity();
+					$premium_not_active = ! class_exists( 'AlbertPremium\\AlbertPremiumService' );
 					if ( ! empty( $recent_activity ) ) {
 						?>
-						<ul class="albert-activity-list">
-							<?php foreach ( $recent_activity as $activity ) { ?>
-								<li>
-									<span class="albert-activity-icon"><?php echo esc_html( $activity['icon'] ); ?></span>
-									<span class="albert-activity-text"><?php echo esc_html( $activity['text'] ); ?></span>
-									<span class="albert-activity-time"><?php echo esc_html( $activity['time'] ); ?></span>
-								</li>
+						<div class="albert-activity-card__body">
+							<table class="albert-log-table">
+								<thead>
+									<tr>
+										<th scope="col"><?php esc_html_e( 'Status', 'albert-ai-butler' ); ?></th>
+										<th scope="col"><?php esc_html_e( 'Event', 'albert-ai-butler' ); ?></th>
+										<th scope="col"><?php esc_html_e( 'By', 'albert-ai-butler' ); ?></th>
+										<th scope="col"><?php esc_html_e( 'When', 'albert-ai-butler' ); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ( $recent_activity as $activity ) { ?>
+										<tr>
+											<td class="albert-log-table__status"><?php $this->render_status_dot( $activity['status'] ); ?></td>
+											<td class="albert-log-table__event"><?php echo esc_html( $activity['event'] ); ?></td>
+											<td class="albert-log-table__by"><?php echo esc_html( $activity['actor'] ); ?></td>
+											<td class="albert-log-table__when"><?php echo esc_html( $activity['time'] ); ?></td>
+										</tr>
+									<?php } ?>
+								</tbody>
+							</table>
+							<?php if ( $premium_not_active ) { ?>
+								<div class="albert-upsell-fade" aria-hidden="true"></div>
 							<?php } ?>
-						</ul>
+						</div>
 					<?php } else { ?>
 						<p class="description">
 							<?php echo esc_html__( 'No recent activity. Connect an AI assistant to get started!', 'albert-ai-butler' ); ?>
 						</p>
+					<?php } ?>
+					<?php if ( $premium_not_active ) { ?>
+						<div class="albert-upsell-cta">
+							<h3 class="albert-upsell-cta__title"><?php esc_html_e( 'Your complete activity log', 'albert-ai-butler' ); ?></h3>
+							<ul class="albert-upsell-cta__benefits">
+								<li><?php esc_html_e( 'Keep months or years of history', 'albert-ai-butler' ); ?></li>
+								<li><?php esc_html_e( 'Filter by user, assistant or date', 'albert-ai-butler' ); ?></li>
+								<li><?php esc_html_e( 'See the details of each action, including errors', 'albert-ai-butler' ); ?></li>
+							</ul>
+							<a class="button button-primary albert-upsell-cta__button" href="<?php echo esc_url( 'https://albertwp.com/add-ons/premium-service/' ); ?>" target="_blank" rel="noopener noreferrer">
+								<?php esc_html_e( 'Upgrade to Premium', 'albert-ai-butler' ); ?>
+								<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'albert-ai-butler' ); ?></span>
+							</a>
+						</div>
 					<?php } ?>
 				</div>
 			</div>
@@ -333,7 +366,7 @@ class Dashboard implements Hookable {
 	 */
 	private function get_active_connections_count(): int {
 		global $wpdb;
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// Count distinct clients with non-revoked tokens (sessions persist via refresh tokens).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -372,26 +405,40 @@ class Dashboard implements Hookable {
 	}
 
 	/**
-	 * Get recent activity from OAuth sessions.
+	 * Get recent activity from OAuth sessions and ability executions.
 	 *
-	 * @return array<int, array{icon: string, text: string, time: string}> Recent activity items.
+	 * Each row is structured by column so the renderer can lay it out as a
+	 * data table: a status (success / error / connection), the resolved event
+	 * label, the acting user, and a relative timestamp. Ability slugs are
+	 * resolved to human labels via {@see self::resolve_ability_label()}, which
+	 * reads from the in-memory abilities manager (avoiding wp_get_ability(),
+	 * unsafe in this render context) and falls back to a prettified slug.
+	 *
+	 * @return array<int, array{status: string, event: string, actor: string, time: string}> Recent activity rows.
 	 * @since 1.0.0
 	 */
 	private function get_recent_activity(): array {
 		global $wpdb;
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
-		// Get most recent token creations (new connections).
+		// Get the most recent distinct connections — one row per client, not per
+		// token. A new access-token row is created on every silent refresh (about
+		// hourly), so keying on the client and its registration time avoids
+		// surfacing a "new connection" each time the session merely refreshes.
+		// INNER JOIN ensures the client actually obtained a token, MAX(user_id)
+		// recovers the authorizing user (clients register anonymously), and
+		// UNIX_TIMESTAMP() yields a time-zone-safe epoch.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$connections = $wpdb->get_results(
 			$wpdb->prepare(
-				'SELECT t.client_id, t.user_id, t.created_at, c.name
-				FROM %i t
-				LEFT JOIN %i c ON t.client_id = c.client_id
-				ORDER BY t.created_at DESC
+				'SELECT c.client_id, c.name, UNIX_TIMESTAMP( c.created_at ) AS created_ts, MAX( t.user_id ) AS user_id
+				FROM %i c
+				INNER JOIN %i t ON t.client_id = c.client_id
+				GROUP BY c.client_id, c.name, c.created_at
+				ORDER BY c.created_at DESC
 				LIMIT %d',
-				$tables['access_tokens'],
 				$tables['clients'],
+				$tables['access_tokens'],
 				5
 			)
 		);
@@ -400,31 +447,36 @@ class Dashboard implements Hookable {
 
 		foreach ( $connections as $row ) {
 			$user        = get_userdata( $row->user_id );
-			$client_name = $row->name ?? __( 'Unknown Client', 'albert-ai-butler' );
-			$events[]    = [
-				'icon'      => '🔗',
-				'timestamp' => strtotime( $row->created_at ),
-				'text'      => sprintf(
-					/* translators: 1: Client name, 2: Username */
-					__( '%1$s connected by %2$s', 'albert-ai-butler' ),
-					$client_name,
-					$user ? $user->display_name : __( 'Unknown', 'albert-ai-butler' )
-				),
+			$client_name = $row->name ?? '';
+
+			// Action-first event label; append the client name when we have one.
+			$event = __( 'New connection', 'albert-ai-butler' );
+			if ( $client_name !== '' ) {
+				$event = sprintf(
+					/* translators: %s: Client name */
+					__( 'New connection — %s', 'albert-ai-butler' ),
+					$client_name
+				);
+			}
+
+			$events[] = [
+				'status'    => 'connection',
+				'timestamp' => (int) $row->created_ts,
+				'event'     => $event,
+				'actor'     => $user ? $user->display_name : __( 'System', 'albert-ai-butler' ),
 			];
 		}
 
 		// Merge in recent ability executions.
 		foreach ( $this->logging_repository->recent( 5 ) as $row ) {
 			$user     = get_userdata( (int) $row->user_id );
+			$is_error = isset( $row->status ) && $row->status === 'error';
+
 			$events[] = [
-				'icon'      => '⚡',
-				'timestamp' => strtotime( $row->created_at ),
-				'text'      => sprintf(
-					/* translators: 1: Ability identifier, 2: Username */
-					__( '%1$s executed by %2$s', 'albert-ai-butler' ),
-					$row->ability_name,
-					$user ? $user->display_name : __( 'Unknown', 'albert-ai-butler' )
-				),
+				'status'    => $is_error ? 'error' : 'success',
+				'timestamp' => (int) $row->created_ts,
+				'event'     => $this->resolve_ability_label( $row->ability_name ),
+				'actor'     => $user ? $user->display_name : __( 'Unknown', 'albert-ai-butler' ),
 			];
 		}
 
@@ -441,9 +493,10 @@ class Dashboard implements Hookable {
 		$activity = [];
 		foreach ( $events as $event ) {
 			$activity[] = [
-				'icon' => $event['icon'],
-				'text' => $event['text'],
-				'time' => sprintf(
+				'status' => $event['status'],
+				'event'  => $event['event'],
+				'actor'  => $event['actor'],
+				'time'   => sprintf(
 					/* translators: %s: Time difference */
 					__( '%s ago', 'albert-ai-butler' ),
 					human_time_diff( $event['timestamp'], $now )
@@ -452,5 +505,68 @@ class Dashboard implements Hookable {
 		}
 
 		return $activity;
+	}
+
+	/**
+	 * Resolve a logged ability slug to its human-readable label.
+	 *
+	 * Prefers the in-memory abilities manager, whose label data is populated
+	 * during bootstrap and is therefore available even on this admin page —
+	 * where the WordPress Abilities API registry is not yet populated and
+	 * calling wp_get_ability() would emit PHP notices. Abilities the manager
+	 * does not hold (e.g. third-party abilities registered directly with
+	 * WordPress) fall back to {@see AbilitiesRegistry::label_for()}, which
+	 * itself prettifies the slug when the Abilities API is unavailable.
+	 *
+	 * @param string $slug Ability slug, e.g. `albert/find-posts`.
+	 *
+	 * @return string Human-readable label.
+	 * @since 1.2.0
+	 */
+	private function resolve_ability_label( string $slug ): string {
+		$manager = Plugin::get_instance()->get_abilities_manager();
+
+		if ( $manager !== null ) {
+			$label = $manager->get_label( $slug );
+			if ( $label !== null && $label !== '' ) {
+				return $label;
+			}
+		}
+
+		return AbilitiesRegistry::label_for( $slug );
+	}
+
+	/**
+	 * Render a status cell: a glowing dot paired with a visible word.
+	 *
+	 * The visible word is required — status is never conveyed by colour alone
+	 * (WCAG 2.2 AA, 1.4.1).
+	 *
+	 * @param string $status One of `success`, `error`, or `connection`.
+	 *
+	 * @return void
+	 * @since 1.2.0
+	 */
+	private function render_status_dot( string $status ): void {
+		switch ( $status ) {
+			case 'error':
+				$modifier = 'error';
+				$word     = __( 'Failed', 'albert-ai-butler' );
+				break;
+			case 'connection':
+				$modifier = 'connection';
+				$word     = __( 'Connection', 'albert-ai-butler' );
+				break;
+			default:
+				$modifier = 'success';
+				$word     = __( 'Success', 'albert-ai-butler' );
+				break;
+		}
+		?>
+		<span class="albert-status-dot albert-status-dot--<?php echo esc_attr( $modifier ); ?>">
+			<span class="albert-status-dot__dot" aria-hidden="true"></span>
+			<span class="albert-status-dot__label"><?php echo esc_html( $word ); ?></span>
+		</span>
+		<?php
 	}
 }

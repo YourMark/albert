@@ -28,6 +28,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Full history + tags so the changelog step can diff against the
+          # previous tag (the default shallow clone has only the tagged commit).
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Get version
         id: version
@@ -54,7 +59,14 @@ jobs:
           tools: composer:v2
           coverage: none
 
+      - name: Generate Mozart-scoped dependencies
+        # Install WITH dev deps so Mozart is present; its post-install hook runs
+        # `mozart compose`, producing vendor-prefixed/ (scoped under Albert\Vendor\).
+        run: composer install --prefer-dist --no-progress
+
       - name: Install production dependencies
+        # Strip dev deps (incl. mozart + the unscoped wordpress/* packages) and
+        # rebuild the optimized prod autoloader. vendor-prefixed/ persists.
         run: composer install --no-dev --prefer-dist --optimize-autoloader --no-progress
 
       - name: Create plugin directory
@@ -71,13 +83,20 @@ jobs:
           # Directories
           cp -r src build/albert-ai-butler/
           cp -r vendor build/albert-ai-butler/
+          cp -r vendor-prefixed build/albert-ai-butler/
 
           # Optional directories (copy if they exist)
           [ -d "assets" ] && cp -r assets build/albert-ai-butler/ || true
           [ -d "languages" ] && cp -r languages build/albert-ai-butler/ || true
 
-      - name: Remove files not permitted by WordPress.org
-        run: find build/albert-ai-butler/vendor -name "*.sh" -type f -delete
+      - name: Strip build-only and disallowed vendor files
+        run: |
+          # wordpress/mcp-adapter + wordpress/php-mcp-schema are bundled into
+          # src/Dependencies/ (Mozart-scoped under Albert\Vendor\). They must
+          # NEVER ship unscoped in vendor/ — that would re-introduce the
+          # WP\MCP\ namespace collision with WooCommerce's bundled copy.
+          rm -rf build/albert-ai-butler/vendor/wordpress
+          find build/albert-ai-butler/vendor -name "*.sh" -type f -delete
 
       - name: Create zip file
         working-directory: build
@@ -93,16 +112,36 @@ jobs:
         if: github.event.inputs.dry_run != 'true'
         id: changelog
         run: |
-          # Get commits since last tag
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -n "$PREVIOUS_TAG" ]; then
-            CHANGELOG=$(git log --pretty=format:"- %s" $PREVIOUS_TAG..HEAD --no-merges)
-          else
-            CHANGELOG=$(git log --pretty=format:"- %s" --no-merges -20)
+          VERSION="${{ steps.version.outputs.version }}"
+          # Pre-release suffixes (e.g. 1.2.0-beta2) map to the base version's
+          # readme section (= 1.2.0 =).
+          BASE_VERSION="${VERSION%%-*}"
+
+          # Prefer the curated readme.txt changelog section for this version:
+          # everything between "= BASE_VERSION =" and the next "= x =" / "== ... ==".
+          NOTES=$(awk -v ver="= ${BASE_VERSION} =" '
+            $0 == ver { flag = 1; next }
+            flag && ( /^= [0-9]/ || /^== / ) { exit }
+            flag { print }
+          ' readme.txt)
+
+          # Fall back to the commit log since the previous tag if no section matched.
+          if [ -z "$(echo "$NOTES" | tr -d '[:space:]')" ]; then
+            PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+            if [ -n "$PREVIOUS_TAG" ]; then
+              NOTES=$(git log --pretty=format:"- %s" "$PREVIOUS_TAG"..HEAD --no-merges)
+            else
+              NOTES=$(git log --pretty=format:"- %s" --no-merges -20)
+            fi
           fi
 
-          # Save to file for multiline output
-          echo "$CHANGELOG" > changelog.txt
+          # For pre-releases, note the build identifier above the section notes.
+          if [ "${{ steps.prerelease.outputs.is_prerelease }}" = "true" ]; then
+            printf 'Pre-release build (%s) of %s for testing.\n\n%s\n' "$VERSION" "$BASE_VERSION" "$NOTES" > changelog.txt
+          else
+            printf '%s\n' "$NOTES" > changelog.txt
+          fi
+
           echo "changelog_file=changelog.txt" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
@@ -140,6 +179,9 @@ jobs:
           php-version: '8.2'
           tools: composer:v2
           coverage: none
+
+      - name: Generate Mozart-scoped dependencies
+        run: composer install --prefer-dist --no-progress
 
       - name: Install production dependencies
         run: composer install --no-dev --prefer-dist --optimize-autoloader --no-progress

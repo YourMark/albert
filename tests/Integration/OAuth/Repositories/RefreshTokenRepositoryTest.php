@@ -10,7 +10,8 @@
 
 namespace Albert\Tests\Integration\OAuth\Repositories;
 
-use Albert\OAuth\Database\Installer;
+use Albert\Database\Installer;
+use Albert\Database\Tables;
 use Albert\OAuth\Entities\AccessTokenEntity;
 use Albert\OAuth\Entities\ClientEntity;
 use Albert\OAuth\Entities\RefreshTokenEntity;
@@ -44,7 +45,7 @@ class RefreshTokenRepositoryTest extends TestCase {
 		$this->repository = new RefreshTokenRepository();
 
 		global $wpdb;
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Test reset.
 		$wpdb->query( $wpdb->prepare( 'TRUNCATE TABLE %i', $tables['refresh_tokens'] ) );
 	}

@@ -10,6 +10,8 @@
 namespace Albert\Abilities\WordPress\Posts;
 
 use Albert\Abstracts\BaseAbility;
+use Albert\Blocks\ContentFormatter;
+use Albert\Blocks\EditorMode;
 use Albert\Core\Annotations;
 use WP_Error;
 use WP_REST_Request;
@@ -57,10 +59,21 @@ class ViewPost extends BaseAbility {
 		return [
 			'type'       => 'object',
 			'properties' => [
-				'id' => [
+				'id'     => [
 					'type'        => 'integer',
 					'description' => 'The post ID to retrieve.',
 					'minimum'     => 1,
+				],
+				'format' => ContentFormatter::input_schema_property(),
+				'offset' => [
+					'type'        => 'integer',
+					'description' => 'Block-window start: index of the first top-level block to return. Long posts are paginated by block; use this with "limit" to page through them. Check "_meta.next_offset" in the result and re-request with that value to fetch the next slice. Optional; default 0 (start).',
+					'minimum'     => 0,
+				],
+				'limit'  => [
+					'type'        => 'integer',
+					'description' => 'Block-window size: maximum number of top-level blocks to return. Optional; 0 or omitted uses the server default window. Each returned representation (content/blocks/plaintext/html/markdown) reflects only this window.',
+					'minimum'     => 0,
 				],
 			],
 			'required'   => [ 'id' ],
@@ -80,6 +93,72 @@ class ViewPost extends BaseAbility {
 				'post' => [
 					'type'        => 'object',
 					'description' => 'The requested post object.',
+					'properties'  => [
+						'content'    => [
+							'type'        => 'string',
+							'description' => 'The stored post content: raw block markup (<!-- wp:... --> comment-delimited) for block-editor posts, plain HTML for classic-editor posts (see "has_blocks" / "editor"). When a block window is applied (see "_meta"), this is the re-serialised window, not a verbatim excerpt of the stored markup. Included when "content" is requested (default).',
+						],
+						'blocks'     => [
+							'type'        => 'array',
+							'description' => 'The post content parsed into a structured block tree. Each node has { name, attributes, innerBlocks, plaintext, path }; innerBlocks is the same shape recursively. "path" (e.g. [2], [2,0]) is the block\'s address — pass it to the edit/add/remove/move-post-block abilities. Included when "blocks" is requested (default).',
+							'items'       => [ 'type' => 'object' ],
+						],
+						'plaintext'  => [
+							'type'        => 'string',
+							'description' => 'Human-readable plain text of the whole post content. Included when "plaintext" is requested (default).',
+						],
+						'html'       => [
+							'type'        => 'string',
+							'description' => 'Rendered HTML produced by do_blocks() — reflects dynamic/server-rendered block output. Only included when "html" is requested.',
+						],
+						'markdown'   => [
+							'type'        => 'string',
+							'description' => 'Markdown rendering of the post content. Only included when "markdown" is requested.',
+						],
+						'editor'     => [
+							'type'        => 'string',
+							'enum'        => [ 'block', 'classic' ],
+							'description' => 'Which editor this post uses. "block" means send structured "blocks" when writing; "classic" means send plain HTML in "content" instead.',
+						],
+						'has_blocks' => [
+							'type'        => 'boolean',
+							'description' => 'Whether the stored content actually contains block markup. May differ from "editor" (e.g. classic content saved on a block-editor type).',
+						],
+						'_meta'      => [
+							'type'        => 'object',
+							'description' => 'Block-window pagination metadata. The returned content/blocks/plaintext/html/markdown reflect only the requested window of top-level blocks. When "truncated" is true, fetch the rest by re-requesting with the suggested "next_offset".',
+							'properties'  => [
+								'total_blocks'    => [
+									'type'        => 'integer',
+									'description' => 'Total number of top-level blocks in the post (after dropping empty separators).',
+								],
+								'offset'          => [
+									'type'        => 'integer',
+									'description' => 'The window start that was applied.',
+								],
+								'limit'           => [
+									'type'        => 'integer',
+									'description' => 'The window size that was applied (0 means no windowing).',
+								],
+								'returned_blocks' => [
+									'type'        => 'integer',
+									'description' => 'How many top-level blocks this response contains.',
+								],
+								'truncated'       => [
+									'type'        => 'boolean',
+									'description' => 'True if more blocks remain beyond this window, or a text representation was byte-capped.',
+								],
+								'next_offset'     => [
+									'type'        => 'integer',
+									'description' => 'Suggested "offset" for the next request. Present only when more blocks remain.',
+								],
+								'note'            => [
+									'type'        => 'string',
+									'description' => 'Human-readable, actionable summary of the window and how to fetch more.',
+								],
+							],
+						],
+					],
 				],
 			],
 		];
@@ -122,20 +201,35 @@ class ViewPost extends BaseAbility {
 			return new WP_Error( 'forbidden', __( 'You do not have permission to view this post.', 'albert-ai-butler' ) );
 		}
 
+		$format  = isset( $args['format'] ) && is_array( $args['format'] ) ? $args['format'] : [];
+		$options = [ 'paginate' => true ];
+		if ( isset( $args['offset'] ) ) {
+			$options['offset'] = max( 0, (int) $args['offset'] );
+		}
+		if ( isset( $args['limit'] ) ) {
+			$options['limit'] = max( 0, (int) $args['limit'] );
+		}
+		$content = ContentFormatter::build( $post->post_content, $format, $options );
+
 		return [
-			'post' => [
-				'id'             => $post->ID,
-				'title'          => $post->post_title,
-				'content'        => $post->post_content,
-				'excerpt'        => $post->post_excerpt,
-				'status'         => $post->post_status,
-				'author_id'      => (int) $post->post_author,
-				'date'           => $post->post_date,
-				'modified'       => $post->post_modified,
-				'slug'           => $post->post_name,
-				'permalink'      => get_permalink( $post ),
-				'featured_image' => get_post_thumbnail_id( $post ) ? get_post_thumbnail_id( $post ) : null,
-			],
+			'post' => array_merge(
+				[
+					'id'    => $post->ID,
+					'title' => $post->post_title,
+				],
+				$content,
+				EditorMode::signal( $post ),
+				[
+					'excerpt'        => $post->post_excerpt,
+					'status'         => $post->post_status,
+					'author_id'      => (int) $post->post_author,
+					'date'           => $post->post_date,
+					'modified'       => $post->post_modified,
+					'slug'           => $post->post_name,
+					'permalink'      => get_permalink( $post ),
+					'featured_image' => get_post_thumbnail_id( $post ) ? get_post_thumbnail_id( $post ) : null,
+				]
+			),
 		];
 	}
 }

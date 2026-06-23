@@ -114,6 +114,46 @@ class AbilitiesRegistry {
 	}
 
 	/**
+	 * Resolve an ability slug to its human-readable label.
+	 *
+	 * Prefers the registered ability's own label via `wp_get_ability()`.
+	 * Falls back to a prettified version of the slug when the ability is no
+	 * longer registered (e.g. an addon was deactivated after a run was logged)
+	 * or when the Abilities API is unavailable — mirroring the fallback style
+	 * of {@see AbilitiesPage::resolve_category_label()}.
+	 *
+	 * `wp_get_ability()` is only called once the abilities registry has been
+	 * populated (`wp_abilities_api_init` has fired). On admin pages that render
+	 * before that — notably the Albert dashboard — calling it would emit PHP
+	 * notices from the registry, so we skip straight to the prettified-slug
+	 * fallback instead. Callers that hold their own ability instances (e.g.
+	 * Dashboard via AbilitiesManager) should resolve the label there first and
+	 * only fall through to this resolver for slugs they do not hold.
+	 *
+	 * Living in core means both `Dashboard` and `AbilitiesPage` (and Premium,
+	 * later) share one resolver for their Event/label columns.
+	 *
+	 * @param string $slug Ability slug, e.g. `albert/woo-find-products`.
+	 *
+	 * @return string Human-readable label.
+	 * @since 1.2.0
+	 */
+	public static function label_for( string $slug ): string {
+		if ( function_exists( 'wp_get_ability' ) && did_action( 'wp_abilities_api_init' ) ) {
+			$ability = wp_get_ability( $slug );
+			if ( $ability !== null ) {
+				$label = (string) $ability->get_label();
+				if ( $label !== '' ) {
+					return $label;
+				}
+			}
+		}
+
+		// Prettify the slug: drop separators and title-case what remains.
+		return ucwords( str_replace( [ '/', '-', '_' ], ' ', $slug ) );
+	}
+
+	/**
 	 * Get the default set of disabled abilities.
 	 *
 	 * On fresh install, non-readonly abilities (write / delete) are disabled

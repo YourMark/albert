@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\MCP\Server as McpServer;
-use Albert\OAuth\Database\Installer;
+use Albert\Database\Tables;
 use Albert\OAuth\Repositories\RefreshTokenRepository;
 
 /**
@@ -762,9 +762,13 @@ class Connections implements Hookable {
 	private function render_active_connections_section(): void {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
-		// Get all active connections (all users) grouped by client.
+		// List the currently-active sessions (non-revoked, unexpired access
+		// tokens). "Connected" reflects when the connection was first established
+		// — the client's registration time — not the token's last refresh, which
+		// changes roughly hourly. UNIX_TIMESTAMP() returns a time-zone-safe epoch,
+		// falling back to the token's own time if the client row is missing.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$sessions = $wpdb->get_results(
 			$wpdb->prepare(
@@ -773,7 +777,7 @@ class Connections implements Hookable {
 					t.client_id,
 					t.user_id,
 					t.token_id,
-					CONVERT_TZ(t.created_at, @@session.time_zone, '+00:00') as created_at,
+					UNIX_TIMESTAMP( COALESCE( c.created_at, t.created_at ) ) as connected_ts,
 					COALESCE(c.name, 'Unknown Client') as client_name
 				FROM %i t
 				LEFT JOIN %i c ON t.client_id = c.client_id
@@ -817,7 +821,7 @@ class Connections implements Hookable {
 								<?php
 								$app_name     = ! empty( $session->client_name ) ? $session->client_name : __( 'Unknown Client', 'albert-ai-butler' );
 								$user         = get_userdata( $session->user_id );
-								$connected_at = strtotime( $session->created_at );
+								$connected_at = (int) $session->connected_ts;
 
 								$revoke_url = wp_nonce_url(
 									add_query_arg(
@@ -933,7 +937,7 @@ class Connections implements Hookable {
 			return;
 		}
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// Get active sessions grouped by client, with first connection time.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -1085,7 +1089,7 @@ class Connections implements Hookable {
 	 */
 	private function get_user_session_count( int $user_id ): int {
 		global $wpdb;
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// Count distinct clients with non-revoked tokens (sessions persist via refresh tokens).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching

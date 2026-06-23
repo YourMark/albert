@@ -39,6 +39,13 @@ if ( ! class_exists( 'WP_REST_Request' ) ) {
 		protected array $headers = [];
 
 		/**
+		 * Request parameters.
+		 *
+		 * @var array<string, mixed>
+		 */
+		protected array $params = [];
+
+		/**
 		 * Constructor.
 		 *
 		 * @param string $method HTTP method.
@@ -70,6 +77,36 @@ if ( ! class_exists( 'WP_REST_Request' ) ) {
 		 */
 		public function set_header( string $key, string $value ): void {
 			$this->headers[ strtolower( $key ) ] = $value;
+		}
+
+		/**
+		 * Set a request parameter.
+		 *
+		 * @param string $key   Parameter name.
+		 * @param mixed  $value Parameter value.
+		 */
+		public function set_param( string $key, $value ): void {
+			$this->params[ $key ] = $value;
+		}
+
+		/**
+		 * Get a request parameter.
+		 *
+		 * @param string $key Parameter name.
+		 *
+		 * @return mixed
+		 */
+		public function get_param( string $key ) {
+			return $this->params[ $key ] ?? null;
+		}
+
+		/**
+		 * Get all request parameters.
+		 *
+		 * @return array<string, mixed>
+		 */
+		public function get_params(): array {
+			return $this->params;
 		}
 
 		/**

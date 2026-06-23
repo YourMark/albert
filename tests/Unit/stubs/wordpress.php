@@ -60,11 +60,15 @@ if ( ! function_exists( 'apply_filters' ) ) {
 	/**
 	 * Stub apply_filters that records calls and returns the value unmodified.
 	 *
+	 * Tests can simulate a filter callback by setting
+	 * $GLOBALS['albert_test_filter_returns'][$hook_name]; when that key is
+	 * present the stub returns its value instead of the passed-in $value.
+	 *
 	 * @param string $hook_name Hook name.
 	 * @param mixed  $value     Value to filter.
 	 * @param mixed  ...$args   Additional arguments.
 	 *
-	 * @return mixed The unmodified value.
+	 * @return mixed The (optionally overridden) value.
 	 */
 	function apply_filters( string $hook_name, mixed $value, ...$args ): mixed {
 		$GLOBALS['albert_test_hooks'][] = [
@@ -72,6 +76,11 @@ if ( ! function_exists( 'apply_filters' ) ) {
 			'hook' => $hook_name,
 			'args' => array_merge( [ $value ], $args ),
 		];
+
+		if ( isset( $GLOBALS['albert_test_filter_returns'][ $hook_name ] ) ) {
+			return $GLOBALS['albert_test_filter_returns'][ $hook_name ];
+		}
+
 		return $value;
 	}
 }
@@ -152,6 +161,27 @@ if ( ! function_exists( 'wp_register_ability' ) ) {
 	}
 }
 
+if ( ! function_exists( '_deprecated_function' ) ) {
+	/**
+	 * Stub _deprecated_function that records calls to $GLOBALS['albert_test_deprecated_calls'].
+	 *
+	 * @param string $function_name Function/method name being deprecated.
+	 * @param string $version       Version the function was deprecated in.
+	 * @param string $replacement   Replacement function/method.
+	 */
+	function _deprecated_function( string $function_name, string $version, string $replacement = '' ): void {
+		if ( ! isset( $GLOBALS['albert_test_deprecated_calls'] ) ) {
+			$GLOBALS['albert_test_deprecated_calls'] = [];
+		}
+
+		$GLOBALS['albert_test_deprecated_calls'][] = [
+			'function_name' => $function_name,
+			'version'       => $version,
+			'replacement'   => $replacement,
+		];
+	}
+}
+
 if ( ! function_exists( 'wp_unslash' ) ) {
 	/**
 	 * Stub wp_unslash that mirrors WordPress's stripslashes_deep behaviour.
@@ -195,6 +225,148 @@ if ( ! function_exists( '__' ) ) {
 	function __( string $text, string $domain = 'default' ): string {
 		return $text;
 	}
+}
+
+if ( ! function_exists( 'update_option' ) ) {
+	/**
+	 * Stub update_option that writes to $GLOBALS['albert_test_options'].
+	 *
+	 * @param string    $option   Option name.
+	 * @param mixed     $value    Option value.
+	 * @param bool|null $autoload Whether to autoload (ignored by the stub; mirrors WP's signature).
+	 *
+	 * @return bool
+	 */
+	function update_option( string $option, mixed $value, ?bool $autoload = null ): bool {
+		if ( ! isset( $GLOBALS['albert_test_options'] ) || ! is_array( $GLOBALS['albert_test_options'] ) ) {
+			$GLOBALS['albert_test_options'] = [];
+		}
+
+		$GLOBALS['albert_test_options'][ $option ] = $value;
+
+		return true;
+	}
+}
+
+if ( ! function_exists( 'set_transient' ) ) {
+	/**
+	 * Stub set_transient that writes to $GLOBALS['albert_test_transients'].
+	 *
+	 * @param string $transient  Transient name.
+	 * @param mixed  $value      Transient value.
+	 * @param int    $expiration Expiration in seconds (ignored by the stub).
+	 *
+	 * @return bool
+	 */
+	function set_transient( string $transient, mixed $value, int $expiration = 0 ): bool {
+		if ( ! isset( $GLOBALS['albert_test_transients'] ) || ! is_array( $GLOBALS['albert_test_transients'] ) ) {
+			$GLOBALS['albert_test_transients'] = [];
+		}
+
+		$GLOBALS['albert_test_transients'][ $transient ] = $value;
+
+		return true;
+	}
+}
+
+if ( ! function_exists( 'get_transient' ) ) {
+	/**
+	 * Stub get_transient that reads from $GLOBALS['albert_test_transients'].
+	 *
+	 * @param string $transient Transient name.
+	 *
+	 * @return mixed Transient value, or false when not set.
+	 */
+	function get_transient( string $transient ): mixed {
+		return $GLOBALS['albert_test_transients'][ $transient ] ?? false;
+	}
+}
+
+if ( ! function_exists( 'delete_transient' ) ) {
+	/**
+	 * Stub delete_transient that removes from $GLOBALS['albert_test_transients'].
+	 *
+	 * @param string $transient Transient name.
+	 *
+	 * @return bool
+	 */
+	function delete_transient( string $transient ): bool {
+		unset( $GLOBALS['albert_test_transients'][ $transient ] );
+
+		return true;
+	}
+}
+
+if ( ! function_exists( 'esc_html' ) ) {
+	/**
+	 * Stub esc_html.
+	 *
+	 * @param string $text Text to escape.
+	 *
+	 * @return string
+	 */
+	function esc_html( string $text ): string {
+		return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
+	}
+}
+
+if ( ! function_exists( 'esc_html_e' ) ) {
+	/**
+	 * Stub esc_html_e that echoes the escaped text.
+	 *
+	 * @param string $text   Text to escape and echo.
+	 * @param string $domain Text domain.
+	 *
+	 * @return void
+	 */
+	function esc_html_e( string $text, string $domain = 'default' ): void {
+		echo esc_html( $text );
+	}
+}
+
+if ( ! function_exists( 'esc_url' ) ) {
+	/**
+	 * Stub esc_url.
+	 *
+	 * @param string $url URL to escape.
+	 *
+	 * @return string
+	 */
+	function esc_url( string $url ): string {
+		return (string) filter_var( $url, FILTER_SANITIZE_URL );
+	}
+}
+
+if ( ! function_exists( 'number_format_i18n' ) ) {
+	/**
+	 * Stub number_format_i18n.
+	 *
+	 * @param int|float $number   Number to format.
+	 * @param int       $decimals Decimal places.
+	 *
+	 * @return string
+	 */
+	function number_format_i18n( int|float $number, int $decimals = 0 ): string {
+		return number_format( (float) $number, $decimals );
+	}
+}
+
+if ( ! function_exists( 'menu_page_url' ) ) {
+	/**
+	 * Stub menu_page_url that returns a predictable admin URL.
+	 *
+	 * @param string $slug    Menu slug.
+	 * @param bool   $display Whether to echo (ignored by the stub).
+	 *
+	 * @return string
+	 */
+	function menu_page_url( string $slug, bool $display = true ): string {
+		return 'http://example.test/wp-admin/admin.php?page=' . $slug;
+	}
+}
+
+if ( ! defined( 'DAY_IN_SECONDS' ) ) {
+	define( 'DAY_IN_SECONDS', 86400 );
 }
 
 // phpcs:enable

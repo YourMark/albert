@@ -9,7 +9,7 @@
 
 namespace Albert\OAuth\Repositories;
 
-use Albert\OAuth\Database\Installer;
+use Albert\Database\Tables;
 use Albert\OAuth\Entities\AuthCodeEntity;
 use League\OAuth2\Server\Entities\AuthCodeEntityInterface;
 use League\OAuth2\Server\Repositories\AuthCodeRepositoryInterface;
@@ -44,7 +44,7 @@ class AuthCodeRepository implements AuthCodeRepositoryInterface {
 	public function persistNewAuthCode( AuthCodeEntityInterface $auth_code_entity ): void {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 		$scopes = [];
 
 		foreach ( $auth_code_entity->getScopes() as $scope ) {
@@ -77,7 +77,7 @@ class AuthCodeRepository implements AuthCodeRepositoryInterface {
 	public function revokeAuthCode( $code_id ): void {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
 		$wpdb->update(
@@ -100,7 +100,7 @@ class AuthCodeRepository implements AuthCodeRepositoryInterface {
 	public function isAuthCodeRevoked( $code_id ): bool {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$revoked = $wpdb->get_var(
@@ -128,7 +128,7 @@ class AuthCodeRepository implements AuthCodeRepositoryInterface {
 	public function cleanupExpiredCodes(): int {
 		global $wpdb;
 
-		$tables = Installer::get_table_names();
+		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->query(
