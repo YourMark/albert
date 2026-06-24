@@ -14,6 +14,7 @@ namespace Albert\Admin;
 use Albert\Core\AbilitiesRegistry;
 use Albert\Core\AbilitiesState;
 use Albert\Core\AnnotationPresenter;
+use Albert\Logging\Repository as LoggingRepository;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -43,14 +44,22 @@ class AbilitiesPayload {
 	public static function build(): array {
 		$categories = function_exists( 'wp_get_ability_categories' ) ? wp_get_ability_categories() : [];
 		$disabled   = AbilitiesState::disabled();
+		$roles      = self::roles();
+		$all        = wp_get_abilities();
+
+		$ids = [];
+		foreach ( $all as $ability ) {
+			$ids[] = $ability->get_name();
+		}
+		$logs = ( new LoggingRepository() )->latest_bulk( $ids );
 
 		$abilities     = [];
 		$category_opts = [];
 		$supplier_opts = [];
 		$enabled_count = 0;
 
-		foreach ( wp_get_abilities() as $ability ) {
-			$row         = self::row_from_ability( $ability, $categories, $disabled );
+		foreach ( $all as $ability ) {
+			$row         = self::row_from_ability( $ability, $categories, $disabled, $roles, $logs[ $ability->get_name() ] ?? null );
 			$abilities[] = $row;
 
 			if ( $row['enabled'] ) {
@@ -106,8 +115,9 @@ class AbilitiesPayload {
 		}
 
 		$categories = function_exists( 'wp_get_ability_categories' ) ? wp_get_ability_categories() : [];
+		$log        = ( new LoggingRepository() )->latest_for_ability( $ability_id );
 
-		return self::row_from_ability( $ability, $categories, AbilitiesState::disabled() );
+		return self::row_from_ability( $ability, $categories, AbilitiesState::disabled(), self::roles(), $log );
 	}
 
 	/**
@@ -116,31 +126,36 @@ class AbilitiesPayload {
 	 * @param \WP_Ability          $ability    The ability.
 	 * @param array<string, mixed> $categories Map from wp_get_ability_categories().
 	 * @param array<int, string>   $disabled   Disabled ability IDs.
+	 * @param array<string, mixed> $roles      Map from WP_Roles::roles (slug => role data).
+	 * @param object|null          $log        Latest log row for this ability, or null.
 	 *
 	 * @return array<string, mixed>
 	 * @since 1.3.0
 	 */
-	private static function row_from_ability( \WP_Ability $ability, array $categories, array $disabled ): array {
+	private static function row_from_ability( \WP_Ability $ability, array $categories, array $disabled, array $roles, ?object $log = null ): array {
 		$id          = $ability->get_name();
 		$meta        = (array) $ability->get_meta();
 		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : [];
 		$chips       = AnnotationPresenter::chips_for( $annotations, $id );
 		$source      = AbilitiesRegistry::get_ability_source( $id );
+		$capability  = AbilitiesRegistry::resolve_required_capability( $ability );
 
 		return [
-			'id'            => $id,
-			'label'         => $ability->get_label(),
-			'description'   => $ability->get_description(),
-			'category'      => $ability->get_category(),
-			'categoryLabel' => self::category_label( $ability->get_category(), $categories ),
-			'supplier'      => $source['slug'],
-			'supplierLabel' => $source['label'],
-			'operation'     => $chips[0]['key'] ?? 'read',
-			'enabled'       => ! in_array( $id, $disabled, true ),
-			'capability'    => AbilitiesRegistry::resolve_required_capability( $ability ),
-			'inputs'        => self::inputs( $ability->get_input_schema() ),
-			'output'        => self::output( $ability->get_output_schema() ),
-			'annotations'   => array_map(
+			'id'              => $id,
+			'label'           => $ability->get_label(),
+			'description'     => $ability->get_description(),
+			'category'        => $ability->get_category(),
+			'categoryLabel'   => self::category_label( $ability->get_category(), $categories ),
+			'supplier'        => $source['slug'],
+			'supplierLabel'   => $source['label'],
+			'operation'       => $chips[0]['key'] ?? 'read',
+			'enabled'         => ! in_array( $id, $disabled, true ),
+			'capability'      => $capability,
+			'capabilityRoles' => self::roles_with_capability( $capability, $roles ),
+			'lastUsed'        => self::last_used( $log ),
+			'inputs'          => self::inputs( $ability->get_input_schema() ),
+			'output'          => self::output( $ability->get_output_schema() ),
+			'annotations'     => array_map(
 				static fn( array $chip ): array => [
 					'key'         => $chip['key'],
 					'label'       => $chip['label'],
@@ -237,5 +252,73 @@ class AbilitiesPayload {
 		}
 
 		return $options;
+	}
+
+	/**
+	 * Get the editable roles map (slug => role data) for capability lookups.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.3.0
+	 */
+	private static function roles(): array {
+		return function_exists( 'wp_roles' ) ? wp_roles()->roles : [];
+	}
+
+	/**
+	 * Normalize a log row into the "last used" descriptor for the screen.
+	 *
+	 * Handles both shapes returned by the repository: latest_bulk() includes a
+	 * `created_ts` epoch, latest_for_ability() only a `created_at` datetime.
+	 *
+	 * @param object|null $log Latest log row, or null when never run.
+	 *
+	 * @return array{status: string, timestamp: int, human: string}|null
+	 * @since 1.3.0
+	 */
+	private static function last_used( ?object $log ): ?array {
+		if ( $log === null ) {
+			return null;
+		}
+
+		if ( isset( $log->created_ts ) ) {
+			$timestamp = (int) $log->created_ts;
+		} elseif ( isset( $log->created_at ) ) {
+			$timestamp = (int) strtotime( (string) $log->created_at . ' UTC' );
+		} else {
+			$timestamp = 0;
+		}
+
+		return [
+			'status'    => (string) ( $log->status ?? '' ),
+			'timestamp' => $timestamp,
+			'human'     => $timestamp > 0
+				/* translators: %s: human-readable time difference, e.g. "2 hours". */
+				? sprintf( __( '%s ago', 'albert-ai-butler' ), human_time_diff( $timestamp ) )
+				: '',
+		];
+	}
+
+	/**
+	 * List the display names of roles that grant a capability.
+	 *
+	 * @param string               $capability Capability slug.
+	 * @param array<string, mixed> $roles      Map from WP_Roles::roles.
+	 *
+	 * @return array<int, string>
+	 * @since 1.3.0
+	 */
+	private static function roles_with_capability( string $capability, array $roles ): array {
+		if ( $capability === '' ) {
+			return [];
+		}
+
+		$names = [];
+		foreach ( $roles as $role ) {
+			if ( ! empty( $role['capabilities'][ $capability ] ) ) {
+				$names[] = (string) ( $role['name'] ?? '' );
+			}
+		}
+
+		return array_values( array_filter( $names ) );
 	}
 }
