@@ -99,4 +99,32 @@ class AbilitiesState {
 		update_option( self::OPTION, $disabled );
 		update_option( self::SAVED_OPTION, true );
 	}
+
+	/**
+	 * Enable or disable many abilities at once with a single option write.
+	 *
+	 * @param array<int, string> $ability_ids Ability IDs to change.
+	 * @param bool               $enabled     Desired enabled state for all of them.
+	 *
+	 * @return void
+	 * @since 1.3.0
+	 */
+	public static function set_enabled_bulk( array $ability_ids, bool $enabled ): void {
+		if ( empty( $ability_ids ) ) {
+			return;
+		}
+
+		$disabled = array_fill_keys( self::disabled(), true );
+
+		foreach ( $ability_ids as $ability_id ) {
+			if ( $enabled ) {
+				unset( $disabled[ $ability_id ] );
+			} else {
+				$disabled[ $ability_id ] = true;
+			}
+		}
+
+		update_option( self::OPTION, array_values( array_map( 'strval', array_keys( $disabled ) ) ) );
+		update_option( self::SAVED_OPTION, true );
+	}
 }

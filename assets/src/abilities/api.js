@@ -32,3 +32,18 @@ export function setAbilityEnabled( id, enabled ) {
 		data: { enabled },
 	} );
 }
+
+/**
+ * Enable or disable many abilities in one request.
+ *
+ * @param {string[]} ids     Ability ids.
+ * @param {boolean}  enabled Desired enabled state.
+ * @return {Promise<Object>} { updated, enabled }.
+ */
+export function setAbilitiesEnabledBulk( ids, enabled ) {
+	return apiFetch( {
+		path: `${ BASE }/bulk`,
+		method: 'POST',
+		data: { ids, enabled },
+	} );
+}

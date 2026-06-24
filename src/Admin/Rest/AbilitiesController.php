@@ -68,6 +68,27 @@ class AbilitiesController implements Hookable {
 
 		register_rest_route(
 			$namespace,
+			'/abilities/bulk',
+			[
+				'methods'             => WP_REST_Server::EDITABLE,
+				'callback'            => [ $this, 'bulk_update' ],
+				'permission_callback' => [ $this, 'check_permission' ],
+				'args'                => [
+					'ids'     => [
+						'type'     => 'array',
+						'required' => true,
+						'items'    => [ 'type' => 'string' ],
+					],
+					'enabled' => [
+						'type'     => 'boolean',
+						'required' => true,
+					],
+				],
+			]
+		);
+
+		register_rest_route(
+			$namespace,
 			'/abilities/(?P<namespace>[a-z0-9_-]+)/(?P<name>[a-z0-9_-]+)',
 			[
 				'methods'             => WP_REST_Server::EDITABLE,
@@ -128,6 +149,33 @@ class AbilitiesController implements Hookable {
 		AbilitiesState::set_enabled( $ability_id, (bool) $request['enabled'] );
 
 		return rest_ensure_response( AbilitiesPayload::row( $ability_id ) );
+	}
+
+	/**
+	 * POST /abilities/bulk — enable or disable many abilities at once.
+	 *
+	 * @param WP_REST_Request $request The request.
+	 *
+	 * @return WP_REST_Response
+	 * @since 1.3.0
+	 */
+	public function bulk_update( WP_REST_Request $request ): WP_REST_Response {
+		$ids = array_values(
+			array_filter(
+				array_map( 'strval', (array) $request['ids'] ),
+				static fn( string $id ): bool => (bool) preg_match( '#^[a-z0-9_-]+/[a-z0-9_-]+$#', $id )
+			)
+		);
+
+		$enabled = (bool) $request['enabled'];
+		AbilitiesState::set_enabled_bulk( $ids, $enabled );
+
+		return rest_ensure_response(
+			[
+				'updated' => count( $ids ),
+				'enabled' => $enabled,
+			]
+		);
 	}
 
 	/**
