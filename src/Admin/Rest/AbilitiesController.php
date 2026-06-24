@@ -1,0 +1,160 @@
+<?php
+/**
+ * Abilities REST Controller
+ *
+ * REST API for the DataViews abilities admin screen.
+ *
+ * @package Albert
+ * @subpackage Admin\Rest
+ * @since      1.3.0
+ */
+
+namespace Albert\Admin\Rest;
+
+use Albert\Admin\AbilitiesPayload;
+use Albert\Contracts\Interfaces\Hookable;
+use Albert\Core\AbilitiesState;
+use Albert\Core\Plugin;
+use WP_Error;
+use WP_REST_Request;
+use WP_REST_Response;
+use WP_REST_Server;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * AbilitiesController class
+ *
+ * Serves the abilities dataset and persists per-ability enabled-state for the
+ * admin screen, consumed via @wordpress/api-fetch. Routes require
+ * `manage_options`. The controller also opts its own requests into the abilities
+ * "management context" so the full registry (including disabled abilities) stays
+ * visible — otherwise AbilitiesManager::enforce_disabled() would prune disabled
+ * abilities and the screen could never re-enable them.
+ *
+ * @since 1.3.0
+ */
+class AbilitiesController implements Hookable {
+
+	/**
+	 * Register WordPress hooks.
+	 *
+	 * @return void
+	 * @since 1.3.0
+	 */
+	public function register_hooks(): void {
+		add_action( 'rest_api_init', [ $this, 'register_routes' ] );
+		add_filter( 'albert/abilities/is_management_context', [ $this, 'filter_management_context' ] );
+	}
+
+	/**
+	 * Register the REST routes under the plugin namespace.
+	 *
+	 * @return void
+	 * @since 1.3.0
+	 */
+	public function register_routes(): void {
+		$namespace = Plugin::rest_namespace();
+
+		register_rest_route(
+			$namespace,
+			'/abilities',
+			[
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => [ $this, 'get_abilities' ],
+				'permission_callback' => [ $this, 'check_permission' ],
+			]
+		);
+
+		register_rest_route(
+			$namespace,
+			'/abilities/(?P<namespace>[a-z0-9_-]+)/(?P<name>[a-z0-9_-]+)',
+			[
+				'methods'             => WP_REST_Server::EDITABLE,
+				'callback'            => [ $this, 'update_ability' ],
+				'permission_callback' => [ $this, 'check_permission' ],
+				'args'                => [
+					'enabled' => [
+						'type'     => 'boolean',
+						'required' => true,
+					],
+				],
+			]
+		);
+	}
+
+	/**
+	 * Permission check for every route on this controller.
+	 *
+	 * @return bool
+	 * @since 1.3.0
+	 */
+	public function check_permission(): bool {
+		return current_user_can( 'manage_options' );
+	}
+
+	/**
+	 * GET /abilities — the full dataset for the screen.
+	 *
+	 * @return WP_REST_Response
+	 * @since 1.3.0
+	 */
+	public function get_abilities(): WP_REST_Response {
+		return rest_ensure_response( AbilitiesPayload::build() );
+	}
+
+	/**
+	 * POST /abilities/{namespace}/{name} — toggle one ability's enabled state.
+	 *
+	 * The id carries a slash, so it arrives as two path segments and is
+	 * reconstructed here.
+	 *
+	 * @param WP_REST_Request $request The request.
+	 *
+	 * @return WP_REST_Response|WP_Error
+	 * @since 1.3.0
+	 */
+	public function update_ability( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$ability_id = $request['namespace'] . '/' . $request['name'];
+
+		if ( AbilitiesPayload::row( $ability_id ) === null ) {
+			return new WP_Error(
+				'albert_ability_not_found',
+				__( 'Ability not found.', 'albert-ai-butler' ),
+				[ 'status' => 404 ]
+			);
+		}
+
+		AbilitiesState::set_enabled( $ability_id, (bool) $request['enabled'] );
+
+		return rest_ensure_response( AbilitiesPayload::row( $ability_id ) );
+	}
+
+	/**
+	 * Opt this controller's requests into the abilities management context.
+	 *
+	 * Keeps disabled abilities in the registry for our endpoint so the screen
+	 * can list and re-enable them. Matches by request URI (available before any
+	 * dispatch), mirroring how the admin page is detected by its `page` query arg.
+	 *
+	 * @param bool $is_management_context Incoming value.
+	 *
+	 * @return bool
+	 * @since 1.3.0
+	 */
+	public function filter_management_context( bool $is_management_context ): bool {
+		return $is_management_context || $this->is_abilities_request();
+	}
+
+	/**
+	 * Whether the current request targets this controller's abilities routes.
+	 *
+	 * @return bool
+	 * @since 1.3.0
+	 */
+	private function is_abilities_request(): bool {
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+
+		return $uri !== '' && str_contains( $uri, Plugin::rest_namespace() . '/abilities' );
+	}
+}

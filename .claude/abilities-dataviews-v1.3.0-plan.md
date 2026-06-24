@@ -94,7 +94,7 @@ all script/style handles register in WP 7.0.
 - Best-effort capability resolver `AbilitiesRegistry::resolve_required_capability()` —
   optional declared `meta['capability']` → heuristic by supplier/category/operation → filterable via
   new `albert/abilities/required_capability`.
-- **New REST controller** `Albert\REST\AbilitiesController` (`src/REST/`, registered on
+- **New REST controller** `Albert\Admin\Rest\AbilitiesController` (`src/Admin/Rest/`, registered on
   `rest_api_init`), namespace `albert/v1`, every route `permission_callback` =
   `current_user_can('manage_options')`, args sanitized/validated:
   - `GET /abilities` → `{ abilities, categories, suppliers, counts }` (the payload above).

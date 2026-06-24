@@ -11,6 +11,7 @@
     "format:js": "wp-scripts format assets/src"
   },
   "devDependencies": {
+    "@wordpress/api-fetch": "^7.48.1",
     "@wordpress/element": "^8.0.1",
     "@wordpress/i18n": "^6.21.1",
     "@wordpress/scripts": "^32.4.1",
