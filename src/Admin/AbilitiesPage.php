@@ -17,6 +17,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Core\AbilitiesRegistry;
+use Albert\Core\AbilitiesState;
 use Albert\Core\AnnotationPresenter;
 use Albert\Logging\Repository as LoggingRepository;
 
@@ -41,7 +42,7 @@ class AbilitiesPage implements Hookable {
 	 * @since 1.1.0
 	 * @var string
 	 */
-	const DISABLED_ABILITIES_OPTION = 'albert_disabled_abilities';
+	const DISABLED_ABILITIES_OPTION = AbilitiesState::OPTION;
 
 	/**
 	 * Admin page slug.
@@ -140,21 +141,7 @@ class AbilitiesPage implements Hookable {
 			);
 		}
 
-		$disabled = self::get_disabled_abilities();
-		// Re-sanitize stored values defensively before mutating.
-		$disabled = array_filter(
-			array_map( 'sanitize_text_field', $disabled ),
-			[ $this, 'is_valid_ability_slug' ]
-		);
-
-		if ( $enabled ) {
-			$disabled = array_values( array_diff( $disabled, [ $ability_id ] ) );
-		} elseif ( ! in_array( $ability_id, $disabled, true ) ) {
-			$disabled[] = $ability_id;
-		}
-
-		update_option( self::DISABLED_ABILITIES_OPTION, $disabled );
-		update_option( 'albert_abilities_saved', true );
+		AbilitiesState::set_enabled( $ability_id, $enabled );
 
 		wp_send_json_success(
 			[
@@ -795,18 +782,13 @@ class AbilitiesPage implements Hookable {
 	 * Get currently disabled abilities.
 	 *
 	 * On fresh install returns the default blocklist (Albert write abilities).
+	 * Thin wrapper over {@see AbilitiesState::disabled()}, kept for existing callers.
 	 *
 	 * @return array<int, string>
 	 * @since 1.1.0
 	 */
 	public static function get_disabled_abilities(): array {
-		$disabled = get_option( self::DISABLED_ABILITIES_OPTION, [] );
-
-		if ( empty( $disabled ) && ! get_option( 'albert_abilities_saved' ) ) {
-			return AbilitiesRegistry::get_default_disabled_abilities();
-		}
-
-		return (array) $disabled;
+		return AbilitiesState::disabled();
 	}
 
 	/**
