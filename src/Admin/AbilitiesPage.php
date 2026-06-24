@@ -249,7 +249,6 @@ class AbilitiesPage implements Hookable {
 		if ( $this->use_dataviews() ) {
 			?>
 			<div class="wrap albert-wrap">
-				<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 				<div id="albert-abilities-root"></div>
 				<noscript><p><?php esc_html_e( 'This screen requires JavaScript.', 'albert-ai-butler' ); ?></p></noscript>
 			</div>

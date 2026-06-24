@@ -2,17 +2,35 @@
  * Abilities (DataViews) admin app.
  *
  * Renders the registered abilities as a DataViews table/grid with search,
- * filters, sort, density, layout switch, pagination, an in-row enabled toggle,
- * and bulk enable/disable. Data is loaded once over REST and filtered/sorted/
- * paginated client-side via filterSortAndPaginate. Opening an ability (the
- * detail fly-in) arrives in the next phase.
+ * filters, sort, density, layout switch, pagination, and an in-row enabled
+ * toggle. Data is loaded once over REST and filtered/sorted/paginated
+ * client-side via filterSortAndPaginate. Opening an ability (the detail fly-in)
+ * arrives in the next phase.
+ *
+ * The accent is themed to Albert's indigo by scoping the wp-components
+ * --wp-admin-theme-color custom properties to our wrapper.
  */
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews/wp';
-import { Notice, Spinner } from '@wordpress/components';
-import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
+import { Spinner } from '@wordpress/components';
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+} from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { fetchAbilities, setAbilityEnabled } from './api';
 import { getFields } from './fields';
+import Toolbar from './Toolbar';
+
+const NO_ACTIONS = [];
+
+const ACCENT_STYLE = {
+	'--wp-admin-theme-color': '#3858e9',
+	'--wp-admin-theme-color--rgb': '56, 88, 233',
+	'--wp-admin-theme-color-darker-10': '#324fd2',
+	'--wp-admin-theme-color-darker-20': '#2d46ba',
+};
 
 const DEFAULT_VIEW = {
 	type: 'table',
@@ -20,8 +38,8 @@ const DEFAULT_VIEW = {
 	page: 1,
 	perPage: 9,
 	titleField: 'label',
-	descriptionField: 'description',
-	fields: [ 'category', 'operation', 'status' ],
+	showMedia: false,
+	fields: [ 'category', 'operation', 'supplier', 'status' ],
 	sort: { field: 'label', direction: 'asc' },
 	filters: [],
 	layout: {},
@@ -37,7 +55,6 @@ export default function AbilitiesApp() {
 	const [ categories, setCategories ] = useState( [] );
 	const [ suppliers, setSuppliers ] = useState( [] );
 	const [ view, setView ] = useState( DEFAULT_VIEW );
-	const [ selection, setSelection ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ error, setError ] = useState( null );
 
@@ -52,9 +69,7 @@ export default function AbilitiesApp() {
 				setCategories( payload.categories );
 				setSuppliers( payload.suppliers );
 			} )
-			.catch(
-				( err ) => active && setError( err.message || String( err ) )
-			)
+			.catch( ( err ) => active && setError( err.message || String( err ) ) )
 			.finally( () => active && setIsLoading( false ) );
 		return () => {
 			active = false;
@@ -89,65 +104,9 @@ export default function AbilitiesApp() {
 			} );
 	}, [] );
 
-	const bulkToggle = useCallback( ( selectedItems, enabled ) => {
-		setError( null );
-		const ids = selectedItems.map( ( item ) => item.id );
-		setItems( ( prev ) =>
-			prev.map( ( row ) =>
-				ids.includes( row.id ) ? { ...row, enabled } : row
-			)
-		);
-		Promise.allSettled(
-			ids.map( ( id ) => setAbilityEnabled( id, enabled ) )
-		).then( ( results ) => {
-			const failed = results.filter(
-				( result ) => result.status === 'rejected'
-			).length;
-			if ( failed ) {
-				setError(
-					sprintf(
-						/* translators: %d: number of failed changes. */
-						__(
-							'%d change(s) could not be saved.',
-							'albert-ai-butler'
-						),
-						failed
-					)
-				);
-			}
-			// Resync from the server so partial failures can't leave stale state.
-			fetchAbilities()
-				.then( ( payload ) => setItems( payload.abilities ) )
-				.catch( () => {} );
-		} );
-		setSelection( [] );
-	}, [] );
-
 	const fields = useMemo(
 		() => getFields( { categories, suppliers, onToggle } ),
 		[ categories, suppliers, onToggle ]
-	);
-
-	const actions = useMemo(
-		() => [
-			{
-				id: 'enable',
-				label: __( 'Enable', 'albert-ai-butler' ),
-				supportsBulk: true,
-				isEligible: ( item ) => ! item.enabled,
-				callback: ( selectedItems ) =>
-					bulkToggle( selectedItems, true ),
-			},
-			{
-				id: 'disable',
-				label: __( 'Disable', 'albert-ai-butler' ),
-				supportsBulk: true,
-				isEligible: ( item ) => item.enabled,
-				callback: ( selectedItems ) =>
-					bulkToggle( selectedItems, false ),
-			},
-		],
-		[ bulkToggle ]
 	);
 
 	const { data, paginationInfo } = useMemo(
@@ -157,37 +116,74 @@ export default function AbilitiesApp() {
 
 	const getItemId = useCallback( ( item ) => item.id, [] );
 
-	if ( isLoading ) {
-		return (
-			<div className="albert-abilities-app__loading">
-				<Spinner />
-			</div>
-		);
-	}
+	const enabledCount = useMemo(
+		() => items.filter( ( item ) => item.enabled ).length,
+		[ items ]
+	);
 
 	return (
-		<div className="albert-abilities-app">
+		<div className="albert-abilities" style={ ACCENT_STYLE }>
+			<header className="albert-abilities__header">
+				<h1 className="albert-abilities__title">
+					{ __( 'Abilities', 'albert-ai-butler' ) }
+				</h1>
+				<p className="albert-abilities__subtitle">
+					{ __(
+						'Capabilities exposed to apps and agents through the WordPress Abilities API. Enable an ability to make it callable, or open one to review its schema and permissions.',
+						'albert-ai-butler'
+					) }
+				</p>
+				{ ! isLoading && (
+					<p className="albert-abilities__summary">
+						<span>
+							<strong>{ items.length }</strong>{ ' ' }
+							{ __( 'registered', 'albert-ai-butler' ) }
+						</span>
+						<span aria-hidden="true">·</span>
+						<span>
+							<strong>{ enabledCount }</strong>{ ' ' }
+							{ __( 'enabled', 'albert-ai-butler' ) }
+						</span>
+					</p>
+				) }
+			</header>
+
 			{ error && (
-				<Notice
-					status="error"
-					onRemove={ () => setError( null ) }
-					className="albert-abilities-app__notice"
+				<div
+					className="albert-abilities__error notice notice-error"
+					role="alert"
 				>
-					{ error }
-				</Notice>
+					<p>{ error }</p>
+				</div>
 			) }
-			<DataViews
-				data={ data }
-				fields={ fields }
-				view={ view }
-				onChangeView={ setView }
-				actions={ actions }
-				defaultLayouts={ DEFAULT_LAYOUTS }
-				paginationInfo={ paginationInfo }
-				selection={ selection }
-				onChangeSelection={ setSelection }
-				getItemId={ getItemId }
-			/>
+
+			{ isLoading ? (
+				<div className="albert-abilities__loading">
+					<Spinner />
+				</div>
+			) : (
+				<div className="albert-abilities__card">
+					<DataViews
+						data={ data }
+						fields={ fields }
+						view={ view }
+						onChangeView={ setView }
+						actions={ NO_ACTIONS }
+						defaultLayouts={ DEFAULT_LAYOUTS }
+						paginationInfo={ paginationInfo }
+						getItemId={ getItemId }
+					>
+						<Toolbar
+							view={ view }
+							onChangeView={ setView }
+							categories={ categories }
+							suppliers={ suppliers }
+						/>
+						<DataViews.Layout />
+						<DataViews.Footer />
+					</DataViews>
+				</div>
+			) }
 		</div>
 	);
 }

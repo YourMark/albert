@@ -3,19 +3,95 @@
  *
  * Authored plain CSS (no preprocessor), loaded after the DataViews vendor
  * stylesheet so these rules can override it. DataViews + wp-components supply
- * the table/grid/toolbar chrome; this file only adds the custom bits the
- * component layer doesn't: the Ability cell, the operation badge, and a few
- * container niceties. The detail fly-in styles arrive with Phase 4.
+ * the table/grid/toolbar chrome (themed to Albert's indigo accent via the
+ * --wp-admin-theme-color custom properties set on the wrapper in JS); this file
+ * adds the page chrome (header, summary, card) and the custom cell + badge.
+ * The detail fly-in styles arrive with Phase 4.
  */
 
-.albert-abilities-app__loading {
-	display: flex;
-	justify-content: center;
-	padding: 48px 0;
+/* Full width — the table needs the room (5 columns), so contain only the
+   subtitle for readability rather than the whole table. */
+.albert-abilities {
+	max-width: none;
 }
 
-.albert-abilities-app__notice {
+/* Page header. */
+.albert-abilities__header {
+	margin: 4px 0 0;
+}
+
+.albert-abilities__title {
+	margin: 0;
+	padding: 0;
+	font-size: 23px;
+	font-weight: 600;
+	line-height: 1.2;
+	color: #1e1e1e;
+}
+
+.albert-abilities__subtitle {
+	margin: 7px 0 0;
+	max-width: 640px;
+	font-size: 13.5px;
+	color: #646970;
+}
+
+.albert-abilities__summary {
+	display: flex;
+	gap: 18px;
+	margin: 16px 0 18px;
+	font-size: 12.5px;
+	color: #646970;
+}
+
+.albert-abilities__summary strong {
+	font-weight: 600;
+	color: #1e1e1e;
+}
+
+.albert-abilities__error {
 	margin: 0 0 12px;
+}
+
+.albert-abilities__loading {
+	display: flex;
+	justify-content: center;
+	padding: 64px 0;
+}
+
+/* White card framing the DataViews component. */
+.albert-abilities__card {
+	background: #fff;
+	border: 1px solid #e0e0e0;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+/* Custom toolbar: one aligned row — search + filters left, view controls right. */
+.albert-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 12px;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+.albert-toolbar__group {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.albert-toolbar__group--end {
+	margin-inline-start: auto;
+}
+
+/* Give the search a sensible fixed width instead of stretching. */
+.albert-toolbar .components-search-control {
+	width: 232px;
 }
 
 /* The "Ability" cell: label, monospace id, one-line description. */
@@ -39,11 +115,21 @@
 	padding: 0;
 }
 
+/* Description: single line + ellipsis in the table. Full text lives in the fly-in. */
 .albert-ability-cell__desc {
 	color: #646970;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/* In the grid, allow up to two clamped lines instead of one. */
+.dataviews-view-grid .albert-ability-cell__desc {
+	white-space: normal;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	-webkit-box-orient: vertical;
 }
 
 /* Operation badge — read (green) / write (amber) / delete (red). */
