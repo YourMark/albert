@@ -1,0 +1,166 @@
+/**
+ * DataViews field definitions for the Abilities screen.
+ *
+ * Operation is the read/write/delete value derived server-side from the
+ * ability's annotations. Category, Operation, Supplier and Status are filterable
+ * (single-select); Ability/ID/Description feed global search only.
+ */
+import { FormToggle } from '@wordpress/components';
+import { __, sprintf } from '@wordpress/i18n';
+
+const OPERATION_LABELS = {
+	read: __( 'Read', 'albert-ai-butler' ),
+	write: __( 'Write', 'albert-ai-butler' ),
+	delete: __( 'Delete', 'albert-ai-butler' ),
+};
+
+const OPERATION_ELEMENTS = [
+	{ value: 'read', label: OPERATION_LABELS.read },
+	{ value: 'write', label: OPERATION_LABELS.write },
+	{ value: 'delete', label: OPERATION_LABELS.delete },
+];
+
+const STATUS_ELEMENTS = [
+	{ value: 'enabled', label: __( 'Enabled', 'albert-ai-butler' ) },
+	{ value: 'disabled', label: __( 'Disabled', 'albert-ai-butler' ) },
+];
+
+const SINGLE_SELECT = { operators: [ 'is' ], isPrimary: true };
+
+/**
+ * The "Ability" cell: label, monospace id, and a one-line description.
+ *
+ * @param {Object} props      Render props.
+ * @param {Object} props.item The ability row.
+ * @return {Element} The cell.
+ */
+function AbilityCell( { item } ) {
+	return (
+		<div className="albert-ability-cell">
+			<span className="albert-ability-cell__label">{ item.label }</span>
+			<code className="albert-ability-cell__id">{ item.id }</code>
+			<span className="albert-ability-cell__desc">
+				{ item.description }
+			</span>
+		</div>
+	);
+}
+
+/**
+ * The colored operation badge (read / write / delete).
+ *
+ * @param {Object} props      Render props.
+ * @param {Object} props.item The ability row.
+ * @return {Element} The badge.
+ */
+function OperationBadge( { item } ) {
+	return (
+		<span
+			className={ `albert-op-badge albert-op-badge--${ item.operation }` }
+		>
+			<span className="albert-op-badge__dot" aria-hidden="true" />
+			{ OPERATION_LABELS[ item.operation ] || item.operation }
+		</span>
+	);
+}
+
+/**
+ * The in-row enabled toggle. Stops propagation so it never opens the detail view.
+ *
+ * @param {Object}   props          Render props.
+ * @param {Object}   props.item     The ability row.
+ * @param {Function} props.onToggle Called with (item, nextEnabled).
+ * @return {Element} The toggle.
+ */
+function EnabledToggle( { item, onToggle } ) {
+	const label = sprintf(
+		// translators: %s: ability label.
+		__( 'Enable %s', 'albert-ai-butler' ),
+		item.label
+	);
+	return (
+		<FormToggle
+			checked={ item.enabled }
+			aria-label={ label }
+			onClick={ ( event ) => event.stopPropagation() }
+			onChange={ () => onToggle( item, ! item.enabled ) }
+		/>
+	);
+}
+
+/**
+ * Build the DataViews fields array.
+ *
+ * @param {Object}   options            Options.
+ * @param {Array}    options.categories Category filter elements ({ value, label }).
+ * @param {Array}    options.suppliers  Supplier filter elements ({ value, label }).
+ * @param {Function} options.onToggle   Toggle handler (item, nextEnabled).
+ * @return {Array} DataViews fields.
+ */
+export function getFields( { categories, suppliers, onToggle } ) {
+	return [
+		{
+			id: 'label',
+			label: __( 'Ability', 'albert-ai-butler' ),
+			enableHiding: false,
+			enableSorting: true,
+			enableGlobalSearch: true,
+			filterBy: false,
+			getValue: ( { item } ) => item.label,
+			render: AbilityCell,
+		},
+		{
+			id: 'identifier',
+			label: __( 'Ability ID', 'albert-ai-butler' ),
+			enableHiding: false,
+			enableGlobalSearch: true,
+			filterBy: false,
+			getValue: ( { item } ) => item.id,
+		},
+		{
+			id: 'description',
+			label: __( 'Description', 'albert-ai-butler' ),
+			enableHiding: false,
+			enableGlobalSearch: true,
+			filterBy: false,
+			getValue: ( { item } ) => item.description,
+		},
+		{
+			id: 'category',
+			label: __( 'Category', 'albert-ai-butler' ),
+			enableSorting: true,
+			elements: categories,
+			filterBy: SINGLE_SELECT,
+			getValue: ( { item } ) => item.category,
+			render: ( { item } ) => item.categoryLabel,
+		},
+		{
+			id: 'operation',
+			label: __( 'Operation', 'albert-ai-butler' ),
+			enableSorting: true,
+			elements: OPERATION_ELEMENTS,
+			filterBy: SINGLE_SELECT,
+			getValue: ( { item } ) => item.operation,
+			render: OperationBadge,
+		},
+		{
+			id: 'supplier',
+			label: __( 'Supplier', 'albert-ai-butler' ),
+			elements: suppliers,
+			filterBy: SINGLE_SELECT,
+			getValue: ( { item } ) => item.supplier,
+			render: ( { item } ) => item.supplierLabel,
+		},
+		{
+			id: 'status',
+			label: __( 'Enabled', 'albert-ai-butler' ),
+			enableHiding: false,
+			elements: STATUS_ELEMENTS,
+			filterBy: SINGLE_SELECT,
+			getValue: ( { item } ) => ( item.enabled ? 'enabled' : 'disabled' ),
+			render: ( { item } ) => (
+				<EnabledToggle item={ item } onToggle={ onToggle } />
+			),
+		},
+	];
+}
