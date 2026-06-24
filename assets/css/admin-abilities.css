@@ -1,0 +1,13 @@
+/**
+ * Albert — Abilities (DataViews) admin screen styles.
+ *
+ * Authored plain CSS (no preprocessor), loaded after the DataViews vendor
+ * stylesheet so these rules can override it. Phase 1 carries only the
+ * placeholder; the list, badges, and fly-in drawer styles arrive in Phases 3–4.
+ */
+
+.albert-abilities-app__placeholder {
+	padding: 24px;
+	color: #646970;
+	font-size: 13px;
+}

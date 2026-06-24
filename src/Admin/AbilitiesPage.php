@@ -257,6 +257,19 @@ class AbilitiesPage implements Hookable {
 			return;
 		}
 
+		// New DataViews screen (built across Phases 1–4). While behind the
+		// opt-in guard the legacy list below remains the default.
+		if ( $this->use_dataviews() ) {
+			?>
+			<div class="wrap albert-wrap">
+				<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
+				<div id="albert-abilities-root"></div>
+				<noscript><p><?php esc_html_e( 'This screen requires JavaScript.', 'albert-ai-butler' ); ?></p></noscript>
+			</div>
+			<?php
+			return;
+		}
+
 		$abilities          = self::collect_abilities();
 		$disabled_abilities = self::get_disabled_abilities();
 		$categories         = self::collect_filter_options( $abilities, 'category_slug', 'category_label' );
@@ -809,6 +822,102 @@ class AbilitiesPage implements Hookable {
 	}
 
 	/**
+	 * Whether to render the new DataViews abilities screen.
+	 *
+	 * Opt-in while the screen is built across phases. Defaults to off so the
+	 * legacy server-rendered list stays the default; flip via the
+	 * `albert/abilities/use_dataviews` filter, or append `?…&dataviews=1` to the
+	 * page URL for ad-hoc verification. The query gate is removed once DataViews
+	 * becomes the default.
+	 *
+	 * @return bool
+	 * @since 1.3.0
+	 */
+	private function use_dataviews(): bool {
+		/**
+		 * Filters whether the DataViews abilities screen is used.
+		 *
+		 * @since 1.3.0
+		 *
+		 * @param bool $enabled Whether to render the DataViews screen. Default false.
+		 */
+		$enabled = (bool) apply_filters( 'albert/abilities/use_dataviews', false );
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only view toggle, no state change.
+		if ( isset( $_GET['dataviews'] ) ) {
+			$enabled = true;
+		}
+
+		return $enabled;
+	}
+
+	/**
+	 * Enqueue the compiled DataViews app bundle for this page.
+	 *
+	 * Reads the wp-scripts asset manifest (dependencies + version) emitted to
+	 * assets/build/js/abilities.asset.php. @wordpress/* deps load from core's
+	 * registered handles; @wordpress/dataviews is bundled into the script and its
+	 * stylesheet is shipped as assets/build/css/dataviews.css. Our authored styles
+	 * live in assets/css/admin-abilities.css. Bails quietly if the build is absent.
+	 *
+	 * @return void
+	 * @since 1.3.0
+	 */
+	private function enqueue_dataviews_assets(): void {
+		$asset_file = ALBERT_PLUGIN_DIR . 'assets/build/js/abilities.asset.php';
+
+		if ( ! file_exists( $asset_file ) ) {
+			return;
+		}
+
+		$asset   = require $asset_file;
+		$version = $asset['version'] ?? ALBERT_VERSION;
+
+		// Component chrome (Button, ToggleControl, …).
+		wp_enqueue_style( 'wp-components' );
+
+		// DataViews ships its own stylesheet and core registers no handle for it,
+		// so we ship the vendor copy produced by bin/copy-dataviews-css.js.
+		$dataviews_css     = ALBERT_PLUGIN_DIR . 'assets/build/css/dataviews.css';
+		$has_dataviews_css = file_exists( $dataviews_css );
+		if ( $has_dataviews_css ) {
+			wp_enqueue_style(
+				'albert-dataviews',
+				ALBERT_PLUGIN_URL . 'assets/build/css/dataviews.css',
+				[ 'wp-components' ],
+				$version
+			);
+		}
+
+		// Our authored screen styles, loaded last so they can override the above.
+		wp_enqueue_style(
+			'albert-abilities',
+			ALBERT_PLUGIN_URL . 'assets/css/admin-abilities.css',
+			$has_dataviews_css ? [ 'albert-dataviews' ] : [ 'wp-components' ],
+			ALBERT_VERSION
+		);
+
+		wp_enqueue_script(
+			'albert-abilities-app',
+			ALBERT_PLUGIN_URL . 'assets/build/js/abilities.js',
+			$asset['dependencies'] ?? [],
+			$version,
+			true
+		);
+
+		wp_add_inline_script(
+			'albert-abilities-app',
+			'window.albertAbilities = ' . wp_json_encode(
+				[
+					'ajaxUrl'            => admin_url( 'admin-ajax.php' ),
+					'toggleAbilityNonce' => wp_create_nonce( 'albert_toggle_ability' ),
+				]
+			) . ';',
+			'before'
+		);
+	}
+
+	/**
 	 * Enqueue admin assets for this page only.
 	 *
 	 * @param string $hook Current admin page hook.
@@ -818,6 +927,11 @@ class AbilitiesPage implements Hookable {
 	 */
 	public function enqueue_assets( string $hook ): void {
 		if ( 'albert_page_' . self::PAGE_SLUG !== $hook ) {
+			return;
+		}
+
+		if ( $this->use_dataviews() ) {
+			$this->enqueue_dataviews_assets();
 			return;
 		}
 
