@@ -65,6 +65,33 @@ function OperationBadge( { item } ) {
 }
 
 /**
+ * The "Last used" cell: status dot + relative time, or "Never".
+ *
+ * @param {Object} props      Render props.
+ * @param {Object} props.item The ability row.
+ * @return {Element} The cell.
+ */
+function LastUsed( { item } ) {
+	const last = item.lastUsed;
+	if ( ! last ) {
+		return (
+			<span className="albert-lastused albert-lastused--never">
+				{ __( 'Never', 'albert-ai-butler' ) }
+			</span>
+		);
+	}
+	return (
+		<span className="albert-lastused">
+			<span
+				className={ `albert-lastused__dot albert-lastused__dot--${ last.status }` }
+				aria-hidden="true"
+			/>
+			{ last.human }
+		</span>
+	);
+}
+
+/**
  * The in-row enabled toggle. Stops propagation so it never opens the detail view.
  *
  * @param {Object}   props          Render props.
@@ -150,6 +177,14 @@ export function getFields( { categories, suppliers, onToggle } ) {
 			filterBy: SINGLE_SELECT,
 			getValue: ( { item } ) => item.supplier,
 			render: ( { item } ) => item.supplierLabel,
+		},
+		{
+			id: 'lastUsed',
+			label: __( 'Last used', 'albert-ai-butler' ),
+			enableSorting: true,
+			filterBy: false,
+			getValue: ( { item } ) => item.lastUsed?.timestamp || 0,
+			render: LastUsed,
 		},
 		{
 			id: 'status',

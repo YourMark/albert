@@ -36,10 +36,19 @@
 	color: #646970;
 }
 
+.albert-abilities__summary-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin: 16px 0 18px;
+}
+
 .albert-abilities__summary {
 	display: flex;
 	gap: 18px;
-	margin: 16px 0 18px;
+	margin: 0;
 	font-size: 12.5px;
 	color: #646970;
 }
@@ -47,6 +56,11 @@
 .albert-abilities__summary strong {
 	font-weight: 600;
 	color: #1e1e1e;
+}
+
+.albert-abilities__bulk-all {
+	display: flex;
+	gap: 8px;
 }
 
 .albert-abilities__error {
@@ -102,17 +116,26 @@
 	min-width: 0;
 }
 
+/* Label is the clickable title (indigo link) — the cue that a row opens. */
 .albert-ability-cell__label {
+	font-size: 14px;
 	font-weight: 600;
-	color: #1e1e1e;
+	color: #3858e9;
+}
+
+.albert-ability-cell:hover .albert-ability-cell__label {
+	text-decoration: underline;
 }
 
 .albert-ability-cell__id {
 	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	font-size: 11.5px;
-	color: #3858e9;
+	color: #787c82;
 	background: none;
 	padding: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 /* Description: single line + ellipsis in the table. Full text lives in the fly-in. */
@@ -165,4 +188,338 @@
 .albert-op-badge--delete {
 	background: #fdecea;
 	color: #b32d2e;
+}
+
+/* ---------------------------------------------------------------------------
+   Detail fly-in (right-docked drawer)
+   --------------------------------------------------------------------------- */
+
+.albert-flyin__backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	background: rgba(0, 0, 0, 0.28);
+}
+
+.albert-flyin {
+	position: fixed;
+	inset-block: 0;
+	inset-inline-end: 0;
+	z-index: 100001;
+	display: flex;
+	flex-direction: column;
+	width: 452px;
+	max-width: 92vw;
+	background: #fff;
+	box-shadow: -8px 0 30px rgba(0, 0, 0, 0.16);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.albert-flyin__backdrop {
+		animation: albert-fade-in 0.15s ease;
+	}
+
+	.albert-flyin {
+		animation: albert-flyin-in 0.22s cubic-bezier(0.2, 0.7, 0.3, 1);
+	}
+}
+
+@keyframes albert-fade-in {
+	from {
+		opacity: 0;
+	}
+}
+
+@keyframes albert-flyin-in {
+	from {
+		transform: translateX(24px);
+		opacity: 0;
+	}
+}
+
+.albert-flyin__header {
+	flex: none;
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 18px 22px 16px;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+.albert-flyin__title {
+	margin: 10px 0 2px;
+	padding: 0;
+	font-size: 19px;
+	font-weight: 600;
+	color: #1e1e1e;
+}
+
+.albert-flyin__id {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12.5px;
+	color: #3858e9;
+	background: none;
+	padding: 0;
+}
+
+.albert-flyin__close {
+	flex: none;
+}
+
+.albert-flyin__body {
+	flex: 1;
+	overflow-y: auto;
+	padding: 20px 22px;
+	display: flex;
+	flex-direction: column;
+	gap: 22px;
+}
+
+.albert-flyin__enabled {
+	padding: 13px 14px;
+	border: 1px solid #e0e0e0;
+	border-radius: 5px;
+	background: #fbfbfc;
+}
+
+.albert-flyin__section {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.albert-flyin__section-title {
+	margin: 0;
+	padding: 0;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #787c82;
+}
+
+.albert-flyin__description,
+.albert-flyin__returns {
+	margin: 0;
+	font-size: 13.5px;
+	line-height: 1.55;
+	color: #3c434a;
+}
+
+.albert-flyin__returns {
+	padding: 11px 13px;
+	background: #fbfbfc;
+	border: 1px solid #e0e0e0;
+	border-radius: 5px;
+}
+
+.albert-flyin__cards {
+	display: flex;
+	gap: 10px;
+}
+
+.albert-flyin__card {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 11px 13px;
+	border: 1px solid #e0e0e0;
+	border-radius: 5px;
+}
+
+.albert-flyin__card-label {
+	font-size: 11px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #787c82;
+}
+
+.albert-flyin__card-value {
+	font-size: 13.5px;
+	color: #1e1e1e;
+	background: none;
+	padding: 0;
+}
+
+code.albert-flyin__card-value {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12.5px;
+}
+
+.albert-flyin__schema {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	border: 1px solid #e0e0e0;
+	border-radius: 5px;
+	overflow: hidden;
+}
+
+.albert-flyin__field {
+	padding: 11px 13px;
+	border-top: 1px solid #f0f0f1;
+}
+
+.albert-flyin__field:first-child {
+	border-top: none;
+}
+
+.albert-flyin__field-head {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+}
+
+.albert-flyin__field-name {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12.5px;
+	font-weight: 600;
+	color: #1e1e1e;
+	background: none;
+	padding: 0;
+}
+
+.albert-flyin__field-required {
+	color: #d63638;
+}
+
+.albert-flyin__field-type {
+	font-size: 11px;
+	color: #646970;
+}
+
+.albert-flyin__field-desc {
+	margin: 2px 0 0;
+	font-size: 12.5px;
+	line-height: 1.5;
+	color: #3c434a;
+}
+
+.albert-flyin__pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 7px;
+}
+
+.albert-flyin__pill {
+	display: inline-flex;
+	align-items: center;
+	padding: 4px 10px;
+	border: 1px solid #e0e0e0;
+	border-radius: 12px;
+	background: #fbfbfc;
+	font-size: 12px;
+	color: #3c434a;
+}
+
+.albert-flyin__footer {
+	flex: none;
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+	padding: 14px 22px;
+	border-top: 1px solid #e0e0e0;
+}
+
+/* Info "(i)" popover trigger + content (used in the fly-in). */
+.albert-flyin__section-head {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.albert-flyin__card-head {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.albert-info {
+	display: inline-flex;
+	line-height: 0;
+}
+
+.albert-info .components-button.is-small {
+	min-width: 22px;
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	color: #787c82;
+}
+
+.albert-info .components-button.is-small svg {
+	width: 16px;
+	height: 16px;
+}
+
+.albert-info__content {
+	width: 260px;
+	max-width: 80vw;
+	padding: 12px 14px;
+	font-size: 12.5px;
+	line-height: 1.5;
+	color: #3c434a;
+}
+
+.albert-info__content p {
+	margin: 0 0 8px;
+}
+
+.albert-info__content p:last-child {
+	margin: 0;
+}
+
+/* "Last used" cell. */
+.albert-lastused {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12.5px;
+	color: #3c434a;
+}
+
+.albert-lastused--never {
+	color: #a7aaad;
+}
+
+.albert-lastused__dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: #a7aaad;
+	flex: none;
+}
+
+.albert-lastused__dot--success {
+	background: #1a9e54;
+}
+
+.albert-lastused__dot--error {
+	background: #d63638;
+}
+
+/* Bulk selection is exposed via the checkbox column + the selection toolbar.
+   The per-row actions (Enable/Disable) would just duplicate the row toggle, so
+   hide the per-row actions column (table) and per-card actions (grid). The
+   checkbox column and selection toolbar are separate and stay. */
+.dataviews-view-table__actions-column {
+	display: none;
+}
+
+.dataviews-view-table__col-actions {
+	width: 0;
+}
+
+.dataviews-view-grid__media-actions {
+	display: none;
+}
+
+/* Selection bulk bar, moved to the top (below the toolbar). Only styled when it
+   actually has content, so there's no empty bar when nothing is selected. */
+.albert-abilities__bulkbar {
+	background: #f0f6fc;
+	border-bottom: 1px solid #e0e0e0;
+	padding: 6px 12px;
 }

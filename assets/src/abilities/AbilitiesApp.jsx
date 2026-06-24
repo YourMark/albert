@@ -11,19 +11,22 @@
  * --wp-admin-theme-color custom properties to our wrapper.
  */
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews/wp';
-import { Spinner } from '@wordpress/components';
+import { Button, Spinner } from '@wordpress/components';
 import {
 	useCallback,
 	useEffect,
 	useMemo,
 	useState,
 } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
-import { fetchAbilities, setAbilityEnabled } from './api';
+import { __ } from '@wordpress/i18n';
+import {
+	fetchAbilities,
+	setAbilityEnabled,
+	setAbilitiesEnabledBulk,
+} from './api';
 import { getFields } from './fields';
 import Toolbar from './Toolbar';
-
-const NO_ACTIONS = [];
+import FlyInPanel from './FlyInPanel';
 
 const ACCENT_STYLE = {
 	'--wp-admin-theme-color': '#3858e9',
@@ -39,10 +42,21 @@ const DEFAULT_VIEW = {
 	perPage: 9,
 	titleField: 'label',
 	showMedia: false,
-	fields: [ 'category', 'operation', 'supplier', 'status' ],
+	fields: [ 'category', 'operation', 'supplier', 'lastUsed', 'status' ],
 	sort: { field: 'label', direction: 'asc' },
 	filters: [],
-	layout: {},
+	layout: {
+		styles: {
+			// Let the Ability column shrink (small min) so the table fits more
+			// before scrolling; bound the others so they don't stretch.
+			label: { minWidth: 200 },
+			category: { minWidth: 96, maxWidth: 150 },
+			operation: { width: 116 },
+			supplier: { minWidth: 100, maxWidth: 160 },
+			lastUsed: { minWidth: 110, maxWidth: 160 },
+			status: { width: 84 },
+		},
+	},
 };
 
 const DEFAULT_LAYOUTS = {
@@ -55,8 +69,10 @@ export default function AbilitiesApp() {
 	const [ categories, setCategories ] = useState( [] );
 	const [ suppliers, setSuppliers ] = useState( [] );
 	const [ view, setView ] = useState( DEFAULT_VIEW );
+	const [ selection, setSelection ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ error, setError ] = useState( null );
+	const [ openId, setOpenId ] = useState( null );
 
 	useEffect( () => {
 		let active = true;
@@ -104,6 +120,75 @@ export default function AbilitiesApp() {
 			} );
 	}, [] );
 
+	const bulkToggle = useCallback( ( selectedItems, enabled ) => {
+		setError( null );
+		const ids = selectedItems.map( ( item ) => item.id );
+		if ( ids.length === 0 ) {
+			return;
+		}
+		// Optimistic update, then one bulk request, then resync from the server.
+		setItems( ( prev ) =>
+			prev.map( ( row ) =>
+				ids.includes( row.id ) ? { ...row, enabled } : row
+			)
+		);
+		setAbilitiesEnabledBulk( ids, enabled )
+			.catch( () =>
+				setError(
+					__(
+						'Could not save your changes. Please try again.',
+						'albert-ai-butler'
+					)
+				)
+			)
+			.finally( () => {
+				fetchAbilities()
+					.then( ( payload ) => setItems( payload.abilities ) )
+					.catch( () => {} );
+			} );
+		setSelection( [] );
+	}, [] );
+
+	const setAllEnabled = useCallback(
+		( enabled ) => {
+			if (
+				enabled &&
+				// eslint-disable-next-line no-alert
+				! window.confirm(
+					__(
+						'Enable all abilities? This includes abilities that can create, change, or permanently delete data.',
+						'albert-ai-butler'
+					)
+				)
+			) {
+				return;
+			}
+			bulkToggle( items, enabled );
+		},
+		[ items, bulkToggle ]
+	);
+
+	const actions = useMemo(
+		() => [
+			{
+				id: 'enable',
+				label: __( 'Enable', 'albert-ai-butler' ),
+				supportsBulk: true,
+				isEligible: ( item ) => ! item.enabled,
+				callback: ( selectedItems ) => bulkToggle( selectedItems, true ),
+			},
+			{
+				id: 'disable',
+				label: __( 'Disable', 'albert-ai-butler' ),
+				supportsBulk: true,
+				isEligible: ( item ) => item.enabled,
+				callback: ( selectedItems ) =>
+					bulkToggle( selectedItems, false ),
+			},
+		],
+		[ bulkToggle ]
+	);
+
 	const fields = useMemo(
 		() => getFields( { categories, suppliers, onToggle } ),
 		[ categories, suppliers, onToggle ]
@@ -116,9 +201,16 @@ export default function AbilitiesApp() {
 
 	const getItemId = useCallback( ( item ) => item.id, [] );
 
+	const onClickItem = useCallback( ( item ) => setOpenId( item.id ), [] );
+
 	const enabledCount = useMemo(
 		() => items.filter( ( item ) => item.enabled ).length,
 		[ items ]
+	);
+
+	const openItem = useMemo(
+		() => items.find( ( item ) => item.id === openId ) || null,
+		[ items, openId ]
 	);
 
 	return (
@@ -134,17 +226,37 @@ export default function AbilitiesApp() {
 					) }
 				</p>
 				{ ! isLoading && (
-					<p className="albert-abilities__summary">
-						<span>
-							<strong>{ items.length }</strong>{ ' ' }
-							{ __( 'registered', 'albert-ai-butler' ) }
-						</span>
-						<span aria-hidden="true">·</span>
-						<span>
-							<strong>{ enabledCount }</strong>{ ' ' }
-							{ __( 'enabled', 'albert-ai-butler' ) }
-						</span>
-					</p>
+					<div className="albert-abilities__summary-row">
+						<p className="albert-abilities__summary">
+							<span>
+								<strong>{ items.length }</strong>{ ' ' }
+								{ __( 'registered', 'albert-ai-butler' ) }
+							</span>
+							<span aria-hidden="true">·</span>
+							<span>
+								<strong>{ enabledCount }</strong>{ ' ' }
+								{ __( 'enabled', 'albert-ai-butler' ) }
+							</span>
+						</p>
+						<div className="albert-abilities__bulk-all">
+							<Button
+								variant="secondary"
+								size="compact"
+								disabled={ enabledCount === items.length }
+								onClick={ () => setAllEnabled( true ) }
+							>
+								{ __( 'Enable all', 'albert-ai-butler' ) }
+							</Button>
+							<Button
+								variant="secondary"
+								size="compact"
+								disabled={ enabledCount === 0 }
+								onClick={ () => setAllEnabled( false ) }
+							>
+								{ __( 'Disable all', 'albert-ai-butler' ) }
+							</Button>
+						</div>
+					</div>
 				) }
 			</header>
 
@@ -168,10 +280,13 @@ export default function AbilitiesApp() {
 						fields={ fields }
 						view={ view }
 						onChangeView={ setView }
-						actions={ NO_ACTIONS }
+						actions={ actions }
 						defaultLayouts={ DEFAULT_LAYOUTS }
 						paginationInfo={ paginationInfo }
 						getItemId={ getItemId }
+						onClickItem={ onClickItem }
+						selection={ selection }
+						onChangeSelection={ setSelection }
 					>
 						<Toolbar
 							view={ view }
@@ -179,10 +294,23 @@ export default function AbilitiesApp() {
 							categories={ categories }
 							suppliers={ suppliers }
 						/>
+						{ selection.length > 0 && (
+							<div className="albert-abilities__bulkbar">
+								<DataViews.BulkActionToolbar />
+							</div>
+						) }
 						<DataViews.Layout />
 						<DataViews.Footer />
 					</DataViews>
 				</div>
+			) }
+
+			{ openItem && (
+				<FlyInPanel
+					ability={ openItem }
+					onClose={ () => setOpenId( null ) }
+					onToggle={ onToggle }
+				/>
 			) }
 		</div>
 	);
