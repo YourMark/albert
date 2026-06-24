@@ -61,9 +61,11 @@ phpunit-wp.xml
 node_modules/
 npm-debug.log
 yarn-error.log
-package-lock.json
 yarn.lock
 bower_components/
+
+# package-lock.json IS committed (like composer.lock) so dev/CI/release builds
+# resolve identical npm versions and `npm ci` works in the release workflow.
 
 ############
 ## Build files
@@ -71,6 +73,7 @@ bower_components/
 
 /build/
 /dist/
+/assets/build/
 /js/dist/*
 /css/dist/*
 /artifact/

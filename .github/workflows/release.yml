@@ -69,6 +69,18 @@ jobs:
         # rebuild the optimized prod autoloader. vendor-prefixed/ persists.
         run: composer install --no-dev --prefer-dist --optimize-autoloader --no-progress
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build admin assets
+        # Compiles the React/DataViews admin app into assets/build/ (gitignored).
+        # The "Copy plugin files" step ships it via `cp -r assets`.
+        run: |
+          npm ci
+          npm run build
+
       - name: Create plugin directory
         run: mkdir -p build/albert-ai-butler
 
@@ -185,6 +197,18 @@ jobs:
 
       - name: Install production dependencies
         run: composer install --no-dev --prefer-dist --optimize-autoloader --no-progress
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build admin assets
+        # assets/build/ is gitignored, so it must be compiled before the SVN
+        # deploy reads the working tree (.distignore keeps assets/src/ out).
+        run: |
+          npm ci
+          npm run build
 
       - name: Deploy to WordPress.org
         uses: 10up/action-wordpress-plugin-deploy@stable

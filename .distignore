@@ -25,6 +25,11 @@ phpstan-bootstrap.php
 phpunit.xml.dist
 phpunit-unit.xml.dist
 package.json
+package-lock.json
+webpack.config.js
+
+# JS/SCSS source — only the compiled assets/build/ output ships
+assets/src/
 
 # Dev scripts and tests
 bin/
