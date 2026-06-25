@@ -61,6 +61,7 @@ export default function AbilitiesApp() {
 	const [ items, setItems ] = useState( [] );
 	const [ categories, setCategories ] = useState( [] );
 	const [ suppliers, setSuppliers ] = useState( [] );
+	const [ roles, setRoles ] = useState( [] );
 	const [ view, setView ] = useState( DEFAULT_VIEW );
 	const [ selection, setSelection ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( true );
@@ -77,6 +78,7 @@ export default function AbilitiesApp() {
 				setItems( payload.abilities );
 				setCategories( payload.categories );
 				setSuppliers( payload.suppliers );
+				setRoles( payload.roles || [] );
 			} )
 			.catch( ( err ) => active && setError( err.message || String( err ) ) )
 			.finally( () => active && setIsLoading( false ) );
@@ -301,6 +303,7 @@ export default function AbilitiesApp() {
 			{ openItem && (
 				<FlyInPanel
 					ability={ openItem }
+					roles={ roles }
 					onClose={ () => setOpenId( null ) }
 					onToggle={ onToggle }
 				/>

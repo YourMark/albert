@@ -87,6 +87,7 @@ class AbilitiesPayload {
 			'abilities'  => $abilities,
 			'categories' => self::to_options( $category_opts ),
 			'suppliers'  => self::to_options( $supplier_opts ),
+			'roles'      => self::role_options( $roles ),
 			'counts'     => [
 				'total'   => count( $abilities ),
 				'enabled' => $enabled_count,
@@ -262,6 +263,29 @@ class AbilitiesPayload {
 	 */
 	private static function roles(): array {
 		return function_exists( 'wp_roles' ) ? wp_roles()->roles : [];
+	}
+
+	/**
+	 * Convert the roles map into a value/label option list for the screen.
+	 *
+	 * Exposed in the payload so add-on panel sections (e.g. Premium's advanced
+	 * permission rule builder) have role options without re-deriving them.
+	 *
+	 * @param array<string, mixed> $roles Map from WP_Roles::roles.
+	 *
+	 * @return array<int, array{value: string, label: string}>
+	 * @since 1.3.0
+	 */
+	private static function role_options( array $roles ): array {
+		$options = [];
+		foreach ( $roles as $slug => $role ) {
+			$options[] = [
+				'value' => (string) $slug,
+				'label' => (string) ( $role['name'] ?? $slug ),
+			];
+		}
+
+		return $options;
 	}
 
 	/**

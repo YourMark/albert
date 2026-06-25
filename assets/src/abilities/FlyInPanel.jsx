@@ -87,11 +87,12 @@ function Section( { title, info: infoControl, children } ) {
  *
  * @param {Object}   props          Props.
  * @param {Object}   props.ability  The ability row.
+ * @param {Array}    props.roles    Role options ({ value, label }) for add-on sections.
  * @param {Function} props.onClose  Close handler.
  * @param {Function} props.onToggle Enabled toggle handler (item, nextEnabled).
  * @return {Element} The fly-in.
  */
-export default function FlyInPanel( { ability, onClose, onToggle } ) {
+export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 	const dialogRef = useMergeRefs( [
 		useConstrainedTabbing(),
 		useFocusOnMount( 'firstElement' ),
@@ -110,7 +111,7 @@ export default function FlyInPanel( { ability, onClose, onToggle } ) {
 	 * manager in Albert Premium). Free renders nothing here. Each entry is
 	 * { id, priority?, render: ({ ability, api }) => Element }.
 	 */
-	const api = { ability };
+	const api = { ability, roles };
 	const sections = applyFilters(
 		'albert.abilities.panel_sections',
 		[],
