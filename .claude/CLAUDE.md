@@ -84,6 +84,8 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | Hook | Type | Purpose |
 |------|------|---------|
 | `albert/abilities/register` | action | Register custom abilities |
+| `albert/abilities/check_permission` | filter | Gate ability access per role/user (Premium advanced permissions); runs on every ability's permission_callback. See `docs/extending-the-abilities-screen.md` |
+| `albert/abilities/required_capability` | filter | Override the best-effort capability shown on the Abilities screen |
 | `albert/abilities/before_execute` | action | Before any ability runs |
 | `albert/abilities/after_execute` | action | After any ability runs |
 | `albert/abilities/before_execute/{id}` | action | Before a specific ability |
@@ -96,3 +98,7 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | `albert/blocks/read_max_bytes` | filter | Per-field byte cap on read text representations (default 50000) |
 | `albert/activated` | action | Plugin activated |
 | `albert/deactivated` | action | Plugin deactivated |
+
+JS (client-side) seam for the Abilities DataViews screen: `albert.abilities.panel_sections`
+(`@wordpress/hooks` filter) lets add-ons inject React sections into the detail fly-in. Full contract
+for all three Abilities-screen seams: `docs/extending-the-abilities-screen.md`.
