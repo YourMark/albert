@@ -257,7 +257,11 @@ class AbilitiesRegistry {
 		if ( str_contains( $action, 'user' ) ) {
 			return $is_read ? 'list_users' : ( $is_delete ? 'delete_users' : 'edit_users' );
 		}
-		if ( str_contains( $action, 'media' ) || str_contains( $action, 'upload' ) || str_contains( $action, 'featured-image' ) ) {
+		// Setting a featured image edits the target post, not the media library.
+		if ( str_contains( $action, 'featured-image' ) ) {
+			return $is_read ? 'read' : 'edit_posts';
+		}
+		if ( str_contains( $action, 'media' ) || str_contains( $action, 'upload' ) ) {
 			return $is_read ? 'read' : 'upload_files';
 		}
 		if ( str_contains( $action, 'term' ) || str_contains( $action, 'taxonom' ) ) {
