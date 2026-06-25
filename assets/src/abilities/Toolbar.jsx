@@ -31,6 +31,7 @@ const SORT_OPTIONS = [
 	{ value: 'label', label: __( 'Sort: Name', 'albert-ai-butler' ) },
 	{ value: 'category', label: __( 'Sort: Category', 'albert-ai-butler' ) },
 	{ value: 'operation', label: __( 'Sort: Operation', 'albert-ai-butler' ) },
+	{ value: 'lastUsed', label: __( 'Sort: Last used', 'albert-ai-butler' ) },
 ];
 
 /**

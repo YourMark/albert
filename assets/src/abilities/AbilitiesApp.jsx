@@ -121,26 +121,24 @@ export default function AbilitiesApp() {
 		if ( ids.length === 0 ) {
 			return;
 		}
-		// Optimistic update, then one bulk request, then resync from the server.
+		// Optimistic update, then one bulk request. Only re-fetch on failure to
+		// repair the optimistic state — the happy path already matches the server.
 		setItems( ( prev ) =>
 			prev.map( ( row ) =>
 				ids.includes( row.id ) ? { ...row, enabled } : row
 			)
 		);
-		setAbilitiesEnabledBulk( ids, enabled )
-			.catch( () =>
-				setError(
-					__(
-						'Could not save your changes. Please try again.',
-						'albert-ai-butler'
-					)
+		setAbilitiesEnabledBulk( ids, enabled ).catch( () => {
+			setError(
+				__(
+					'Could not save your changes. Please try again.',
+					'albert-ai-butler'
 				)
-			)
-			.finally( () => {
-				fetchAbilities()
-					.then( ( payload ) => setItems( payload.abilities ) )
-					.catch( () => {} );
-			} );
+			);
+			fetchAbilities()
+				.then( ( payload ) => setItems( payload.abilities ) )
+				.catch( () => {} );
+		} );
 		setSelection( [] );
 	}, [] );
 
@@ -170,15 +168,20 @@ export default function AbilitiesApp() {
 				label: __( 'Enable', 'albert-ai-butler' ),
 				supportsBulk: true,
 				isEligible: ( item ) => ! item.enabled,
-				callback: ( selectedItems ) => bulkToggle( selectedItems, true ),
+				callback: ( selectedItems, { onActionPerformed } = {} ) => {
+					bulkToggle( selectedItems, true );
+					onActionPerformed?.( selectedItems );
+				},
 			},
 			{
 				id: 'disable',
 				label: __( 'Disable', 'albert-ai-butler' ),
 				supportsBulk: true,
 				isEligible: ( item ) => item.enabled,
-				callback: ( selectedItems ) =>
-					bulkToggle( selectedItems, false ),
+				callback: ( selectedItems, { onActionPerformed } = {} ) => {
+					bulkToggle( selectedItems, false );
+					onActionPerformed?.( selectedItems );
+				},
 			},
 		],
 		[ bulkToggle ]

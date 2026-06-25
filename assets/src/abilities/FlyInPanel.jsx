@@ -17,7 +17,7 @@ import {
 	useFocusReturn,
 	useMergeRefs,
 } from '@wordpress/compose';
-import { Fragment } from '@wordpress/element';
+import { Component } from '@wordpress/element';
 import { applyFilters } from '@wordpress/hooks';
 import { __ } from '@wordpress/i18n';
 import { close, info } from '@wordpress/icons';
@@ -43,8 +43,8 @@ function InfoPopover( { label, children } ) {
 	return (
 		<Dropdown
 			className="albert-info"
-			focusOnMount="container"
-			popoverProps={ { placement: 'bottom-end' } }
+			focusOnMount={ true }
+			popoverProps={ { placement: 'bottom-end', inline: true } }
 			renderToggle={ ( { isOpen, onToggle } ) => (
 				<Button
 					size="small"
@@ -59,6 +59,40 @@ function InfoPopover( { label, children } ) {
 			) }
 		/>
 	);
+}
+
+/**
+ * Error boundary around a single add-on section.
+ *
+ * A third-party section injected via the `albert.abilities.panel_sections` filter
+ * is untrusted code — if its render throws, this catches it so the rest of the
+ * fly-in keeps working instead of blanking out.
+ */
+class SectionBoundary extends Component {
+	constructor( props ) {
+		super( props );
+		this.state = { hasError: false };
+	}
+
+	static getDerivedStateFromError() {
+		return { hasError: true };
+	}
+
+	render() {
+		if ( this.state.hasError ) {
+			return (
+				<div className="albert-flyin__section-error notice notice-warning">
+					<p>
+						{ __(
+							'An add-on section failed to load.',
+							'albert-ai-butler'
+						) }
+					</p>
+				</div>
+			);
+		}
+		return this.props.children;
+	}
 }
 
 /**
@@ -241,9 +275,9 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 					</div>
 
 					{ sections.map( ( section ) => (
-						<Fragment key={ section.id }>
+						<SectionBoundary key={ section.id }>
 							{ section.render( { ability, api } ) }
-						</Fragment>
+						</SectionBoundary>
 					) ) }
 
 					{ ability.inputs.length > 0 && (
