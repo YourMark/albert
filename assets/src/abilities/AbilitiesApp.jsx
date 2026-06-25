@@ -202,6 +202,8 @@ export default function AbilitiesApp() {
 
 	const onClickItem = useCallback( ( item ) => setOpenId( item.id ), [] );
 
+	const onCloseFlyIn = useCallback( () => setOpenId( null ), [] );
+
 	const enabledCount = useMemo(
 		() => items.filter( ( item ) => item.enabled ).length,
 		[ items ]
@@ -308,7 +310,7 @@ export default function AbilitiesApp() {
 				<FlyInPanel
 					ability={ openItem }
 					roles={ roles }
-					onClose={ () => setOpenId( null ) }
+					onClose={ onCloseFlyIn }
 					onToggle={ onToggle }
 				/>
 			) }

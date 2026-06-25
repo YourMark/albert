@@ -7,12 +7,7 @@
  */
 import { FormToggle } from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
-
-const OPERATION_LABELS = {
-	read: __( 'Read', 'albert-ai-butler' ),
-	write: __( 'Write', 'albert-ai-butler' ),
-	delete: __( 'Delete', 'albert-ai-butler' ),
-};
+import { OPERATION_LABELS } from './constants';
 
 const OPERATION_ELEMENTS = [
 	{ value: 'read', label: OPERATION_LABELS.read },
@@ -136,6 +131,11 @@ export function getFields( { categories, suppliers, onToggle } ) {
 			getValue: ( { item } ) => item.label,
 			render: AbilityCell,
 		},
+		// identifier + description are search-only: never listed in DEFAULT_VIEW.fields
+		// and have no render, so they feed global search but show no column.
+		// enableHiding:false keeps them out of the column-visibility menu (a field
+		// that can't be hidden isn't offered as a toggle) — the id/description must
+		// not become a showable raw-text column.
 		{
 			id: 'identifier',
 			label: __( 'Ability ID', 'albert-ai-butler' ),

@@ -17,16 +17,11 @@ import {
 	useFocusReturn,
 	useMergeRefs,
 } from '@wordpress/compose';
-import { Component } from '@wordpress/element';
+import { Component, useCallback } from '@wordpress/element';
 import { applyFilters } from '@wordpress/hooks';
 import { __ } from '@wordpress/i18n';
 import { close, info } from '@wordpress/icons';
-
-const OPERATION_LABELS = {
-	read: __( 'Read', 'albert-ai-butler' ),
-	write: __( 'Write', 'albert-ai-butler' ),
-	delete: __( 'Delete', 'albert-ai-butler' ),
-};
+import { OPERATION_LABELS } from './constants';
 
 /**
  * An info "(i)" button that opens a small explanatory popover.
@@ -62,11 +57,31 @@ function InfoPopover( { label, children } ) {
 }
 
 /**
+ * Invokes one add-on section's render factory.
+ *
+ * This is a child of SectionBoundary on purpose: a synchronous throw in
+ * `section.render()` happens during *this* component's render, so the boundary
+ * above it can catch it. (An error boundary cannot catch a throw in its own
+ * render method, only in its children — so the factory must be called here, not
+ * inside SectionBoundary or in the parent's map callback.)
+ *
+ * @param {Object} props         Props.
+ * @param {Object} props.section The section ({ id, render }).
+ * @param {Object} props.ability The ability row.
+ * @param {Object} props.api     The seam api ({ ability, roles }).
+ * @return {Element} The section's rendered output.
+ */
+function SectionRenderer( { section, ability, api } ) {
+	return section.render( { ability, api } );
+}
+
+/**
  * Error boundary around a single add-on section.
  *
  * A third-party section injected via the `albert.abilities.panel_sections` filter
- * is untrusted code — if its render throws, this catches it so the rest of the
- * fly-in keeps working instead of blanking out.
+ * is untrusted code — if its render throws, this catches it (via the
+ * SectionRenderer child) so the rest of the fly-in keeps working instead of
+ * blanking out.
  */
 class SectionBoundary extends Component {
 	constructor( props ) {
@@ -76,6 +91,12 @@ class SectionBoundary extends Component {
 
 	static getDerivedStateFromError() {
 		return { hasError: true };
+	}
+
+	componentDidCatch( error, info ) {
+		// Surface third-party section failures; the fallback UI is otherwise silent.
+		// eslint-disable-next-line no-console
+		console.error( '[Albert] An abilities panel section threw during render:', error, info );
 	}
 
 	render() {
@@ -133,12 +154,15 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 		useFocusReturn(),
 	] );
 
-	const onKeyDown = ( event ) => {
-		if ( event.key === 'Escape' ) {
-			event.stopPropagation();
-			onClose();
-		}
-	};
+	const onKeyDown = useCallback(
+		( event ) => {
+			if ( event.key === 'Escape' ) {
+				event.stopPropagation();
+				onClose();
+			}
+		},
+		[ onClose ]
+	);
 
 	/**
 	 * [Premium seam] Sections injected by add-ons (e.g. the advanced permission
@@ -276,7 +300,11 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 
 					{ sections.map( ( section ) => (
 						<SectionBoundary key={ section.id }>
-							{ section.render( { ability, api } ) }
+							<SectionRenderer
+								section={ section }
+								ability={ ability }
+								api={ api }
+							/>
 						</SectionBoundary>
 					) ) }
 
