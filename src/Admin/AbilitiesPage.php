@@ -19,6 +19,7 @@ use Albert\Contracts\Interfaces\Hookable;
 use Albert\Core\AbilitiesRegistry;
 use Albert\Core\AbilitiesState;
 use Albert\Core\AnnotationPresenter;
+use Albert\Core\Plugin;
 use Albert\Logging\Repository as LoggingRepository;
 
 /**
@@ -890,8 +891,10 @@ class AbilitiesPage implements Hookable {
 			'albert-abilities-app',
 			'window.albertAbilities = ' . wp_json_encode(
 				[
-					'ajaxUrl'            => admin_url( 'admin-ajax.php' ),
-					'toggleAbilityNonce' => wp_create_nonce( 'albert_toggle_ability' ),
+					// REST root for this controller; the app builds its paths from
+					// here rather than hardcoding the namespace in JS. api-fetch
+					// wires the REST root URL and wp_rest nonce automatically.
+					'restBase' => Plugin::rest_namespace() . '/abilities',
 				]
 			) . ';',
 			'before'

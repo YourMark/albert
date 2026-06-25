@@ -7,7 +7,9 @@
  */
 import apiFetch from '@wordpress/api-fetch';
 
-const BASE = '/albert/v1/abilities';
+// REST base injected by PHP (Plugin::rest_namespace()); fall back to the default
+// namespace so the module still works if the inline script is ever absent.
+const BASE = `/${ window.albertAbilities?.restBase || 'albert/v1/abilities' }`;
 
 /**
  * Fetch the full abilities dataset (abilities, categories, suppliers, counts).
