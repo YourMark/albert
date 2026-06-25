@@ -7,8 +7,8 @@
  * client-side via filterSortAndPaginate. Opening an ability (the detail fly-in)
  * arrives in the next phase.
  *
- * The accent is themed to Albert's indigo by scoping the wp-components
- * --wp-admin-theme-color custom properties to our wrapper.
+ * The accent follows the site's WordPress admin color scheme — DataViews and
+ * wp-components read --wp-admin-theme-color, which we do not override.
  */
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews/wp';
 import { Button, Spinner } from '@wordpress/components';
@@ -27,13 +27,6 @@ import {
 import { getFields } from './fields';
 import Toolbar from './Toolbar';
 import FlyInPanel from './FlyInPanel';
-
-const ACCENT_STYLE = {
-	'--wp-admin-theme-color': '#3858e9',
-	'--wp-admin-theme-color--rgb': '56, 88, 233',
-	'--wp-admin-theme-color-darker-10': '#324fd2',
-	'--wp-admin-theme-color-darker-20': '#2d46ba',
-};
 
 const DEFAULT_VIEW = {
 	type: 'table',
@@ -214,7 +207,7 @@ export default function AbilitiesApp() {
 	);
 
 	return (
-		<div className="albert-abilities" style={ ACCENT_STYLE }>
+		<div className="albert-abilities">
 			<header className="albert-abilities__header">
 				<h1 className="albert-abilities__title">
 					{ __( 'Abilities', 'albert-ai-butler' ) }

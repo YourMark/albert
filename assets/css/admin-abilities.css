@@ -116,11 +116,12 @@
 	min-width: 0;
 }
 
-/* Label is the clickable title (indigo link) — the cue that a row opens. */
+/* Label is the clickable title — the cue that a row opens. Uses the site's
+   admin color scheme accent (not a hardcoded brand colour). */
 .albert-ability-cell__label {
 	font-size: 14px;
 	font-weight: 600;
-	color: #3858e9;
+	color: var( --wp-admin-theme-color, #2271b1 );
 }
 
 .albert-ability-cell:hover .albert-ability-cell__label {
@@ -258,7 +259,7 @@
 .albert-flyin__id {
 	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	font-size: 12.5px;
-	color: #3858e9;
+	color: var( --wp-admin-theme-color, #2271b1 );
 	background: none;
 	padding: 0;
 }
