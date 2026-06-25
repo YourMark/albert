@@ -138,7 +138,7 @@ class AbilitiesController implements Hookable {
 	public function update_ability( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$ability_id = $request['namespace'] . '/' . $request['name'];
 
-		if ( AbilitiesPayload::row( $ability_id ) === null ) {
+		if ( ! function_exists( 'wp_get_ability' ) || wp_get_ability( $ability_id ) === null ) {
 			return new WP_Error(
 				'albert_ability_not_found',
 				__( 'Ability not found.', 'albert-ai-butler' ),
@@ -160,10 +160,18 @@ class AbilitiesController implements Hookable {
 	 * @since 1.3.0
 	 */
 	public function bulk_update( WP_REST_Request $request ): WP_REST_Response {
-		$ids = array_values(
+		$has_registry = function_exists( 'wp_get_ability' );
+		$ids          = array_values(
 			array_filter(
 				array_map( 'strval', (array) $request['ids'] ),
-				static fn( string $id ): bool => (bool) preg_match( '#^[a-z0-9_-]+/[a-z0-9_-]+$#', $id )
+				static function ( string $id ) use ( $has_registry ): bool {
+					if ( ! preg_match( '#^[a-z0-9_-]+/[a-z0-9_-]+$#', $id ) ) {
+						return false;
+					}
+					// Only act on abilities that actually exist, so phantom ids
+					// can't bloat the disabled-abilities option.
+					return ! $has_registry || wp_get_ability( $id ) !== null;
+				}
 			)
 		);
 
@@ -201,8 +209,12 @@ class AbilitiesController implements Hookable {
 	 * @since 1.3.0
 	 */
 	private function is_abilities_request(): bool {
-		$uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
 
-		return $uri !== '' && str_contains( $uri, Plugin::rest_namespace() . '/abilities' );
+		// Match the path only — a query string like ?q=albert/v1/abilities on an
+		// unrelated REST request must not count as our endpoint.
+		$path = strtok( $uri, '?' );
+
+		return is_string( $path ) && str_contains( $path, '/' . Plugin::rest_namespace() . '/abilities' );
 	}
 }
