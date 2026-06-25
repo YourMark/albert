@@ -4,8 +4,9 @@
  * Renders the registered abilities as a DataViews table/grid with search,
  * filters, sort, density, layout switch, pagination, and an in-row enabled
  * toggle. Data is loaded once over REST and filtered/sorted/paginated
- * client-side via filterSortAndPaginate. Opening an ability (the detail fly-in)
- * arrives in the next phase.
+ * client-side via filterSortAndPaginate. Clicking an ability opens the detail
+ * fly-in (FlyInPanel); rows can be bulk enabled/disabled from the selection
+ * toolbar, and the header offers Enable all / Disable all.
  *
  * The accent follows the site's WordPress admin color scheme — DataViews and
  * wp-components read --wp-admin-theme-color, which we do not override.

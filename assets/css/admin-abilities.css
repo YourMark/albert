@@ -3,10 +3,10 @@
  *
  * Authored plain CSS (no preprocessor), loaded after the DataViews vendor
  * stylesheet so these rules can override it. DataViews + wp-components supply
- * the table/grid/toolbar chrome (themed to Albert's indigo accent via the
- * --wp-admin-theme-color custom properties set on the wrapper in JS); this file
- * adds the page chrome (header, summary, card) and the custom cell + badge.
- * The detail fly-in styles arrive with Phase 4.
+ * the table/grid/toolbar chrome, themed to the site's WordPress admin color
+ * scheme via --wp-admin-theme-color (set by WordPress; we do not override it).
+ * This file adds the page chrome (header, summary, card), the custom cell +
+ * operation badge, the "last used" cell, and the detail fly-in drawer.
  */
 
 /* Full width — the table needs the room (5 columns), so contain only the

@@ -859,7 +859,7 @@ class AbilitiesPage implements Hookable {
 		wp_enqueue_style( 'wp-components' );
 
 		// DataViews ships its own stylesheet and core registers no handle for it,
-		// so we ship the vendor copy produced by bin/copy-dataviews-css.js.
+		// so we ship the vendor copy emitted by the build (CopyWebpackPlugin).
 		$dataviews_css     = ALBERT_PLUGIN_DIR . 'assets/build/css/dataviews.css';
 		$has_dataviews_css = file_exists( $dataviews_css );
 		if ( $has_dataviews_css ) {
