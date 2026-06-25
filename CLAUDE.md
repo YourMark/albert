@@ -292,9 +292,11 @@ add_filter( 'albert/admin/submenu_pages', function ( array $pages ) {
 } );
 ```
 
-#### Unified AbilitiesPage (1.1+)
+#### Unified AbilitiesPage (1.1+, rebuilt on DataViews in 1.3)
 
-Since 1.1, the Core / ACF / WooCommerce admin pages are merged into a single `Albert → Abilities` page rendered by `src/Admin/AbilitiesPage.php`. Every registered ability appears as a row in a flat, filterable list. Filtering (text search, category, supplier) is entirely client-side; pagination and view-mode (list vs paginated) are server-rendered on every request to avoid a flash of content. Toggles save instantly via `wp_ajax_albert_toggle_ability` — there is no Save Changes button. Custom abilities registered via `albert/abilities/register` appear in the same list automatically.
+Since 1.1, the Core / ACF / WooCommerce admin pages are merged into a single `Albert → Abilities` page. Every registered ability appears as a row in a flat, filterable list, and custom abilities registered via `albert/abilities/register` appear in the same list automatically.
+
+Since 1.3 the screen is a React app built on `@wordpress/dataviews` (source in `assets/src/abilities/`, compiled to `assets/build/` via `npm run build`). `src/Admin/AbilitiesPage.php` only renders the mount point (`#albert-abilities-root`) and enqueues the bundle; all data flows over REST (`src/Admin/Rest/AbilitiesController.php` — `GET /albert/v1/abilities`, per-ability and bulk `POST`s). Search/filter/sort/pagination are client-side via `filterSortAndPaginate`; per-row and bulk enable/disable save instantly (no Save Changes button), and clicking a row opens a detail fly-in with a `albert.abilities.panel_sections` add-on seam. The legacy server-rendered list and its `wp_ajax_albert_toggle_ability` / view-mode AJAX were removed in 1.3. If the build is missing (a dev checkout that hasn't run `npm install && npm run build`), the page shows an actionable notice instead of mounting.
 
 #### Supplier Registry (`albert/abilities/suppliers`)
 
