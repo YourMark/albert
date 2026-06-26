@@ -163,6 +163,22 @@ class Server implements Hookable {
 	}
 
 	/**
+	 * The MCP adapter's own tool abilities, registered on every Albert server.
+	 *
+	 * Required for protocol discovery and execution — unregistering any of them
+	 * breaks MCP entirely — so they are also treated as protected abilities that
+	 * can never be disabled. See {@see AbilitiesRegistry::get_protected_abilities()}.
+	 *
+	 * @since 1.3.0
+	 * @var list<string>
+	 */
+	public const CORE_TOOL_ABILITIES = [
+		'mcp-adapter/discover-abilities',
+		'mcp-adapter/get-ability-info',
+		'mcp-adapter/execute-ability',
+	];
+
+	/**
 	 * Get the tools to register for this server.
 	 *
 	 * Uses the same core abilities as the default MCP server.
@@ -171,11 +187,7 @@ class Server implements Hookable {
 	 * @since 1.0.0
 	 */
 	private function get_tools(): array {
-		return [
-			'mcp-adapter/discover-abilities',
-			'mcp-adapter/get-ability-info',
-			'mcp-adapter/execute-ability',
-		];
+		return self::CORE_TOOL_ABILITIES;
 	}
 
 	/**

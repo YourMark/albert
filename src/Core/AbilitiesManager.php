@@ -414,7 +414,12 @@ class AbilitiesManager implements Hookable {
 		 */
 		$filtered = apply_filters( 'albert/abilities/disabled_list', $disabled );
 
-		return array_values( array_unique( array_map( 'strval', (array) $filtered ) ) );
+		$filtered = array_values( array_unique( array_map( 'strval', (array) $filtered ) ) );
+
+		// The MCP adapter's own tools must never be unregistered — doing so breaks
+		// protocol discovery/execution. Strip them whatever the option, the
+		// fresh-install default, or add-on filters say.
+		return array_values( array_diff( $filtered, AbilitiesRegistry::get_protected_abilities() ) );
 	}
 
 	/**
