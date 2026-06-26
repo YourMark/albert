@@ -476,12 +476,12 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 					{ ability.inputs.length > 0 && (
 						<CollapsibleSection
 							id="albert-flyin-input-schema"
-							title={ __( 'Input schema', 'albert-ai-butler' ) }
+							title={ __( 'Inputs', 'albert-ai-butler' ) }
 							summary={ inputSummary }
 							info={
 								<InfoPopover
 									label={ __(
-										'About the input schema',
+										'About the inputs',
 										'albert-ai-butler'
 									) }
 								>
