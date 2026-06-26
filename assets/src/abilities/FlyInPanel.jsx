@@ -10,22 +10,28 @@
  * Add-ons (e.g. Albert Premium) inject sections via the
  * `albert.abilities.panel_sections` filter — see the [Premium seam] below.
  */
-import { Button, Dropdown, Modal, ToggleControl } from '@wordpress/components';
+import {
+	Button,
+	Dropdown,
+	Icon,
+	Modal,
+	ToggleControl,
+} from '@wordpress/components';
 import {
 	useConstrainedTabbing,
-	useFocusOnMount,
 	useFocusReturn,
 	useMergeRefs,
 } from '@wordpress/compose';
 import {
 	Component,
 	useCallback,
+	useEffect,
 	useRef,
 	useState,
 } from '@wordpress/element';
 import { applyFilters } from '@wordpress/hooks';
-import { __ } from '@wordpress/i18n';
-import { close, info } from '@wordpress/icons';
+import { __, _n, sprintf } from '@wordpress/i18n';
+import { chevronRight, close } from '@wordpress/icons';
 import { OPERATION_LABELS } from './constants';
 import { Badges } from './fields';
 
@@ -45,15 +51,24 @@ function InfoPopover( { label, children } ) {
 		<Dropdown
 			className="albert-info"
 			focusOnMount={ true }
-			popoverProps={ { placement: 'bottom-end', inline: true } }
+			popoverProps={ {
+				placement: 'bottom',
+				inline: true,
+				offset: 10,
+				className: 'albert-info__popover',
+			} }
 			renderToggle={ ( { isOpen, onToggle } ) => (
 				<Button
 					size="small"
-					icon={ info }
 					label={ label }
 					onClick={ onToggle }
 					aria-expanded={ isOpen }
-				/>
+				>
+					<span
+						className="dashicons dashicons-info-outline"
+						aria-hidden="true"
+					/>
+				</Button>
 			) }
 			renderContent={ () => (
 				<div className="albert-info__content">{ children }</div>
@@ -144,6 +159,66 @@ function Section( { title, info: infoControl, children } ) {
 }
 
 /**
+ * A collapsible section — an accessible disclosure (collapsed by default) whose
+ * heading shows a short summary so the gist is visible without expanding. Used
+ * for the input schema, which is reference detail, not governance content.
+ *
+ * @param {Object}  props             Props.
+ * @param {string}  props.id          Id for the disclosure region (aria-controls target).
+ * @param {string}  props.title       Section heading.
+ * @param {string}  [props.summary]   Short summary shown beside the heading.
+ * @param {Element} [props.info]      Optional info control next to the title.
+ * @param {boolean} [props.defaultOpen] Whether it starts expanded (default false).
+ * @param {Element} props.children    Section body.
+ * @return {Element} The section.
+ */
+function CollapsibleSection( {
+	id,
+	title,
+	summary,
+	info: infoControl,
+	defaultOpen = false,
+	children,
+} ) {
+	const [ open, setOpen ] = useState( defaultOpen );
+	return (
+		<section className="albert-flyin__section">
+			<div className="albert-flyin__section-head">
+				<h3 className="albert-flyin__section-title">
+					<button
+						type="button"
+						className="albert-flyin__disclosure"
+						aria-expanded={ open }
+						aria-controls={ id }
+						onClick={ () => setOpen( ( value ) => ! value ) }
+					>
+						<Icon
+							className="albert-flyin__disclosure-chevron"
+							icon={ chevronRight }
+							size={ 18 }
+						/>
+						<span>{ title }</span>
+						{ summary && (
+							<span className="albert-flyin__section-summary">
+								{ summary }
+							</span>
+						) }
+					</button>
+				</h3>
+				{ infoControl }
+			</div>
+			<div
+				id={ id }
+				className="albert-flyin__disclosure-panel"
+				hidden={ ! open }
+			>
+				{ children }
+			</div>
+		</section>
+	);
+}
+
+/**
  * The detail fly-in for one ability.
  *
  * @param {Object}   props          Props.
@@ -154,17 +229,31 @@ function Section( { title, info: infoControl, children } ) {
  * @return {Element} The fly-in.
  */
 export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
+	const panelRef = useRef( null );
 	const dialogRef = useMergeRefs( [
 		useConstrainedTabbing(),
-		useFocusOnMount( 'firstElement' ),
 		useFocusReturn(),
+		panelRef,
 	] );
+
+	// Focus the dialog container on open so its accessible name (aria-labelledby)
+	// is announced first, rather than landing on the top-right Close button.
+	useEffect( () => {
+		panelRef.current?.focus();
+	}, [] );
 
 	// An add-on (e.g. Premium) can register a close guard via the seam api. On a
 	// close attempt the guard may return a confirmation descriptor; if so we show
 	// a styled dialog instead of closing immediately.
 	const closeGuardRef = useRef( null );
 	const [ closePrompt, setClosePrompt ] = useState( null );
+
+	// Panel-level save status, reported by an add-on via api.setSaveStatus and
+	// shown (as a live region) in the footer — not inside the add-on's section.
+	const [ saveStatus, setSaveStatus ] = useState( null );
+	const reportSaveStatus = useCallback( ( status ) => {
+		setSaveStatus( status );
+	}, [] );
 
 	const registerCloseGuard = useCallback( ( fn ) => {
 		closeGuardRef.current = fn;
@@ -266,6 +355,7 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 		roles,
 		capabilityContent,
 		registerCloseGuard,
+		setSaveStatus: reportSaveStatus,
 	};
 	const permissionsSection = applyFilters(
 		'albert.abilities.permissions_section',
@@ -274,6 +364,26 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 		</Section>,
 		permissionsApi
 	);
+
+	// Summary shown on the collapsed input-schema header, e.g. "6 fields · 2 required".
+	const inputCount = ability.inputs.length;
+	const requiredCount = ability.inputs.filter(
+		( field ) => field.required
+	).length;
+	const inputCountLabel = sprintf(
+		// translators: %d: number of input fields.
+		_n( '%d field', '%d fields', inputCount, 'albert-ai-butler' ),
+		inputCount
+	);
+	const inputSummary =
+		requiredCount > 0
+			? sprintf(
+					// translators: 1: field-count phrase (e.g. "6 fields"); 2: required count.
+					__( '%1$s · %2$d required', 'albert-ai-butler' ),
+					inputCountLabel,
+					requiredCount
+			  )
+			: inputCountLabel;
 
 	return (
 		<>
@@ -288,6 +398,7 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby="albert-flyin-title"
+				tabIndex={ -1 }
 				ref={ dialogRef }
 				onKeyDown={ onKeyDown }
 			>
@@ -363,8 +474,10 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 					) ) }
 
 					{ ability.inputs.length > 0 && (
-						<Section
+						<CollapsibleSection
+							id="albert-flyin-input-schema"
 							title={ __( 'Input schema', 'albert-ai-butler' ) }
+							summary={ inputSummary }
 							info={
 								<InfoPopover
 									label={ __(
@@ -414,7 +527,7 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 									</li>
 								) ) }
 							</ul>
-						</Section>
+						</CollapsibleSection>
 					) }
 
 					{ ability.output && (
@@ -427,6 +540,16 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 				</div>
 
 				<footer className="albert-flyin__footer">
+					<span
+						className="albert-flyin__status"
+						role="status"
+						aria-live="polite"
+					>
+						{ saveStatus === 'saving' &&
+							__( 'Saving…', 'albert-ai-butler' ) }
+						{ saveStatus === 'saved' &&
+							__( 'Saved', 'albert-ai-butler' ) }
+					</span>
 					<Button variant="tertiary" onClick={ requestClose }>
 						{ __( 'Close', 'albert-ai-butler' ) }
 					</Button>

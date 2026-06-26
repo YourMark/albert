@@ -131,7 +131,7 @@
 .albert-ability-cell__id {
 	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	font-size: 11.5px;
-	color: #787c82;
+	color: #6c7177;
 	background: none;
 	padding: 0;
 	overflow: hidden;
@@ -314,7 +314,7 @@
 	font-weight: 600;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
-	color: #787c82;
+	color: #6c7177;
 }
 
 .albert-flyin__category-value {
@@ -369,13 +369,69 @@
 }
 
 .albert-flyin__section-title {
+	display: flex;
+	align-items: center;
 	margin: 0;
 	padding: 0;
 	font-size: 11px;
 	font-weight: 600;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
-	color: #787c82;
+	color: #6c7177;
+}
+
+/* Collapsible section heading (disclosure button styled as the eyebrow title). */
+.albert-flyin__disclosure {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	font: inherit;
+	letter-spacing: inherit;
+	text-transform: inherit;
+	color: inherit;
+	cursor: pointer;
+}
+
+.albert-flyin__disclosure:focus-visible {
+	outline: 2px solid var( --wp-admin-theme-color, #2271b1 );
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+.albert-flyin__disclosure-chevron {
+	fill: currentcolor;
+	transition: transform 0.15s ease;
+}
+
+.albert-flyin__disclosure[ aria-expanded="true" ] .albert-flyin__disclosure-chevron {
+	transform: rotate( 90deg );
+}
+
+@media ( prefers-reduced-motion: reduce ) {
+	.albert-flyin__disclosure-chevron {
+		transition: none;
+	}
+}
+
+/* Summary shown beside the heading when collapsed (e.g. "6 fields · 2 required"). */
+.albert-flyin__section-summary {
+	margin-inline-start: 6px;
+	font-weight: 400;
+	letter-spacing: normal;
+	text-transform: none;
+	color: #6c7177;
+}
+
+.albert-flyin__disclosure-panel {
+	margin-top: 10px;
+}
+
+.albert-flyin__disclosure-panel[ hidden ] {
+	display: none;
 }
 
 .albert-flyin__description,
@@ -412,7 +468,7 @@
 	font-size: 11px;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
-	color: #787c82;
+	color: #6c7177;
 }
 
 .albert-flyin__card-value {
@@ -496,10 +552,27 @@ code.albert-flyin__card-value {
 .albert-flyin__footer {
 	flex: none;
 	display: flex;
-	justify-content: flex-end;
+	align-items: center;
+	justify-content: space-between;
 	gap: 10px;
 	padding: 14px 22px;
 	border-top: 1px solid #e0e0e0;
+}
+
+/* Panel-level save status (fed by an add-on via api.setSaveStatus). Empty until
+   a save runs, so it takes no space when idle. */
+.albert-flyin__status {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 20px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var( --wp-admin-theme-color, #2271b1 );
+}
+
+.albert-flyin__status:empty {
+	display: none;
 }
 
 /* Info "(i)" popover trigger + content (used in the fly-in). */
@@ -521,21 +594,47 @@ code.albert-flyin__card-value {
 }
 
 .albert-info .components-button.is-small {
-	min-width: 22px;
-	width: 22px;
-	height: 22px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 24px;
+	width: 24px;
+	height: 24px;
 	padding: 0;
-	color: #787c82;
+	border-radius: 4px;
+	color: #6c7177;
 }
 
-.albert-info .components-button.is-small svg {
+.albert-info .components-button.is-small .dashicons {
+	font-size: 16px;
 	width: 16px;
 	height: 16px;
+	line-height: 1;
+}
+
+/* Hover / focus / active (popover open) state. */
+.albert-info .components-button.is-small:hover,
+.albert-info .components-button.is-small:focus,
+.albert-info .components-button.is-small[ aria-expanded="true" ] {
+	color: var( --wp-admin-theme-color, #2271b1 );
+	background: color-mix(
+		in oklch,
+		var( --wp-admin-theme-color, #2271b1 ) 12%,
+		transparent
+	);
+}
+
+/* Lift the info popover clearly above the content beneath it — without this it
+   reads as merged with the white card it overlaps. */
+.albert-info__popover .components-popover__content {
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	box-shadow: 0 8px 28px oklch( 0 0 0 / 0.16 ), 0 2px 6px oklch( 0 0 0 / 0.08 );
 }
 
 .albert-info__content {
-	width: 260px;
-	max-width: 80vw;
+	width: 300px;
+	max-width: calc( 100vw - 32px );
 	padding: 12px 14px;
 	font-size: 12.5px;
 	line-height: 1.5;
@@ -560,7 +659,7 @@ code.albert-flyin__card-value {
 }
 
 .albert-lastused--never {
-	color: #a7aaad;
+	color: #6c7177;
 }
 
 .albert-lastused__dot {
