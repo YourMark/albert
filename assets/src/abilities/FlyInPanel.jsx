@@ -10,18 +10,24 @@
  * Add-ons (e.g. Albert Premium) inject sections via the
  * `albert.abilities.panel_sections` filter — see the [Premium seam] below.
  */
-import { Button, Dropdown, ToggleControl } from '@wordpress/components';
+import { Button, Dropdown, Modal, ToggleControl } from '@wordpress/components';
 import {
 	useConstrainedTabbing,
 	useFocusOnMount,
 	useFocusReturn,
 	useMergeRefs,
 } from '@wordpress/compose';
-import { Component, useCallback } from '@wordpress/element';
+import {
+	Component,
+	useCallback,
+	useRef,
+	useState,
+} from '@wordpress/element';
 import { applyFilters } from '@wordpress/hooks';
 import { __ } from '@wordpress/i18n';
 import { close, info } from '@wordpress/icons';
 import { OPERATION_LABELS } from './constants';
+import { Badges } from './fields';
 
 /**
  * An info "(i)" button that opens a small explanatory popover.
@@ -154,14 +160,38 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 		useFocusReturn(),
 	] );
 
+	// An add-on (e.g. Premium) can register a close guard via the seam api. On a
+	// close attempt the guard may return a confirmation descriptor; if so we show
+	// a styled dialog instead of closing immediately.
+	const closeGuardRef = useRef( null );
+	const [ closePrompt, setClosePrompt ] = useState( null );
+
+	const registerCloseGuard = useCallback( ( fn ) => {
+		closeGuardRef.current = fn;
+		return () => {
+			if ( closeGuardRef.current === fn ) {
+				closeGuardRef.current = null;
+			}
+		};
+	}, [] );
+
+	const requestClose = useCallback( () => {
+		const prompt = closeGuardRef.current?.();
+		if ( prompt ) {
+			setClosePrompt( prompt );
+			return;
+		}
+		onClose();
+	}, [ onClose ] );
+
 	const onKeyDown = useCallback(
 		( event ) => {
 			if ( event.key === 'Escape' ) {
 				event.stopPropagation();
-				onClose();
+				requestClose();
 			}
 		},
-		[ onClose ]
+		[ requestClose ]
 	);
 
 	/**
@@ -177,13 +207,81 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 		api
 	).slice().sort( ( a, b ) => ( a.priority ?? 10 ) - ( b.priority ?? 10 ) );
 
+	// The required-capability display. Reused by Free's default Permissions
+	// section and — when an add-on takes over — inside its UI (see the seam
+	// below). Kept as one node so the capability is rendered identically either
+	// way.
+	const capabilityContent = (
+		<div className="albert-flyin__card albert-flyin__card--capability">
+			<div className="albert-flyin__card-head">
+				<span className="albert-flyin__card-label">
+					{ __( 'Required capability', 'albert-ai-butler' ) }
+				</span>
+				<InfoPopover
+					label={ __(
+						'About required capability',
+						'albert-ai-butler'
+					) }
+				>
+					<p>
+						{ __(
+							'A WordPress capability that gates this ability — it can run only for users whose role grants this capability. This value is best-effort; an ability or add-on can override it.',
+							'albert-ai-butler'
+						) }
+					</p>
+					{ ability.capabilityRoles?.length > 0 ? (
+						<p>
+							<strong>
+								{ __(
+									'Roles with this capability:',
+									'albert-ai-butler'
+								) }
+							</strong>{ ' ' }
+							{ ability.capabilityRoles.join( ', ' ) }
+						</p>
+					) : (
+						<p>
+							{ __(
+								'No roles currently grant this capability.',
+								'albert-ai-butler'
+							) }
+						</p>
+					) }
+				</InfoPopover>
+			</div>
+			<code className="albert-flyin__card-value">
+				{ ability.capability }
+			</code>
+		</div>
+	);
+
+	/**
+	 * [Premium seam] Replace the whole Permissions section. Free's default shows
+	 * the required capability; an add-on (Albert Premium) returns its own UI and
+	 * reuses `api.capabilityContent` inside its "Capability only" tab. Returning
+	 * the unchanged default keeps Free's behaviour when no add-on is present.
+	 */
+	const permissionsApi = {
+		ability,
+		roles,
+		capabilityContent,
+		registerCloseGuard,
+	};
+	const permissionsSection = applyFilters(
+		'albert.abilities.permissions_section',
+		<Section title={ __( 'Permissions', 'albert-ai-butler' ) }>
+			{ capabilityContent }
+		</Section>,
+		permissionsApi
+	);
+
 	return (
 		<>
 			{ /* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */ }
 			<div
 				className="albert-flyin__backdrop"
 				role="presentation"
-				onClick={ onClose }
+				onClick={ requestClose }
 			/>
 			<div
 				className="albert-flyin"
@@ -205,6 +303,7 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 							{ OPERATION_LABELS[ ability.operation ] ||
 								ability.operation }
 						</span>
+						<Badges badges={ ability.badges } />
 						<h2
 							id="albert-flyin-title"
 							className="albert-flyin__title"
@@ -212,11 +311,21 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 							{ ability.label }
 						</h2>
 						<code className="albert-flyin__id">{ ability.id }</code>
+						{ ability.categoryLabel && (
+							<span className="albert-flyin__category">
+								<span className="albert-flyin__category-label">
+									{ __( 'Category', 'albert-ai-butler' ) }
+								</span>
+								<span className="albert-flyin__category-value">
+									{ ability.categoryLabel }
+								</span>
+							</span>
+						) }
 					</div>
 					<Button
 						icon={ close }
 						label={ __( 'Close', 'albert-ai-butler' ) }
-						onClick={ onClose }
+						onClick={ requestClose }
 						className="albert-flyin__close"
 					/>
 				</header>
@@ -241,62 +350,7 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 						</p>
 					</Section>
 
-					<div className="albert-flyin__cards">
-						<div className="albert-flyin__card">
-							<span className="albert-flyin__card-label">
-								{ __( 'Category', 'albert-ai-butler' ) }
-							</span>
-							<span className="albert-flyin__card-value">
-								{ ability.categoryLabel }
-							</span>
-						</div>
-						<div className="albert-flyin__card">
-							<div className="albert-flyin__card-head">
-								<span className="albert-flyin__card-label">
-									{ __(
-										'Required capability',
-										'albert-ai-butler'
-									) }
-								</span>
-								<InfoPopover
-									label={ __(
-										'About required capability',
-										'albert-ai-butler'
-									) }
-								>
-									<p>
-										{ __(
-											'A WordPress capability that gates this ability — it can run only for users whose role grants this capability. This value is best-effort; an ability or add-on can override it.',
-											'albert-ai-butler'
-										) }
-									</p>
-									{ ability.capabilityRoles?.length > 0 ? (
-										<p>
-											<strong>
-												{ __(
-													'Roles with this capability:',
-													'albert-ai-butler'
-												) }
-											</strong>{ ' ' }
-											{ ability.capabilityRoles.join(
-												', '
-											) }
-										</p>
-									) : (
-										<p>
-											{ __(
-												'No roles currently grant this capability.',
-												'albert-ai-butler'
-											) }
-										</p>
-									) }
-								</InfoPopover>
-							</div>
-							<code className="albert-flyin__card-value">
-								{ ability.capability }
-							</code>
-						</div>
-					</div>
+					<SectionBoundary>{ permissionsSection }</SectionBoundary>
 
 					{ sections.map( ( section ) => (
 						<SectionBoundary key={ section.id }>
@@ -373,11 +427,46 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 				</div>
 
 				<footer className="albert-flyin__footer">
-					<Button variant="tertiary" onClick={ onClose }>
+					<Button variant="tertiary" onClick={ requestClose }>
 						{ __( 'Close', 'albert-ai-butler' ) }
 					</Button>
 				</footer>
 			</div>
+
+			{ closePrompt && (
+				<Modal
+					title={ closePrompt.title }
+					onRequestClose={ () => setClosePrompt( null ) }
+					className="albert-flyin__confirm"
+					size="small"
+				>
+					<p className="albert-flyin__confirm-body">
+						{ closePrompt.body }
+					</p>
+					<div className="albert-flyin__confirm-actions">
+						<Button
+							variant="tertiary"
+							onClick={ () => {
+								setClosePrompt( null );
+								closePrompt.onDiscard?.();
+								onClose();
+							} }
+						>
+							{ closePrompt.discardLabel }
+						</Button>
+						<Button
+							variant="primary"
+							onClick={ () => {
+								setClosePrompt( null );
+								closePrompt.onKeep?.();
+								onClose();
+							} }
+						>
+							{ closePrompt.keepLabel }
+						</Button>
+					</div>
+				</Modal>
+			) }
 		</>
 	);
 }
