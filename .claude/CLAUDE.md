@@ -85,6 +85,7 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 |------|------|---------|
 | `albert/abilities/register` | action | Register custom abilities |
 | `albert/abilities/check_permission` | filter | Gate ability access per role/user (Premium advanced permissions); runs on every ability's permission_callback. See `docs/extending-the-abilities-screen.md` |
+| `albert/abilities/payload_row` | filter | Augment a normalized ability row before it reaches the Abilities screen (e.g. append `badges`). Fires on both the bulk build and single-row paths. See `docs/extending-the-abilities-screen.md` |
 | `albert/abilities/required_capability` | filter | Override the best-effort capability shown on the Abilities screen |
 | `albert/abilities/before_execute` | action | Before any ability runs |
 | `albert/abilities/after_execute` | action | After any ability runs |
@@ -99,6 +100,8 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | `albert/activated` | action | Plugin activated |
 | `albert/deactivated` | action | Plugin deactivated |
 
-JS (client-side) seam for the Abilities DataViews screen: `albert.abilities.panel_sections`
-(`@wordpress/hooks` filter) lets add-ons inject React sections into the detail fly-in. Full contract
-for all three Abilities-screen seams: `docs/extending-the-abilities-screen.md`.
+JS (client-side) seams for the Abilities DataViews screen (`@wordpress/hooks` filters):
+`albert.abilities.permissions_section` replaces the fly-in's Permissions section (its `api` exposes
+`capabilityContent` to reuse and `registerCloseGuard` to confirm before close), and
+`albert.abilities.panel_sections` appends generic sections. Full contract for every Abilities-screen
+seam: `docs/extending-the-abilities-screen.md`.
