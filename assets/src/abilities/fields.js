@@ -128,9 +128,11 @@ function LastUsed( { item } ) {
  * @return {Element} The toggle.
  */
 function EnabledToggle( { item, onToggle } ) {
+	// Name the control after the ability; the checked state conveys on/off (so it
+	// doesn't read "Enable X, checked" when X is already enabled).
 	const label = sprintf(
 		// translators: %s: ability label.
-		__( 'Enable %s', 'albert-ai-butler' ),
+		__( '%s enabled', 'albert-ai-butler' ),
 		item.label
 	);
 	return (

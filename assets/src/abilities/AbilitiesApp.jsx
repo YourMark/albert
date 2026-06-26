@@ -12,11 +12,16 @@
  * wp-components read --wp-admin-theme-color, which we do not override.
  */
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews/wp';
-import { Button, Spinner } from '@wordpress/components';
+import {
+	Button,
+	Spinner,
+	__experimentalConfirmDialog as ConfirmDialog,
+} from '@wordpress/components';
 import {
 	useCallback,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -68,6 +73,16 @@ export default function AbilitiesApp() {
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ error, setError ] = useState( null );
 	const [ openId, setOpenId ] = useState( null );
+	// 'enable' | 'disable' | null — drives the bulk "all" confirm dialog.
+	const [ bulkConfirm, setBulkConfirm ] = useState( null );
+
+	// Move focus to the error banner when one appears so it isn't missed.
+	const errorRef = useRef( null );
+	useEffect( () => {
+		if ( error ) {
+			errorRef.current?.focus();
+		}
+	}, [ error ] );
 
 	useEffect( () => {
 		let active = true;
@@ -143,24 +158,16 @@ export default function AbilitiesApp() {
 		setSelection( [] );
 	}, [] );
 
-	const setAllEnabled = useCallback(
-		( enabled ) => {
-			if (
-				enabled &&
-				// eslint-disable-next-line no-alert
-				! window.confirm(
-					__(
-						'Enable all abilities? This includes abilities that can create, change, or permanently delete data.',
-						'albert-ai-butler'
-					)
-				)
-			) {
-				return;
-			}
-			bulkToggle( items, enabled );
-		},
-		[ items, bulkToggle ]
-	);
+	// Both "all" actions confirm via a styled dialog — enabling can expose
+	// write/delete abilities, and disabling all cuts off every integration.
+	const setAllEnabled = useCallback( ( enabled ) => {
+		setBulkConfirm( enabled ? 'enable' : 'disable' );
+	}, [] );
+
+	const confirmBulkAll = useCallback( () => {
+		bulkToggle( items, bulkConfirm === 'enable' );
+		setBulkConfirm( null );
+	}, [ items, bulkConfirm, bulkToggle ] );
 
 	const actions = useMemo(
 		() => [
@@ -237,7 +244,10 @@ export default function AbilitiesApp() {
 
 	return (
 		<div className="albert-abilities">
-			<header className="albert-abilities__header">
+			<header
+				className="albert-abilities__header"
+				aria-hidden={ openItem ? true : undefined }
+			>
 				<h1 className="albert-abilities__title">
 					{ __( 'Abilities', 'albert-ai-butler' ) }
 				</h1>
@@ -249,7 +259,10 @@ export default function AbilitiesApp() {
 				</p>
 				{ ! isLoading && (
 					<div className="albert-abilities__summary-row">
-						<p className="albert-abilities__summary">
+						<p
+							className="albert-abilities__summary"
+							aria-live="polite"
+						>
 							<span>
 								<strong>{ items.length }</strong>{ ' ' }
 								{ __( 'registered', 'albert-ai-butler' ) }
@@ -286,6 +299,8 @@ export default function AbilitiesApp() {
 				<div
 					className="albert-abilities__error notice notice-error"
 					role="alert"
+					tabIndex={ -1 }
+					ref={ errorRef }
 				>
 					<p>{ error }</p>
 				</div>
@@ -296,7 +311,10 @@ export default function AbilitiesApp() {
 					<Spinner />
 				</div>
 			) : (
-				<div className="albert-abilities__card">
+				<div
+					className="albert-abilities__card"
+					aria-hidden={ openItem ? true : undefined }
+				>
 					<DataViews
 						data={ data }
 						fields={ fields }
@@ -335,6 +353,29 @@ export default function AbilitiesApp() {
 					onClose={ onCloseFlyIn }
 					onToggle={ onToggle }
 				/>
+			) }
+
+			{ bulkConfirm && (
+				<ConfirmDialog
+					isOpen
+					onConfirm={ confirmBulkAll }
+					onCancel={ () => setBulkConfirm( null ) }
+					confirmButtonText={
+						bulkConfirm === 'enable'
+							? __( 'Enable all', 'albert-ai-butler' )
+							: __( 'Disable all', 'albert-ai-butler' )
+					}
+				>
+					{ bulkConfirm === 'enable'
+						? __(
+								'Enable every ability? This includes abilities that can create, change, or permanently delete data.',
+								'albert-ai-butler'
+						  )
+						: __(
+								'Disable every ability? Apps and agents won’t be able to call any ability until you re-enable them.',
+								'albert-ai-butler'
+						  ) }
+				</ConfirmDialog>
 			) }
 		</div>
 	);
