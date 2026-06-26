@@ -23,7 +23,39 @@ const STATUS_ELEMENTS = [
 const SINGLE_SELECT = { operators: [ 'is' ], isPrimary: true };
 
 /**
- * The "Ability" cell: label, monospace id, and a one-line description.
+ * Render an ability's badges as small pills.
+ *
+ * Generic row indicators contributed by add-ons through the PHP
+ * `albert/abilities/payload_row` filter. Each badge is
+ * `{ id, label, tone, title? }`. Renders nothing when the array is empty or
+ * missing.
+ *
+ * @param {Object} props        Render props.
+ * @param {Array}  props.badges The row's badges.
+ * @return {Element|null} The pills, or null when there are none.
+ */
+export function Badges( { badges } ) {
+	if ( ! Array.isArray( badges ) || badges.length === 0 ) {
+		return null;
+	}
+	return (
+		<span className="albert-badges">
+			{ badges.map( ( badge ) => (
+				<span
+					key={ badge.id }
+					className={ `albert-badge albert-badge--${ badge.tone }` }
+					title={ badge.title }
+				>
+					{ badge.label }
+				</span>
+			) ) }
+		</span>
+	);
+}
+
+/**
+ * The "Ability" cell: label, monospace id, a one-line description, and any
+ * add-on badges.
  *
  * @param {Object} props      Render props.
  * @param {Object} props.item The ability row.
@@ -37,6 +69,7 @@ function AbilityCell( { item } ) {
 			<span className="albert-ability-cell__desc">
 				{ item.description }
 			</span>
+			<Badges badges={ item.badges } />
 		</div>
 	);
 }
@@ -110,16 +143,24 @@ function EnabledToggle( { item, onToggle } ) {
 	);
 }
 
+// A badge id can appear on many rows, so the badge filter matches membership in
+// the row's badge-id array. DataViews' `isAny` operator is the one that checks
+// `fieldValue.includes( … )` when getValue returns an array (scalar `is` would
+// never match an array-valued field). Its filter value is an array, so the
+// toolbar wraps the selected id as `[ id ]`.
+const BADGE_FILTER = { operators: [ 'isAny' ], isPrimary: true };
+
 /**
  * Build the DataViews fields array.
  *
  * @param {Object}   options            Options.
  * @param {Array}    options.categories Category filter elements ({ value, label }).
  * @param {Array}    options.suppliers  Supplier filter elements ({ value, label }).
+ * @param {Array}    options.badges     Badge filter elements ({ value, label }).
  * @param {Function} options.onToggle   Toggle handler (item, nextEnabled).
  * @return {Array} DataViews fields.
  */
-export function getFields( { categories, suppliers, onToggle } ) {
+export function getFields( { categories, suppliers, badges, onToggle } ) {
 	return [
 		{
 			id: 'label',
@@ -177,6 +218,20 @@ export function getFields( { categories, suppliers, onToggle } ) {
 			filterBy: SINGLE_SELECT,
 			getValue: ( { item } ) => item.supplier,
 			render: ( { item } ) => item.supplierLabel,
+		},
+		// Generic add-on indicator dimension. getValue returns the row's badge
+		// ids so the `contains` operator can match rows carrying a given badge.
+		{
+			id: 'badges',
+			label: __( 'Badges', 'albert-ai-butler' ),
+			enableHiding: false,
+			enableSorting: false,
+			elements: badges,
+			filterBy: BADGE_FILTER,
+			getValue: ( { item } ) =>
+				Array.isArray( item.badges )
+					? item.badges.map( ( badge ) => badge.id )
+					: [],
 		},
 		{
 			id: 'lastUsed',

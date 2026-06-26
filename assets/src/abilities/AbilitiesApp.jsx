@@ -188,9 +188,30 @@ export default function AbilitiesApp() {
 		[ bulkToggle ]
 	);
 
+	// Badges are contributed per-row by add-ons (via the PHP
+	// `albert/abilities/payload_row` filter), so the filter options are the
+	// deduped union of every badge present in the loaded data.
+	const badges = useMemo( () => {
+		const seen = new Map();
+		items.forEach( ( item ) => {
+			if ( ! Array.isArray( item.badges ) ) {
+				return;
+			}
+			item.badges.forEach( ( badge ) => {
+				if ( ! seen.has( badge.id ) ) {
+					seen.set( badge.id, {
+						value: badge.id,
+						label: badge.label,
+					} );
+				}
+			} );
+		} );
+		return [ ...seen.values() ];
+	}, [ items ] );
+
 	const fields = useMemo(
-		() => getFields( { categories, suppliers, onToggle } ),
-		[ categories, suppliers, onToggle ]
+		() => getFields( { categories, suppliers, badges, onToggle } ),
+		[ categories, suppliers, badges, onToggle ]
 	);
 
 	const { data, paginationInfo } = useMemo(
@@ -294,6 +315,7 @@ export default function AbilitiesApp() {
 							onChangeView={ setView }
 							categories={ categories }
 							suppliers={ suppliers }
+							badges={ badges }
 						/>
 						{ selection.length > 0 && (
 							<div className="albert-abilities__bulkbar">

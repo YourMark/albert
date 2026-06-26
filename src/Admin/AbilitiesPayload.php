@@ -141,7 +141,7 @@ class AbilitiesPayload {
 		$source      = AbilitiesRegistry::get_ability_source( $id );
 		$capability  = AbilitiesRegistry::resolve_required_capability( $ability );
 
-		return [
+		$row = [
 			'id'              => $id,
 			'label'           => $ability->get_label(),
 			'description'     => $ability->get_description(),
@@ -154,6 +154,7 @@ class AbilitiesPayload {
 			'capability'      => $capability,
 			'capabilityRoles' => self::roles_with_capability( $capability, $roles ),
 			'lastUsed'        => self::last_used( $log ),
+			'badges'          => [],
 			'inputs'          => self::inputs( $ability->get_input_schema() ),
 			'output'          => self::output( $ability->get_output_schema() ),
 			'annotations'     => array_map(
@@ -166,6 +167,29 @@ class AbilitiesPayload {
 				$chips
 			),
 		];
+
+		/**
+		 * Filters a single normalized ability row before it reaches the screen.
+		 *
+		 * Fires for every row on both the bulk build path (the full screen
+		 * dataset) and the single-row path (after a toggle), so an add-on can
+		 * augment rows consistently — for example to append a "badges" entry that
+		 * surfaces a row indicator in the overview cell and the detail fly-in.
+		 * Each badge is `{ id, label, tone, title? }`, where `tone` is one of
+		 * `info`, `warning`, or `neutral`.
+		 *
+		 * Social contract: add-ons may APPEND keys to `$row` but must not remove
+		 * or overwrite the core keys Albert sets — Core (and other add-ons) rely
+		 * on them being present and unchanged.
+		 *
+		 * @since 1.3.0
+		 *
+		 * @param array<string, mixed> $row     The normalized ability row.
+		 * @param \WP_Ability          $ability The ability the row was built from.
+		 */
+		$row = apply_filters( 'albert/abilities/payload_row', $row, $ability );
+
+		return $row;
 	}
 
 	/**

@@ -53,9 +53,16 @@ function withAll( elements, allLabel ) {
  * @param {Function} props.onChangeView View setter.
  * @param {Array}    props.categories   Category filter elements.
  * @param {Array}    props.suppliers    Supplier filter elements.
+ * @param {Array}    props.badges       Badge filter elements.
  * @return {Element} The toolbar.
  */
-export default function Toolbar( { view, onChangeView, categories, suppliers } ) {
+export default function Toolbar( {
+	view,
+	onChangeView,
+	categories,
+	suppliers,
+	badges,
+} ) {
 	const filterValue = ( field ) =>
 		view.filters?.find( ( filter ) => filter.field === field )?.value ?? '';
 
@@ -67,6 +74,25 @@ export default function Toolbar( { view, onChangeView, categories, suppliers } )
 			value === ''
 				? others
 				: [ ...others, { field, operator: 'is', value } ];
+		onChangeView( { ...view, filters, page: 1 } );
+	};
+
+	// Badges live in an array on each row, so they use DataViews' `isAny`
+	// operator (array filter value). Read back the single selected id and write
+	// it as a one-element array.
+	const badgeValue = () => {
+		const value = filterValue( 'badges' );
+		return Array.isArray( value ) ? value[ 0 ] ?? '' : '';
+	};
+
+	const setBadgeFilter = ( value ) => {
+		const others = ( view.filters || [] ).filter(
+			( filter ) => filter.field !== 'badges'
+		);
+		const filters =
+			value === ''
+				? others
+				: [ ...others, { field: 'badges', operator: 'isAny', value: [ value ] } ];
 		onChangeView( { ...view, filters, page: 1 } );
 	};
 
@@ -111,6 +137,19 @@ export default function Toolbar( { view, onChangeView, categories, suppliers } )
 					__( 'Filter by supplier', 'albert-ai-butler' ),
 					'supplier',
 					withAll( suppliers, __( 'All suppliers', 'albert-ai-butler' ) )
+				) }
+				{ badges?.length > 0 && (
+					<SelectControl
+						__nextHasNoMarginBottom
+						hideLabelFromVision
+						label={ __( 'Filter by badge', 'albert-ai-butler' ) }
+						value={ badgeValue() }
+						options={ withAll(
+							badges,
+							__( 'All badges', 'albert-ai-butler' )
+						) }
+						onChange={ setBadgeFilter }
+					/>
 				) }
 			</div>
 			<div className="albert-toolbar__group albert-toolbar__group--end">
