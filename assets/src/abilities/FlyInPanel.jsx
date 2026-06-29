@@ -160,15 +160,14 @@ function Section( { title, info: infoControl, children } ) {
 }
 
 /**
- * A collapsible section — an accessible disclosure (collapsed by default) whose
- * heading shows a short summary so the gist is visible without expanding. Used
- * for the input schema, which is reference detail, not governance content.
+ * A collapsible accordion card — an accessible disclosure (collapsed by default)
+ * whose heading shows a short summary so the gist is visible without expanding.
+ * Used for the parameters list, which is reference detail.
  *
  * @param {Object}  props             Props.
  * @param {string}  props.id          Id for the disclosure region (aria-controls target).
  * @param {string}  props.title       Section heading.
  * @param {string}  [props.summary]   Short summary shown beside the heading.
- * @param {Element} [props.info]      Optional info control next to the title.
  * @param {boolean} [props.defaultOpen] Whether it starts expanded (default false).
  * @param {Element} props.children    Section body.
  * @return {Element} The section.
@@ -177,40 +176,38 @@ function CollapsibleSection( {
 	id,
 	title,
 	summary,
-	info: infoControl,
 	defaultOpen = false,
 	children,
 } ) {
 	const [ open, setOpen ] = useState( defaultOpen );
 	return (
-		<section className="albert-flyin__section">
-			<div className="albert-flyin__section-head">
-				<h3 className="albert-flyin__section-title">
-					<button
-						type="button"
-						className="albert-flyin__disclosure"
-						aria-expanded={ open }
-						aria-controls={ id }
-						onClick={ () => setOpen( ( value ) => ! value ) }
-					>
-						<Icon
-							className="albert-flyin__disclosure-chevron"
-							icon={ chevronRight }
-							size={ 18 }
-						/>
-						<span>{ title }</span>
-						{ summary && (
-							<span className="albert-flyin__section-summary">
-								{ summary }
-							</span>
-						) }
-					</button>
-				</h3>
-				{ infoControl }
-			</div>
+		<section className="albert-flyin__accordion">
+			<h3 className="albert-flyin__accordion-heading">
+				<button
+					type="button"
+					className="albert-flyin__accordion-toggle"
+					aria-expanded={ open }
+					aria-controls={ id }
+					onClick={ () => setOpen( ( value ) => ! value ) }
+				>
+					<Icon
+						className="albert-flyin__accordion-chevron"
+						icon={ chevronRight }
+						size={ 18 }
+					/>
+					<span className="albert-flyin__accordion-title">
+						{ title }
+					</span>
+					{ summary && (
+						<span className="albert-flyin__accordion-summary">
+							{ summary }
+						</span>
+					) }
+				</button>
+			</h3>
 			<div
 				id={ id }
-				className="albert-flyin__disclosure-panel"
+				className="albert-flyin__accordion-panel"
 				hidden={ ! open }
 			>
 				{ children }
@@ -464,6 +461,53 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 						</p>
 					</Section>
 
+					{ ability.inputs.length > 0 && (
+						<CollapsibleSection
+							id="albert-flyin-parameters"
+							title={ __( 'Inputs', 'albert-ai-butler' ) }
+							summary={ inputSummary }
+						>
+							<ul className="albert-flyin__params">
+								{ ability.inputs.map( ( field ) => (
+									<li
+										key={ field.name }
+										className={
+											'albert-flyin__param' +
+											( field.required
+												? ' is-required'
+												: '' )
+										}
+									>
+										<div className="albert-flyin__param-head">
+											<code className="albert-flyin__param-name">
+												{ field.name }
+											</code>
+											<span className="albert-flyin__param-type">
+												{ field.type }
+											</span>
+											<span className="albert-flyin__param-flag">
+												{ field.required
+													? __(
+															'Required',
+															'albert-ai-butler'
+													  )
+													: __(
+															'Optional',
+															'albert-ai-butler'
+													  ) }
+											</span>
+										</div>
+										{ field.description && (
+											<p className="albert-flyin__param-desc">
+												{ field.description }
+											</p>
+										) }
+									</li>
+								) ) }
+							</ul>
+						</CollapsibleSection>
+					) }
+
 					<SectionBoundary>{ permissionsSection }</SectionBoundary>
 
 					{ sections.map( ( section ) => (
@@ -475,63 +519,6 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 							/>
 						</SectionBoundary>
 					) ) }
-
-					{ ability.inputs.length > 0 && (
-						<CollapsibleSection
-							id="albert-flyin-input-schema"
-							title={ __( 'Inputs', 'albert-ai-butler' ) }
-							summary={ inputSummary }
-							info={
-								<InfoPopover
-									label={ __(
-										'About the inputs',
-										'albert-ai-butler'
-									) }
-								>
-									<p>
-										{ __(
-											'The parameters this ability accepts. An AI assistant supplies these when it calls the ability — fields marked * are required, the rest are optional.',
-											'albert-ai-butler'
-										) }
-									</p>
-								</InfoPopover>
-							}
-						>
-							<ul className="albert-flyin__schema">
-								{ ability.inputs.map( ( field ) => (
-									<li
-										key={ field.name }
-										className="albert-flyin__field"
-									>
-										<div className="albert-flyin__field-head">
-											<code className="albert-flyin__field-name">
-												{ field.name }
-											</code>
-											{ field.required && (
-												<span
-													className="albert-flyin__field-required"
-													aria-label={ __(
-														'required',
-														'albert-ai-butler'
-													) }
-												>
-													*
-												</span>
-											) }
-											<span className="albert-flyin__field-type">
-												{ field.type }
-											</span>
-										</div>
-										{ field.description && (
-											<p className="albert-flyin__field-desc">
-												{ field.description }
-											</p>
-										) }
-									</li>
-								) ) }
-							</ul>
-						</CollapsibleSection>
-					) }
 
 					{ ability.output && (
 						<Section title={ __( 'Returns', 'albert-ai-butler' ) }>

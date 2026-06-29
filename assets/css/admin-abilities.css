@@ -380,58 +380,152 @@
 	color: #6c7177;
 }
 
-/* Collapsible section heading (disclosure button styled as the eyebrow title). */
-.albert-flyin__disclosure {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
+/* Parameters accordion card (collapsible), placed under the description. */
+.albert-flyin__accordion {
+	/* flex:none — the body is a flex column; overflow:hidden would otherwise
+	   strip the item's auto min-height and let it collapse. */
+	flex: none;
+	border: 1px solid #e8e8e8;
+	border-radius: 6px;
+	background: #fff;
+	overflow: hidden;
+}
+
+.albert-flyin__accordion-heading {
 	margin: 0;
-	padding: 0;
+}
+
+.albert-flyin__accordion-toggle {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	inline-size: 100%;
+	margin: 0;
+	padding: 9px 12px;
 	border: 0;
 	background: none;
 	font: inherit;
-	letter-spacing: inherit;
-	text-transform: inherit;
-	color: inherit;
 	cursor: pointer;
+	transition: background 0.15s ease;
 }
 
-.albert-flyin__disclosure:focus-visible {
+.albert-flyin__accordion-toggle:hover {
+	background: #f6f7f7;
+}
+
+.albert-flyin__accordion-toggle:focus-visible {
 	outline: 2px solid var( --wp-admin-theme-color, #2271b1 );
-	outline-offset: 2px;
-	border-radius: 2px;
+	outline-offset: -2px;
 }
 
-.albert-flyin__disclosure-chevron {
-	fill: currentcolor;
+.albert-flyin__accordion-chevron {
+	flex: none;
+	fill: #50575e;
 	transition: transform 0.15s ease;
 }
 
-.albert-flyin__disclosure[ aria-expanded="true" ] .albert-flyin__disclosure-chevron {
+.albert-flyin__accordion-toggle[ aria-expanded="true" ]
+	.albert-flyin__accordion-chevron {
 	transform: rotate( 90deg );
 }
 
 @media ( prefers-reduced-motion: reduce ) {
-	.albert-flyin__disclosure-chevron {
+	.albert-flyin__accordion-chevron {
 		transition: none;
 	}
 }
 
-/* Summary shown beside the heading when collapsed (e.g. "6 fields · 2 required"). */
-.albert-flyin__section-summary {
-	margin-inline-start: 6px;
-	font-weight: 400;
-	letter-spacing: normal;
-	text-transform: none;
+.albert-flyin__accordion-title {
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #2c3338;
+}
+
+.albert-flyin__accordion-summary {
+	margin-inline-start: auto;
+	font-size: 12px;
 	color: #6c7177;
 }
 
-.albert-flyin__disclosure-panel {
-	margin-top: 10px;
+.albert-flyin__accordion-panel {
+	border-block-start: 1px solid #f0f0f1;
 }
 
-.albert-flyin__disclosure-panel[ hidden ] {
+.albert-flyin__accordion-panel[ hidden ] {
 	display: none;
+}
+
+/* Parameter rows. Required rows get a left accent bar + a tinted background. */
+.albert-flyin__params {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.albert-flyin__param {
+	margin: 0;
+	padding: 8px 12px;
+	border-block-end: 1px solid #f4f4f5;
+}
+
+.albert-flyin__param:last-child {
+	border-block-end: 0;
+}
+
+.albert-flyin__param.is-required {
+	border-inline-start: 2px solid var( --wp-admin-theme-color, #2271b1 );
+	padding-inline-start: 10px;
+	background: color-mix(
+		in oklch,
+		var( --wp-admin-theme-color, #2271b1 ) 4%,
+		#fff
+	);
+}
+
+.albert-flyin__param-head {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+}
+
+.albert-flyin__param-name {
+	padding: 0;
+	background: none;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12px;
+	font-weight: 600;
+	color: #1e1e1e;
+}
+
+.albert-flyin__param-type {
+	padding: 0 6px;
+	border-radius: 3px;
+	background: #f0f0f1;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 10.5px;
+	color: #50575e;
+}
+
+.albert-flyin__param-flag {
+	margin-inline-start: auto;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	color: #6c7177;
+}
+
+.albert-flyin__param.is-required .albert-flyin__param-flag {
+	color: var( --wp-admin-theme-color, #2271b1 );
+}
+
+.albert-flyin__param-desc {
+	margin: 3px 0 0;
+	font-size: 12px;
+	line-height: 1.45;
+	color: #646970;
 }
 
 .albert-flyin__description,
@@ -481,55 +575,6 @@
 code.albert-flyin__card-value {
 	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	font-size: 12.5px;
-}
-
-.albert-flyin__schema {
-	margin: 0;
-	padding: 0;
-	list-style: none;
-	border: 1px solid #e0e0e0;
-	border-radius: 5px;
-	overflow: hidden;
-}
-
-.albert-flyin__field {
-	padding: 11px 13px;
-	border-top: 1px solid #f0f0f1;
-}
-
-.albert-flyin__field:first-child {
-	border-top: none;
-}
-
-.albert-flyin__field-head {
-	display: flex;
-	align-items: baseline;
-	gap: 6px;
-}
-
-.albert-flyin__field-name {
-	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-	font-size: 12.5px;
-	font-weight: 600;
-	color: #1e1e1e;
-	background: none;
-	padding: 0;
-}
-
-.albert-flyin__field-required {
-	color: #d63638;
-}
-
-.albert-flyin__field-type {
-	font-size: 11px;
-	color: #646970;
-}
-
-.albert-flyin__field-desc {
-	margin: 2px 0 0;
-	font-size: 12.5px;
-	line-height: 1.5;
-	color: #3c434a;
 }
 
 .albert-flyin__pills {
@@ -705,6 +750,55 @@ code.albert-flyin__card-value {
 /* Permissions section — Free default. Mirrors Premium's Capability/Custom
    toggle; the Custom tab is a locked preview + upsell (Premium replaces the
    whole section when active, so this is never shown alongside it). */
+
+/* "Slide button" toggle: a light track with an inset white pill that slides
+   between options. The component keeps the active option's box in --selected-*
+   and transitions its ::before; we re-style that ::before as a soft pill,
+   positioned from those vars but inset 4px (no control padding, which would
+   double-offset it). The slide comes from transitioning the position. */
+.albert-perms-upsell .components-toggle-group-control {
+	background: #f0f0f1;
+	border: none;
+	border-radius: 10px;
+	box-shadow: none;
+}
+
+.albert-perms-upsell .components-toggle-group-control::before {
+	top: calc( var( --selected-top, 0 ) * 1px + 4px );
+	left: 0;
+	width: calc( var( --selected-width, 0 ) * 1px - 8px );
+	height: calc( var( --selected-height, 0 ) * 1px - 8px );
+	/* Move horizontally with transform — unlike `left`, a transform driven by a
+	   changing custom property interpolates, so the pill slides instead of
+	   jumping. The +4px is the inset. */
+	transform: translateX( calc( var( --selected-left, 0 ) * 1px + 4px ) );
+	background: #fff;
+	border: none;
+	border-radius: 6px;
+	box-shadow: 0 1px 3px oklch( 0 0 0 / 0.16 ),
+		0 1px 1px oklch( 0 0 0 / 0.07 );
+	transition: transform 0.18s ease, width 0.18s ease;
+}
+
+.albert-perms-upsell .components-toggle-group-control-option-base {
+	position: relative;
+	z-index: 1;
+	background: transparent;
+	border: none;
+	color: #5e636a;
+}
+
+.albert-perms-upsell
+	.components-toggle-group-control-option-base[ aria-checked="true" ] {
+	color: #1e1e1e;
+}
+
+@media ( prefers-reduced-motion: reduce ) {
+	.albert-perms-upsell .components-toggle-group-control::before {
+		transition: none;
+	}
+}
+
 .albert-perms-upsell__capability {
 	margin-block-start: 16px;
 }
