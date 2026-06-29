@@ -34,6 +34,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import { chevronRight, close } from '@wordpress/icons';
 import { OPERATION_LABELS } from './constants';
 import { Badges } from './fields';
+import AdvancedPermissionsUpsell from './AdvancedPermissionsUpsell';
 
 /**
  * An info "(i)" button that opens a small explanatory popover.
@@ -360,7 +361,9 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 	const permissionsSection = applyFilters(
 		'albert.abilities.permissions_section',
 		<Section title={ __( 'Permissions', 'albert-ai-butler' ) }>
-			{ capabilityContent }
+			<AdvancedPermissionsUpsell
+				capabilityContent={ capabilityContent }
+			/>
 		</Section>,
 		permissionsApi
 	);
