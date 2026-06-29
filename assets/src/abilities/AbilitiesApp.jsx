@@ -31,6 +31,7 @@ import {
 	setAbilitiesEnabledBulk,
 } from './api';
 import { getFields } from './fields';
+import { viewFromUrl, syncViewToUrl } from './url';
 import Toolbar from './Toolbar';
 import FlyInPanel from './FlyInPanel';
 
@@ -68,7 +69,8 @@ export default function AbilitiesApp() {
 	const [ categories, setCategories ] = useState( [] );
 	const [ suppliers, setSuppliers ] = useState( [] );
 	const [ roles, setRoles ] = useState( [] );
-	const [ view, setView ] = useState( DEFAULT_VIEW );
+	// Initialise from the URL so a shared/bookmarked link opens pre-filtered.
+	const [ view, setView ] = useState( () => viewFromUrl( DEFAULT_VIEW ) );
 	const [ selection, setSelection ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ error, setError ] = useState( null );
@@ -84,6 +86,12 @@ export default function AbilitiesApp() {
 		}
 	}, [ error ] );
 
+	// Mirror the view (search, filters, sort, layout, page) into the URL so it
+	// can be shared and bookmarked. replaceState keeps history clean.
+	useEffect( () => {
+		syncViewToUrl( view );
+	}, [ view ] );
+
 	useEffect( () => {
 		let active = true;
 		fetchAbilities()
@@ -96,7 +104,9 @@ export default function AbilitiesApp() {
 				setSuppliers( payload.suppliers );
 				setRoles( payload.roles || [] );
 			} )
-			.catch( ( err ) => active && setError( err.message || String( err ) ) )
+			.catch(
+				( err ) => active && setError( err.message || String( err ) )
+			)
 			.finally( () => active && setIsLoading( false ) );
 		return () => {
 			active = false;
