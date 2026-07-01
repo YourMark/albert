@@ -751,19 +751,61 @@ code.albert-flyin__card-value {
    toggle; the Custom tab is a locked preview + upsell (Premium replaces the
    whole section when active, so this is never shown alongside it). */
 
+/* One bordered panel wrapping the description + toggle + active tab content, so
+   the section reads as a single unit. Shared with Premium (same class, defined
+   identically in both stylesheets). */
+.albert-perms-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	padding: 14px;
+	border: 1px solid #e0e0e0;
+	border-radius: 8px;
+	background: #fff;
+}
+
+.albert-perms-panel__intro {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.5;
+	color: #50575e;
+}
+
+/* The shared "Required capability" card is unframed inside the panel (no
+   box-in-box); scoped so the card keeps its border anywhere else. */
+.albert-perms-panel .albert-flyin__card--capability {
+	border: 0;
+	padding: 0;
+	border-radius: 0;
+}
+
+/* Custom toggle option: label + a small lock icon signalling it's gated. */
+.albert-perms-upsell__custom-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.albert-perms-upsell__custom-label .dashicons-lock {
+	font-size: 14px;
+	inline-size: 14px;
+	block-size: 14px;
+	line-height: 1;
+}
+
 /* "Slide button" toggle: a light track with an inset white pill that slides
    between options. The component keeps the active option's box in --selected-*
    and transitions its ::before; we re-style that ::before as a soft pill,
    positioned from those vars but inset 4px (no control padding, which would
    double-offset it). The slide comes from transitioning the position. */
-.albert-perms-upsell .components-toggle-group-control {
+.albert-perms-panel .components-toggle-group-control {
 	background: #f0f0f1;
 	border: none;
 	border-radius: 10px;
 	box-shadow: none;
 }
 
-.albert-perms-upsell .components-toggle-group-control::before {
+.albert-perms-panel .components-toggle-group-control::before {
 	top: calc( var( --selected-top, 0 ) * 1px + 4px );
 	left: 0;
 	width: calc( var( --selected-width, 0 ) * 1px - 8px );
@@ -780,7 +822,7 @@ code.albert-flyin__card-value {
 	transition: transform 0.18s ease, width 0.18s ease;
 }
 
-.albert-perms-upsell .components-toggle-group-control-option-base {
+.albert-perms-panel .components-toggle-group-control-option-base {
 	position: relative;
 	z-index: 1;
 	background: transparent;
@@ -794,25 +836,15 @@ code.albert-flyin__card-value {
 }
 
 @media ( prefers-reduced-motion: reduce ) {
-	.albert-perms-upsell .components-toggle-group-control::before {
+	.albert-perms-panel .components-toggle-group-control::before {
 		transition: none;
 	}
 }
 
-.albert-perms-upsell__capability {
-	margin-block-start: 16px;
-}
-
+/* Tab content sits directly under the toggle; the panel's flex gap spaces it. */
 .albert-perms-upsell__custom {
-	margin-block-start: 16px;
-}
-
-.albert-perms-upsell__pitch {
-	margin: 0 0 10px;
-	font-size: 13px;
-	font-weight: 600;
-	line-height: 1.4;
-	color: #1e1e1e;
+	display: flex;
+	flex-direction: column;
 }
 
 .albert-perms-upsell__benefits {

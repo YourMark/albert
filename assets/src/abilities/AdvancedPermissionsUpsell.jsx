@@ -28,7 +28,14 @@ export default function AdvancedPermissionsUpsell( { capabilityContent } ) {
 	const [ mode, setMode ] = useState( 'capability' );
 
 	return (
-		<div className="albert-perms-upsell">
+		<div className="albert-perms-upsell albert-perms-panel">
+			<p className="albert-perms-panel__intro">
+				{ __(
+					'Control who can use this ability — by its required capability, or with custom per-role and per-user rules.',
+					'albert-ai-butler'
+				) }
+			</p>
+
 			<ToggleGroupControl
 				__nextHasNoMarginBottom
 				__next40pxDefaultSize
@@ -46,7 +53,19 @@ export default function AdvancedPermissionsUpsell( { capabilityContent } ) {
 				/>
 				<ToggleGroupControlOption
 					value="custom"
-					label={ __( 'Custom rules (Premium)', 'albert-ai-butler' ) }
+					aria-label={ __(
+						'Custom rules (Premium)',
+						'albert-ai-butler'
+					) }
+					label={
+						<span className="albert-perms-upsell__custom-label">
+							{ __( 'Custom rules', 'albert-ai-butler' ) }
+							<span
+								className="dashicons dashicons-lock"
+								aria-hidden="true"
+							/>
+						</span>
+					}
 				/>
 			</ToggleGroupControl>
 
@@ -58,13 +77,6 @@ export default function AdvancedPermissionsUpsell( { capabilityContent } ) {
 
 			{ mode === 'custom' && (
 				<div className="albert-perms-upsell__custom">
-					<p className="albert-perms-upsell__pitch">
-						{ __(
-							'Control exactly who can use any ability over MCP:',
-							'albert-ai-butler'
-						) }
-					</p>
-
 					<ul className="albert-perms-upsell__benefits">
 						<li>
 							{ __(

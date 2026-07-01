@@ -357,7 +357,27 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 	};
 	const permissionsSection = applyFilters(
 		'albert.abilities.permissions_section',
-		<Section title={ __( 'Permissions', 'albert-ai-butler' ) }>
+		<Section
+			title={ __( 'Permissions', 'albert-ai-butler' ) }
+			info={
+				<InfoPopover
+					label={ __( 'About permissions', 'albert-ai-butler' ) }
+				>
+					<p>
+						{ __(
+							'Controls who can invoke this ability over MCP. By default it follows the required WordPress capability.',
+							'albert-ai-butler'
+						) }
+					</p>
+					<p>
+						{ __(
+							'Albert Premium adds custom per-role and per-user rules that override the capability check.',
+							'albert-ai-butler'
+						) }
+					</p>
+				</InfoPopover>
+			}
+		>
 			<AdvancedPermissionsUpsell
 				capabilityContent={ capabilityContent }
 			/>
