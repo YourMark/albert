@@ -84,7 +84,6 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | Hook | Type | Purpose |
 |------|------|---------|
 | `albert/abilities/register` | action | Register custom abilities |
-| `albert/abilities/check_permission` | filter | Gate ability access per role/user (Premium advanced permissions); runs on every ability's permission_callback. See `docs/extending-the-abilities-screen.md` |
 | `albert/abilities/payload_row` | filter | Augment a normalized ability row before it reaches the Abilities screen (e.g. append `badges`). Fires on both the bulk build and single-row paths. See `docs/extending-the-abilities-screen.md` |
 | `albert/abilities/required_capability` | filter | Override the best-effort capability shown on the Abilities screen |
 | `albert/abilities/before_execute` | action | Before any ability runs |

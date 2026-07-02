@@ -74,8 +74,8 @@ class AbilitiesManager implements Hookable {
 		// Bridge show_in_rest to mcp.public for MCP adapter compatibility.
 		add_filter( 'wp_register_ability_args', [ $this, 'normalize_mcp_metadata' ], 10, 2 );
 
-		// Wrap every ability's permission_callback so add-ons (e.g. Premium's
-		// advanced permission manager) can gate access per role/user via the
+		// Wrap every ability's permission_callback so Albert Premium's advanced
+		// permission manager can gate access per role/user via the internal
 		// `albert/abilities/check_permission` filter.
 		add_filter( 'wp_register_ability_args', [ $this, 'wrap_permission_callback' ], 20, 2 );
 	}
@@ -555,10 +555,10 @@ class AbilitiesManager implements Hookable {
 	 *
 	 * Runs the ability's own permission_callback first (preserving its capability
 	 * / REST-delegated check as the baseline), then passes the result through the
-	 * `albert/abilities/check_permission` filter so add-ons can apply per-role or
-	 * per-user rules. Applies to EVERY registered ability — Albert's, WooCommerce's,
-	 * ACF's, and any third party — so add-on rules gate the whole registry the
-	 * admin screen lists.
+	 * internal `albert/abilities/check_permission` filter, which Albert Premium's
+	 * advanced permission rules use to gate per role or per user. Applies to EVERY
+	 * registered ability — Albert's, WooCommerce's, ACF's, and any third party — so
+	 * those rules gate the whole registry the admin screen lists.
 	 *
 	 * The callback runs in WP_Ability::check_permissions() with the connected user
 	 * already set (OAuth via TokenValidator), which is the meaningful "who" for MCP
@@ -580,14 +580,16 @@ class AbilitiesManager implements Hookable {
 			/**
 			 * Filters the permission result for an ability.
 			 *
-			 * Lets add-ons gate access beyond the ability's own capability check —
-			 * e.g. Premium's per-role/per-user advanced permission rules. The
-			 * baseline `$result` is the ability's own permission_callback output
-			 * (true or WP_Error). Return `true` to allow or a WP_Error to deny;
-			 * any other value is treated as denied by WordPress.
+			 * @internal Internal seam for Albert's own permission layer (Albert
+			 * Premium's advanced permission rules). Not a public extension point —
+			 * it may change or be removed without notice; third-party code should
+			 * not rely on it.
 			 *
-			 * Runs with the connected user set, so per-user rules can evaluate
-			 * against `get_current_user_id()` and its roles.
+			 * The baseline `$result` is the ability's own permission_callback output
+			 * (true or WP_Error). A callback returns `true` to allow or a WP_Error to
+			 * deny; any other value is treated as denied by WordPress. Runs with the
+			 * connected user set, so per-user rules can evaluate against
+			 * `get_current_user_id()` and its roles.
 			 *
 			 * @since 1.3.0
 			 *

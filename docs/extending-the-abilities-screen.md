@@ -1,15 +1,14 @@
 # Extending the Abilities screen
 
 The `Albert → Abilities` screen (the `@wordpress/dataviews` admin app) exposes extension points so
-add-ons — notably **Albert Premium Service** — can add UI to the detail fly-in and enforce custom
-access rules, without Core depending on the add-on.
+add-ons — notably **Albert Premium Service** — can add UI to the detail fly-in and surface row
+indicators, without Core depending on the add-on.
 
 | Seam | Type | Where it runs |
 |---|---|---|
 | `albert.abilities.permissions_section` | JS filter (`@wordpress/hooks`) | The fly-in "Permissions" section (replace) |
 | `albert.abilities.panel_sections` | JS filter (`@wordpress/hooks`) | The fly-in body (append generic sections) |
 | `albert/abilities/payload_row` | PHP filter | Each row, as the screen payload is built |
-| `albert/abilities/check_permission` | PHP filter | Every ability's `permission_callback` |
 | `albert/abilities/required_capability` | PHP filter | When the screen resolves an ability's capability |
 
 The two JS seams need the add-on script enqueued on the abilities page; see
@@ -169,44 +168,7 @@ it *means* is the add-on's concern.
 
 ---
 
-## 4. Enforce custom access — `albert/abilities/check_permission`
-
-Every registered ability's `permission_callback` is wrapped so this filter runs after the ability's
-own capability check. It applies to **all** abilities (Albert, WooCommerce, ACF, third-party).
-
-```php
-add_filter(
-	'albert/abilities/check_permission',
-	function ( $result, string $ability_id, int $user_id ) {
-		// $result is the baseline (true, or a WP_Error from the capability check).
-		// Return true to allow, or a WP_Error to deny. Any other value = denied.
-		return $result;
-	},
-	10,
-	3
-);
-```
-
-- Runs inside `WP_Ability::check_permissions()`, with the **connected user already set** (the OAuth
-  user for MCP calls, via `OAuth\Server\TokenValidator`), so `get_current_user_id()` and its roles
-  are the meaningful "who".
-- WordPress treats the callback as **denied unless it returns exactly `true`**.
-- Gates both discovery and execution. It's per-user, so the ability stays registered but is denied
-  for that user (different from the global enable/disable toggle, which unregisters).
-
-### Rule model (as implemented by Premium)
-
-Premium stores, per ability id, `{ mode: 'capability' | 'custom', rules: [ … ] }`, where each rule
-is `{ action: 'enable' | 'disable', subject: 'role' | 'user', operator: 'is' | 'is_not', values:
-string[] | int[] }`.
-
-- **`capability` mode** (or no rule) → return `$result` unchanged (the baseline capability stands).
-- **`custom` mode** → **full override**: ignore `$result`, evaluate rules top-to-bottom, the **first
-  matching** rule decides (`enable` → allow, `disable` → deny). No match → deny.
-
----
-
-## 5. Correct the displayed capability — `albert/abilities/required_capability`
+## 4. Correct the displayed capability — `albert/abilities/required_capability`
 
 The screen shows a best-effort "Required capability". Override it precisely:
 
