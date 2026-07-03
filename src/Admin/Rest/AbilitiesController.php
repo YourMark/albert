@@ -209,7 +209,9 @@ class AbilitiesController implements Hookable {
 	 * @since 1.3.0
 	 */
 	private function is_abilities_request(): bool {
-		$uri = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+		// Input sanitizer (not esc_url_raw, which is an output escaper and would
+		// mangle encoded path characters). The value is only substring-matched.
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
 
 		// Match the path only — a query string like ?q=albert/v1/abilities on an
 		// unrelated REST request must not count as our endpoint.

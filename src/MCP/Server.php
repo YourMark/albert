@@ -120,11 +120,18 @@ class Server implements Hookable {
 
 				$name = $tool->getName();
 
-				// The adapter's own meta-tools (discover/get-info/execute) gate on
-				// a target-ability *argument*, not on the user, so a []-args check
-				// would wrongly hide them. They are infrastructure — always list
-				// them; the ability they proxy is still gated on execution.
-				if ( str_starts_with( $name, 'mcp-adapter/' ) ) {
+				// The adapter's own meta-tools gate on a target-ability *argument*,
+				// not on the user, so a []-args check would wrongly hide them. They
+				// are infrastructure — always list them; the ability they proxy is
+				// still gated on execution. Match an exact allowlist rather than the
+				// `mcp-adapter/` prefix so a future ability can't be named to slip
+				// through the gate.
+				$meta_tools = [
+					'mcp-adapter/discover-abilities',
+					'mcp-adapter/get-ability-info',
+					'mcp-adapter/execute-ability',
+				];
+				if ( in_array( $name, $meta_tools, true ) ) {
 					return true;
 				}
 

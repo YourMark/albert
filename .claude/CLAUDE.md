@@ -96,6 +96,7 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | `albert/logging/enabled` | filter | Disable Free's ability log (Premium uses this) |
 | `albert/blocks/read_block_limit` | filter | Default top-level blocks per read window (default 200; 0 = unlimited) |
 | `albert/blocks/read_max_bytes` | filter | Per-field byte cap on read text representations (default 50000) |
+| `albert/mcp/hide_unauthorized_tools` | filter | Hide MCP tools the connected user can't execute from `tools/list`, so discovery matches what's callable (default true; false = list all, deny on call) |
 | `albert/activated` | action | Plugin activated |
 | `albert/deactivated` | action | Plugin deactivated |
 
