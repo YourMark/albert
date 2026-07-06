@@ -1,0 +1,27 @@
+{
+  "name": "albert-ai-butler",
+  "version": "1.3.0",
+  "private": true,
+  "description": "Build tooling for the Albert AI Butler admin React surfaces (Abilities DataViews screen).",
+  "license": "GPL-2.0-or-later",
+  "scripts": {
+    "start": "wp-scripts start",
+    "build": "wp-scripts build",
+    "lint:js": "wp-scripts lint-js assets/src",
+    "format:js": "wp-scripts format assets/src"
+  },
+  "devDependencies": {
+    "@wordpress/api-fetch": "^7.48.1",
+    "@wordpress/components": "^35.0.1",
+    "@wordpress/compose": "^8.2.0",
+    "@wordpress/element": "^8.0.1",
+    "@wordpress/hooks": "^4.49.0",
+    "@wordpress/i18n": "^6.21.1",
+    "@wordpress/icons": "^15.0.0",
+    "@wordpress/scripts": "^32.4.1",
+    "copy-webpack-plugin": "^10.2.4"
+  },
+  "dependencies": {
+    "@wordpress/dataviews": "^16.0.1"
+  }
+}

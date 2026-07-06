@@ -17,6 +17,7 @@ use Albert\Logging\ObservabilityHandler;
 use Albert\MCP\Skills\SkillLoader;
 use Albert\OAuth\Server\TokenValidator;
 use Albert\Vendor\WP\MCP\Core\McpAdapter;
+use Albert\Vendor\WP\MCP\Core\McpServer;
 use Albert\Vendor\WP\MCP\Domain\Prompts\McpPrompt;
 use Albert\Vendor\WP\MCP\Domain\Resources\McpResource;
 use Albert\Vendor\WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
@@ -61,9 +62,92 @@ class Server implements Hookable {
 		add_action( 'mcp_adapter_init', [ $this, 'create_server' ] );
 		add_filter( 'rest_request_before_callbacks', [ $this, 'add_oauth_discovery_headers' ], 10, 3 );
 
+		// Hide tools the connected user can't execute from tools/list, so
+		// discovery matches what's actually callable (the adapter only enforces
+		// permission on tools/call).
+		add_filter( 'mcp_adapter_tools_list', [ $this, 'hide_unauthorized_tools' ], 10, 2 );
+
 		// Improve LLM-facing tool errors and log failures rejected before the
 		// ability runs (e.g. input-schema validation).
 		( new ToolCallObserver() )->register_hooks();
+	}
+
+	/**
+	 * Hide tools the connected user cannot execute from tools/list.
+	 *
+	 * The adapter lists every registered tool regardless of permission — only
+	 * tools/call enforces it — so a client (e.g. Claude Desktop) sees tools it
+	 * can't actually run. This drops any tool whose permission check fails for the
+	 * connected user, making discovery consistent with execution. It reuses the
+	 * ability permission pipeline (WP_Ability::check_permissions() via the wrapped
+	 * permission_callback), so it honours both the baseline capability and Albert
+	 * Premium's advanced permission rules without knowing about either.
+	 *
+	 * Bound to the global `mcp_adapter_tools_list` filter. Guarded by an instanceof
+	 * check so it only touches Albert's own server, never another plugin's (e.g.
+	 * WooCommerce's) MCP server that fires the same hook.
+	 *
+	 * @param array<int, object> $tools  Tool DTOs about to be returned to the client.
+	 * @param object             $server The MCP server firing the filter.
+	 *
+	 * @return array<int, object> The filtered tool list.
+	 * @since 1.3.0
+	 */
+	public function hide_unauthorized_tools( array $tools, object $server ): array {
+		if ( ! $server instanceof McpServer ) {
+			return $tools;
+		}
+
+		/**
+		 * Filters whether tools the connected user can't execute are hidden from
+		 * discovery. Default true — the listed tools match what's callable. Set
+		 * false to fall back to the adapter default (list everything, deny on call).
+		 *
+		 * @since 1.3.0
+		 *
+		 * @param bool $enabled Whether to hide unauthorized tools from tools/list.
+		 */
+		if ( ! apply_filters( 'albert/mcp/hide_unauthorized_tools', true ) ) {
+			return $tools;
+		}
+
+		$allowed = array_filter(
+			$tools,
+			static function ( $tool ) use ( $server ): bool {
+				if ( ! is_object( $tool ) || ! method_exists( $tool, 'getName' ) ) {
+					return true;
+				}
+
+				$name = $tool->getName();
+
+				// The adapter's own meta-tools gate on a target-ability *argument*,
+				// not on the user, so a []-args check would wrongly hide them. They
+				// are infrastructure — always list them; the ability they proxy is
+				// still gated on execution. Match an exact allowlist rather than the
+				// `mcp-adapter/` prefix so a future ability can't be named to slip
+				// through the gate.
+				$meta_tools = [
+					'mcp-adapter/discover-abilities',
+					'mcp-adapter/get-ability-info',
+					'mcp-adapter/execute-ability',
+				];
+				if ( in_array( $name, $meta_tools, true ) ) {
+					return true;
+				}
+
+				$mcp_tool = $server->get_mcp_tool( $name );
+
+				// No backing McpTool (unexpected) — leave it listed rather than
+				// hide something we can't evaluate.
+				if ( $mcp_tool === null ) {
+					return true;
+				}
+
+				return $mcp_tool->check_permission( [] ) === true;
+			}
+		);
+
+		return array_values( $allowed );
 	}
 
 	/**

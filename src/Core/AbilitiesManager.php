@@ -73,6 +73,11 @@ class AbilitiesManager implements Hookable {
 
 		// Bridge show_in_rest to mcp.public for MCP adapter compatibility.
 		add_filter( 'wp_register_ability_args', [ $this, 'normalize_mcp_metadata' ], 10, 2 );
+
+		// Wrap every ability's permission_callback so Albert Premium's advanced
+		// permission manager can gate access per role/user via the internal
+		// `albert/abilities/check_permission` filter.
+		add_filter( 'wp_register_ability_args', [ $this, 'wrap_permission_callback' ], 20, 2 );
 	}
 
 
@@ -541,6 +546,59 @@ class AbilitiesManager implements Hookable {
 			$args['meta']['mcp'] = [];
 		}
 		$args['meta']['mcp']['public'] = true;
+
+		return $args;
+	}
+
+	/**
+	 * Wrap an ability's permission_callback with the Albert permission filter.
+	 *
+	 * Runs the ability's own permission_callback first (preserving its capability
+	 * / REST-delegated check as the baseline), then passes the result through the
+	 * internal `albert/abilities/check_permission` filter, which Albert Premium's
+	 * advanced permission rules use to gate per role or per user. Applies to EVERY
+	 * registered ability — Albert's, WooCommerce's, ACF's, and any third party — so
+	 * those rules gate the whole registry the admin screen lists.
+	 *
+	 * The callback runs in WP_Ability::check_permissions() with the connected user
+	 * already set (OAuth via TokenValidator), which is the meaningful "who" for MCP
+	 * calls. WordPress treats a permission_callback as denied unless it returns
+	 * exactly `true`, so add-ons must return `true` to allow or a WP_Error to deny.
+	 *
+	 * @param array<string, mixed> $args Ability registration arguments.
+	 * @param string               $name Ability name.
+	 *
+	 * @return array<string, mixed> Modified arguments.
+	 * @since 1.3.0
+	 */
+	public function wrap_permission_callback( array $args, string $name ): array {
+		$original = $args['permission_callback'] ?? null;
+
+		$args['permission_callback'] = static function ( $input = null ) use ( $original, $name ) {
+			$result = is_callable( $original ) ? call_user_func( $original, $input ) : true;
+
+			/**
+			 * Filters the permission result for an ability.
+			 *
+			 * @internal Internal seam for Albert's own permission layer (Albert
+			 * Premium's advanced permission rules). Not a public extension point —
+			 * it may change or be removed without notice; third-party code should
+			 * not rely on it.
+			 *
+			 * The baseline `$result` is the ability's own permission_callback output
+			 * (true or WP_Error). A callback returns `true` to allow or a WP_Error to
+			 * deny; any other value is treated as denied by WordPress. Runs with the
+			 * connected user set, so per-user rules can evaluate against
+			 * `get_current_user_id()` and its roles.
+			 *
+			 * @since 1.3.0
+			 *
+			 * @param bool|\WP_Error $result     Baseline permission result.
+			 * @param string         $ability_id Ability identifier.
+			 * @param int            $user_id    Current user ID.
+			 */
+			return apply_filters( 'albert/abilities/check_permission', $result, $name, get_current_user_id() );
+		};
 
 		return $args;
 	}
