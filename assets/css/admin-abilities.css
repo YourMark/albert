@@ -474,16 +474,6 @@
 	border-block-end: 0;
 }
 
-.albert-flyin__param.is-required {
-	border-inline-start: 2px solid var( --wp-admin-theme-color, #2271b1 );
-	padding-inline-start: 10px;
-	background: color-mix(
-		in oklch,
-		var( --wp-admin-theme-color, #2271b1 ) 4%,
-		#fff
-	);
-}
-
 .albert-flyin__param-head {
 	display: flex;
 	align-items: center;
