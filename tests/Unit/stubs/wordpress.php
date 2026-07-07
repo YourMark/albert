@@ -16,6 +16,7 @@
 // functions-only (keeps PHPCS's OO/function separation rule happy).
 require_once __DIR__ . '/WP_Error.php';
 require_once __DIR__ . '/WP_REST_Request.php';
+require_once __DIR__ . '/WP_REST_Response.php';
 require_once __DIR__ . '/WP.php';
 
 if ( ! function_exists( 'is_wp_error' ) ) {
@@ -142,6 +143,43 @@ if ( ! function_exists( 'wp_get_abilities' ) ) {
 	 */
 	function wp_get_abilities(): array {
 		return (array) ( $GLOBALS['albert_test_abilities'] ?? [] );
+	}
+}
+
+if ( ! function_exists( 'rest_ensure_response' ) ) {
+	/**
+	 * Stub rest_ensure_response: wrap non-response values in a WP_REST_Response.
+	 *
+	 * @param mixed $response Response data or object.
+	 *
+	 * @return WP_REST_Response|WP_Error
+	 */
+	function rest_ensure_response( $response ) {
+		if ( $response instanceof WP_REST_Response || $response instanceof WP_Error ) {
+			return $response;
+		}
+
+		return new WP_REST_Response( $response );
+	}
+}
+
+if ( ! function_exists( 'wp_get_ability' ) ) {
+	/**
+	 * Stub wp_get_ability that looks a test double up by name in
+	 * $GLOBALS['albert_test_abilities'].
+	 *
+	 * @param string $ability_id Ability ID.
+	 *
+	 * @return object|null The matching double, or null when not registered.
+	 */
+	function wp_get_ability( string $ability_id ): ?object {
+		foreach ( (array) ( $GLOBALS['albert_test_abilities'] ?? [] ) as $ability ) {
+			if ( is_object( $ability ) && method_exists( $ability, 'get_name' ) && $ability->get_name() === $ability_id ) {
+				return $ability;
+			}
+		}
+
+		return null;
 	}
 }
 

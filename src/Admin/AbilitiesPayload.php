@@ -54,7 +54,7 @@ class AbilitiesPayload {
 		$protected = AbilitiesRegistry::get_protected_abilities();
 		$all       = array_filter(
 			$all,
-			static fn( $ability ): bool => ! in_array( $ability->get_name(), $protected, true )
+			static fn( \WP_Ability $ability ): bool => ! in_array( $ability->get_name(), $protected, true )
 		);
 
 		$ids = [];

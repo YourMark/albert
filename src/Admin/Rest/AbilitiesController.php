@@ -13,6 +13,7 @@ namespace Albert\Admin\Rest;
 
 use Albert\Admin\AbilitiesPayload;
 use Albert\Contracts\Interfaces\Hookable;
+use Albert\Core\AbilitiesRegistry;
 use Albert\Core\AbilitiesState;
 use Albert\Core\Plugin;
 use WP_Error;
@@ -146,6 +147,15 @@ class AbilitiesController implements Hookable {
 			);
 		}
 
+		// The MCP adapter's own tools are protected — they can never be disabled.
+		if ( in_array( $ability_id, AbilitiesRegistry::get_protected_abilities(), true ) ) {
+			return new WP_Error(
+				'albert_ability_protected',
+				__( 'This ability is required by the MCP adapter and can’t be toggled.', 'albert-ai-butler' ),
+				[ 'status' => 403 ]
+			);
+		}
+
 		AbilitiesState::set_enabled( $ability_id, (bool) $request['enabled'] );
 
 		return rest_ensure_response( AbilitiesPayload::row( $ability_id ) );
@@ -161,11 +171,17 @@ class AbilitiesController implements Hookable {
 	 */
 	public function bulk_update( WP_REST_Request $request ): WP_REST_Response {
 		$has_registry = function_exists( 'wp_get_ability' );
+		$protected    = AbilitiesRegistry::get_protected_abilities();
 		$ids          = array_values(
 			array_filter(
 				array_map( 'strval', (array) $request['ids'] ),
-				static function ( string $id ) use ( $has_registry ): bool {
+				static function ( string $id ) use ( $has_registry, $protected ): bool {
 					if ( ! preg_match( '#^[a-z0-9_-]+/[a-z0-9_-]+$#', $id ) ) {
+						return false;
+					}
+					// Protected abilities (the MCP adapter's own tools) can never
+					// be disabled — drop them.
+					if ( in_array( $id, $protected, true ) ) {
 						return false;
 					}
 					// Only act on abilities that actually exist, so phantom ids

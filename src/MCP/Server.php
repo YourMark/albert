@@ -53,6 +53,22 @@ class Server implements Hookable {
 	const ROUTE = 'mcp';
 
 	/**
+	 * The MCP adapter's own tool abilities, registered on every Albert server.
+	 *
+	 * Required for protocol discovery and execution — unregistering any of them
+	 * breaks MCP entirely — so they are also treated as protected abilities that
+	 * can never be disabled. See {@see AbilitiesRegistry::get_protected_abilities()}.
+	 *
+	 * @since 1.3.0
+	 * @var list<string>
+	 */
+	public const CORE_TOOL_ABILITIES = [
+		'mcp-adapter/discover-abilities',
+		'mcp-adapter/get-ability-info',
+		'mcp-adapter/execute-ability',
+	];
+
+	/**
 	 * Register WordPress hooks.
 	 *
 	 * @return void
@@ -240,22 +256,6 @@ class Server implements Hookable {
 			[ $this, 'permission_callback' ]
 		);
 	}
-
-	/**
-	 * The MCP adapter's own tool abilities, registered on every Albert server.
-	 *
-	 * Required for protocol discovery and execution — unregistering any of them
-	 * breaks MCP entirely — so they are also treated as protected abilities that
-	 * can never be disabled. See {@see AbilitiesRegistry::get_protected_abilities()}.
-	 *
-	 * @since 1.3.0
-	 * @var list<string>
-	 */
-	public const CORE_TOOL_ABILITIES = [
-		'mcp-adapter/discover-abilities',
-		'mcp-adapter/get-ability-info',
-		'mcp-adapter/execute-ability',
-	];
 
 	/**
 	 * Get the tools to register for this server.

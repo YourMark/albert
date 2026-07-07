@@ -15,7 +15,7 @@ if ( ! class_exists( 'WP_REST_Request' ) ) {
 	 * route. Body/query handling is intentionally omitted — anything that needs
 	 * it belongs in the integration suite against the real WordPress class.
 	 */
-	class WP_REST_Request {
+	class WP_REST_Request implements \ArrayAccess {
 
 		/**
 		 * HTTP method.
@@ -125,6 +125,51 @@ if ( ! class_exists( 'WP_REST_Request' ) ) {
 		 */
 		public function get_route(): string {
 			return $this->route;
+		}
+
+		/**
+		 * Whether a parameter is set (ArrayAccess).
+		 *
+		 * @param mixed $offset Parameter name.
+		 *
+		 * @return bool
+		 */
+		public function offsetExists( mixed $offset ): bool {
+			return isset( $this->params[ $offset ] );
+		}
+
+		/**
+		 * Get a parameter (ArrayAccess).
+		 *
+		 * @param mixed $offset Parameter name.
+		 *
+		 * @return mixed
+		 */
+		public function offsetGet( mixed $offset ): mixed {
+			return $this->params[ $offset ] ?? null;
+		}
+
+		/**
+		 * Set a parameter (ArrayAccess).
+		 *
+		 * @param mixed $offset Parameter name.
+		 * @param mixed $value  Parameter value.
+		 *
+		 * @return void
+		 */
+		public function offsetSet( mixed $offset, mixed $value ): void {
+			$this->params[ $offset ] = $value;
+		}
+
+		/**
+		 * Unset a parameter (ArrayAccess).
+		 *
+		 * @param mixed $offset Parameter name.
+		 *
+		 * @return void
+		 */
+		public function offsetUnset( mixed $offset ): void {
+			unset( $this->params[ $offset ] );
 		}
 	}
 }
