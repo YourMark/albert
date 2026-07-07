@@ -163,4 +163,20 @@ class AbilitiesRegistryTest extends TestCase {
 		$this->assertSame( 'unknown', $source['slug'] );
 		$this->assertSame( 'Unknown', $source['label'] );
 	}
+
+	// ─── get_protected_abilities() ──────────────────────────────────
+
+	/**
+	 * The protected list includes the MCP adapter's own tool abilities, which
+	 * must never be unregistered.
+	 *
+	 * @return void
+	 */
+	public function test_get_protected_abilities_includes_mcp_adapter_tools(): void {
+		$protected = AbilitiesRegistry::get_protected_abilities();
+
+		$this->assertContains( 'mcp-adapter/discover-abilities', $protected );
+		$this->assertContains( 'mcp-adapter/get-ability-info', $protected );
+		$this->assertContains( 'mcp-adapter/execute-ability', $protected );
+	}
 }

@@ -53,6 +53,22 @@ class Server implements Hookable {
 	const ROUTE = 'mcp';
 
 	/**
+	 * The MCP adapter's own tool abilities, registered on every Albert server.
+	 *
+	 * Required for protocol discovery and execution — unregistering any of them
+	 * breaks MCP entirely — so they are also treated as protected abilities that
+	 * can never be disabled. See {@see AbilitiesRegistry::get_protected_abilities()}.
+	 *
+	 * @since 1.3.0
+	 * @var list<string>
+	 */
+	public const CORE_TOOL_ABILITIES = [
+		'mcp-adapter/discover-abilities',
+		'mcp-adapter/get-ability-info',
+		'mcp-adapter/execute-ability',
+	];
+
+	/**
 	 * Register WordPress hooks.
 	 *
 	 * @return void
@@ -122,16 +138,11 @@ class Server implements Hookable {
 
 				// The adapter's own meta-tools gate on a target-ability *argument*,
 				// not on the user, so a []-args check would wrongly hide them. They
-				// are infrastructure — always list them; the ability they proxy is
-				// still gated on execution. Match an exact allowlist rather than the
-				// `mcp-adapter/` prefix so a future ability can't be named to slip
-				// through the gate.
-				$meta_tools = [
-					'mcp-adapter/discover-abilities',
-					'mcp-adapter/get-ability-info',
-					'mcp-adapter/execute-ability',
-				];
-				if ( in_array( $name, $meta_tools, true ) ) {
+				// are infrastructure — always list them (the same protected set that
+				// can never be disabled); the ability they proxy is still gated on
+				// execution. Match an exact allowlist rather than the `mcp-adapter/`
+				// prefix so a future ability can't be named to slip through the gate.
+				if ( in_array( $name, self::CORE_TOOL_ABILITIES, true ) ) {
 					return true;
 				}
 
@@ -255,11 +266,7 @@ class Server implements Hookable {
 	 * @since 1.0.0
 	 */
 	private function get_tools(): array {
-		return [
-			'mcp-adapter/discover-abilities',
-			'mcp-adapter/get-ability-info',
-			'mcp-adapter/execute-ability',
-		];
+		return self::CORE_TOOL_ABILITIES;
 	}
 
 	/**

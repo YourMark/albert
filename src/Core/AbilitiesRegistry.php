@@ -11,6 +11,8 @@
 
 namespace Albert\Core;
 
+use Albert\MCP\Server;
+
 /**
  * Abilities Registry class
  *
@@ -191,6 +193,22 @@ class AbilitiesRegistry {
 		}
 
 		return $disabled;
+	}
+
+	/**
+	 * Get the protected ability IDs that must never be disabled.
+	 *
+	 * The MCP adapter's own tools (discover / get-info / execute) drive protocol
+	 * discovery and execution — unregistering any of them breaks MCP entirely —
+	 * so they are excluded from the effective disabled list regardless of the
+	 * saved option, the fresh-install default, or add-on `disabled_list` filters.
+	 * This list is intentionally fixed: these abilities are never optional.
+	 *
+	 * @return array<int, string> Ability IDs that must stay registered.
+	 * @since 1.3.0
+	 */
+	public static function get_protected_abilities(): array {
+		return Server::CORE_TOOL_ABILITIES;
 	}
 
 	/**
