@@ -111,6 +111,52 @@ class ServerDiscoveryGateTest extends TestCase {
 	}
 
 	/**
+	 * Regression: all three transport meta-tools survive tools/list even though
+	 * their `getName()` returns the MCP-SANITISED spelling (`mcp-adapter-...`,
+	 * slash replaced with hyphen) while the exemption's allowlist holds the raw
+	 * slash-form IDs. Each meta-tool is backed by a DENYING McpTool here (mirroring
+	 * get-ability-info / execute-ability, whose check_permission([]) returns a
+	 * WP_Error because the required `ability_name` argument is absent), so if the
+	 * exemption were dead code they would be filtered out. A genuinely unauthorized
+	 * non-meta tool is still hidden.
+	 *
+	 * @return void
+	 */
+	public function test_keeps_all_meta_tools_even_with_sanitised_names(): void {
+		$mcp_tools = [
+			// All three transport meta-tools forced to deny, to prove the exemption
+			// keeps them regardless of their permission result.
+			'mcp-adapter-discover-abilities' => $this->mcp_tool( 'mcp-adapter-discover-abilities', false ),
+			'mcp-adapter-get-ability-info'   => $this->mcp_tool( 'mcp-adapter-get-ability-info', false ),
+			'mcp-adapter-execute-ability'    => $this->mcp_tool( 'mcp-adapter-execute-ability', false ),
+			'albert/find-posts'              => $this->mcp_tool( 'albert/find-posts', true ),
+			'albert/create-post'             => $this->mcp_tool( 'albert/create-post', false ),
+		];
+
+		$server = $this->createMock( McpServer::class );
+		$server->method( 'get_mcp_tool' )->willReturnCallback(
+			static fn( string $name ) => $mcp_tools[ $name ] ?? null
+		);
+
+		$tools = [
+			$this->tool( 'mcp-adapter-discover-abilities' ),
+			$this->tool( 'mcp-adapter-get-ability-info' ),
+			$this->tool( 'mcp-adapter-execute-ability' ),
+			$this->tool( 'albert/find-posts' ),  // allowed → kept
+			$this->tool( 'albert/create-post' ), // denied non-meta → hidden
+		];
+
+		$result = ( new Server() )->hide_unauthorized_tools( $tools, $server );
+		$names  = array_map( static fn( $tool ) => $tool->getName(), $result );
+
+		$this->assertContains( 'mcp-adapter-discover-abilities', $names );
+		$this->assertContains( 'mcp-adapter-get-ability-info', $names );
+		$this->assertContains( 'mcp-adapter-execute-ability', $names );
+		$this->assertContains( 'albert/find-posts', $names );
+		$this->assertNotContains( 'albert/create-post', $names );
+	}
+
+	/**
 	 * A foreign (non-Albert) MCP server firing the same global hook is left
 	 * untouched — the gate only acts on Albert's own server.
 	 *

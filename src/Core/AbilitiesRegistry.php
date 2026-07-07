@@ -212,6 +212,39 @@ class AbilitiesRegistry {
 	}
 
 	/**
+	 * Whether an ID refers to one of the MCP transport meta-tools.
+	 *
+	 * The transport meta-tools (discover / get-info / execute) are the same
+	 * abilities as {@see self::get_protected_abilities()}, but they surface under
+	 * two spellings: the raw ability ID with a slash (`mcp-adapter/execute-ability`)
+	 * and the MCP-sanitised tool name where the slash becomes a hyphen
+	 * (`mcp-adapter-execute-ability`, produced by {@see McpNameSanitizer}). This
+	 * matches either spelling by normalising both sides — replacing `/` with `-`
+	 * before comparing — against an EXACT allowlist. It is deliberately an exact
+	 * allowlist and not a broad `mcp-adapter` prefix, so a future ability cannot be
+	 * named to slip through the always-on gate.
+	 *
+	 * The single home for this check means enforce_disabled, reconcile, the
+	 * self-heal, and the MCP discovery gate all agree on what "transport" means.
+	 *
+	 * @param string $id Ability ID or MCP tool name.
+	 *
+	 * @return bool True when the ID is a transport meta-tool in either spelling.
+	 * @since 1.3.0
+	 */
+	public static function is_transport_ability( string $id ): bool {
+		$normalized = str_replace( '/', '-', $id );
+
+		foreach ( self::get_protected_abilities() as $protected ) {
+			if ( str_replace( '/', '-', $protected ) === $normalized ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Resolve the WordPress capability an ability is likely to require.
 	 *
 	 * Abilities expose only a `permission_callback` (often delegating to a core

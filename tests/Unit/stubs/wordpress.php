@@ -280,6 +280,12 @@ if ( ! function_exists( 'update_option' ) ) {
 			$GLOBALS['albert_test_options'] = [];
 		}
 
+		// Count writes per option so tests can assert churn-free no-op paths.
+		if ( ! isset( $GLOBALS['albert_test_option_writes'] ) || ! is_array( $GLOBALS['albert_test_option_writes'] ) ) {
+			$GLOBALS['albert_test_option_writes'] = [];
+		}
+		$GLOBALS['albert_test_option_writes'][ $option ] = ( $GLOBALS['albert_test_option_writes'][ $option ] ?? 0 ) + 1;
+
 		$GLOBALS['albert_test_options'][ $option ] = $value;
 
 		return true;
@@ -400,6 +406,59 @@ if ( ! function_exists( 'menu_page_url' ) ) {
 	 */
 	function menu_page_url( string $slug, bool $display = true ): string {
 		return 'http://example.test/wp-admin/admin.php?page=' . $slug;
+	}
+}
+
+if ( ! function_exists( 'is_admin' ) ) {
+	/**
+	 * Stub is_admin that reads from $GLOBALS['albert_test_is_admin'].
+	 *
+	 * @return bool
+	 */
+	function is_admin(): bool {
+		return (bool) ( $GLOBALS['albert_test_is_admin'] ?? false );
+	}
+}
+
+if ( ! function_exists( 'sanitize_key' ) ) {
+	/**
+	 * Stub sanitize_key mirroring WordPress's lowercase + charset filtering.
+	 *
+	 * @param string $key Key to sanitize.
+	 *
+	 * @return string
+	 */
+	function sanitize_key( string $key ): string {
+		return (string) preg_replace( '/[^a-z0-9_\-]/', '', strtolower( $key ) );
+	}
+}
+
+if ( ! function_exists( 'wp_unregister_ability' ) ) {
+	/**
+	 * Stub wp_unregister_ability that records unregistered IDs and drops the
+	 * matching double from $GLOBALS['albert_test_abilities'].
+	 *
+	 * @param string $name Ability name.
+	 *
+	 * @return void
+	 */
+	function wp_unregister_ability( string $name ): void {
+		if ( ! isset( $GLOBALS['albert_test_unregistered_abilities'] ) || ! is_array( $GLOBALS['albert_test_unregistered_abilities'] ) ) {
+			$GLOBALS['albert_test_unregistered_abilities'] = [];
+		}
+
+		$GLOBALS['albert_test_unregistered_abilities'][] = $name;
+
+		if ( isset( $GLOBALS['albert_test_abilities'] ) && is_array( $GLOBALS['albert_test_abilities'] ) ) {
+			$GLOBALS['albert_test_abilities'] = array_values(
+				array_filter(
+					$GLOBALS['albert_test_abilities'],
+					static function ( $ability ) use ( $name ): bool {
+						return ! ( is_object( $ability ) && method_exists( $ability, 'get_name' ) && $ability->get_name() === $name );
+					}
+				)
+			);
+		}
 	}
 }
 

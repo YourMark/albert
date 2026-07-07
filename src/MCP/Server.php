@@ -12,6 +12,7 @@ namespace Albert\MCP;
 defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
+use Albert\Core\AbilitiesRegistry;
 use Albert\Core\Plugin;
 use Albert\Logging\ObservabilityHandler;
 use Albert\MCP\Skills\SkillLoader;
@@ -140,9 +141,13 @@ class Server implements Hookable {
 				// not on the user, so a []-args check would wrongly hide them. They
 				// are infrastructure — always list them (the same protected set that
 				// can never be disabled); the ability they proxy is still gated on
-				// execution. Match an exact allowlist rather than the `mcp-adapter/`
-				// prefix so a future ability can't be named to slip through the gate.
-				if ( in_array( $name, self::CORE_TOOL_ABILITIES, true ) ) {
+				// execution. The tool name here is the MCP-sanitised spelling
+				// (`mcp-adapter-execute-ability`), while the protected set holds the
+				// raw ability IDs (`mcp-adapter/execute-ability`), so the match must
+				// be slash/hyphen-insensitive — is_transport_ability() normalises both
+				// sides against an exact allowlist so a future ability can't be named
+				// to slip through the gate.
+				if ( AbilitiesRegistry::is_transport_ability( $name ) ) {
 					return true;
 				}
 

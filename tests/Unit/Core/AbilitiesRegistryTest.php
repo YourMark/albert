@@ -179,4 +179,44 @@ class AbilitiesRegistryTest extends TestCase {
 		$this->assertContains( 'mcp-adapter/get-ability-info', $protected );
 		$this->assertContains( 'mcp-adapter/execute-ability', $protected );
 	}
+
+	// ─── is_transport_ability() ─────────────────────────────────────
+
+	/**
+	 * The raw slash-form IDs of all three transport meta-tools match.
+	 *
+	 * @return void
+	 */
+	public function test_is_transport_ability_matches_slash_form(): void {
+		$this->assertTrue( AbilitiesRegistry::is_transport_ability( 'mcp-adapter/discover-abilities' ) );
+		$this->assertTrue( AbilitiesRegistry::is_transport_ability( 'mcp-adapter/get-ability-info' ) );
+		$this->assertTrue( AbilitiesRegistry::is_transport_ability( 'mcp-adapter/execute-ability' ) );
+	}
+
+	/**
+	 * The MCP-sanitised hyphen-form names (slash → hyphen) also match, so the
+	 * discovery gate can compare against the sanitised tool name.
+	 *
+	 * @return void
+	 */
+	public function test_is_transport_ability_matches_sanitised_hyphen_form(): void {
+		$this->assertTrue( AbilitiesRegistry::is_transport_ability( 'mcp-adapter-discover-abilities' ) );
+		$this->assertTrue( AbilitiesRegistry::is_transport_ability( 'mcp-adapter-get-ability-info' ) );
+		$this->assertTrue( AbilitiesRegistry::is_transport_ability( 'mcp-adapter-execute-ability' ) );
+	}
+
+	/**
+	 * Look-alikes are rejected: the check is an exact allowlist, not a broad
+	 * `mcp-adapter` prefix, so nothing else can slip through the always-on gate.
+	 *
+	 * @return void
+	 */
+	public function test_is_transport_ability_rejects_lookalikes(): void {
+		$this->assertFalse( AbilitiesRegistry::is_transport_ability( '' ) );
+		$this->assertFalse( AbilitiesRegistry::is_transport_ability( 'mcp-adapter' ) );
+		$this->assertFalse( AbilitiesRegistry::is_transport_ability( 'mcp-adapter/execute-ability-now' ) );
+		$this->assertFalse( AbilitiesRegistry::is_transport_ability( 'mcp-adapter/some-other-tool' ) );
+		$this->assertFalse( AbilitiesRegistry::is_transport_ability( 'albert/execute-ability' ) );
+		$this->assertFalse( AbilitiesRegistry::is_transport_ability( 'albert/create-post' ) );
+	}
 }
