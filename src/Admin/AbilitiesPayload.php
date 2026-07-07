@@ -47,6 +47,16 @@ class AbilitiesPayload {
 		$roles      = self::roles();
 		$all        = wp_get_abilities();
 
+		// The MCP adapter's own tools (discover / get-info / execute) are protocol
+		// infrastructure, not user-manageable abilities — never surface them on the
+		// screen. They can't be disabled regardless (see
+		// AbilitiesManager::get_effective_disabled_list()).
+		$protected = AbilitiesRegistry::get_protected_abilities();
+		$all       = array_filter(
+			$all,
+			static fn( $ability ): bool => ! in_array( $ability->get_name(), $protected, true )
+		);
+
 		$ids = [];
 		foreach ( $all as $ability ) {
 			$ids[] = $ability->get_name();
