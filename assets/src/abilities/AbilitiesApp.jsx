@@ -39,7 +39,7 @@ const DEFAULT_VIEW = {
 	type: 'table',
 	search: '',
 	page: 1,
-	perPage: 9,
+	perPage: 20,
 	titleField: 'label',
 	showMedia: false,
 	fields: [ 'category', 'operation', 'supplier', 'lastUsed', 'status' ],
