@@ -16,6 +16,8 @@ Want Claude or ChatGPT to actually *do* things on your WordPress site instead of
 
 Every well-run site deserves a proper butler. Albert stands at the door, welcomes AI assistants like Claude and ChatGPT, checks their credentials, and puts them to work — no custom code and no complicated setup.
 
+And a good butler is discreet. Albert keeps your visitors' and customers' personal details — names, email addresses, phone numbers and postal addresses — private, hiding them from AI assistants by default and revealing the real details only when you explicitly ask.
+
 = What your AI assistant can do =
 
 Once connected, an AI assistant can take real action on your site through a curated set of abilities:
@@ -74,7 +76,7 @@ Every AI assistant must present proper credentials before Albert lets it in. Con
 4. Authorize when prompted
 5. ChatGPT can now work with your WordPress site
 
-Full setup guide available at [Documentation](https://github.com/YourMark/albert-ai-butler/wiki)
+Full setup guide available at [Documentation](https://albertwp.com/docs/)
 
 == Frequently Asked Questions ==
 
@@ -93,6 +95,10 @@ Three steps: add yourself as an allowed user, copy the MCP endpoint URL, and pas
 = Is my data secure? =
 
 Yes. Albert uses OAuth 2.0 — the same standard used by Google, GitHub, and other major platforms. Your AI assistant receives a time-limited access token that automatically refreshes. No passwords are shared. All operations respect WordPress's built-in capability and role system, and you control exactly which abilities are enabled.
+
+= Do AI assistants see my visitors' and customers' personal data? =
+
+Not by default. Albert automatically hides personal details — names, email addresses, phone numbers and postal addresses — before anything is sent to an AI assistant. You choose how strict this is (Strict, Balanced, or Off), and you can reveal the real details on request when you genuinely need them.
 
 = What abilities are included? =
 
@@ -117,7 +123,7 @@ No. Albert works with WordPress core out of the box. WooCommerce abilities appea
 
 = Can I add custom abilities? =
 
-Yes. Developers can register custom abilities using the WordPress Abilities API to expose any functionality to AI assistants. See the documentation at [GitHub](https://github.com/YourMark/albert-ai-butler/wiki).
+Yes. Developers can register custom abilities using the WordPress Abilities API to expose any functionality to AI assistants. See the documentation at [albertwp.com/docs](https://albertwp.com/docs/).
 
 = Does this work with multisite? =
 
@@ -132,9 +138,9 @@ Albert is designed for single-site installations. Multisite support is on the ro
 
 = Where can I get support? =
 
-* Documentation: [GitHub Wiki](https://github.com/YourMark/albert-ai-butler/wiki)
+* Documentation: [albertwp.com/docs](https://albertwp.com/docs/)
 * Support Forum: [WordPress.org support forums](https://wordpress.org/support/plugin/albert/)
-* GitHub: [Report issues](https://github.com/YourMark/albert-ai-butler/issues)
+* Website: [albertwp.com](https://albertwp.com)
 
 == Screenshots ==
 
@@ -248,6 +254,9 @@ Initial release.
 * **Extensible** — Register custom abilities with the WordPress Abilities API. Hookable architecture with filters and actions.
 
 == Upgrade Notice ==
+
+= 1.3.0 =
+Your visitors' and customers' personal details — names, emails, phone numbers and addresses — are now hidden from AI assistants automatically. Pick how strict the protection is, and reveal the real details only when you ask. Your connection to Claude, ChatGPT and other assistants also stays reliable after updating.
 
 = 1.2.0 =
 Adds full block-editor support (read, write, and edit individual blocks), classic-editor handling, automatic paging for long posts, and safer defaults — newly added abilities now start switched off. Your existing enabled/disabled settings are preserved.
