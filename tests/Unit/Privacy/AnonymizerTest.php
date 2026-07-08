@@ -84,6 +84,37 @@ class AnonymizerTest extends TestCase {
 	}
 
 	/**
+	 * WordPress user-account fields are masked: username/user_login collapse like
+	 * a name, url is emptied, and the free-text description is redacted. These
+	 * previously leaked from the user abilities.
+	 *
+	 * @return void
+	 */
+	public function test_user_account_fields_are_masked(): void {
+		$out = Anonymizer::anonymize(
+			[
+				'user' => [
+					'id'          => 12,
+					'username'    => 'jdoe',
+					'user_login'  => 'jdoe',
+					'email'       => 'john@example.com',
+					'url'         => 'https://johndoe.example',
+					'description' => 'Long personal bio that may contain PII.',
+				],
+			],
+			[ 'mask_context_names' => true ]
+		);
+
+		$user = $out['user'];
+		// Node has an id → name-group keys collapse to a reference.
+		$this->assertSame( 'Customer #12', $user['username'] );
+		$this->assertSame( 'Customer #12', $user['user_login'] );
+		$this->assertSame( 'j***@e***.com', $user['email'] );
+		$this->assertSame( '', $user['url'] );
+		$this->assertSame( '[redacted]', $user['description'] );
+	}
+
+	/**
 	 * Product line-item names, SKUs and titles are never touched.
 	 *
 	 * @return void

@@ -27,8 +27,10 @@ class PiiPolicyTest extends TestCase {
 	 */
 	protected function setUp(): void {
 		parent::setUp();
-		$GLOBALS['albert_test_hooks'] = [];
-		$GLOBALS['albert_test_caps']  = [ 'manage_woocommerce' ];
+		$GLOBALS['albert_test_hooks']          = [];
+		$GLOBALS['albert_test_filter_returns'] = [];
+		// Default reveal capability is now manage_options (exists on every site).
+		$GLOBALS['albert_test_caps'] = [ 'manage_options' ];
 	}
 
 	/**
@@ -84,6 +86,67 @@ class PiiPolicyTest extends TestCase {
 	public function test_off_does_not_reveal(): void {
 		$this->assertFalse(
 			PiiPolicy::allows_reveal( [ 'reveal_personal_data' => true ], PrivacyMode::Off )
+		);
+	}
+
+	/**
+	 * The default gating capability is manage_options — manage_woocommerce alone
+	 * (which does not exist on a WooCommerce-less site) no longer grants reveal.
+	 *
+	 * @return void
+	 */
+	public function test_default_capability_is_manage_options(): void {
+		$GLOBALS['albert_test_caps'] = [ 'manage_woocommerce' ];
+		$this->assertFalse(
+			PiiPolicy::allows_reveal( [ 'reveal_personal_data' => true ], PrivacyMode::Balanced )
+		);
+
+		$GLOBALS['albert_test_caps'] = [ 'manage_options' ];
+		$this->assertTrue(
+			PiiPolicy::allows_reveal( [ 'reveal_personal_data' => true ], PrivacyMode::Balanced )
+		);
+	}
+
+	/**
+	 * An explicit `reveal_capability` option overrides the default: a caller with
+	 * the ability's own capability (but not manage_options) may reveal.
+	 *
+	 * @return void
+	 */
+	public function test_opts_reveal_capability_override(): void {
+		$GLOBALS['albert_test_caps'] = [ 'list_users' ];
+
+		$this->assertTrue(
+			PiiPolicy::allows_reveal(
+				[ 'reveal_personal_data' => true ],
+				PrivacyMode::Balanced,
+				[ 'reveal_capability' => 'list_users' ]
+			)
+		);
+
+		// Without that capability the override still denies.
+		$GLOBALS['albert_test_caps'] = [ 'edit_posts' ];
+		$this->assertFalse(
+			PiiPolicy::allows_reveal(
+				[ 'reveal_personal_data' => true ],
+				PrivacyMode::Balanced,
+				[ 'reveal_capability' => 'list_users' ]
+			)
+		);
+	}
+
+	/**
+	 * The `albert/privacy/reveal_capability` filter overrides the default when no
+	 * explicit option is supplied.
+	 *
+	 * @return void
+	 */
+	public function test_reveal_capability_filter_default(): void {
+		$GLOBALS['albert_test_filter_returns']['albert/privacy/reveal_capability'] = 'edit_shop_orders';
+		$GLOBALS['albert_test_caps'] = [ 'edit_shop_orders' ];
+
+		$this->assertTrue(
+			PiiPolicy::allows_reveal( [ 'reveal_personal_data' => true ], PrivacyMode::Balanced )
 		);
 	}
 }

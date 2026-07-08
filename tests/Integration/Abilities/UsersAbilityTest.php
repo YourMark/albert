@@ -158,9 +158,12 @@ class UsersAbilityTest extends TestCase {
 
 		$user_id = self::factory()->user->create(
 			[
-				'user_email' => 'masked@albert.test',
-				'first_name' => 'Mask',
-				'last_name'  => 'Ed',
+				'user_login'  => 'maskeduser',
+				'user_email'  => 'masked@albert.test',
+				'first_name'  => 'Mask',
+				'last_name'   => 'Ed',
+				'user_url'    => 'https://maskeduser.example',
+				'description' => 'A personal bio that must not reach the LLM.',
 			]
 		);
 
@@ -169,6 +172,13 @@ class UsersAbilityTest extends TestCase {
 		$this->assertIsArray( $result );
 		$this->assertNotSame( 'masked@albert.test', $result['user']['email'] );
 		$this->assertStringContainsString( '***', $result['user']['email'] );
+
+		// Previously-leaked account fields are now masked, not raw.
+		$this->assertNotSame( 'maskeduser', $result['user']['username'] );
+		$this->assertNotSame( 'https://maskeduser.example', $result['user']['url'] );
+		$this->assertSame( '', $result['user']['url'] );
+		$this->assertNotSame( 'A personal bio that must not reach the LLM.', $result['user']['description'] );
+		$this->assertSame( '[redacted]', $result['user']['description'] );
 	}
 
 	/**

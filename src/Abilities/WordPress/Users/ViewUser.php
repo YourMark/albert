@@ -66,7 +66,7 @@ class ViewUser extends BaseAbility {
 				],
 				'reveal_personal_data' => [
 					'type'        => 'boolean',
-					'description' => "Return real personal data instead of anonymised placeholders. Requires the reveal capability and is ignored unless the store's privacy mode is Balanced.",
+					'description' => "Return real personal data instead of anonymised placeholders. Requires the ability's own capability; ignored unless privacy mode is Balanced.",
 					'default'     => false,
 				],
 			],
@@ -140,7 +140,10 @@ class ViewUser extends BaseAbility {
 				],
 			],
 			$args,
-			[ 'mask_context_names' => true ]
+			[
+				'mask_context_names' => true,
+				'reveal_capability'  => 'list_users',
+			]
 		);
 	}
 }

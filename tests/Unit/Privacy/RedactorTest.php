@@ -29,7 +29,8 @@ class RedactorTest extends TestCase {
 		$GLOBALS['albert_test_hooks']          = [];
 		$GLOBALS['albert_test_options']        = [];
 		$GLOBALS['albert_test_filter_returns'] = [];
-		$GLOBALS['albert_test_caps']           = [ 'manage_woocommerce' ];
+		// Default reveal capability is manage_options (exists on every site).
+		$GLOBALS['albert_test_caps'] = [ 'manage_options' ];
 
 		// Simulate an add-on (e.g. the WooCommerce add-on) having registered its
 		// payment/card matchers, so the always-strip-payment behaviour is

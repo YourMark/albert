@@ -66,7 +66,7 @@ class ViewOrder extends BaseAbility {
 				],
 				'reveal_personal_data' => [
 					'type'        => 'boolean',
-					'description' => "Return real customer PII instead of anonymised placeholders. Requires the reveal capability and is ignored unless the store's privacy mode is Balanced.",
+					'description' => "Return real customer PII instead of anonymised placeholders. Requires the ability's own capability; ignored unless privacy mode is Balanced.",
 					'default'     => false,
 				],
 			],
@@ -181,7 +181,8 @@ class ViewOrder extends BaseAbility {
 					'customer_note'  => $order->get_customer_note(),
 				],
 			],
-			$args
+			$args,
+			[ 'reveal_capability' => 'edit_shop_orders' ]
 		);
 	}
 }

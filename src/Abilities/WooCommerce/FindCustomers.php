@@ -89,7 +89,7 @@ class FindCustomers extends BaseAbility {
 				],
 				'reveal_personal_data' => [
 					'type'        => 'boolean',
-					'description' => "Return real customer PII instead of anonymised placeholders. Requires the reveal capability and is ignored unless the store's privacy mode is Balanced.",
+					'description' => "Return real customer PII instead of anonymised placeholders. Requires the ability's own capability; ignored unless privacy mode is Balanced.",
 					'default'     => false,
 				],
 			],
@@ -186,7 +186,10 @@ class FindCustomers extends BaseAbility {
 				'total_pages' => (int) ceil( $total / $per_page ),
 			],
 			$args,
-			[ 'mask_context_names' => true ]
+			[
+				'mask_context_names' => true,
+				'reveal_capability'  => 'list_users',
+			]
 		);
 	}
 }

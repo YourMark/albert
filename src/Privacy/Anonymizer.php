@@ -61,7 +61,9 @@ class Anonymizer {
 	 * @since 1.3.0
 	 *
 	 * @param array<int|string, mixed> $data The array to anonymize.
-	 * @param array<string, mixed>     $opts Optional. `fields` overrides the PII allow-list;
+	 * @param array<string, mixed>     $opts Optional. `fields` merges category overrides OVER
+	 *                                       the filtered allow-list (so the
+	 *                                       `albert/privacy/pii_fields` filter is still honoured);
 	 *                                       `mask_context_names` (bool) masks the ambiguous
 	 *                                       `name` key everywhere, not only inside a
 	 *                                       billing/shipping/customer context — use for
@@ -70,9 +72,12 @@ class Anonymizer {
 	 * @return array<int|string, mixed> The anonymized array.
 	 */
 	public static function anonymize( array $data, array $opts = [] ): array {
-		$fields = isset( $opts['fields'] ) && is_array( $opts['fields'] )
-			? array_merge( self::default_pii_fields(), $opts['fields'] )
-			: self::get_pii_fields();
+		// Start from the FILTERED allow-list so add-on `pii_fields` registrations
+		// are honoured even when a caller passes its own `fields` override.
+		$fields = self::get_pii_fields();
+		if ( isset( $opts['fields'] ) && is_array( $opts['fields'] ) ) {
+			$fields = array_merge( $fields, $opts['fields'] );
+		}
 
 		// Resolve the payment/card matchers ONCE per call and thread them through
 		// the recursion — walk() runs per key, so we must not filter per key.
@@ -264,8 +269,11 @@ class Anonymizer {
 		 * Filters the PII field allow-list used by the anonymizer.
 		 *
 		 * Each category maps to a list of exact array-key names. Returned
-		 * categories are merged over the defaults; missing categories keep
-		 * their default values.
+		 * categories are merged OVER the defaults at the category level: a
+		 * returned category REPLACES that category wholesale — it does not append
+		 * to it. To extend a category, read the incoming value and return it with
+		 * your keys added (e.g. `$fields['name'][] = 'customer_name';`). Categories
+		 * you omit keep their default values.
 		 *
 		 * @since 1.3.0
 		 *
@@ -291,6 +299,8 @@ class Anonymizer {
 				'first_name',
 				'last_name',
 				'display_name',
+				'username',
+				'user_login',
 				'billing_first_name',
 				'billing_last_name',
 				'shipping_first_name',
@@ -306,9 +316,10 @@ class Anonymizer {
 				'billing_address_2',
 				'shipping_address_1',
 				'shipping_address_2',
+				'url',
 			],
 			'strip'        => [ 'ip_address', 'customer_ip_address' ],
-			'redact'       => [ 'customer_note' ],
+			'redact'       => [ 'customer_note', 'description' ],
 		];
 	}
 
