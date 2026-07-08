@@ -95,6 +95,47 @@ Website: https://yourmark.nl
 
 ## Changelog
 
+### 1.3.0
+
+**Privacy**
+- **Personal data anonymised by default** — names, email addresses, phone numbers, and postal addresses in AI results are redacted before they leave the site.
+- **New "Privacy mode" setting** — Strict, Balanced, or Off on the settings screen controls how much is redacted, plus a capability-gated option to reveal the real data when explicitly requested.
+
+**Extensibility**
+- New `albert/privacy/*` filters let add-ons contribute extra PII fields and payment/card keys to the redaction system.
+
+**Bug fixes**
+- The MCP discovery, info, and execute tools could become unavailable after an update on some setups. They are now always registered, cannot be disabled, and self-heal on load.
+- Corrected the Add-ons link on the settings page.
+
+**Changes**
+- The Abilities management screen no longer lists the internal MCP adapter tools (and prevents them being disabled); it now defaults to 20 rows per page.
+
+### 1.2.0
+
+**Block editor support**
+- AI assistants now work with real WordPress blocks instead of raw HTML — reading a post as a clean, structured outline and composing new content with proper blocks (headings, paragraphs, lists, quotes, images, buttons, columns, groups).
+- **Edit one block at a time** — change, add, move, or remove a single block without disturbing the rest of the page.
+- **Cleaner content, fewer errors** — Albert validates blocks as they're written and steers the assistant to fix mistakes, avoiding the block editor's "unexpected content" warnings.
+- **Stays within your palette** — assistants only use the blocks your site (and the connected user) are allowed to use.
+
+**Classic editor support**
+- Classic-editor sites, posts, and pages are handled correctly — content is read and saved as HTML.
+
+**Built-in guidance for assistants**
+- Ships a built-in playbook and reference data that teach connected assistants how your site's blocks work.
+
+**Handles large content**
+- Long posts are paged automatically, so big content is never cut off mid-way when an assistant reads it.
+
+**Safer updates**
+- When a plugin update adds new abilities, they now start switched off — you decide what to turn on.
+
+### 1.1.1
+
+**Bug fixes**
+- OAuth discovery endpoints (`/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`) are now reachable when the request arrives with a trailing slash, avoiding a redirect loop or 404 on hosts that add a trailing slash at the edge.
+
 ### 1.1.0
 
 **New features**
