@@ -4,7 +4,7 @@ Tags: ai, mcp, claude, chatgpt, ai assistant
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -144,6 +144,25 @@ Albert is designed for single-site installations. Multisite support is on the ro
 4. An active MCP connection with Claude Desktop
 
 == Changelog ==
+
+= 1.3.0 =
+Privacy takes centre stage — personal data is now anonymised before it reaches the AI, with a new setting to control how strict that protection is.
+
+**Privacy**
+
+* **Personal data is anonymised by default** — names, email addresses, phone numbers, and postal addresses in AI results are redacted before they leave your site.
+* **New "Privacy mode" setting** — choose Strict, Balanced, or Off on the settings screen to control how much is redacted.
+* **Reveal on request** — a capability-gated option lets trusted users surface the real data when they explicitly ask for it.
+
+**Extensibility**
+
+* New `albert/privacy/*` filters let add-ons contribute extra personal-data fields and payment or card keys to the redaction system.
+
+**Fixes and changes**
+
+* **Fix:** The built-in MCP discovery, info, and execute tools could become unavailable after an update on some setups. They are now always registered, can no longer be disabled, and repair themselves on load.
+* **Change:** The Abilities management screen no longer lists the internal MCP adapter tools and prevents them from being disabled. It now shows 20 rows per page by default.
+* **Fix:** Corrected the Add-ons link on the settings page.
 
 = 1.2.0 =
 Albert now understands the WordPress block editor — a big step up in how AI assistants read and write your content.
