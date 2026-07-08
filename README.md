@@ -97,19 +97,20 @@ Website: https://yourmark.nl
 
 ### 1.3.0
 
-**Privacy**
-- **Personal data anonymised by default** — names, email addresses, phone numbers, and postal addresses in AI results are redacted before they leave the site.
-- **New "Privacy mode" setting** — Strict, Balanced, or Off on the settings screen controls how much is redacted, plus a capability-gated option to reveal the real data when explicitly requested.
+**A brand-new Abilities screen**
+- The screen where you decide what each AI assistant can do has been completely rebuilt — a fast, modern list with search, filter by category or supplier, sort, and pagination, matching the rest of the WordPress admin.
+- Switch abilities on or off instantly, one at a time or in bulk — no Save button.
+- Click any ability for a detail panel showing its inputs, the permission it needs, and when it last ran.
+- Rebuilt for accessibility throughout — full keyboard and screen-reader support, with clearer focus and contrast.
+- New extension points let add-ons plug straight into the screen — this powers Albert Premium's per-role and per-user permission rules.
 
-**Extensibility**
-- New `albert/privacy/*` filters let add-ons contribute extra PII fields and payment/card keys to the redaction system.
+**Privacy by default**
+- Personal data — names, email addresses, phone numbers, and postal addresses — is redacted from AI results before it leaves your site.
+- New "Privacy mode" setting (Strict, Balanced, or Off) controls how much is hidden; reveal the real details only when you explicitly ask, gated by your own capabilities.
+- New `albert/privacy/*` filters let add-ons protect their own fields — the WooCommerce add-on uses these to strip payment and card data.
 
-**Bug fixes**
-- The MCP discovery, info, and execute tools could become unavailable after an update on some setups. They are now always registered, cannot be disabled, and self-heal on load.
-- Corrected the Add-ons link on the settings page.
-
-**Changes**
-- The Abilities management screen no longer lists the internal MCP adapter tools (and prevents them being disabled); it now defaults to 20 rows per page.
+**Reliability**
+- The three core tools an assistant uses to discover and run abilities can no longer be switched off and repair themselves on load, so a connection never breaks after an update.
 
 ### 1.2.0
 

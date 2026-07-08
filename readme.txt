@@ -152,23 +152,28 @@ Albert is designed for single-site installations. Multisite support is on the ro
 == Changelog ==
 
 = 1.3.0 =
-Privacy takes centre stage — personal data is now anonymised before it reaches the AI, with a new setting to control how strict that protection is.
+Two headline changes: the Abilities screen has been rebuilt from scratch, and personal data is now kept private from AI assistants automatically.
 
-**Privacy**
+**A brand-new Abilities screen**
 
-* **Personal data is anonymised by default** — names, email addresses, phone numbers, and postal addresses in AI results are redacted before they leave your site.
-* **New "Privacy mode" setting** — choose Strict, Balanced, or Off on the settings screen to control how much is redacted.
-* **Reveal on request** — a capability-gated option lets trusted users surface the real data when they explicitly ask for it.
+The screen where you decide what each AI assistant can do has been completely rebuilt.
 
-**Extensibility**
+* A fast, modern list — search, filter by category or supplier, sort, and page through every ability, matching the look and feel of the rest of your WordPress admin.
+* Switch abilities on or off instantly, one at a time or in bulk — no Save button.
+* Click any ability to open a detail panel showing its inputs, the permission it needs, and when it last ran.
+* Rebuilt for accessibility throughout — full keyboard and screen-reader support, with clearer focus states and contrast.
+* New extension points let add-ons plug straight into the screen — this is what powers Albert Premium's per-role and per-user permission rules.
 
-* New `albert/privacy/*` filters let add-ons contribute extra personal-data fields and payment or card keys to the redaction system.
+**Privacy by default**
 
-**Fixes and changes**
+* Personal data — names, email addresses, phone numbers, and postal addresses — is now redacted from AI results before it leaves your site.
+* New "Privacy mode" setting — choose Strict, Balanced, or Off to control how much is hidden.
+* Reveal the real details only when you explicitly ask, gated by your own WordPress capabilities.
+* New `albert/privacy/*` filters let add-ons protect their own fields — the WooCommerce add-on uses these to strip payment and card data.
 
-* **Fix:** The built-in MCP discovery, info, and execute tools could become unavailable after an update on some setups. They are now always registered, can no longer be disabled, and repair themselves on load.
-* **Change:** The Abilities management screen no longer lists the internal MCP adapter tools and prevents them from being disabled. It now shows 20 rows per page by default.
-* **Fix:** Corrected the Add-ons link on the settings page.
+**Reliability**
+
+* The three core tools an assistant uses to discover and run abilities can no longer be switched off, and repair themselves on load — so a connection never breaks after an update.
 
 = 1.2.0 =
 Albert now understands the WordPress block editor — a big step up in how AI assistants read and write your content.
@@ -256,7 +261,7 @@ Initial release.
 == Upgrade Notice ==
 
 = 1.3.0 =
-Your visitors' and customers' personal details — names, emails, phone numbers and addresses — are now hidden from AI assistants automatically. Pick how strict the protection is, and reveal the real details only when you ask. Your connection to Claude, ChatGPT and other assistants also stays reliable after updating.
+The Abilities screen has been rebuilt from scratch — search, filter, instant and bulk on/off, and a detail panel for every ability. And personal data (names, emails, phone numbers, addresses) is now hidden from AI assistants automatically, with a setting to control how strict that is.
 
 = 1.2.0 =
 Adds full block-editor support (read, write, and edit individual blocks), classic-editor handling, automatic paging for long posts, and safer defaults — newly added abilities now start switched off. Your existing enabled/disabled settings are preserved.
