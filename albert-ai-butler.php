@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Albert - The AI Butler
- * Plugin URI: https://github.com/YourMark/albert-ai-butler
+ * Plugin URI: https://wordpress.org/plugins/albert/
  * Description: At your service — Albert connects AI assistants to your WordPress site so they can manage content, handle tasks, and keep things running smoothly.
  * Version: 1.3.0
  * Author: Albert

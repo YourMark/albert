@@ -272,7 +272,7 @@ Albert does not collect, store, or transmit any user data to external servers. A
 
 Developed by Mark Jansen - Your Mark Media
 Website: https://yourmark.nl
-Plugin URL: https://github.com/YourMark/albert-ai-butler
+Plugin URL: https://wordpress.org/plugins/albert/
 
 Built with:
 * league/oauth2-server for OAuth 2.0 implementation
