@@ -673,7 +673,7 @@ class Settings implements Hookable {
 				<?php esc_html_e( 'Premium addons extend Albert with powerful features like bulk operations, WooCommerce management, and SEO tools.', 'albert-ai-butler' ); ?>
 			</p>
 			<p>
-				<a href="https://albertwp.com/addons/" target="_blank" rel="noopener noreferrer">
+				<a href="https://albertwp.com/add-ons/" target="_blank" rel="noopener noreferrer">
 					<?php esc_html_e( 'Explore addons', 'albert-ai-butler' ); ?>
 					<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'albert-ai-butler' ); ?></span>
 				</a>
