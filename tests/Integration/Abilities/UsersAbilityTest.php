@@ -36,6 +36,11 @@ class UsersAbilityTest extends TestCase {
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
 		delete_option( 'albert_disabled_abilities' );
 		update_option( 'albert_abilities_saved', true );
+
+		// These are ability-behaviour tests, not privacy tests: turn privacy mode
+		// off so the raw field values can be asserted. Default (anonymised) output
+		// is covered by the Albert\Privacy unit tests and by a dedicated case below.
+		update_option( 'albert_privacy_mode', 'off' );
 	}
 
 	// ─── FindUsers ──────────────────────────────────────────────────
@@ -141,6 +146,39 @@ class UsersAbilityTest extends TestCase {
 		$this->assertContains( 'editor', $result['user']['roles'] );
 		$this->assertSame( 'https://example.com', $result['user']['url'] );
 		$this->assertSame( 'Test bio', $result['user']['description'] );
+	}
+
+	/**
+	 * ViewUser anonymises personal data under the default (Balanced) privacy mode.
+	 *
+	 * @return void
+	 */
+	public function test_view_user_anonymises_by_default(): void {
+		update_option( 'albert_privacy_mode', 'balanced' );
+
+		$user_id = self::factory()->user->create(
+			[
+				'user_login'  => 'maskeduser',
+				'user_email'  => 'masked@albert.test',
+				'first_name'  => 'Mask',
+				'last_name'   => 'Ed',
+				'user_url'    => 'https://maskeduser.example',
+				'description' => 'A personal bio that must not reach the LLM.',
+			]
+		);
+
+		$result = ( new ViewUser() )->execute( [ 'id' => $user_id ] );
+
+		$this->assertIsArray( $result );
+		$this->assertNotSame( 'masked@albert.test', $result['user']['email'] );
+		$this->assertStringContainsString( '***', $result['user']['email'] );
+
+		// Previously-leaked account fields are now masked, not raw.
+		$this->assertNotSame( 'maskeduser', $result['user']['username'] );
+		$this->assertNotSame( 'https://maskeduser.example', $result['user']['url'] );
+		$this->assertSame( '', $result['user']['url'] );
+		$this->assertNotSame( 'A personal bio that must not reach the LLM.', $result['user']['description'] );
+		$this->assertSame( '[redacted]', $result['user']['description'] );
 	}
 
 	/**
