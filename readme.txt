@@ -4,7 +4,7 @@ Tags: ai, mcp, claude, chatgpt, ai assistant
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -15,6 +15,8 @@ Connect Claude, ChatGPT and other AI assistants to your WordPress site via MCP �
 Want Claude or ChatGPT to actually *do* things on your WordPress site instead of just talking about it? Albert is the AI assistant connector for WordPress. It exposes your site through the Model Context Protocol (MCP), so AI assistants can write and edit posts, organize media, manage products, and handle day-to-day tasks — all under your control.
 
 Every well-run site deserves a proper butler. Albert stands at the door, welcomes AI assistants like Claude and ChatGPT, checks their credentials, and puts them to work — no custom code and no complicated setup.
+
+And a good butler is discreet. Albert keeps your visitors' and customers' personal details — names, email addresses, phone numbers and postal addresses — private, hiding them from AI assistants by default and revealing the real details only when you explicitly ask.
 
 = What your AI assistant can do =
 
@@ -74,7 +76,7 @@ Every AI assistant must present proper credentials before Albert lets it in. Con
 4. Authorize when prompted
 5. ChatGPT can now work with your WordPress site
 
-Full setup guide available at [Documentation](https://github.com/YourMark/albert-ai-butler/wiki)
+Full setup guide available at [Documentation](https://albertwp.com/docs/)
 
 == Frequently Asked Questions ==
 
@@ -93,6 +95,10 @@ Three steps: add yourself as an allowed user, copy the MCP endpoint URL, and pas
 = Is my data secure? =
 
 Yes. Albert uses OAuth 2.0 — the same standard used by Google, GitHub, and other major platforms. Your AI assistant receives a time-limited access token that automatically refreshes. No passwords are shared. All operations respect WordPress's built-in capability and role system, and you control exactly which abilities are enabled.
+
+= Do AI assistants see my visitors' and customers' personal data? =
+
+Not by default. Albert automatically hides personal details — names, email addresses, phone numbers and postal addresses — before anything is sent to an AI assistant. You choose how strict this is (Strict, Balanced, or Off), and you can reveal the real details on request when you genuinely need them.
 
 = What abilities are included? =
 
@@ -117,7 +123,7 @@ No. Albert works with WordPress core out of the box. WooCommerce abilities appea
 
 = Can I add custom abilities? =
 
-Yes. Developers can register custom abilities using the WordPress Abilities API to expose any functionality to AI assistants. See the documentation at [GitHub](https://github.com/YourMark/albert-ai-butler/wiki).
+Yes. Developers can register custom abilities using the WordPress Abilities API to expose any functionality to AI assistants. See the documentation at [albertwp.com/docs](https://albertwp.com/docs/).
 
 = Does this work with multisite? =
 
@@ -132,9 +138,9 @@ Albert is designed for single-site installations. Multisite support is on the ro
 
 = Where can I get support? =
 
-* Documentation: [GitHub Wiki](https://github.com/YourMark/albert-ai-butler/wiki)
+* Documentation: [albertwp.com/docs](https://albertwp.com/docs/)
 * Support Forum: [WordPress.org support forums](https://wordpress.org/support/plugin/albert/)
-* GitHub: [Report issues](https://github.com/YourMark/albert-ai-butler/issues)
+* Website: [albertwp.com](https://albertwp.com)
 
 == Screenshots ==
 
@@ -144,6 +150,25 @@ Albert is designed for single-site installations. Multisite support is on the ro
 4. An active MCP connection with Claude Desktop
 
 == Changelog ==
+
+= 1.3.0 =
+Privacy takes centre stage — personal data is now anonymised before it reaches the AI, with a new setting to control how strict that protection is.
+
+**Privacy**
+
+* **Personal data is anonymised by default** — names, email addresses, phone numbers, and postal addresses in AI results are redacted before they leave your site.
+* **New "Privacy mode" setting** — choose Strict, Balanced, or Off on the settings screen to control how much is redacted.
+* **Reveal on request** — a capability-gated option lets trusted users surface the real data when they explicitly ask for it.
+
+**Extensibility**
+
+* New `albert/privacy/*` filters let add-ons contribute extra personal-data fields and payment or card keys to the redaction system.
+
+**Fixes and changes**
+
+* **Fix:** The built-in MCP discovery, info, and execute tools could become unavailable after an update on some setups. They are now always registered, can no longer be disabled, and repair themselves on load.
+* **Change:** The Abilities management screen no longer lists the internal MCP adapter tools and prevents them from being disabled. It now shows 20 rows per page by default.
+* **Fix:** Corrected the Add-ons link on the settings page.
 
 = 1.2.0 =
 Albert now understands the WordPress block editor — a big step up in how AI assistants read and write your content.
@@ -230,6 +255,9 @@ Initial release.
 
 == Upgrade Notice ==
 
+= 1.3.0 =
+Your visitors' and customers' personal details — names, emails, phone numbers and addresses — are now hidden from AI assistants automatically. Pick how strict the protection is, and reveal the real details only when you ask. Your connection to Claude, ChatGPT and other assistants also stays reliable after updating.
+
 = 1.2.0 =
 Adds full block-editor support (read, write, and edit individual blocks), classic-editor handling, automatic paging for long posts, and safer defaults — newly added abilities now start switched off. Your existing enabled/disabled settings are preserved.
 
@@ -253,7 +281,7 @@ Albert does not collect, store, or transmit any user data to external servers. A
 
 Developed by Mark Jansen - Your Mark Media
 Website: https://yourmark.nl
-Plugin URL: https://github.com/YourMark/albert-ai-butler
+Plugin URL: https://wordpress.org/plugins/albert/
 
 Built with:
 * league/oauth2-server for OAuth 2.0 implementation

@@ -84,6 +84,8 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | Hook | Type | Purpose |
 |------|------|---------|
 | `albert/abilities/register` | action | Register custom abilities |
+| `albert/abilities/payload_row` | filter | Augment a normalized ability row before it reaches the Abilities screen (e.g. append `badges`). Fires on both the bulk build and single-row paths. See `docs/extending-the-abilities-screen.md` |
+| `albert/abilities/required_capability` | filter | Override the best-effort capability shown on the Abilities screen |
 | `albert/abilities/before_execute` | action | Before any ability runs |
 | `albert/abilities/after_execute` | action | After any ability runs |
 | `albert/abilities/before_execute/{id}` | action | Before a specific ability |
@@ -94,5 +96,16 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | `albert/logging/enabled` | filter | Disable Free's ability log (Premium uses this) |
 | `albert/blocks/read_block_limit` | filter | Default top-level blocks per read window (default 200; 0 = unlimited) |
 | `albert/blocks/read_max_bytes` | filter | Per-field byte cap on read text representations (default 50000) |
+| `albert/mcp/hide_unauthorized_tools` | filter | Hide MCP tools the connected user can't execute from `tools/list`, so discovery matches what's callable (default true; false = list all, deny on call) |
+| `albert/privacy/mode` | filter | Override the active PII privacy mode (`strict`/`balanced`/`off`); return `null` to defer to the `albert_privacy_mode` option/default (`balanced`). See `PrivacyMode::resolve()` |
+| `albert/privacy/pii_fields` | filter | Extend the anonymiser's PII allow-list, grouped by rule (`email`/`phone`/`name`/`context_name`/`postcode`/`empty`/`strip`/`redact`). A returned category REPLACES that category — read the incoming value and append to extend. See `Anonymizer` |
+| `albert/privacy/payment_keys` | filter | Register payment/card keys hard-removed from every result at any depth and in every mode. Shape `[ 'keys' => [], 'prefixes' => [] ]`; empty in Free (add-ons own gateway keys). See `Anonymizer` |
+| `albert/privacy/reveal_capability` | filter | Capability gating a `reveal_personal_data` request (default `manage_options`). Consulted only when an ability passes no explicit `reveal_capability` option. See `PiiPolicy` |
 | `albert/activated` | action | Plugin activated |
 | `albert/deactivated` | action | Plugin deactivated |
+
+JS (client-side) seams for the Abilities DataViews screen (`@wordpress/hooks` filters):
+`albert.abilities.permissions_section` replaces the fly-in's Permissions section (its `api` exposes
+`capabilityContent` to reuse and `registerCloseGuard` to confirm before close), and
+`albert.abilities.panel_sections` appends generic sections. Full contract for every Abilities-screen
+seam: `docs/extending-the-abilities-screen.md`.

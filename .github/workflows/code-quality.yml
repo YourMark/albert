@@ -74,5 +74,13 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
+      # The DataViews admin screen require()s assets/build/js/abilities.asset.php,
+      # a gitignored build artifact rebuilt by release.yml. This job is PHP-only,
+      # so stub the file to let PHPStan resolve the (runtime-guarded) require path.
+      - name: Stub build asset for analysis
+        run: |
+          mkdir -p assets/build/js
+          printf '<?php return array( "dependencies" => array(), "version" => "dev" );\n' > assets/build/js/abilities.asset.php
+
       - name: Run PHPStan
         run: ./vendor/bin/phpstan analyse --no-progress

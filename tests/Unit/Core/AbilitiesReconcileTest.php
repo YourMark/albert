@@ -255,6 +255,45 @@ class AbilitiesReconcileTest extends TestCase {
 		$this->assertSame( [], $GLOBALS['albert_test_transients'] );
 	}
 
+	// ─── Transport meta-tools are never auto-disabled ───────────────
+
+	/**
+	 * The MCP transport meta-tools must never be auto-disabled, even when they are
+	 * newly seen. A genuinely new ability alongside them is still disabled by
+	 * default, but none of the `mcp-adapter/*` meta-tools ever land in the disabled
+	 * option (nor in the transient).
+	 *
+	 * @return void
+	 */
+	public function test_transport_meta_tools_are_never_auto_disabled(): void {
+		$GLOBALS['albert_test_options']['albert_abilities_saved']                   = true;
+		$GLOBALS['albert_test_options']['albert_known_abilities']                   = [ 'albert/find-posts' ];
+		$GLOBALS['albert_test_options'][ AbilitiesPage::DISABLED_ABILITIES_OPTION ] = [];
+
+		$this->set_registered(
+			[
+				$this->read( 'albert/find-posts' ),
+				$this->write( 'mcp-adapter/discover-abilities' ),
+				$this->write( 'mcp-adapter/get-ability-info' ),
+				$this->write( 'mcp-adapter/execute-ability' ),
+				$this->write( 'albert/create-post' ),
+			]
+		);
+
+		( new AbilitiesManager() )->reconcile_new_abilities();
+
+		$disabled = $GLOBALS['albert_test_options'][ AbilitiesPage::DISABLED_ABILITIES_OPTION ];
+
+		// The genuinely new write is disabled by default…
+		$this->assertContains( 'albert/create-post', $disabled );
+		// …but none of the transport meta-tools ever are.
+		$this->assertNotContains( 'mcp-adapter/discover-abilities', $disabled );
+		$this->assertNotContains( 'mcp-adapter/get-ability-info', $disabled );
+		$this->assertNotContains( 'mcp-adapter/execute-ability', $disabled );
+
+		$this->assertSame( [ 'albert/create-post' ], $GLOBALS['albert_test_transients']['albert_new_abilities_disabled'] );
+	}
+
 	// ─── Admin notice ───────────────────────────────────────────────
 
 	/**

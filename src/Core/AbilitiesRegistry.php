@@ -11,6 +11,8 @@
 
 namespace Albert\Core;
 
+use Albert\MCP\Server;
+
 /**
  * Abilities Registry class
  *
@@ -191,5 +193,142 @@ class AbilitiesRegistry {
 		}
 
 		return $disabled;
+	}
+
+	/**
+	 * Get the protected ability IDs that must never be disabled.
+	 *
+	 * The MCP adapter's own tools (discover / get-info / execute) drive protocol
+	 * discovery and execution — unregistering any of them breaks MCP entirely —
+	 * so they are excluded from the effective disabled list regardless of the
+	 * saved option, the fresh-install default, or add-on `disabled_list` filters.
+	 * This list is intentionally fixed: these abilities are never optional.
+	 *
+	 * @return array<int, string> Ability IDs that must stay registered.
+	 * @since 1.3.0
+	 */
+	public static function get_protected_abilities(): array {
+		return Server::CORE_TOOL_ABILITIES;
+	}
+
+	/**
+	 * Whether an ID refers to one of the MCP transport meta-tools.
+	 *
+	 * The transport meta-tools (discover / get-info / execute) are the same
+	 * abilities as {@see self::get_protected_abilities()}, but they surface under
+	 * two spellings: the raw ability ID with a slash (`mcp-adapter/execute-ability`)
+	 * and the MCP-sanitised tool name where the slash becomes a hyphen
+	 * (`mcp-adapter-execute-ability`, produced by {@see McpNameSanitizer}). This
+	 * matches either spelling by normalising both sides — replacing `/` with `-`
+	 * before comparing — against an EXACT allowlist. It is deliberately an exact
+	 * allowlist and not a broad `mcp-adapter` prefix, so a future ability cannot be
+	 * named to slip through the always-on gate.
+	 *
+	 * The single home for this check means enforce_disabled, reconcile, the
+	 * self-heal, and the MCP discovery gate all agree on what "transport" means.
+	 *
+	 * @param string $id Ability ID or MCP tool name.
+	 *
+	 * @return bool True when the ID is a transport meta-tool in either spelling.
+	 * @since 1.3.0
+	 */
+	public static function is_transport_ability( string $id ): bool {
+		$normalized = str_replace( '/', '-', $id );
+
+		foreach ( self::get_protected_abilities() as $protected ) {
+			if ( str_replace( '/', '-', $protected ) === $normalized ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Resolve the WordPress capability an ability is likely to require.
+	 *
+	 * Abilities expose only a `permission_callback` (often delegating to a core
+	 * REST route), not a declared capability string, so this is a best-effort
+	 * value for display. An ability can declare an exact capability in its
+	 * `meta['capability']`; otherwise we infer one from its supplier and
+	 * operation. Either way the `albert/abilities/required_capability` filter
+	 * gets the final say, so abilities or add-ons can correct it precisely.
+	 *
+	 * @param \WP_Ability $ability The ability to resolve.
+	 *
+	 * @return string A capability slug (best-effort).
+	 * @since 1.3.0
+	 */
+	public static function resolve_required_capability( \WP_Ability $ability ): string {
+		$id   = $ability->get_name();
+		$meta = (array) $ability->get_meta();
+
+		if ( ! empty( $meta['capability'] ) && is_string( $meta['capability'] ) ) {
+			$cap = $meta['capability'];
+		} else {
+			$cap = self::guess_capability( $id, $meta );
+		}
+
+		/**
+		 * Filters the required capability surfaced for an ability.
+		 *
+		 * @since 1.3.0
+		 *
+		 * @param string      $cap     The resolved capability slug (best-effort).
+		 * @param string      $id      The ability ID.
+		 * @param \WP_Ability $ability The ability instance.
+		 */
+		return (string) apply_filters( 'albert/abilities/required_capability', $cap, $id, $ability );
+	}
+
+	/**
+	 * Infer a likely capability from an ability's id, supplier and operation.
+	 *
+	 * Heuristic only — see {@see self::resolve_required_capability()}.
+	 *
+	 * @param string               $id   Ability ID.
+	 * @param array<string, mixed> $meta Ability meta (for annotations).
+	 *
+	 * @return string
+	 * @since 1.3.0
+	 */
+	private static function guess_capability( string $id, array $meta ): string {
+		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : [];
+		$chips       = AnnotationPresenter::chips_for( $annotations, $id );
+		$operation   = $chips[0]['key'] ?? 'read';
+
+		if ( self::get_ability_source( $id )['slug'] === 'woo' ) {
+			return 'manage_woocommerce';
+		}
+
+		$action    = strtolower( strstr( $id, '/' ) ? substr( $id, (int) strpos( $id, '/' ) + 1 ) : $id );
+		$is_read   = $operation === 'read';
+		$is_delete = $operation === 'delete';
+
+		if ( str_contains( $action, 'user' ) ) {
+			return $is_read ? 'list_users' : ( $is_delete ? 'delete_users' : 'edit_users' );
+		}
+		// Setting a featured image edits the target post, not the media library.
+		if ( str_contains( $action, 'featured-image' ) ) {
+			return $is_read ? 'read' : 'edit_posts';
+		}
+		if ( str_contains( $action, 'media' ) || str_contains( $action, 'upload' ) ) {
+			return $is_read ? 'read' : 'upload_files';
+		}
+		if ( str_contains( $action, 'term' ) || str_contains( $action, 'taxonom' ) ) {
+			return $is_read ? 'read' : 'manage_categories';
+		}
+		if ( str_contains( $action, 'page' ) ) {
+			return $is_read ? 'read' : ( $is_delete ? 'delete_pages' : 'edit_pages' );
+		}
+		if ( str_contains( $action, 'setting' ) || str_contains( $action, 'option' ) ) {
+			return 'manage_options';
+		}
+
+		// Posts and general content.
+		if ( $is_read ) {
+			return 'read';
+		}
+		return $is_delete ? 'delete_posts' : 'edit_posts';
 	}
 }

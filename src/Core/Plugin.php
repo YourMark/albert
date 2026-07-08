@@ -63,6 +63,7 @@ use Albert\MCP\Server as McpServer;
 use Albert\OAuth\Endpoints\AuthorizationPage;
 use Albert\OAuth\Endpoints\ClientRegistration;
 use Albert\OAuth\Endpoints\OAuthController;
+use Albert\Admin\Rest\AbilitiesController;
 use Albert\OAuth\Endpoints\OAuthDiscovery;
 use Albert\Vendor\WP\MCP\Core\McpAdapter;
 
@@ -179,6 +180,9 @@ class Plugin {
 			// Addon submenu pages (registered via filter at priority 15).
 			add_action( 'admin_menu', [ $this, 'register_addon_admin_pages' ], 15 );
 		}
+
+		// Register the abilities REST controller (data + toggles for the admin screen).
+		( new AbilitiesController() )->register_hooks();
 
 		// Register OAuth controller (REST API endpoints for token exchange).
 		( new OAuthController() )->register_hooks();

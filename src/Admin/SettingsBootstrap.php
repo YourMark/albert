@@ -16,6 +16,8 @@ namespace Albert\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Privacy\PrivacyMode;
+
 /**
  * SettingsBootstrap class.
  *
@@ -36,6 +38,28 @@ class SettingsBootstrap {
 	 */
 	public static function get_builtin_sections(): array {
 		return [
+			[
+				'id'          => 'albert/privacy',
+				'title'       => __( 'Privacy', 'albert-ai-butler' ),
+				'priority'    => 60,
+				'icon'        => 'privacy',
+				'description' => __( 'Control how customer and user personal data (names, emails, phone numbers, addresses) is shared with AI assistants. Payment and card data is always removed, regardless of this setting.', 'albert-ai-butler' ),
+				'fields'      => [
+					[
+						'id'                => 'mode',
+						'type'              => 'select',
+						'label'             => __( 'Privacy mode', 'albert-ai-butler' ),
+						'description'       => __( 'Strict: personal data is always anonymised. Balanced (recommended): anonymised by default, but an authorised request can reveal it. Off: personal data is not anonymised.', 'albert-ai-butler' ),
+						'default'           => PrivacyMode::Balanced->value,
+						'options'           => [
+							PrivacyMode::Strict->value   => __( 'Strict — always anonymise personal data', 'albert-ai-butler' ),
+							PrivacyMode::Balanced->value => __( 'Balanced — anonymise by default (recommended)', 'albert-ai-butler' ),
+							PrivacyMode::Off->value      => __( 'Off — do not anonymise personal data', 'albert-ai-butler' ),
+						],
+						'sanitize_callback' => [ PrivacyMode::class, 'sanitize' ],
+					],
+				],
+			],
 			[
 				// Always last — add-ons sit between the shared Settings card (50) and Licenses (9000).
 				'id'       => 'albert/licenses',

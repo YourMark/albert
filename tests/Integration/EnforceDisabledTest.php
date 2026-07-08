@@ -260,6 +260,56 @@ class EnforceDisabledTest extends TestCase {
 		$this->assertTrue( wp_has_ability( 'thirdparty/test-keep' ) );
 	}
 
+	// ─── Protected abilities ────────────────────────────────────────
+
+	/**
+	 * A protected ability (the MCP adapter's own tools) is never unregistered,
+	 * even when it is explicitly listed in the disabled option — disabling it
+	 * would break MCP discovery/execution.
+	 *
+	 * @return void
+	 */
+	public function test_protected_ability_survives_when_disabled(): void {
+		// The bundled MCP adapter may already register this ID; only add a stub
+		// when it is absent so we never trigger a duplicate-registration notice.
+		if ( ! wp_has_ability( 'mcp-adapter/execute-ability' ) ) {
+			$this->register_third_party_ability( 'mcp-adapter/execute-ability' );
+		}
+
+		update_option(
+			AbilitiesPage::DISABLED_ABILITIES_OPTION,
+			[ 'mcp-adapter/execute-ability' ]
+		);
+
+		$this->manager->enforce_disabled();
+
+		$this->assertTrue( wp_has_ability( 'mcp-adapter/execute-ability' ) );
+	}
+
+	/**
+	 * A protected ability survives even when an add-on adds it through the
+	 * `albert/abilities/disabled_list` filter.
+	 *
+	 * @return void
+	 */
+	public function test_protected_ability_survives_disabled_list_filter(): void {
+		if ( ! wp_has_ability( 'mcp-adapter/discover-abilities' ) ) {
+			$this->register_third_party_ability( 'mcp-adapter/discover-abilities' );
+		}
+
+		add_filter(
+			'albert/abilities/disabled_list',
+			static function ( array $disabled ): array {
+				$disabled[] = 'mcp-adapter/discover-abilities';
+				return $disabled;
+			}
+		);
+
+		$this->manager->enforce_disabled();
+
+		$this->assertTrue( wp_has_ability( 'mcp-adapter/discover-abilities' ) );
+	}
+
 	// ─── Management-context skip ────────────────────────────────────
 
 	/**

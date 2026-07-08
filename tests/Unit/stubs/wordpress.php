@@ -16,6 +16,7 @@
 // functions-only (keeps PHPCS's OO/function separation rule happy).
 require_once __DIR__ . '/WP_Error.php';
 require_once __DIR__ . '/WP_REST_Request.php';
+require_once __DIR__ . '/WP_REST_Response.php';
 require_once __DIR__ . '/WP.php';
 
 if ( ! function_exists( 'is_wp_error' ) ) {
@@ -145,6 +146,43 @@ if ( ! function_exists( 'wp_get_abilities' ) ) {
 	}
 }
 
+if ( ! function_exists( 'rest_ensure_response' ) ) {
+	/**
+	 * Stub rest_ensure_response: wrap non-response values in a WP_REST_Response.
+	 *
+	 * @param mixed $response Response data or object.
+	 *
+	 * @return WP_REST_Response|WP_Error
+	 */
+	function rest_ensure_response( $response ) {
+		if ( $response instanceof WP_REST_Response || $response instanceof WP_Error ) {
+			return $response;
+		}
+
+		return new WP_REST_Response( $response );
+	}
+}
+
+if ( ! function_exists( 'wp_get_ability' ) ) {
+	/**
+	 * Stub wp_get_ability that looks a test double up by name in
+	 * $GLOBALS['albert_test_abilities'].
+	 *
+	 * @param string $ability_id Ability ID.
+	 *
+	 * @return object|null The matching double, or null when not registered.
+	 */
+	function wp_get_ability( string $ability_id ): ?object {
+		foreach ( (array) ( $GLOBALS['albert_test_abilities'] ?? [] ) as $ability ) {
+			if ( is_object( $ability ) && method_exists( $ability, 'get_name' ) && $ability->get_name() === $ability_id ) {
+				return $ability;
+			}
+		}
+
+		return null;
+	}
+}
+
 if ( ! function_exists( 'wp_register_ability' ) ) {
 	/**
 	 * Stub wp_register_ability that records calls to $GLOBALS['albert_test_registered_abilities'].
@@ -241,6 +279,12 @@ if ( ! function_exists( 'update_option' ) ) {
 		if ( ! isset( $GLOBALS['albert_test_options'] ) || ! is_array( $GLOBALS['albert_test_options'] ) ) {
 			$GLOBALS['albert_test_options'] = [];
 		}
+
+		// Count writes per option so tests can assert churn-free no-op paths.
+		if ( ! isset( $GLOBALS['albert_test_option_writes'] ) || ! is_array( $GLOBALS['albert_test_option_writes'] ) ) {
+			$GLOBALS['albert_test_option_writes'] = [];
+		}
+		$GLOBALS['albert_test_option_writes'][ $option ] = ( $GLOBALS['albert_test_option_writes'][ $option ] ?? 0 ) + 1;
 
 		$GLOBALS['albert_test_options'][ $option ] = $value;
 
@@ -362,6 +406,59 @@ if ( ! function_exists( 'menu_page_url' ) ) {
 	 */
 	function menu_page_url( string $slug, bool $display = true ): string {
 		return 'http://example.test/wp-admin/admin.php?page=' . $slug;
+	}
+}
+
+if ( ! function_exists( 'is_admin' ) ) {
+	/**
+	 * Stub is_admin that reads from $GLOBALS['albert_test_is_admin'].
+	 *
+	 * @return bool
+	 */
+	function is_admin(): bool {
+		return (bool) ( $GLOBALS['albert_test_is_admin'] ?? false );
+	}
+}
+
+if ( ! function_exists( 'sanitize_key' ) ) {
+	/**
+	 * Stub sanitize_key mirroring WordPress's lowercase + charset filtering.
+	 *
+	 * @param string $key Key to sanitize.
+	 *
+	 * @return string
+	 */
+	function sanitize_key( string $key ): string {
+		return (string) preg_replace( '/[^a-z0-9_\-]/', '', strtolower( $key ) );
+	}
+}
+
+if ( ! function_exists( 'wp_unregister_ability' ) ) {
+	/**
+	 * Stub wp_unregister_ability that records unregistered IDs and drops the
+	 * matching double from $GLOBALS['albert_test_abilities'].
+	 *
+	 * @param string $name Ability name.
+	 *
+	 * @return void
+	 */
+	function wp_unregister_ability( string $name ): void {
+		if ( ! isset( $GLOBALS['albert_test_unregistered_abilities'] ) || ! is_array( $GLOBALS['albert_test_unregistered_abilities'] ) ) {
+			$GLOBALS['albert_test_unregistered_abilities'] = [];
+		}
+
+		$GLOBALS['albert_test_unregistered_abilities'][] = $name;
+
+		if ( isset( $GLOBALS['albert_test_abilities'] ) && is_array( $GLOBALS['albert_test_abilities'] ) ) {
+			$GLOBALS['albert_test_abilities'] = array_values(
+				array_filter(
+					$GLOBALS['albert_test_abilities'],
+					static function ( $ability ) use ( $name ): bool {
+						return ! ( is_object( $ability ) && method_exists( $ability, 'get_name' ) && $ability->get_name() === $name );
+					}
+				)
+			);
+		}
 	}
 }
 

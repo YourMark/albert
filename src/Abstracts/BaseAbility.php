@@ -10,7 +10,7 @@
 namespace Albert\Abstracts;
 
 use Albert\Contracts\Interfaces\Ability;
-use Albert\Core\AbilitiesRegistry;
+use Albert\Core\AbilitiesState;
 use WP_Error;
 use WP_REST_Request;
 
@@ -391,14 +391,9 @@ abstract class BaseAbility implements Ability {
 	 * @since 1.2.0
 	 */
 	public function is_enabled(): bool {
-		$disabled = get_option( 'albert_disabled_abilities', [] );
-
-		// On fresh install, use default disabled list (Albert write abilities).
-		if ( empty( $disabled ) && ! get_option( 'albert_abilities_saved' ) ) {
-			$disabled = AbilitiesRegistry::get_default_disabled_abilities();
-		}
-
-		return ! in_array( $this->id, (array) $disabled, true );
+		// Delegate to the single owner of the disabled-abilities option so the
+		// blocklist read + fresh-install default live in exactly one place.
+		return AbilitiesState::is_enabled( $this->id );
 	}
 
 	/**

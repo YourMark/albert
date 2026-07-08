@@ -1,0 +1,951 @@
+/**
+ * Albert — Abilities (DataViews) admin screen styles.
+ *
+ * Authored plain CSS (no preprocessor), loaded after the DataViews vendor
+ * stylesheet so these rules can override it. DataViews + wp-components supply
+ * the table/grid/toolbar chrome, themed to the site's WordPress admin color
+ * scheme via --wp-admin-theme-color (set by WordPress; we do not override it).
+ * This file adds the page chrome (header, summary, card), the custom cell +
+ * operation badge, the "last used" cell, and the detail fly-in drawer.
+ */
+
+/* Full width — the table needs the room (5 columns), so contain only the
+   subtitle for readability rather than the whole table. */
+.albert-abilities {
+	max-width: none;
+}
+
+/* Page header. */
+.albert-abilities__header {
+	margin: 4px 0 0;
+}
+
+.albert-abilities__title {
+	margin: 0;
+	padding: 0;
+	font-size: 23px;
+	font-weight: 600;
+	line-height: 1.2;
+	color: #1e1e1e;
+}
+
+.albert-abilities__subtitle {
+	margin: 7px 0 0;
+	max-width: 640px;
+	font-size: 13.5px;
+	color: #646970;
+}
+
+.albert-abilities__summary-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin: 16px 0 18px;
+}
+
+.albert-abilities__summary {
+	display: flex;
+	gap: 18px;
+	margin: 0;
+	font-size: 12.5px;
+	color: #646970;
+}
+
+.albert-abilities__summary strong {
+	font-weight: 600;
+	color: #1e1e1e;
+}
+
+.albert-abilities__bulk-all {
+	display: flex;
+	gap: 8px;
+}
+
+.albert-abilities__error {
+	margin: 0 0 12px;
+}
+
+.albert-abilities__loading {
+	display: flex;
+	justify-content: center;
+	padding: 64px 0;
+}
+
+/* White card framing the DataViews component. */
+.albert-abilities__card {
+	background: #fff;
+	border: 1px solid #e0e0e0;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+/* Custom toolbar: one aligned row — search + filters left, view controls right. */
+.albert-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 12px;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+.albert-toolbar__group {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.albert-toolbar__group--end {
+	margin-inline-start: auto;
+}
+
+/* Give the search a sensible fixed width instead of stretching. */
+.albert-toolbar .components-search-control {
+	width: 232px;
+}
+
+/* The "Ability" cell: label, monospace id, one-line description. */
+.albert-ability-cell {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	min-width: 0;
+}
+
+/* Label is the clickable title — the cue that a row opens. Uses the site's
+   admin color scheme accent (not a hardcoded brand colour). */
+.albert-ability-cell__label {
+	font-size: 14px;
+	font-weight: 600;
+	color: var( --wp-admin-theme-color, #2271b1 );
+}
+
+.albert-ability-cell:hover .albert-ability-cell__label {
+	text-decoration: underline;
+}
+
+.albert-ability-cell__id {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 11.5px;
+	color: #6c7177;
+	background: none;
+	padding: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Description: single line + ellipsis in the table. Full text lives in the fly-in. */
+.albert-ability-cell__desc {
+	color: #646970;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* In the grid, allow up to two clamped lines instead of one. */
+.dataviews-view-grid .albert-ability-cell__desc {
+	white-space: normal;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+/* Operation badge — read (green) / write (amber) / delete (red). */
+.albert-op-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 2px 9px 2px 7px;
+	border-radius: 11px;
+	font-size: 11.5px;
+	font-weight: 600;
+	line-height: 1.6;
+	white-space: nowrap;
+}
+
+.albert-op-badge__dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: currentcolor;
+}
+
+.albert-op-badge--read {
+	background: #e6f4ea;
+	color: #0a7a3b;
+}
+
+.albert-op-badge--write {
+	background: #fbf1df;
+	color: #9a5b00;
+}
+
+.albert-op-badge--delete {
+	background: #fdecea;
+	color: #b32d2e;
+}
+
+/* Generic add-on badges — appended to rows via the
+   `albert/abilities/payload_row` PHP filter. Shown in the overview cell and the
+   fly-in header. Tones: info (blue) / warning (amber) / neutral (grey). */
+.albert-badges {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.albert-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 1px 8px;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.6;
+	white-space: nowrap;
+}
+
+.albert-badge--info {
+	background: #e7f0fb;
+	color: #1d4f91;
+}
+
+.albert-badge--warning {
+	background: #fbf1df;
+	color: #9a5b00;
+}
+
+.albert-badge--neutral {
+	background: #eef0f2;
+	color: #50575e;
+}
+
+/* ---------------------------------------------------------------------------
+   Detail fly-in (right-docked drawer)
+   --------------------------------------------------------------------------- */
+
+.albert-flyin__backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	background: rgba(0, 0, 0, 0.28);
+}
+
+.albert-flyin {
+	position: fixed;
+	inset-block: 0;
+	inset-inline-end: 0;
+	z-index: 100001;
+	display: flex;
+	flex-direction: column;
+	width: 452px;
+	max-width: 92vw;
+	background: #fff;
+	box-shadow: -8px 0 30px rgba(0, 0, 0, 0.16);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.albert-flyin__backdrop {
+		animation: albert-fade-in 0.15s ease;
+	}
+
+	.albert-flyin {
+		animation: albert-flyin-in 0.22s cubic-bezier(0.2, 0.7, 0.3, 1);
+	}
+}
+
+@keyframes albert-fade-in {
+	from {
+		opacity: 0;
+	}
+}
+
+@keyframes albert-flyin-in {
+	from {
+		transform: translateX(24px);
+		opacity: 0;
+	}
+}
+
+.albert-flyin__header {
+	flex: none;
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 18px 22px 16px;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+.albert-flyin__title {
+	margin: 10px 0 2px;
+	padding: 0;
+	font-size: 19px;
+	font-weight: 600;
+	color: #1e1e1e;
+}
+
+.albert-flyin__id {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12.5px;
+	color: var( --wp-admin-theme-color, #2271b1 );
+	background: none;
+	padding: 0;
+}
+
+/* Small category line in the header, on its own row under the id. The label
+   reads as a quiet tag; the value carries the emphasis. */
+.albert-flyin__category {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	margin-top: 6px;
+	font-size: 13px;
+}
+
+.albert-flyin__category-label {
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #6c7177;
+}
+
+.albert-flyin__category-value {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 10px;
+	border-radius: 11px;
+	background: #f0f0f1;
+	color: #1e1e1e;
+	font-size: 12px;
+	font-weight: 500;
+}
+
+/* Confirm-on-close dialog (styled @wordpress/components Modal). */
+.albert-flyin__confirm-body {
+	margin: 0 0 18px;
+	font-size: 13.5px;
+	line-height: 1.55;
+	color: #3c434a;
+}
+
+.albert-flyin__confirm-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.albert-flyin__close {
+	flex: none;
+}
+
+.albert-flyin__body {
+	flex: 1;
+	overflow-y: auto;
+	padding: 20px 22px;
+	display: flex;
+	flex-direction: column;
+	gap: 22px;
+}
+
+.albert-flyin__enabled {
+	padding: 13px 14px;
+	border: 1px solid #e0e0e0;
+	border-radius: 5px;
+	background: #fbfbfc;
+}
+
+.albert-flyin__section {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.albert-flyin__section-title {
+	display: flex;
+	align-items: center;
+	margin: 0;
+	padding: 0;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #6c7177;
+}
+
+/* Parameters accordion card (collapsible), placed under the description. */
+.albert-flyin__accordion {
+	/* flex:none — the body is a flex column; overflow:hidden would otherwise
+	   strip the item's auto min-height and let it collapse. */
+	flex: none;
+	border: 1px solid #e8e8e8;
+	border-radius: 6px;
+	background: #fff;
+	overflow: hidden;
+}
+
+.albert-flyin__accordion-heading {
+	margin: 0;
+}
+
+.albert-flyin__accordion-toggle {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	inline-size: 100%;
+	margin: 0;
+	padding: 9px 12px;
+	border: 0;
+	background: none;
+	font: inherit;
+	cursor: pointer;
+	transition: background 0.15s ease;
+}
+
+.albert-flyin__accordion-toggle:hover {
+	background: #f6f7f7;
+}
+
+.albert-flyin__accordion-toggle:focus-visible {
+	outline: 2px solid var( --wp-admin-theme-color, #2271b1 );
+	outline-offset: -2px;
+}
+
+.albert-flyin__accordion-chevron {
+	flex: none;
+	fill: #50575e;
+	transition: transform 0.15s ease;
+}
+
+.albert-flyin__accordion-toggle[ aria-expanded="true" ]
+	.albert-flyin__accordion-chevron {
+	transform: rotate( 90deg );
+}
+
+@media ( prefers-reduced-motion: reduce ) {
+	.albert-flyin__accordion-chevron {
+		transition: none;
+	}
+}
+
+.albert-flyin__accordion-title {
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #2c3338;
+}
+
+.albert-flyin__accordion-summary {
+	margin-inline-start: auto;
+	font-size: 12px;
+	color: #6c7177;
+}
+
+.albert-flyin__accordion-panel {
+	border-block-start: 1px solid #f0f0f1;
+}
+
+.albert-flyin__accordion-panel[ hidden ] {
+	display: none;
+}
+
+/* Parameter rows. Required rows get a left accent bar + a tinted background. */
+.albert-flyin__params {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.albert-flyin__param {
+	margin: 0;
+	padding: 8px 12px;
+	border-block-end: 1px solid #f4f4f5;
+}
+
+.albert-flyin__param:last-child {
+	border-block-end: 0;
+}
+
+.albert-flyin__param-head {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+}
+
+.albert-flyin__param-name {
+	padding: 0;
+	background: none;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12px;
+	font-weight: 600;
+	color: #1e1e1e;
+}
+
+.albert-flyin__param-type {
+	padding: 0 6px;
+	border-radius: 3px;
+	background: #f0f0f1;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 10.5px;
+	color: #50575e;
+}
+
+.albert-flyin__param-flag {
+	margin-inline-start: auto;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	color: #6c7177;
+}
+
+.albert-flyin__param.is-required .albert-flyin__param-flag {
+	color: var( --wp-admin-theme-color, #2271b1 );
+}
+
+.albert-flyin__param-desc {
+	margin: 3px 0 0;
+	font-size: 12px;
+	line-height: 1.45;
+	color: #646970;
+}
+
+.albert-flyin__description,
+.albert-flyin__returns {
+	margin: 0;
+	font-size: 13.5px;
+	line-height: 1.55;
+	color: #3c434a;
+}
+
+.albert-flyin__returns {
+	padding: 11px 13px;
+	background: #fbfbfc;
+	border: 1px solid #e0e0e0;
+	border-radius: 5px;
+}
+
+.albert-flyin__cards {
+	display: flex;
+	gap: 10px;
+}
+
+.albert-flyin__card {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 11px 13px;
+	border: 1px solid #e0e0e0;
+	border-radius: 5px;
+}
+
+.albert-flyin__card-label {
+	font-size: 11px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #6c7177;
+}
+
+.albert-flyin__card-value {
+	font-size: 13.5px;
+	color: #1e1e1e;
+	background: none;
+	padding: 0;
+}
+
+code.albert-flyin__card-value {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12.5px;
+}
+
+.albert-flyin__pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 7px;
+}
+
+.albert-flyin__pill {
+	display: inline-flex;
+	align-items: center;
+	padding: 4px 10px;
+	border: 1px solid #e0e0e0;
+	border-radius: 12px;
+	background: #fbfbfc;
+	font-size: 12px;
+	color: #3c434a;
+}
+
+.albert-flyin__footer {
+	flex: none;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 14px 22px;
+	border-top: 1px solid #e0e0e0;
+}
+
+/* Panel-level save status (fed by an add-on via api.setSaveStatus). Empty until
+   a save runs, so it takes no space when idle. */
+.albert-flyin__status {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 20px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var( --wp-admin-theme-color, #2271b1 );
+}
+
+.albert-flyin__status:empty {
+	display: none;
+}
+
+/* Info "(i)" popover trigger + content (used in the fly-in). */
+.albert-flyin__section-head {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.albert-flyin__card-head {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.albert-info {
+	display: inline-flex;
+	line-height: 0;
+}
+
+.albert-info .components-button.is-small {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 24px;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border-radius: 4px;
+	color: #6c7177;
+}
+
+.albert-info .components-button.is-small .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 1;
+}
+
+/* Hover / focus / active (popover open) state. */
+.albert-info .components-button.is-small:hover,
+.albert-info .components-button.is-small:focus,
+.albert-info .components-button.is-small[ aria-expanded="true" ] {
+	color: var( --wp-admin-theme-color, #2271b1 );
+	background: color-mix(
+		in oklch,
+		var( --wp-admin-theme-color, #2271b1 ) 12%,
+		transparent
+	);
+}
+
+/* Lift the info popover clearly above the content beneath it — without this it
+   reads as merged with the white card it overlaps. */
+.albert-info__popover .components-popover__content {
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	box-shadow: 0 8px 28px oklch( 0 0 0 / 0.16 ), 0 2px 6px oklch( 0 0 0 / 0.08 );
+}
+
+.albert-info__content {
+	width: 300px;
+	max-width: calc( 100vw - 32px );
+	padding: 12px 14px;
+	font-size: 12.5px;
+	line-height: 1.5;
+	color: #3c434a;
+}
+
+.albert-info__content p {
+	margin: 0 0 8px;
+}
+
+.albert-info__content p:last-child {
+	margin: 0;
+}
+
+/* "Last used" cell. */
+.albert-lastused {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12.5px;
+	color: #3c434a;
+}
+
+.albert-lastused--never {
+	color: #6c7177;
+}
+
+.albert-lastused__dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: #a7aaad;
+	flex: none;
+}
+
+.albert-lastused__dot--success {
+	background: #1a9e54;
+}
+
+.albert-lastused__dot--error {
+	background: #d63638;
+}
+
+/* Bulk selection is exposed via the checkbox column + the selection toolbar.
+   The per-row actions (Enable/Disable) would just duplicate the row toggle, so
+   hide the per-row actions column (table) and per-card actions (grid). The
+   checkbox column and selection toolbar are separate and stay. */
+.dataviews-view-table__actions-column {
+	display: none;
+}
+
+.dataviews-view-table__col-actions {
+	width: 0;
+}
+
+.dataviews-view-grid__media-actions {
+	display: none;
+}
+
+/* Selection bulk bar, moved to the top (below the toolbar). Only styled when it
+   actually has content, so there's no empty bar when nothing is selected. */
+.albert-abilities__bulkbar {
+	background: #f0f6fc;
+	border-bottom: 1px solid #e0e0e0;
+	padding: 6px 12px;
+}
+
+/* Permissions section — Free default. Mirrors Premium's Capability/Custom
+   toggle; the Custom tab is a locked preview + upsell (Premium replaces the
+   whole section when active, so this is never shown alongside it). */
+
+/* One bordered panel wrapping the description + toggle + active tab content, so
+   the section reads as a single unit. Shared with Premium (same class, defined
+   identically in both stylesheets). */
+.albert-perms-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	padding: 14px;
+	border: 1px solid #e0e0e0;
+	border-radius: 8px;
+	background: #fff;
+}
+
+.albert-perms-panel__intro {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.5;
+	color: #50575e;
+}
+
+/* The shared "Required capability" card is unframed inside the panel (no
+   box-in-box); scoped so the card keeps its border anywhere else. */
+.albert-perms-panel .albert-flyin__card--capability {
+	border: 0;
+	padding: 0;
+	border-radius: 0;
+}
+
+/* Custom toggle option: label + a small lock icon signalling it's gated. */
+.albert-perms-upsell__custom-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.albert-perms-upsell__custom-label .dashicons-lock {
+	font-size: 14px;
+	inline-size: 14px;
+	block-size: 14px;
+	line-height: 1;
+}
+
+/* "Slide button" toggle: a light track with an inset white pill that slides
+   between options. The component keeps the active option's box in --selected-*
+   and transitions its ::before; we re-style that ::before as a soft pill,
+   positioned from those vars but inset 4px (no control padding, which would
+   double-offset it). The slide comes from transitioning the position. */
+.albert-perms-panel .components-toggle-group-control {
+	background: #f0f0f1;
+	border: none;
+	border-radius: 10px;
+	box-shadow: none;
+}
+
+.albert-perms-panel .components-toggle-group-control::before {
+	top: calc( var( --selected-top, 0 ) * 1px + 4px );
+	left: 0;
+	width: calc( var( --selected-width, 0 ) * 1px - 8px );
+	height: calc( var( --selected-height, 0 ) * 1px - 8px );
+	/* Move horizontally with transform — unlike `left`, a transform driven by a
+	   changing custom property interpolates, so the pill slides instead of
+	   jumping. The +4px is the inset. */
+	transform: translateX( calc( var( --selected-left, 0 ) * 1px + 4px ) );
+	background: #fff;
+	border: none;
+	border-radius: 6px;
+	box-shadow: 0 1px 3px oklch( 0 0 0 / 0.16 ),
+		0 1px 1px oklch( 0 0 0 / 0.07 );
+	transition: transform 0.18s ease, width 0.18s ease;
+}
+
+.albert-perms-panel .components-toggle-group-control-option-base {
+	position: relative;
+	z-index: 1;
+	background: transparent;
+	border: none;
+	color: #5e636a;
+}
+
+.albert-perms-upsell
+	.components-toggle-group-control-option-base[ aria-checked="true" ] {
+	color: #1e1e1e;
+}
+
+@media ( prefers-reduced-motion: reduce ) {
+	.albert-perms-panel .components-toggle-group-control::before {
+		transition: none;
+	}
+}
+
+/* Tab content sits directly under the toggle; the panel's flex gap spaces it. */
+.albert-perms-upsell__custom {
+	display: flex;
+	flex-direction: column;
+}
+
+.albert-perms-upsell__benefits {
+	margin: 0 0 12px;
+	padding: 0;
+	list-style: none;
+}
+
+.albert-perms-upsell__benefits li {
+	position: relative;
+	margin: 0;
+	padding-inline-start: 22px;
+	font-size: 12.5px;
+	line-height: 1.7;
+	color: #2c3338;
+}
+
+.albert-perms-upsell__benefits li::before {
+	content: "";
+	position: absolute;
+	inset-inline-start: 5px;
+	inset-block-start: 0.5em;
+	inline-size: 8px;
+	block-size: 5px;
+	border: 1.5px solid var( --wp-admin-theme-color, #2271b1 );
+	border-block-start: 0;
+	border-inline-end: 0;
+	transform: rotate( -45deg );
+}
+
+.albert-perms-upsell__example-label {
+	display: block;
+	margin-block-end: 6px;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: #8a8f94;
+}
+
+/* Decorative showcase of the rule builder. The example rules stay readable but
+   the Upgrade button sits over the lower half (with a scrim) so the box reads as
+   a locked preview, not an editable list. */
+.albert-perms-upsell__preview {
+	position: relative;
+	overflow: hidden;
+	min-block-size: 132px;
+	padding: 12px;
+	border: 1px dashed #dcdcde;
+	border-radius: 8px;
+	background: #fafafa;
+}
+
+/* Scrim that fades the example out toward the overlaid CTA. */
+.albert-perms-upsell__preview::after {
+	content: "";
+	position: absolute;
+	inset-inline: 0;
+	inset-block-end: 0;
+	block-size: 72%;
+	background: linear-gradient(
+		to bottom,
+		transparent,
+		color-mix( in oklch, #fafafa 70%, transparent ) 45%,
+		#fafafa 82%
+	);
+	pointer-events: none;
+}
+
+.albert-perms-upsell__rules {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin: 0;
+	pointer-events: none;
+	user-select: none;
+}
+
+.albert-perms-upsell__rule {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0;
+	padding: 8px 10px;
+	border: 1px dashed #d7d7d9;
+	border-radius: 6px;
+	font-size: 12.5px;
+	color: #50575e;
+}
+
+.albert-perms-upsell__token {
+	font-weight: 600;
+}
+
+.albert-perms-upsell__word {
+	color: #6c7177;
+}
+
+.albert-perms-upsell__chip {
+	margin-inline-start: auto;
+	padding: 2px 10px;
+	border-radius: 11px;
+	background: #f0f0f1;
+	font-weight: 500;
+}
+
+/* Overlaid CTA — floats over the lower part of the example. */
+.albert-perms-upsell__cta {
+	position: absolute;
+	inset-inline: 0;
+	inset-block-end: 14px;
+	z-index: 1;
+	text-align: center;
+}

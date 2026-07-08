@@ -51,6 +51,13 @@ class AbilitiesManager implements Hookable {
 		add_action( 'abilities_api_init', [ $this, 'register_abilities' ] );
 		add_action( 'wp_abilities_api_init', [ $this, 'register_abilities' ] );
 
+		// Self-heal the persisted blocklist before anything reads it: strip any MCP
+		// transport meta-tool a past build may have wrongly disabled, so the
+		// transport comes back automatically on update. Runs early (priority 1) so
+		// it lands before reconcile_new_abilities() and enforce_disabled().
+		add_action( 'abilities_api_init', [ $this, 'heal_transport_tools' ], 1 );
+		add_action( 'wp_abilities_api_init', [ $this, 'heal_transport_tools' ], 1 );
+
 		// Reconcile abilities added by an upgrade against the persisted baseline
 		// so newly-seen write/destructive abilities inherit the fresh-install
 		// default (off) instead of silently turning on. Runs after every
@@ -73,6 +80,11 @@ class AbilitiesManager implements Hookable {
 
 		// Bridge show_in_rest to mcp.public for MCP adapter compatibility.
 		add_filter( 'wp_register_ability_args', [ $this, 'normalize_mcp_metadata' ], 10, 2 );
+
+		// Wrap every ability's permission_callback so Albert Premium's advanced
+		// permission manager can gate access per role/user via the internal
+		// `albert/abilities/check_permission` filter.
+		add_filter( 'wp_register_ability_args', [ $this, 'wrap_permission_callback' ], 20, 2 );
 	}
 
 
@@ -229,6 +241,15 @@ class AbilitiesManager implements Hookable {
 		foreach ( wp_get_abilities() as $ability ) {
 			$id = $ability->get_name();
 
+			// The MCP transport meta-tools must always stay registered — protocol
+			// discovery and execution depend on them. Never unregister them, whatever
+			// the disabled list, the fresh-install default, or the is_executable()
+			// pipeline says. This is belt-and-braces on top of get_effective_disabled_list()
+			// already stripping them from the blocklist.
+			if ( AbilitiesRegistry::is_transport_ability( $id ) ) {
+				continue;
+			}
+
 			if ( in_array( $id, $disabled_list, true ) ) {
 				wp_unregister_ability( $id );
 				continue;
@@ -241,6 +262,49 @@ class AbilitiesManager implements Hookable {
 					wp_unregister_ability( $id );
 				}
 			}
+		}
+	}
+
+	/**
+	 * Self-heal the persisted disabled-abilities option.
+	 *
+	 * The MCP transport meta-tools (discover / get-info / execute) must never be
+	 * disabled — the whole MCP transport depends on them. A site upgraded from a
+	 * build that wrongly auto-disabled them can still carry their IDs in the
+	 * `albert_disabled_abilities` option; this actively removes any transport
+	 * meta-tool ID from that option so those sites get the transport back
+	 * automatically on this update, with no admin action.
+	 *
+	 * There is a version-keyed migration hook ({@see \Albert\Database\Installer::maybe_upgrade()}),
+	 * but it only fires when the plugin version advances, so it cannot guarantee
+	 * the heal on a release that ships this fix without a version bump. Instead this
+	 * runs as a cheap defensive scrub early in the abilities lifecycle (priority 1
+	 * on the abilities-init hooks, before reconcile and enforce). It reads the
+	 * option once and writes ONLY when a transport meta-tool was actually present,
+	 * so the steady state performs no writes and there is no option churn.
+	 *
+	 * @return void
+	 * @since 1.3.0
+	 */
+	public function heal_transport_tools(): void {
+		$disabled = get_option( AbilitiesPage::DISABLED_ABILITIES_OPTION, [] );
+
+		if ( ! is_array( $disabled ) || $disabled === [] ) {
+			return;
+		}
+
+		$disabled = array_map( 'strval', $disabled );
+
+		$scrubbed = array_values(
+			array_filter(
+				$disabled,
+				static fn( string $id ): bool => ! AbilitiesRegistry::is_transport_ability( $id )
+			)
+		);
+
+		// Only write when a transport meta-tool was actually present, to avoid churn.
+		if ( count( $scrubbed ) !== count( $disabled ) ) {
+			update_option( AbilitiesPage::DISABLED_ABILITIES_OPTION, $scrubbed );
 		}
 	}
 
@@ -307,6 +371,17 @@ class AbilitiesManager implements Hookable {
 
 		$known = array_values( array_unique( array_map( 'strval', (array) $known ) ) );
 		$new   = array_values( array_diff( $registered, $known ) );
+
+		// The MCP transport meta-tools must always stay enabled, so they are never
+		// auto-disabled as "newly seen". Excluding them here means an update can
+		// never add them to the disabled option (and, since they're left out of the
+		// known set too, they simply stay ignored — no option churn either way).
+		$new = array_values(
+			array_filter(
+				$new,
+				static fn( string $id ): bool => ! AbilitiesRegistry::is_transport_ability( $id )
+			)
+		);
 
 		if ( $new === [] ) {
 			return;
@@ -414,7 +489,12 @@ class AbilitiesManager implements Hookable {
 		 */
 		$filtered = apply_filters( 'albert/abilities/disabled_list', $disabled );
 
-		return array_values( array_unique( array_map( 'strval', (array) $filtered ) ) );
+		$filtered = array_values( array_unique( array_map( 'strval', (array) $filtered ) ) );
+
+		// The MCP adapter's own tools must never be unregistered — doing so breaks
+		// protocol discovery/execution. Strip them whatever the option, the
+		// fresh-install default, or add-on filters say.
+		return array_values( array_diff( $filtered, AbilitiesRegistry::get_protected_abilities() ) );
 	}
 
 	/**
@@ -541,6 +621,59 @@ class AbilitiesManager implements Hookable {
 			$args['meta']['mcp'] = [];
 		}
 		$args['meta']['mcp']['public'] = true;
+
+		return $args;
+	}
+
+	/**
+	 * Wrap an ability's permission_callback with the Albert permission filter.
+	 *
+	 * Runs the ability's own permission_callback first (preserving its capability
+	 * / REST-delegated check as the baseline), then passes the result through the
+	 * internal `albert/abilities/check_permission` filter, which Albert Premium's
+	 * advanced permission rules use to gate per role or per user. Applies to EVERY
+	 * registered ability — Albert's, WooCommerce's, ACF's, and any third party — so
+	 * those rules gate the whole registry the admin screen lists.
+	 *
+	 * The callback runs in WP_Ability::check_permissions() with the connected user
+	 * already set (OAuth via TokenValidator), which is the meaningful "who" for MCP
+	 * calls. WordPress treats a permission_callback as denied unless it returns
+	 * exactly `true`, so add-ons must return `true` to allow or a WP_Error to deny.
+	 *
+	 * @param array<string, mixed> $args Ability registration arguments.
+	 * @param string               $name Ability name.
+	 *
+	 * @return array<string, mixed> Modified arguments.
+	 * @since 1.3.0
+	 */
+	public function wrap_permission_callback( array $args, string $name ): array {
+		$original = $args['permission_callback'] ?? null;
+
+		$args['permission_callback'] = static function ( $input = null ) use ( $original, $name ) {
+			$result = is_callable( $original ) ? call_user_func( $original, $input ) : true;
+
+			/**
+			 * Filters the permission result for an ability.
+			 *
+			 * @internal Internal seam for Albert's own permission layer (Albert
+			 * Premium's advanced permission rules). Not a public extension point —
+			 * it may change or be removed without notice; third-party code should
+			 * not rely on it.
+			 *
+			 * The baseline `$result` is the ability's own permission_callback output
+			 * (true or WP_Error). A callback returns `true` to allow or a WP_Error to
+			 * deny; any other value is treated as denied by WordPress. Runs with the
+			 * connected user set, so per-user rules can evaluate against
+			 * `get_current_user_id()` and its roles.
+			 *
+			 * @since 1.3.0
+			 *
+			 * @param bool|\WP_Error $result     Baseline permission result.
+			 * @param string         $ability_id Ability identifier.
+			 * @param int            $user_id    Current user ID.
+			 */
+			return apply_filters( 'albert/abilities/check_permission', $result, $name, get_current_user_id() );
+		};
 
 		return $args;
 	}
