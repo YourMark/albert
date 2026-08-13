@@ -154,123 +154,124 @@ Albert is designed for single-site installations. Multisite support is on the ro
 = 1.3.1 =
 A security update for how AI assistants connect.
 
-**Stricter, clearer connection approval**
+**Security**
 
-* When an assistant connects, it must now register the exact return address it will use, instead of relying on a permissive wildcard fallback. Connection requests are matched against that exact address.
+* Connecting an assistant now requires the exact return address it will use. The old permissive wildcard fallback is gone, and connection requests are matched against that exact address.
 * The approval screen now shows the destination the assistant will be sent to, and how recently the app registered, so an unexpected request is easier to spot.
-* Native and desktop apps that use their own link scheme are now validated properly and required to use PKCE, so a shared secret is never relied upon.
+* Native and desktop apps that use their own link scheme are validated properly and required to use PKCE, so a shared secret is never relied upon.
+* Stricter validation of return addresses, a per-app limit on how many can be registered, and a cap on the total number of registered apps.
 
-**Housekeeping**
+**Developer**
 
-* Clearer validation of return addresses, a limit on how many a single app can register, and a cap on the number of registered apps.
-* Schema groundwork for managing and tidying up your connections in a later release.
+* New `albert/oauth/allowed_redirect_schemes` filter to restrict redirect URI schemes to an explicit allowlist.
 
 = 1.3.0 =
 Two headline changes: the Abilities screen has been rebuilt from scratch, and personal data is now kept private from AI assistants automatically.
 
-**A brand-new Abilities screen**
+**Features**
 
-The screen where you decide what each AI assistant can do has been completely rebuilt.
-
-* A fast, modern list — search, filter by category or supplier, sort, and page through every ability, matching the look and feel of the rest of your WordPress admin.
+* Rebuilt Abilities screen — a fast, modern list with search, filter by category or supplier, sort, and pagination, matching the rest of the WordPress admin.
 * Switch abilities on or off instantly, one at a time or in bulk — no Save button.
-* Click any ability to open a detail panel showing its inputs, the permission it needs, and when it last ran.
-* Rebuilt for accessibility throughout — full keyboard and screen-reader support, with clearer focus states and contrast.
-* New extension points let add-ons plug straight into the screen — this is what powers Albert Premium's per-role and per-user permission rules.
+* A detail panel on every ability showing its inputs, the permission it needs, and when it last ran.
+* Privacy mode — personal data (names, email addresses, phone numbers, and postal addresses) is redacted from AI results before it leaves your site. Choose Strict, Balanced, or Off to control how much is hidden.
+* Reveal the real personal details only when you explicitly ask, gated by your own WordPress capabilities.
 
-**Privacy by default**
+**Improvements**
 
-* Personal data — names, email addresses, phone numbers, and postal addresses — is now redacted from AI results before it leaves your site.
-* New "Privacy mode" setting — choose Strict, Balanced, or Off to control how much is hidden.
-* Reveal the real details only when you explicitly ask, gated by your own WordPress capabilities.
+* The Abilities screen was rebuilt for accessibility throughout — full keyboard and screen-reader support, with clearer focus states and contrast.
+* The three core tools an assistant uses to discover and run abilities can no longer be switched off, and repair themselves on load, so a connection never breaks after an update.
+
+**Developer**
+
+* New extension points on the Abilities screen let add-ons plug straight in — this powers Albert Premium's per-role and per-user permission rules.
 * New `albert/privacy/*` filters let add-ons protect their own fields — the WooCommerce add-on uses these to strip payment and card data.
-
-**Reliability**
-
-* The three core tools an assistant uses to discover and run abilities can no longer be switched off, and repair themselves on load — so a connection never breaks after an update.
 
 = 1.2.0 =
 Albert now understands the WordPress block editor — a big step up in how AI assistants read and write your content.
 
-**Block editor support**
+**Features**
 
-* AI assistants now work with real WordPress blocks instead of raw HTML. They can read a post as a clean, structured outline and compose new content with proper blocks — headings, paragraphs, lists, quotes, images, buttons, columns, and groups.
-* **Edit one block at a time** — change, add, move, or remove a single block without disturbing the rest of the page. No more rewriting a whole post to fix one paragraph.
-* **Cleaner content, fewer errors** — Albert validates blocks as they're written and steers the assistant to correct mistakes, so you avoid the block editor's "this block contains unexpected content" warnings.
-* **Stays within your palette** — assistants only use the blocks your site (and the connected user) are actually allowed to use.
+* Block editor support — assistants work with real WordPress blocks instead of raw HTML. They read a post as a clean, structured outline and compose new content with proper blocks: headings, paragraphs, lists, quotes, images, buttons, columns, and groups.
+* Edit one block at a time — change, add, move, or remove a single block without disturbing the rest of the page. No more rewriting a whole post to fix one paragraph.
+* Classic editor support — content on classic-editor sites is read and saved as HTML, so Albert works whichever editor you use.
+* Built-in guidance — Albert ships a playbook and reference data that teach connected assistants how your site's blocks work, so they produce better content out of the box.
 
-**Classic editor support**
+**Improvements**
 
-* Sites, posts, and pages using the classic editor are handled correctly — content is read and saved as HTML — so Albert works whichever editor you use.
-
-**Built-in guidance for assistants**
-
-* Albert now ships a built-in playbook and reference data that teach connected assistants how your site's blocks work, so they produce better content out of the box.
-
-**Handles large content**
-
+* Cleaner content, fewer errors — Albert validates blocks as they're written and steers the assistant to correct mistakes, so you avoid the block editor's "this block contains unexpected content" warnings.
+* Assistants only use the blocks your site, and the connected user, are actually allowed to use.
 * Long posts are paged automatically, so big content is never cut off mid-way when an assistant reads it.
-
-**Safer updates**
-
-* When a plugin update adds new abilities, they now start switched off — you decide what to turn on. An update will never silently expand what an AI assistant can do on a site you've already set up.
+* Safer updates — abilities added by a plugin update now start switched off. An update will never silently expand what an AI assistant can do on a site you've already set up.
 
 = 1.1.1 =
-Bug fix release.
+A bug-fix release.
 
-* **Fix:** OAuth discovery endpoints (`/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`) are now reachable when the request arrives with a trailing slash. Some hosts add a trailing slash at the edge, after which WordPress's canonical redirect would strip it again, producing a redirect loop or a 404. The endpoints now respond identically with or without the slash.
-* Discovered by [Marinus Klasen](https://profiles.wordpress.org/mklasen/).
+**Fixes**
+
+* OAuth discovery endpoints (`/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`) are now reachable when the request arrives with a trailing slash. Some hosts add one at the edge, after which WordPress's canonical redirect would strip it again, producing a redirect loop or a 404. The endpoints now respond identically with or without the slash.
+
+**Credits**
+
+* Reported by [Marinus Klasen](https://profiles.wordpress.org/mklasen/).
 
 = 1.1.0 =
-Major admin redesign, new activity logging, and a stack of reliability fixes.
+A major admin redesign, new activity logging, and a stack of reliability fixes.
 
-**New features**
+**Features**
 
-* **Unified abilities page** — one filterable list of every registered ability from WordPress core, WooCommerce, and any other plugin that registers abilities. Search, filter by category or supplier, and see read/write/delete at a glance.
-* **Instant save** — toggle an ability on or off and it saves immediately. No more Save Changes button or lost progress.
-* **Activity logging** — a new dashboard widget shows the most recent ability execution, and every ability now displays its "Last run" time in the expanded details.
-* **Plain-language labels** — each ability is tagged Read, Write, or Delete (replacing developer-facing "Destructive / Idempotent / Readonly" terms). Hover or keyboard-focus a label for a full explanation.
-* **Supplier filtering** — the filter dropdown shows branded names like "WordPress core", "Albert", and "WooCommerce" instead of raw prefixes. Third-party plugins can register their own supplier name via the `albert/abilities/suppliers` filter.
-* **List / Paginated view** — switch between one long list and 25-per-page pagination. Your choice is persisted on the server, so no flash of the wrong view on page load.
+* Unified abilities page — one filterable list of every registered ability from WordPress core, WooCommerce, and any other plugin. Search, filter by category or supplier, and see read/write/delete at a glance.
+* Instant save — toggle an ability on or off and it saves immediately. No more Save Changes button or lost progress.
+* Activity logging — a new dashboard widget shows the most recent ability execution, and every ability shows its "Last run" time in the expanded details.
+* Plain-language labels — each ability is tagged Read, Write, or Delete (replacing the developer-facing "Destructive / Idempotent / Readonly" terms). Hover or keyboard-focus a label for a full explanation.
+* Supplier filtering — the filter dropdown shows branded names like "WordPress core", "Albert", and "WooCommerce" instead of raw prefixes.
+* List / paginated view — switch between one long list and 25-per-page pagination. Your choice is persisted on the server, so there is no flash of the wrong view on load.
 
-**Bug fixes**
+**Fixes**
 
 * Ability categories now register at the default hook priority, preventing collisions with WordPress core's built-in categories on WP 6.9+.
-* Fixed a missing 'user' category that Users abilities depend on — abilities now register reliably on fresh installs.
-* The `password` field on the Create User ability is now correctly flagged as required, so AI assistants get a clear validation error when it's missing instead of a vague failure.
+* Restored a missing 'user' category that Users abilities depend on, so abilities register reliably on fresh installs.
+* The `password` field on the Create User ability is now correctly flagged as required, so AI assistants get a clear validation error when it is missing instead of a vague failure.
 * OAuth endpoints, MCP, and discovery metadata now share one consistent REST namespace reference.
 
-**Accessibility**
+**Improvements**
 
-* Keyboard-reachable tooltips on every annotation chip.
-* WCAG 2.2 AA contrast on all chip colours.
-* aria-live stats announcements debounced during search.
-* Visible focus indicators on pagination buttons and dropdown caret indicators on filter selects.
+* Accessibility — keyboard-reachable tooltips on every annotation chip, WCAG 2.2 AA contrast on all chip colours, debounced aria-live stats announcements during search, and visible focus indicators on pagination buttons and filter selects.
 
-**Under the hood**
+**Developer**
 
+* New `albert/abilities/suppliers` filter so third-party plugins can register their own branded supplier name.
 * Comprehensive automated test suite covering input validation, output schema, permissions, and per-parameter behaviour on every ability.
-* Continuous integration now runs against PHP 8.1–8.4, WordPress 6.9 and latest, and WooCommerce 10.5–latest.
+* Continuous integration now runs against PHP 8.1–8.4, WordPress 6.9 and latest, and WooCommerce 10.5 and latest.
 * Removed redundant manual input validation from every ability — WordPress core validates the schema before the ability runs.
 * Unified internal settings API for cleaner state management.
 
 = 1.0.1 =
-Bug fix release.
+A bug-fix release.
 
-* **Fix:** OAuth endpoints used a different REST namespace (`albert-ai-butler/v1`) than the MCP server and discovery metadata (`albert/v1`), causing connection failures when clients followed the OAuth discovery spec. All endpoints now use `albert/v1` consistently.
-* **New:** `albert/rest_namespace` filter allows sites with a namespace collision to override the REST namespace.
+**Fixes**
+
+* OAuth endpoints used a different REST namespace (`albert-ai-butler/v1`) than the MCP server and discovery metadata (`albert/v1`), causing connection failures when clients followed the OAuth discovery spec. All endpoints now use `albert/v1` consistently.
+
+**Developer**
+
+* New `albert/rest_namespace` filter lets sites with a namespace collision override the REST namespace.
 
 = 1.0.0 =
 Initial release.
 
-* **MCP server** — Turns your WordPress site into an MCP endpoint. Copy the URL, paste it into Claude Desktop, ChatGPT, or any MCP-compatible assistant, authorize, and you're connected. No configuration files or developer setup needed.
-* **OAuth 2.0 server** — Full authentication server with PKCE support, RSA-signed access tokens, automatic token refresh, and sessions that persist up to 30 days.
-* **Abilities Manager** — Admin interface to toggle read and write permissions per content type. Write abilities disabled by default. All actions respect WordPress capabilities.
-* **25+ WordPress abilities** — Posts, Pages, Users, Media, and Taxonomies with find, view, create, update, and delete operations.
-* **WooCommerce abilities** — Products, Orders, and Customers when WooCommerce is active.
-* **Connections management** — Control which users can connect AI assistants. View active connections, disconnect individual sessions, or end entire sessions with token revocation.
-* **Dashboard** — Setup checklist, status overview, active connection count, and recent activity feed.
-* **Extensible** — Register custom abilities with the WordPress Abilities API. Hookable architecture with filters and actions.
+**Features**
+
+* MCP server — turns your WordPress site into an MCP endpoint. Copy the URL, paste it into Claude Desktop, ChatGPT, or any MCP-compatible assistant, authorize, and you're connected. No configuration files or developer setup needed.
+* OAuth 2.0 server — a full authentication server with PKCE support, RSA-signed access tokens, automatic token refresh, and sessions that persist up to 30 days.
+* Abilities Manager — an admin interface to toggle read and write permissions per content type. Write abilities are disabled by default, and all actions respect WordPress capabilities.
+* 25+ WordPress abilities — Posts, Pages, Users, Media, and Taxonomies with find, view, create, update, and delete operations.
+* WooCommerce abilities — Products, Orders, and Customers when WooCommerce is active.
+* Connections management — control which users can connect AI assistants. View active connections, disconnect individual sessions, or end entire sessions with token revocation.
+* Dashboard — a setup checklist, status overview, active connection count, and recent activity feed.
+
+**Developer**
+
+* Register custom abilities with the WordPress Abilities API. Hookable architecture with filters and actions throughout.
 
 == Upgrade Notice ==
 
