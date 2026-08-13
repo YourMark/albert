@@ -50,6 +50,22 @@ class ClientEntity implements ClientEntityInterface {
 	private ?\DateTimeImmutable $created_at = null;
 
 	/**
+	 * When the client was last used (a token was validated for it).
+	 *
+	 * @since 1.3.1
+	 * @var \DateTimeImmutable|null
+	 */
+	private ?\DateTimeImmutable $last_used_at = null;
+
+	/**
+	 * How the client was created (e.g. 'dcr'), or null when unknown.
+	 *
+	 * @since 1.3.1
+	 * @var string|null
+	 */
+	private ?string $origin = null;
+
+	/**
 	 * Set the client's name.
 	 *
 	 * @param string $name The client name.
@@ -151,5 +167,49 @@ class ClientEntity implements ClientEntityInterface {
 	 */
 	public function getCreatedAt(): ?\DateTimeImmutable {
 		return $this->created_at;
+	}
+
+	/**
+	 * Set the last-used timestamp.
+	 *
+	 * @param \DateTimeImmutable|null $last_used_at The last-used timestamp.
+	 *
+	 * @return void
+	 * @since 1.3.1
+	 */
+	public function setLastUsedAt( ?\DateTimeImmutable $last_used_at ): void {
+		$this->last_used_at = $last_used_at;
+	}
+
+	/**
+	 * Get the last-used timestamp.
+	 *
+	 * @return \DateTimeImmutable|null The last-used timestamp.
+	 * @since 1.3.1
+	 */
+	public function getLastUsedAt(): ?\DateTimeImmutable {
+		return $this->last_used_at;
+	}
+
+	/**
+	 * Set how the client was created.
+	 *
+	 * @param string|null $origin The origin (e.g. 'dcr').
+	 *
+	 * @return void
+	 * @since 1.3.1
+	 */
+	public function setOrigin( ?string $origin ): void {
+		$this->origin = $origin;
+	}
+
+	/**
+	 * Get how the client was created.
+	 *
+	 * @return string|null The origin (e.g. 'dcr'), or null when unknown.
+	 * @since 1.3.1
+	 */
+	public function getOrigin(): ?string {
+		return $this->origin;
 	}
 }
