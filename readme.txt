@@ -152,16 +152,13 @@ Albert is designed for single-site installations. Multisite support is on the ro
 == Changelog ==
 
 = 1.3.1 =
-A security and compatibility update for connecting AI assistants.
+A security update for how AI assistants connect.
 
 **Stricter, clearer connection approval**
 
-* When an assistant connects, it must now register the exact return address it will use, instead of relying on a permissive fallback. Connection requests are matched against that exact address.
+* When an assistant connects, it must now register the exact return address it will use, instead of relying on a permissive wildcard fallback. Connection requests are matched against that exact address.
 * The approval screen now shows the destination the assistant will be sent to, and how recently the app registered, so an unexpected request is easier to spot.
-
-**Support for desktop assistants**
-
-* Desktop apps that use their own link scheme (such as Claude Desktop) can now connect. These connections are secured with PKCE, so a shared secret is never relied upon.
+* Native and desktop apps that use their own link scheme are now validated properly and required to use PKCE, so a shared secret is never relied upon.
 
 **Housekeeping**
 
@@ -278,7 +275,7 @@ Initial release.
 == Upgrade Notice ==
 
 = 1.3.1 =
-A security and compatibility update. Connecting an AI assistant now requires an exact return address, the approval screen shows where you are being sent, and desktop apps that use their own link scheme (such as Claude Desktop) can now connect. Recommended for all sites.
+A security update. Connecting an AI assistant now requires an exact return address, the approval screen shows where you are being sent, and native app connections must use PKCE. Recommended for all sites.
 
 = 1.3.0 =
 The Abilities screen has been rebuilt from scratch — search, filter, instant and bulk on/off, and a detail panel for every ability. And personal data (names, emails, phone numbers, addresses) is now hidden from AI assistants automatically, with a setting to control how strict that is.

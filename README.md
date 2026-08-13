@@ -98,11 +98,9 @@ Website: https://yourmark.nl
 ### 1.3.1
 
 **Stricter, clearer connection approval**
-- When an AI assistant connects, it must now register the exact return address it will use, instead of relying on a permissive fallback. Requests are matched against that exact address.
+- When an AI assistant connects, it must now register the exact return address it will use, instead of relying on a permissive wildcard fallback. Requests are matched against that exact address.
 - The approval screen now shows the destination the assistant will be sent to, and how recently the app registered, so an unexpected request is easier to spot.
-
-**Support for desktop assistants**
-- Desktop apps that use their own link scheme (such as Claude Desktop) can now connect, secured with PKCE.
+- Native and desktop apps that use their own link scheme are now validated properly and required to use PKCE, so a shared secret is never relied upon.
 
 **Housekeeping**
 - Clearer validation of return addresses, a per-app limit, and a cap on the number of registered apps.
