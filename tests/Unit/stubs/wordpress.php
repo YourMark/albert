@@ -265,6 +265,20 @@ if ( ! function_exists( '__' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_get_environment_type' ) ) {
+	/**
+	 * Stub wp_get_environment_type reading $GLOBALS['albert_test_environment_type'].
+	 *
+	 * Defaults to 'production' so environment-gated code paths (e.g. SSRF host
+	 * checks) run their strict branch unless a test opts into 'local'/'development'.
+	 *
+	 * @return string
+	 */
+	function wp_get_environment_type(): string {
+		return $GLOBALS['albert_test_environment_type'] ?? 'production';
+	}
+}
+
 if ( ! function_exists( 'update_option' ) ) {
 	/**
 	 * Stub update_option that writes to $GLOBALS['albert_test_options'].

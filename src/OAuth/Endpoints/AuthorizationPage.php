@@ -172,17 +172,37 @@ class AuthorizationPage implements Hookable {
 			return;
 		}
 
-		// Validate redirect URI.
+		// Validate redirect URI — must exactly match a registered URI. There is no
+		// wildcard: a client that did not register this exact URI is rejected.
 		$allowed_uris = $client->getRedirectUri();
 		if ( is_string( $allowed_uris ) ) {
 			$allowed_uris = [ $allowed_uris ];
 		}
 
-		$is_wildcard = in_array( '*', $allowed_uris, true );
-		if ( ! $is_wildcard && ! in_array( $redirect_uri, $allowed_uris, true ) ) {
+		if ( ! in_array( $redirect_uri, $allowed_uris, true ) ) {
 			$this->render_error_page(
 				__( 'Invalid Redirect', 'albert-ai-butler' ),
 				__( 'The redirect URI is not allowed for this application.', 'albert-ai-butler' )
+			);
+			return;
+		}
+
+		// PKCE policy: this server accepts only the S256 challenge method, and a
+		// public (native/loopback) client MUST use PKCE — a secret alone cannot
+		// protect it (RFC 8252). league enforces presence for public clients at
+		// token time; we reject a non-S256 method and a missing challenge up front.
+		if ( $code_challenge !== '' && $code_challenge_method !== 'S256' ) {
+			$this->render_error_page(
+				__( 'Invalid Request', 'albert-ai-butler' ),
+				__( 'This site requires PKCE using the S256 code challenge method.', 'albert-ai-butler' )
+			);
+			return;
+		}
+
+		if ( ! $client->isConfidential() && $code_challenge === '' ) {
+			$this->render_error_page(
+				__( 'Invalid Request', 'albert-ai-butler' ),
+				__( 'This application must use PKCE (a code challenge) to connect.', 'albert-ai-butler' )
 			);
 			return;
 		}
@@ -332,6 +352,8 @@ class AuthorizationPage implements Hookable {
 		$client_name  = $client->getName();
 		$user_name    = $current_user->display_name;
 		$site_name    = get_bloginfo( 'name' );
+		$destination  = $this->format_redirect_destination( $redirect_uri );
+		$age_notice   = $this->format_client_age_notice( $client );
 
 		// Start output.
 		nocache_headers();
@@ -360,6 +382,17 @@ class AuthorizationPage implements Hookable {
 			<div class="permission-text">
 				<?php esc_html_e( 'This application wants to access your WordPress site on your behalf.', 'albert-ai-butler' ); ?>
 			</div>
+			<div class="redirect-destination">
+				<span class="redirect-destination__label">
+					<?php esc_html_e( 'After you authorize, the access code is sent to:', 'albert-ai-butler' ); ?>
+				</span>
+				<span class="redirect-destination__value"><?php echo esc_html( $destination ); ?></span>
+			</div>
+			<?php if ( $age_notice !== '' ) { ?>
+			<div class="client-age-notice">
+				<?php echo esc_html( $age_notice ); ?>
+			</div>
+			<?php } ?>
 		</div>
 
 		<div class="user-info">
@@ -551,6 +584,65 @@ class AuthorizationPage implements Hookable {
 </html>
 		<?php
 		exit;
+	}
+
+	/**
+	 * Format the redirect destination shown on the consent screen.
+	 *
+	 * The destination is the primary trust signal — for an https/http URI show
+	 * the host; for a private-use scheme show the (short) URI itself.
+	 *
+	 * @param string $redirect_uri The validated redirect URI.
+	 *
+	 * @return string The destination to display.
+	 * @since 1.3.1
+	 */
+	private function format_redirect_destination( string $redirect_uri ): string {
+		$host = wp_parse_url( $redirect_uri, PHP_URL_HOST );
+
+		if ( is_string( $host ) && $host !== '' ) {
+			return $host;
+		}
+
+		return $redirect_uri;
+	}
+
+	/**
+	 * Build an advisory notice when the client was registered very recently.
+	 *
+	 * A freshly-registered client is a weak signal of a consent-phishing attempt,
+	 * so the owner is told when the application first appeared.
+	 *
+	 * @param \Albert\OAuth\Entities\ClientEntity $client The client entity.
+	 *
+	 * @return string The notice text, or '' when the client is not recent/unknown.
+	 * @since 1.3.1
+	 */
+	private function format_client_age_notice( $client ): string {
+		$created = $client->getCreatedAt();
+
+		if ( ! $created instanceof \DateTimeImmutable ) {
+			return '';
+		}
+
+		$age = time() - $created->getTimestamp();
+
+		if ( $age < 0 || $age >= 10 * MINUTE_IN_SECONDS ) {
+			return '';
+		}
+
+		$minutes = max( 1, (int) round( $age / MINUTE_IN_SECONDS ) );
+
+		return sprintf(
+			/* translators: %d: number of minutes since the application registered */
+			_n(
+				'This application registered %d minute ago — only continue if you are expecting it.',
+				'This application registered %d minutes ago — only continue if you are expecting it.',
+				$minutes,
+				'albert-ai-butler'
+			),
+			$minutes
+		);
 	}
 
 	/**

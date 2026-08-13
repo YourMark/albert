@@ -68,6 +68,37 @@ body {
 	line-height: 1.5;
 }
 
+.redirect-destination {
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid #dcdcde;
+	font-size: 13px;
+	color: #50575e;
+}
+
+.redirect-destination__label {
+	display: block;
+	margin-bottom: 2px;
+}
+
+.redirect-destination__value {
+	font-family: Menlo, Consolas, monospace;
+	font-size: 14px;
+	font-weight: 600;
+	color: #1d2327;
+	word-break: break-all;
+}
+
+.client-age-notice {
+	margin-top: 12px;
+	padding: 8px 10px;
+	background: #fcf0e6;
+	border-left: 3px solid #d98a3d;
+	border-radius: 2px;
+	font-size: 13px;
+	color: #6a4a1f;
+}
+
 .user-info {
 	font-size: 13px;
 	color: #646970;
