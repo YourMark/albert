@@ -97,6 +97,7 @@ class ClientRepository implements ClientRepositoryInterface {
 	 * @param bool        $is_confidential Whether the client is confidential.
 	 * @param int|null    $user_id         The WordPress user ID who created this client.
 	 * @param string|null $client_secret   The plain text client secret (will be hashed).
+	 * @param string|null $origin          How the client was created (e.g. 'dcr').
 	 *
 	 * @return array{client_id: string, client_secret: string|null}|null The client credentials or null on failure.
 	 * @since 1.0.0
@@ -106,7 +107,8 @@ class ClientRepository implements ClientRepositoryInterface {
 		string $redirect_uri,
 		bool $is_confidential = true,
 		?int $user_id = null,
-		?string $client_secret = null
+		?string $client_secret = null,
+		?string $origin = null
 	): ?array {
 		global $wpdb;
 
@@ -134,8 +136,9 @@ class ClientRepository implements ClientRepositoryInterface {
 				'redirect_uri'    => $redirect_uri,
 				'user_id'         => $user_id,
 				'is_confidential' => $is_confidential ? 1 : 0,
+				'origin'          => $origin,
 			],
-			[ '%s', '%s', '%s', '%s', '%d', '%d' ]
+			[ '%s', '%s', '%s', '%s', '%d', '%d', '%s' ]
 		);
 
 		if ( ! $result ) {
@@ -225,12 +228,32 @@ class ClientRepository implements ClientRepositoryInterface {
 		$client->setConfidential( (bool) $row['is_confidential'] );
 		$client->setUserId( $row['user_id'] ? (int) $row['user_id'] : null );
 		$client->setClientSecret( $row['client_secret'] );
+		$client->setOrigin( isset( $row['origin'] ) && $row['origin'] !== '' ? (string) $row['origin'] : null );
 
 		if ( ! empty( $row['created_at'] ) ) {
 			$client->setCreatedAt( new \DateTimeImmutable( $row['created_at'] ) );
 		}
 
+		if ( ! empty( $row['last_used_at'] ) ) {
+			$client->setLastUsedAt( new \DateTimeImmutable( $row['last_used_at'] ) );
+		}
+
 		return $client;
+	}
+
+	/**
+	 * Count the registered clients.
+	 *
+	 * @return int The number of clients.
+	 * @since 1.3.1
+	 */
+	public function count_clients(): int {
+		global $wpdb;
+
+		$tables = Tables::oauth();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, count for cap enforcement.
+		return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $tables['clients'] ) );
 	}
 
 	/**

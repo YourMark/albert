@@ -81,6 +81,27 @@ class Installer {
 	}
 
 	/**
+	 * Remove OAuth clients stored with the legacy `'*'` wildcard redirect URI — a
+	 * pre-1.3.1 hole that let any redirect be accepted. Called once from
+	 * {@see self::maybe_upgrade()} when upgrading from below 1.3.1; the version
+	 * gate makes it a true one-time migration (no persistent flag needed), and the
+	 * DELETE is idempotent besides. Only `'*'` rows are touched — properly
+	 * registered clients are never affected. Runs silently: such a row is
+	 * near-impossible in practice, and an affected connection simply reconnects.
+	 *
+	 * @return void
+	 * @since 1.3.1
+	 */
+	private static function purge_wildcard_clients(): void {
+		global $wpdb;
+
+		$table = Tables::oauth()['clients'];
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- One-shot security cleanup on custom table.
+		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE redirect_uri = %s', $table, '*' ) );
+	}
+
+	/**
 	 * Re-run the schema build when the plugin version has advanced.
 	 *
 	 * Cheap enough for `plugins_loaded`: a single option read + version compare;
@@ -96,8 +117,16 @@ class Installer {
 			return;
 		}
 
-		if ( version_compare( (string) get_option( self::VERSION_OPTION, '0' ), $current, '<' ) ) {
+		$stored = (string) get_option( self::VERSION_OPTION, '0' );
+
+		if ( version_compare( $stored, $current, '<' ) ) {
 			self::install();
+
+			// Data migrations keyed on the version being upgraded *from*. The
+			// legacy '*' wildcard clients only exist on installs older than 1.3.1.
+			if ( version_compare( $stored, '1.3.1', '<' ) ) {
+				self::purge_wildcard_clients();
+			}
 		}
 	}
 
@@ -218,8 +247,10 @@ class Installer {
 			redirect_uri text NOT NULL,
 			user_id bigint(20) unsigned DEFAULT NULL,
 			is_confidential tinyint(1) NOT NULL DEFAULT 1,
+			origin varchar(20) DEFAULT NULL,
 			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			last_used_at datetime DEFAULT NULL,
 			PRIMARY KEY  (id),
 			UNIQUE KEY client_id (client_id),
 			KEY user_id (user_id)
