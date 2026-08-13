@@ -95,6 +95,19 @@ Website: https://yourmark.nl
 
 ## Changelog
 
+### 1.3.1
+
+**Stricter, clearer connection approval**
+- When an AI assistant connects, it must now register the exact return address it will use, instead of relying on a permissive fallback. Requests are matched against that exact address.
+- The approval screen now shows the destination the assistant will be sent to, and how recently the app registered, so an unexpected request is easier to spot.
+
+**Support for desktop assistants**
+- Desktop apps that use their own link scheme (such as Claude Desktop) can now connect, secured with PKCE.
+
+**Housekeeping**
+- Clearer validation of return addresses, a per-app limit, and a cap on the number of registered apps.
+- Schema groundwork for managing and tidying up connections in a later release.
+
 ### 1.3.0
 
 **A brand-new Abilities screen**
