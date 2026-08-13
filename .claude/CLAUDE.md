@@ -10,6 +10,7 @@ WordPress plugin that exposes WordPress functionality to AI assistants via MCP (
 - [Testing](rules/testing.md) - Unit vs integration tests, TDD guidance
 - [Development Methodology](rules/development-methodology.md) - DDD bounded contexts, ubiquitous language, workflow
 - [Patterns](rules/patterns.md) - Albert-specific class patterns, bounded contexts, testing stubs
+- [Changelog](rules/changelog.md) - Strict changelog categories, per-version format, readme.txt/Upgrade Notice constraints
 
 ## Commands
 
