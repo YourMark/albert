@@ -20,6 +20,36 @@ Grounded in two standards:
    `../../memory` note on verifying claims — do not describe intent, describe what shipped.
 6. Follow Semantic Versioning for the version numbers themselves.
 
+## Audience and language
+
+Write for the person who reads the surface, not for yourself. Getting the audience
+wrong is as bad as getting the category wrong.
+
+- **The changelog, the Upgrade Notice, the WordPress.org listing, and any release
+  announcement (tweets, blog posts, emails) are read by WordPress site owners —
+  non-developers.** Write in plain, everyday English. Say what changed *for them*
+  and why it matters, in words they already use.
+- **No jargon in the user-facing sections** (`Features`, `Improvements`, `Fixes`,
+  `Security`) or the Upgrade Notice. Do not name protocols, hooks, classes,
+  endpoints, database columns, or internal mechanisms (e.g. OAuth, PKCE, DCR, REST
+  namespace, `wp_abilities_api_init`, `redirect_uri`). If a technical concept has
+  to be referenced, translate it to its *effect* — "secured without relying on a
+  shared secret", not "enforced PKCE"; "the exact web address it returns you to",
+  not "an exact `redirect_uri`".
+- **Developer detail lives only in the `Developer` section** (and in `README.md`'s
+  Developer notes, `DEVELOPER_GUIDE.md`, and code comments — those genuinely have a
+  technical audience). That is the one place hook names, class names, and protocol
+  terms belong.
+- **Lead with the benefit or impact, then the detail.** "You can now edit one block
+  at a time" before any mention of how.
+- **Plain, not marketing.** Honest and specific beats breathless. Drop filler like
+  "revolutionary", "seamless", "powerful". Every claim must still be true to the diff.
+- **Match each surface to its audience:** site owners for `readme.txt`, WordPress.org,
+  the Upgrade Notice, and social/marketing posts; developers for `README.md`
+  Developer sections, `DEVELOPER_GUIDE.md`, code comments, and PR/commit bodies.
+  When in doubt, read it back as if you were a non-technical site owner — if a word
+  would make them stop and Google, rewrite it.
+
 ## The category vocabulary (STRICT)
 
 Use **only** these section headings, spelled exactly like this, in **exactly this

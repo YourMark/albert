@@ -100,10 +100,10 @@ Website: https://yourmark.nl
 A security update for how AI assistants connect.
 
 **Security**
-- Connecting an assistant now requires the exact return address it will use. The old permissive wildcard fallback is gone, and requests are matched against that exact address.
-- The approval screen now shows the destination the assistant will be sent to, and how recently the app registered, so an unexpected request is easier to spot.
-- Native and desktop apps that use their own link scheme are validated properly and required to use PKCE, so a shared secret is never relied upon.
-- Stricter validation of return addresses, a per-app limit on how many can be registered, and a cap on the total number of registered apps.
+- Connecting an assistant now requires the exact web address it will return you to. The old catch-all that accepted any address is gone, and every connection request is matched against that exact address.
+- The approval screen now shows where the assistant will send you, and how recently the app was set up, so an unexpected request is easier to spot.
+- Apps that connect through their own link (such as some desktop assistants) are checked more strictly and secured without relying on a shared secret.
+- Stricter checking of return addresses, a limit on how many a single app can register, and a cap on the total number of connected apps.
 
 **Developer**
 - New `albert/oauth/allowed_redirect_schemes` filter to restrict redirect URI schemes to an explicit allowlist.
