@@ -472,7 +472,7 @@ wp plugin activate albert
 `wordpress/mcp-adapter` (and its dep `wordpress/php-mcp-schema`) ship the `WP\MCP\*`
 namespace. **WooCommerce bundles its own, older copy of the same package**, and whichever
 plugin's autoloader registers first wins — so when WC is active, Albert's code would silently
-run WooCommerce's `0.1.0` instead of its own `0.5.0` (a hard-to-spot bug: "unknown error" to the
+run WooCommerce's `0.1.0` instead of its own `0.6.1` (a hard-to-spot bug: "unknown error" to the
 LLM, failures not logged).
 
 The fix is **dependency scoping with Mozart** (`coenjacobs/mozart`), set up the standard way:
@@ -490,7 +490,15 @@ The fix is **dependency scoping with Mozart** (`coenjacobs/mozart`), set up the 
   `generate_autoloader`, so a Composer PSR-4 entry is the documented method).
 - Albert's own code references `Albert\Vendor\WP\MCP\…` (never bare `WP\MCP\…`), so it always runs its
   own copy regardless of WooCommerce. Verify:
-  `wp eval 'echo Albert\Vendor\WP\MCP\Core\McpAdapter::VERSION;'` → `0.5.0`.
+  `wp eval 'echo Albert\Vendor\WP\MCP\Core\McpAdapter::VERSION;'` → `0.6.1`.
+- **Jetpack Autoloader (since adapter 0.6.0).** The adapter now `require`s
+  `automattic/jetpack-autoloader`, which is itself a Composer plugin — Composer blocks any
+  unlisted Composer plugin, so `composer install` fails until it is declared. It is set to
+  **`false`** in `composer.json`'s `config.allow-plugins`: we don't use Jetpack's autoloader
+  (Mozart + our PSR-4 own scoping), so its Composer-plugin behaviour must not run. Mozart still
+  copies it into `vendor-prefixed/` and correctly rewrites it to `Albert\Vendor\Automattic\Jetpack\Autoloader`,
+  where it is inert (nothing loads the adapter's own `Autoloader.php`). Keep it `false` across
+  future adapter bumps.
 - `vendor-prefixed/` is outside `src/` so the gates skip it naturally; it's also excluded in
   `phpcs.xml.dist` / `phpstan.neon` for the bare-invocation case.
 - **Bumping `wordpress/mcp-adapter`:** `composer update wordpress/mcp-adapter` — the post-update hook
