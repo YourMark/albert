@@ -245,6 +245,30 @@ class AbilitiesRegistry {
 	}
 
 	/**
+	 * Whether an ability is exposed to MCP clients through the default server.
+	 *
+	 * Resolves the exposure flag with the precedence WordPress 7.1 and the MCP
+	 * adapter (0.6.0+) use: `meta.mcp.public` wins, then top-level `meta.public`,
+	 * then not exposed. Because `??` only falls through on `null`, an explicit
+	 * `meta.mcp.public = false` deliberately opts an ability *out* even when
+	 * `meta.public` is true.
+	 *
+	 * `meta.public` is the forward-looking flag; `meta.mcp.public` is retained
+	 * for backward compatibility and remains the more specific override. Albert's
+	 * built-in abilities set `meta.mcp.public`.
+	 *
+	 * @param array<string, mixed> $meta The ability meta array.
+	 *
+	 * @return bool True when the ability is discoverable over MCP.
+	 * @since 1.4.0
+	 */
+	public static function is_mcp_public( array $meta ): bool {
+		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : [];
+
+		return (bool) ( $mcp['public'] ?? $meta['public'] ?? false );
+	}
+
+	/**
 	 * Resolve the WordPress capability an ability is likely to require.
 	 *
 	 * Abilities expose only a `permission_callback` (often delegating to a core

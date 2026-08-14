@@ -17,6 +17,7 @@
 namespace Albert\Tests\Integration\Abilities;
 
 use Albert\Abstracts\BaseAbility;
+use Albert\Core\AbilitiesRegistry;
 use Albert\Tests\TestCase;
 use Albert\Tests\Traits\ProvidesAbilities;
 use WP_Error;
@@ -196,6 +197,39 @@ class AbilityContractTest extends TestCase {
 				'%s (%s) must not be registered when WooCommerce is inactive — it depends on WC functions and would fatal at call time.',
 				$ability_class,
 				$ability->get_id()
+			)
+		);
+	}
+
+	/**
+	 * Every Albert built-in ability is exposed to MCP clients.
+	 *
+	 * The exposure decision now lives in the adapter (0.6.0+) via the
+	 * `meta.mcp.public ?? meta.public ?? false` precedence; this locks the
+	 * invariant that each of Albert's own abilities opts in, so a new ability
+	 * that forgets its exposure flag fails here rather than silently vanishing
+	 * from discovery. Reads the protected meta directly, so it does not depend on
+	 * registration (and holds for WooCommerce abilities even without WooCommerce).
+	 *
+	 * @dataProvider provideAbilities
+	 *
+	 * @param class-string<BaseAbility> $ability_class Ability class.
+	 *
+	 * @return void
+	 */
+	public function test_ability_is_exposed_to_mcp( string $ability_class ): void {
+		$ability = new $ability_class();
+
+		$reflection = new \ReflectionClass( $ability );
+		$prop       = $reflection->getProperty( 'meta' );
+		$prop->setAccessible( true );
+		$meta = (array) $prop->getValue( $ability );
+
+		$this->assertTrue(
+			AbilitiesRegistry::is_mcp_public( $meta ),
+			sprintf(
+				'%s is not exposed to MCP — set meta.mcp.public (or meta.public) so it is discoverable.',
+				$ability_class
 			)
 		);
 	}
