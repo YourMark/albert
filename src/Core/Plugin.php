@@ -163,6 +163,10 @@ class Plugin {
 		$logger             = new Logger( $logging_repository );
 		$logger->register_hooks();
 
+		// Relay WP 7.1's wp_ability_invoked onto albert/abilities/invoked. No
+		// consumers in Free; this is the seam Premium's activity log binds to.
+		( new InvocationRelay() )->register_hooks();
+
 		// Register admin components.
 		if ( is_admin() ) {
 			// Dashboard page (creates top-level menu and first submenu).

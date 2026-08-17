@@ -31,3 +31,22 @@ function function_exists( string $function_name ): bool {
 
 	return \function_exists( $function_name );
 }
+
+/**
+ * Test-controllable shadow of the global class_exists().
+ *
+ * {@see \Albert\Support\WpCompat::supports_execution_lifecycle()} probes for a
+ * 7.1-only class, and a unit run has no WordPress, so without this the method
+ * could only ever be observed returning false.
+ *
+ * @param string $class_name Class name being probed.
+ * @param bool   $autoload   Whether to autoload. Unused by the shadow.
+ * @return bool
+ */
+function class_exists( string $class_name, bool $autoload = true ): bool {
+	if ( isset( $GLOBALS['albert_test_class_exists'][ $class_name ] ) ) {
+		return (bool) $GLOBALS['albert_test_class_exists'][ $class_name ];
+	}
+
+	return \class_exists( $class_name, $autoload );
+}

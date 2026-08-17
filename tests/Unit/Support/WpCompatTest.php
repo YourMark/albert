@@ -31,7 +31,8 @@ class WpCompatTest extends TestCase {
 	 */
 	protected function setUp(): void {
 		parent::setUp();
-		$GLOBALS['albert_test_fn_exists'] = [];
+		$GLOBALS['albert_test_fn_exists']    = [];
+		$GLOBALS['albert_test_class_exists'] = [];
 	}
 
 	/**
@@ -40,7 +41,7 @@ class WpCompatTest extends TestCase {
 	 * @return void
 	 */
 	protected function tearDown(): void {
-		unset( $GLOBALS['albert_test_fn_exists'] );
+		unset( $GLOBALS['albert_test_fn_exists'], $GLOBALS['albert_test_class_exists'] );
 		parent::tearDown();
 	}
 
@@ -64,5 +65,30 @@ class WpCompatTest extends TestCase {
 		$GLOBALS['albert_test_fn_exists']['wp_prepare_json_schema_for_client'] = false;
 
 		$this->assertFalse( WpCompat::supports_client_schema_prep() );
+	}
+
+	/**
+	 * The lifecycle is reported available when its marker class is present.
+	 *
+	 * @return void
+	 */
+	public function test_execution_lifecycle_is_detected_on_71(): void {
+		$GLOBALS['albert_test_class_exists']['\WP_Filter_Sentinel'] = true;
+
+		$this->assertTrue( WpCompat::supports_execution_lifecycle() );
+	}
+
+	/**
+	 * Below 7.1 the marker class is absent and the seam reports unavailable.
+	 *
+	 * Callers must stay correct either way — the hooks simply never fire — but
+	 * a subscriber that needs to know whether the seam is live asks this.
+	 *
+	 * @return void
+	 */
+	public function test_execution_lifecycle_is_not_detected_below_71(): void {
+		$GLOBALS['albert_test_class_exists']['\WP_Filter_Sentinel'] = false;
+
+		$this->assertFalse( WpCompat::supports_execution_lifecycle() );
 	}
 }
