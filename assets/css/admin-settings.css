@@ -582,13 +582,18 @@
 	margin-top: 20px;
 }
 
+/* Extends the .albert-card primitive; surface, border and radius come from
+   there. Only the properties this screen adds are declared, so the primitive
+   stays the single definition. */
 .albert-card {
-	background: var(--albert-color-surface);
-	border: 1px solid var(--albert-color-border);
-	border-radius: var(--albert-radius-md);
-	box-shadow: 0 1px 1px oklch(0 0 0 / 0.04);
+	box-shadow: var(--albert-shadow-sm);
 	overflow: hidden;
-	transition: box-shadow 0.2s ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.albert-card {
+		transition: box-shadow var(--albert-duration-fast) var(--albert-easing-fast);
+	}
 }
 
 .albert-card:hover {

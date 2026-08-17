@@ -200,26 +200,10 @@
 	gap: 4px;
 }
 
-.albert-badge {
-	display: inline-flex;
-	align-items: center;
-	padding: 1px 8px;
-	border-radius: 10px;
-	font-size: 11px;
-	font-weight: 600;
-	line-height: 1.6;
-	white-space: nowrap;
-}
-
-.albert-badge--info {
-	background: var(--albert-color-info-surface);
-	color: var(--albert-color-info);
-}
-
-.albert-badge--warning {
-	background: var(--albert-color-warning-surface);
-	color: var(--albert-color-warning);
-}
+/* The badge is a primitive. Its base, tones and sizing live in
+   albert-primitives.css — this sheet depends on that one and therefore cascades
+   after it, so redeclaring any of them here would silently take ownership back
+   and give us the two definitions the design system exists to collapse. */
 
 .albert-badge--neutral {
 	background: var(--albert-color-neutral-surface);
