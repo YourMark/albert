@@ -219,4 +219,61 @@ class AbilitiesRegistryTest extends TestCase {
 		$this->assertFalse( AbilitiesRegistry::is_transport_ability( 'albert/execute-ability' ) );
 		$this->assertFalse( AbilitiesRegistry::is_transport_ability( 'albert/create-post' ) );
 	}
+
+	/**
+	 * The MCP exposure precedence: mcp.public ?? public ?? false.
+	 *
+	 * @dataProvider provideExposureCombinations
+	 *
+	 * @param array<string, mixed> $meta     The ability meta.
+	 * @param bool                 $expected Expected exposure.
+	 *
+	 * @return void
+	 */
+	public function test_is_mcp_public_resolves_precedence( array $meta, bool $expected ): void {
+		$this->assertSame( $expected, AbilitiesRegistry::is_mcp_public( $meta ) );
+	}
+
+	/**
+	 * Every flag combination and edge the adapter's exposure logic defines,
+	 * including the malformed-mcp fail-closed case and the strict meta.public rule.
+	 *
+	 * @return array<string, array{0: array<string, mixed>, 1: bool}>
+	 */
+	public static function provideExposureCombinations(): array {
+		return [
+			'neither set'                        => [ [], false ],
+			'only mcp.public true'               => [ [ 'mcp' => [ 'public' => true ] ], true ],
+			'only public true'                   => [ [ 'public' => true ], true ],
+			'both true'                          => [
+				[
+					'mcp'    => [ 'public' => true ],
+					'public' => true,
+				],
+				true,
+			],
+			'mcp.public false opts out'          => [
+				[
+					'mcp'    => [ 'public' => false ],
+					'public' => true,
+				],
+				false,
+			],
+			'mcp.public true beats public false' => [
+				[
+					'mcp'    => [ 'public' => true ],
+					'public' => false,
+				],
+				true,
+			],
+			'malformed mcp fails closed'         => [
+				[
+					'mcp'    => 'oops',
+					'public' => true,
+				],
+				false,
+			],
+			'non-bool public is not exposed'     => [ [ 'public' => 1 ], false ],
+		];
+	}
 }

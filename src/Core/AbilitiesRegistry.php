@@ -12,6 +12,7 @@
 namespace Albert\Core;
 
 use Albert\MCP\Server;
+use Albert\Vendor\WP\MCP\Abilities\McpAbilityExposure;
 
 /**
  * Abilities Registry class
@@ -242,6 +243,26 @@ class AbilitiesRegistry {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Whether an ability is exposed to MCP clients through the default server.
+	 *
+	 * Albert-side accessor that defers to the bundled MCP adapter's single source
+	 * of truth, {@see McpAbilityExposure::is_meta_public()}, so exposure is
+	 * resolved by exactly the same logic the adapter applies at runtime: an
+	 * explicit `meta.mcp.public` wins (including an explicit `false`, which opts
+	 * an ability out), otherwise the forward-looking `meta.public` flag applies,
+	 * and a malformed `meta.mcp` fails closed. Re-implementing this here would
+	 * risk drifting from the adapter, so it is not re-implemented.
+	 *
+	 * @param array<string, mixed> $meta The ability meta array.
+	 *
+	 * @return bool True when the ability is discoverable over MCP.
+	 * @since 1.4.0
+	 */
+	public static function is_mcp_public( array $meta ): bool {
+		return McpAbilityExposure::is_meta_public( $meta );
 	}
 
 	/**

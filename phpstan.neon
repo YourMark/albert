@@ -15,6 +15,10 @@ parameters:
 		- vendor/php-stubs/woocommerce-stubs/woocommerce-packages-stubs.php
 	scanDirectories:
 		- vendor/php-stubs/wordpress-stubs/
+	scanFiles:
+		# WordPress 7.1 functions not yet in php-stubs/wordpress-stubs; guarded at
+		# runtime by Albert\Support\WpCompat. Remove once the stubs catch up.
+		- phpstan-stubs/wordpress-7.1.php
 	treatPhpDocTypesAsCertain: false
 	ignoreErrors:
 		# REST API response array offsets - PHPStan can't infer the full response structure

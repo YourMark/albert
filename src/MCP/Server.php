@@ -87,6 +87,10 @@ class Server implements Hookable {
 		// Improve LLM-facing tool errors and log failures rejected before the
 		// ability runs (e.g. input-schema validation).
 		( new ToolCallObserver() )->register_hooks();
+
+		// Strip server-only keys from schemas before they reach the client
+		// (WordPress 7.1+); a no-op on older versions.
+		( new SchemaPreparer() )->register_hooks();
 	}
 
 	/**
