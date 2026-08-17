@@ -77,6 +77,26 @@ class Menu implements Hookable {
 	/**
 	 * Whether the current screen belongs to Albert.
 	 *
+	 * Matched on the screen id's PREFIX, because WordPress builds a submenu
+	 * screen id as `{parent_slug}_page_{own_slug}`. The prefix is therefore the
+	 * parent, and everything after it is the page's own slug.
+	 *
+	 * Two failure modes this avoids, both of which a substring search hits:
+	 *
+	 *  - An add-on page registered under Albert with a slug of its own —
+	 *    `my-addon-settings`, the example in our extension docs — has the id
+	 *    `albert_page_my-addon-settings`. Searching for `_page_albert` finds no
+	 *    second "albert" and the page silently loses the navigation and the
+	 *    shared stylesheet, which is exactly what they exist to provide.
+	 *  - An unrelated plugin whose own slug starts with "albert"
+	 *    (`tools_page_albert-tunnel`) contains `_page_albert` and would have
+	 *    Albert's navigation injected into a page that is nothing to do with us.
+	 *
+	 * `WP_Screen` has no `parent_slug` property, and `parent_base` /
+	 * `parent_file` are populated from the menu globals rather than the screen
+	 * itself, so they are unset in contexts that build a screen directly. The id
+	 * is the one thing always present.
+	 *
 	 * @return bool
 	 * @since 1.4.0
 	 */
@@ -87,10 +107,8 @@ class Menu implements Hookable {
 			return false;
 		}
 
-		// Albert's own pages are the top-level slug plus anything prefixed with
-		// it, which also covers add-on pages registered under the same parent.
 		return $screen->id === 'toplevel_page_' . self::PARENT_SLUG
-			|| str_contains( $screen->id, '_page_' . self::PARENT_SLUG );
+			|| str_starts_with( $screen->id, self::PARENT_SLUG . '_page_' );
 	}
 
 	/**

@@ -34,11 +34,13 @@
    Shared page layout primitives (.albert-page*)
    -------------------------------------------------------------- */
 
+/* Layout only. The measure cap lives on the .albert-page primitive; redeclaring
+   max-width here would silently defeat it, because this sheet depends on the
+   primitives and therefore always cascades after them. */
 .albert-page {
 	display: flex;
 	flex-direction: column;
 	gap: var(--albert-space-400);
-	max-width: none;
 }
 
 .albert-page__header {
@@ -83,7 +85,7 @@
 
 .albert-settings-card-header .dashicons {
 	color: var(--albert-color-text-muted);
-	font-size: var(--albert-font-size-page-title);
+	font-size: var(--albert-icon-size-sm);
 	width: 18px;
 	height: 18px;
 }
@@ -287,7 +289,7 @@
 }
 
 .albert-empty-state .dashicons {
-	font-size: var(--albert-font-size-stat);
+	font-size: var(--albert-icon-size-lg);
 	width: 32px;
 	height: 32px;
 	margin-bottom: var(--albert-space-200);
@@ -405,7 +407,7 @@
 }
 
 .albert-settings-section h2 {
-	font-size: var(--albert-font-size-page-title);
+	font-size: var(--albert-font-size-section-title);
 	font-weight: 600;
 	margin: 0 0 var(--albert-space-400) 0;
 	padding-bottom: var(--albert-space-200);
@@ -791,7 +793,7 @@
 }
 
 .albert-activity-icon {
-	font-size: var(--albert-font-size-page-title);
+	font-size: var(--albert-icon-size-sm);
 	flex-shrink: 0;
 	line-height: 1;
 }
@@ -1223,7 +1225,7 @@
 
 .albert-checklist-icon {
 	flex-shrink: 0;
-	font-size: var(--albert-font-size-page-title);
+	font-size: var(--albert-icon-size-sm);
 	width: 18px;
 	height: 18px;
 }
@@ -1324,7 +1326,7 @@
 
 .albert-disconnect-dialog-header h2 {
 	margin: 0;
-	font-size: var(--albert-font-size-page-title);
+	font-size: var(--albert-font-size-section-title);
 }
 
 .albert-disconnect-dialog-close {

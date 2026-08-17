@@ -54,13 +54,11 @@
 
 	/* Accent — see the `body` rule below. Declared there, not here, and
 	   deliberately absent from this block. */
-	--albert-color-accent-hover: oklch(0.482 0.2065 268.1);     /* #2f4bd0 */
-	--albert-color-accent-surface: oklch(0.965 0.0164 274.8);   /* #f0f3ff */
 	/* NEW: the handoff specified "accent surface, white text" but shipped no
 	   token for the label, so dark mode inverted the accent to a light blue and
 	   left white on it at 2.25:1. This is the label colour for any filled
 	   control, and it flips with the mode. */
-	--albert-color-accent-contrast: oklch(1 0 0);               /* white — 8.08:1 on accent */
+	--albert-color-accent-contrast: oklch(1 0 0);               /* white — 5.60:1 on the default accent */
 
 	--albert-color-link: oklch(0.534 0.1249 247.7);             /* #2271b1 */
 
@@ -92,10 +90,10 @@
 	   An off switch carries no text, so the track IS the state indicator and
 	   owes 3:1 under SC 1.4.11. Same hue and chroma, lightness moved the least
 	   distance that clears the threshold. */
-	--albert-color-switch-off: oklch(0.66 0.01 265);            /* 3.16:1 */
+	--albert-color-switch-off: oklch(0.66 0.01 265);            /* 3.11:1 */
 	/* CORRECTED: the handoff's #72aee6 measured 2.36:1 — and on a calm notice
 	   that border is the only thing distinguishing it from plain text. */
-	--albert-color-notice-accent: oklch(0.66 0.08 245);         /* 3.16:1 */
+	--albert-color-notice-accent: oklch(0.66 0.08 245);         /* 3.08:1 */
 
 	/* ---------------------------------------------------------------------
 	 * Overlays and tints
@@ -113,18 +111,8 @@
 	 * they carry no contrast obligation of their own — the text that sits on
 	 * them does, and those pairs are measured in docs/design-system.md.
 	 * ------------------------------------------------------------------ */
-	--albert-color-success-tint-10: color-mix(in oklab, var(--albert-color-success) 10%, transparent);
-	--albert-color-success-tint-20: color-mix(in oklab, var(--albert-color-success) 20%, transparent);
-	--albert-color-warning-tint-10: color-mix(in oklab, var(--albert-color-warning) 10%, transparent);
-	--albert-color-warning-tint-20: color-mix(in oklab, var(--albert-color-warning) 20%, transparent);
-	--albert-color-danger-tint-10: color-mix(in oklab, var(--albert-color-danger) 10%, transparent);
-	--albert-color-danger-tint-20: color-mix(in oklab, var(--albert-color-danger) 20%, transparent);
-	--albert-color-info-tint-10: color-mix(in oklab, var(--albert-color-info) 10%, transparent);
-	--albert-color-info-tint-20: color-mix(in oklab, var(--albert-color-info) 20%, transparent);
 
 	/* Interaction and chrome */
-	--albert-color-danger-hover: oklch(0.44 0.175 25);   /* chroma trimmed to stay in sRGB */
-	--albert-color-surface-hover: color-mix(in oklab, var(--albert-color-text) 8%, transparent);
 	--albert-color-overlay: oklch(0 0 0 / 0.7);   /* modal backdrop */
 
 	/* ---------------------------------------------------------------------
@@ -159,6 +147,12 @@
 	--albert-font-size-section-title: 15px;
 	--albert-font-size-page-title: 23px;
 	--albert-font-size-stat: 28px;
+
+	/* Icon sizes. Separate from the type scale on purpose: a dashicon's
+	   font-size IS its box, so it has to match the width/height it is given,
+	   and the role-named type steps do not line up with those boxes. */
+	--albert-icon-size-sm: 18px;
+	--albert-icon-size-lg: 32px;
 
 	--albert-font-weight-normal: 400;
 	--albert-font-weight-medium: 500;
@@ -226,6 +220,29 @@ body {
 	--albert-color-accent-tint-10: color-mix(in oklab, var(--albert-color-accent) 10%, transparent);
 	--albert-color-accent-tint-20: color-mix(in oklab, var(--albert-color-accent) 20%, transparent);
 	--albert-focus-color: var(--albert-color-accent);
+
+	/* Derived, not hardcoded, so they follow the admin colour scheme. These were
+	   fixed blues: on a non-blue scheme (Sunrise, Ectoplasm, Coffee) the accent
+	   went red or green while its own hover state and highlight surface stayed
+	   blue. */
+	--albert-color-accent-hover: color-mix(in oklab, var(--albert-color-accent) 82%, black);
+	--albert-color-accent-surface: color-mix(in oklab, var(--albert-color-accent) 8%, white);
+
+	/* Tints of tokens the dark block overrides. A custom property substitutes
+	   var() on the element that DECLARES it, so a tint left on :root keeps its
+	   light-mode source once dark applies to <body> — light ink on a dark
+	   surface. They live beside their sources, and are restated in the dark
+	   block, for exactly that reason. */
+	--albert-color-success-tint-10: color-mix(in oklab, var(--albert-color-success) 10%, transparent);
+	--albert-color-success-tint-20: color-mix(in oklab, var(--albert-color-success) 20%, transparent);
+	--albert-color-warning-tint-10: color-mix(in oklab, var(--albert-color-warning) 10%, transparent);
+	--albert-color-warning-tint-20: color-mix(in oklab, var(--albert-color-warning) 20%, transparent);
+	--albert-color-danger-tint-10: color-mix(in oklab, var(--albert-color-danger) 10%, transparent);
+	--albert-color-danger-tint-20: color-mix(in oklab, var(--albert-color-danger) 20%, transparent);
+	--albert-color-info-tint-10: color-mix(in oklab, var(--albert-color-info) 10%, transparent);
+	--albert-color-info-tint-20: color-mix(in oklab, var(--albert-color-info) 20%, transparent);
+	--albert-color-surface-hover: color-mix(in oklab, var(--albert-color-text) 8%, transparent);
+	--albert-color-danger-hover: color-mix(in oklab, var(--albert-color-danger) 80%, black);
 }
 
 /**
@@ -264,8 +281,6 @@ body {
 	/* Not var(--wp-admin-theme-color) here: that value is tuned against a light
 	   chrome and goes muddy on a dark surface. Dark owns its own accent. */
 	--albert-color-accent: oklch(0.75 0.128 262);               /* chroma trimmed to stay in sRGB */
-	--albert-color-accent-hover: oklch(0.7 0.13 262);
-	--albert-color-accent-surface: oklch(0.3 0.035 262);
 	/* Near-canvas, not white: white on the lightened dark accent measures
 	   2.24:1. This is the correction that makes the *-contrast tokens exist. */
 	--albert-color-accent-contrast: oklch(0.2 0.006 265);       /* 8.08:1 on accent */
@@ -290,9 +305,30 @@ body {
 	--albert-color-neutral: oklch(0.84 0.008 265);
 	--albert-color-neutral-surface: oklch(0.31 0.008 265);
 
+	--albert-color-danger-hover: oklch(0.85 0.12 25);
+
 	/* CORRECTED: 1.89:1 in the handoff. Same reasoning as light. */
-	--albert-color-switch-off: oklch(0.54 0.01 265);            /* 3.16:1 */
+	--albert-color-switch-off: oklch(0.54 0.01 265);            /* 3.11:1 */
 	--albert-color-notice-accent: oklch(0.7 0.08 245);          /* 6.04:1, already passing */
+
+	/* Restated so each mixes the DARK source, not the light one. */
+	--albert-color-accent-hover: color-mix(in oklab, var(--albert-color-accent) 82%, white);
+	--albert-color-accent-surface: color-mix(in oklab, var(--albert-color-accent) 18%, black);
+	--albert-color-accent-tint-8: color-mix(in oklab, var(--albert-color-accent) 8%, transparent);
+	--albert-color-accent-tint-10: color-mix(in oklab, var(--albert-color-accent) 10%, transparent);
+	--albert-color-accent-tint-20: color-mix(in oklab, var(--albert-color-accent) 20%, transparent);
+	--albert-color-success-tint-10: color-mix(in oklab, var(--albert-color-success) 10%, transparent);
+	--albert-color-success-tint-20: color-mix(in oklab, var(--albert-color-success) 20%, transparent);
+	--albert-color-warning-tint-10: color-mix(in oklab, var(--albert-color-warning) 10%, transparent);
+	--albert-color-warning-tint-20: color-mix(in oklab, var(--albert-color-warning) 20%, transparent);
+	--albert-color-danger-tint-10: color-mix(in oklab, var(--albert-color-danger) 10%, transparent);
+	--albert-color-danger-tint-20: color-mix(in oklab, var(--albert-color-danger) 20%, transparent);
+	--albert-color-info-tint-10: color-mix(in oklab, var(--albert-color-info) 10%, transparent);
+	--albert-color-info-tint-20: color-mix(in oklab, var(--albert-color-info) 20%, transparent);
+	--albert-color-surface-hover: color-mix(in oklab, var(--albert-color-text) 8%, transparent);
+	--albert-color-danger-hover: color-mix(in oklab, var(--albert-color-danger) 80%, white);
+	--albert-focus-color: var(--albert-color-accent);
+	--albert-color-overlay: oklch(0 0 0 / 0.8);
 
 	--albert-shadow-sm: 0 1px 2px oklch(0 0 0 / 0.3);
 	--albert-shadow-md: 0 1px 3px oklch(0 0 0 / 0.4);

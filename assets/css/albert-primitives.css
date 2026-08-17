@@ -510,10 +510,22 @@
 .albert-nav {
 	background: var(--albert-color-surface);
 	border-bottom: 1px solid var(--albert-color-border);
-	/* Cancel the padding #wpbody-content puts on its children so the strip
-	   reaches both edges. */
-	margin: 0 0 0 -20px;
+
+	/* Cancel the gutter #wpcontent puts on its children so the strip reaches
+	   both edges. Logical, not physical: core sets padding-left in LTR and
+	   padding-right in RTL, so a hardcoded negative left margin drags the strip
+	   off the edge on an RTL admin. The width is not fixed either — core drops
+	   the gutter to 10px below 782px, and over-cancelling there pushes the page
+	   into horizontal scroll. */
+	margin-inline-start: -20px;
 	padding-inline-start: 20px;
+}
+
+@media screen and (max-width: 782px) {
+	.albert-nav {
+		margin-inline-start: -10px;
+		padding-inline-start: 10px;
+	}
 }
 
 .albert-nav__inner {
