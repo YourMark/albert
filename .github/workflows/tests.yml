@@ -67,9 +67,18 @@ jobs:
       matrix:
         php: ['8.1', '8.2', '8.3', '8.4']
         # Compatibility policy: WP 6.9 floor + last 2 main versions.
-        # WP 6.9 is currently the latest major; when 7.0 ships, expand to
-        # ['latest', '7.0', '6.9']. WooCommerce coverage is in its own job below.
-        wordpress: ['latest', '6.9']
+        #
+        # 'trunk' is what gives us WordPress 7.1 coverage while 7.1 is still at
+        # RC — it is the only identifier that keeps working across RC3 → RC4 →
+        # GA without editing this file. Albert adopts the 7.1 Abilities API
+        # (client schema preparation, the wp_get_abilities filtering pipeline,
+        # the execution lifecycle) while staying functional on 6.9, so both ends
+        # of that range have to stay green: 6.9 proves the fallbacks, trunk
+        # proves the 7.1 path. After 7.1 ships, 'latest' covers it and 'trunk'
+        # becomes early warning for 7.2.
+        #
+        # WooCommerce coverage is in its own job below.
+        wordpress: ['latest', 'trunk', '6.9']
 
     services:
       mysql:

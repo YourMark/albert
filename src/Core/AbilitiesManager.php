@@ -228,7 +228,7 @@ class AbilitiesManager implements Hookable {
 	 * @since 1.2.0
 	 */
 	public function enforce_disabled(): void {
-		if ( ! function_exists( 'wp_get_abilities' ) || ! function_exists( 'wp_unregister_ability' ) ) {
+		if ( ! function_exists( 'wp_unregister_ability' ) ) {
 			return;
 		}
 
@@ -238,7 +238,10 @@ class AbilitiesManager implements Hookable {
 
 		$disabled_list = $this->get_effective_disabled_list();
 
-		foreach ( wp_get_abilities() as $ability ) {
+		// Raw registry, not wp_get_abilities(): an ability hidden from the filtered
+		// view is still registered and still executable, so it must still be
+		// unregistered here. See AbilitiesRegistry::get_all_raw().
+		foreach ( AbilitiesRegistry::get_all_raw() as $ability ) {
 			$id = $ability->get_name();
 
 			// The MCP transport meta-tools must always stay registered — protocol
@@ -349,15 +352,22 @@ class AbilitiesManager implements Hookable {
 			return;
 		}
 
-		if ( ! function_exists( 'wp_get_abilities' ) ) {
-			return;
-		}
-
+		// Raw registry, not wp_get_abilities(): if a filter narrowed the view, the
+		// abilities it removed would look "newly seen" the moment it stopped
+		// applying and be auto-disabled behind the admin's back.
 		$registered = [];
-		foreach ( wp_get_abilities() as $ability ) {
+		foreach ( AbilitiesRegistry::get_all_raw() as $ability ) {
 			$registered[] = $ability->get_name();
 		}
 		$registered = array_values( array_unique( array_map( 'strval', $registered ) ) );
+
+		// No registry (Abilities API absent, or filtered away by the host) means we
+		// cannot tell new abilities from missing ones. Stop before the baseline
+		// write below records an empty known-set that would later mark every real
+		// ability as newly seen.
+		if ( $registered === [] ) {
+			return;
+		}
 
 		$known = get_option( 'albert_known_abilities', null );
 

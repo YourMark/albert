@@ -388,7 +388,10 @@ class Dashboard implements Hookable {
 	 */
 	private function get_enabled_abilities_count(): string {
 		$disabled_abilities = AbilitiesPage::get_disabled_abilities();
-		$all_abilities      = wp_get_abilities();
+
+		// Raw registry, not wp_get_abilities(): the count reports what the site has,
+		// so it must not shrink because a plugin filtered the presented view.
+		$all_abilities = AbilitiesRegistry::get_all_raw();
 
 		$enabled_count = 0;
 		$total_count   = count( $all_abilities );

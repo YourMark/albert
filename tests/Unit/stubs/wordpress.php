@@ -18,6 +18,7 @@ require_once __DIR__ . '/WP_Error.php';
 require_once __DIR__ . '/WP_REST_Request.php';
 require_once __DIR__ . '/WP_REST_Response.php';
 require_once __DIR__ . '/WP.php';
+require_once __DIR__ . '/WP_Abilities_Registry.php';
 
 if ( ! function_exists( 'is_wp_error' ) ) {
 	/**
@@ -53,6 +54,32 @@ if ( ! function_exists( 'do_action' ) ) {
 			'type' => 'action',
 			'hook' => $hook_name,
 			'args' => $args,
+		];
+	}
+}
+
+if ( ! function_exists( 'add_action' ) ) {
+	/**
+	 * Stub add_action that records the registration.
+	 *
+	 * Recorded under `type => registration` rather than `action`, so a test
+	 * asserting that a hook *fired* is never satisfied by a hook merely being
+	 * *registered*. The accepted-argument count is recorded because getting it
+	 * wrong is a silent failure: WordPress defaults to 1, which would hand a
+	 * three-argument callback only its first argument.
+	 *
+	 * @param string   $hook_name     Hook name.
+	 * @param callable $callback      Callback to register.
+	 * @param int      $priority      Hook priority.
+	 * @param int      $accepted_args Number of arguments the callback accepts.
+	 */
+	function add_action( string $hook_name, $callback, int $priority = 10, int $accepted_args = 1 ): void {
+		$GLOBALS['albert_test_hooks'][] = [
+			'type'          => 'registration',
+			'hook'          => $hook_name,
+			'callback'      => $callback,
+			'priority'      => $priority,
+			'accepted_args' => $accepted_args,
 		];
 	}
 }

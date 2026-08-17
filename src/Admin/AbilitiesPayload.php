@@ -45,7 +45,10 @@ class AbilitiesPayload {
 		$categories = function_exists( 'wp_get_ability_categories' ) ? wp_get_ability_categories() : [];
 		$disabled   = AbilitiesState::disabled();
 		$roles      = self::roles();
-		$all        = wp_get_abilities();
+		// Raw registry, not wp_get_abilities(): the management screen must show every
+		// ability the site has, including any a third-party filter hides from the
+		// filtered view — otherwise a row the admin can still toggle goes missing.
+		$all = AbilitiesRegistry::get_all_raw();
 
 		// The MCP adapter's own tools (discover / get-info / execute) are protocol
 		// infrastructure, not user-manageable abilities — never surface them on the

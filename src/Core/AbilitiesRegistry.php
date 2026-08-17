@@ -157,23 +157,63 @@ class AbilitiesRegistry {
 	}
 
 	/**
+	 * Get every registered ability straight from the registry, unfiltered.
+	 *
+	 * WordPress 7.1 turned `wp_get_abilities()` into a filtering pipeline, and
+	 * its two ecosystem-scoped filters — `wp_get_abilities_item_include` and
+	 * `wp_get_abilities_result` — fire even on a bare, argument-less call. That
+	 * is correct for anything *presenting* abilities to a consumer, but wrong for
+	 * Albert's own bookkeeping: a third-party filter narrowing the list would
+	 * make the admin screen hide abilities the site actually has, make
+	 * `enforce_disabled()` skip abilities it must unregister, and make
+	 * `reconcile_new_abilities()` treat filtered-out abilities as never-seen and
+	 * auto-disable them the moment the filter stops applying.
+	 *
+	 * So every call site that needs to know what is *really* registered goes
+	 * through here, which reads {@see \WP_Abilities_Registry::get_all_registered()}
+	 * directly — the access path core itself documents for raw registry data.
+	 * Call sites that legitimately want the filtered view keep calling
+	 * `wp_get_abilities()`.
+	 *
+	 * The registry and this method both date from 6.9, so this needs no version
+	 * branch; the guards below only cover a site without the Abilities API at all,
+	 * and the documented case of `get_instance()` returning null before the
+	 * registry is initialised.
+	 *
+	 * @return array<string, \WP_Ability> Registered abilities keyed by ability name.
+	 * @since 1.4.0
+	 */
+	public static function get_all_raw(): array {
+		if ( ! class_exists( '\WP_Abilities_Registry' ) ) {
+			return [];
+		}
+
+		$registry = \WP_Abilities_Registry::get_instance();
+
+		if ( $registry === null ) {
+			return [];
+		}
+
+		return $registry->get_all_registered();
+	}
+
+	/**
 	 * Get the default set of disabled abilities.
 	 *
 	 * On fresh install, non-readonly abilities (write / delete) are disabled
 	 * by default. Derives the list from each registered ability's annotations
 	 * so it stays in sync automatically — no hardcoded slug lists.
 	 *
+	 * Reads the raw registry: the default state must describe every ability the
+	 * site really has, not a filtered view of it.
+	 *
 	 * @return array<string> Ability IDs that are disabled by default.
 	 * @since 1.0.0
 	 */
 	public static function get_default_disabled_abilities(): array {
-		if ( ! function_exists( 'wp_get_abilities' ) ) {
-			return [];
-		}
-
 		$disabled = [];
 
-		foreach ( wp_get_abilities() as $ability ) {
+		foreach ( self::get_all_raw() as $ability ) {
 			$meta        = (array) $ability->get_meta();
 			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : [];
 
