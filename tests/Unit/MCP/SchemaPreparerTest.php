@@ -333,4 +333,57 @@ class SchemaPreparerTest extends TestCase {
 			(string) wp_json_encode( $prepared['input_schema']['properties']['meta'] )
 		);
 	}
+
+	/**
+	 * A tool with no input parameters (empty/absent `properties`) is prepared
+	 * without error and still lists — the DTO rebuild must not choke on it.
+	 *
+	 * @return void
+	 */
+	public function test_tools_list_handles_zero_argument_tool(): void {
+		$this->set_71( true );
+
+		$tool   = Tool::fromArray(
+			[
+				'name'        => 'albert/zero-arg',
+				'inputSchema' => [ 'type' => 'object' ],
+			]
+		);
+		$result = ( new SchemaPreparer() )->prepare_tools_list( [ $tool ], $this->server() );
+
+		$this->assertInstanceOf( Tool::class, $result[0] );
+		$this->assertStringContainsString(
+			'"properties":{}',
+			(string) wp_json_encode( $result[0]->toArray()['inputSchema'] )
+		);
+	}
+
+	/**
+	 * On the tools/list path a nested empty object map is restored to `{}` and
+	 * survives the Tool DTO rebuild.
+	 *
+	 * @return void
+	 */
+	public function test_tools_list_nested_empty_object_map_stays_object(): void {
+		$this->set_71( true );
+
+		$tool   = Tool::fromArray(
+			[
+				'name'        => 'albert/nested',
+				'inputSchema' => [
+					'type'       => 'object',
+					'properties' => [
+						'meta' => [
+							'type'       => 'object',
+							'properties' => [],
+						],
+					],
+				],
+			]
+		);
+		$result = ( new SchemaPreparer() )->prepare_tools_list( [ $tool ], $this->server() );
+
+		$meta = json_decode( (string) wp_json_encode( $result[0]->toArray()['inputSchema'] ), false )->properties->meta;
+		$this->assertEquals( new \stdClass(), $meta->properties );
+	}
 }

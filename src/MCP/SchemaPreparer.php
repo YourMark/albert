@@ -115,7 +115,9 @@ class SchemaPreparer {
 
 		foreach ( [ 'inputSchema', 'outputSchema' ] as $key ) {
 			if ( isset( $data[ $key ] ) && is_array( $data[ $key ] ) ) {
-				$data[ $key ] = $this->prepare_schema( $data[ $key ] );
+				// Skip the root map: Tool::fromArray() needs an array there and
+				// re-objects an empty top-level map itself.
+				$data[ $key ] = $this->restore_object_maps( $this->prepare_schema( $data[ $key ] ), true );
 			}
 		}
 
@@ -142,7 +144,7 @@ class SchemaPreparer {
 	private function prepare_schema( array $schema ): array {
 		$normalised = array_map( [ $this, 'to_array_deep' ], $schema );
 
-		return $this->restore_object_maps( wp_prepare_json_schema_for_client( $normalised ) );
+		return wp_prepare_json_schema_for_client( $normalised );
 	}
 
 	/**
@@ -171,12 +173,20 @@ class SchemaPreparer {
 	 * when they are empty. Non-empty maps already have string keys and serialise
 	 * as objects correctly, so only the empty case needs fixing.
 	 *
-	 * @param array<string, mixed> $schema The prepared schema.
+	 * `$skip_root` leaves the top-level keyword maps as arrays. The tools/list
+	 * path feeds the result back through `Tool::fromArray()`, whose object-map
+	 * validation requires an array at that top level and would throw on a
+	 * `stdClass` — and the DTO already re-objects an empty top-level map itself
+	 * on the way out. The get-ability-info path is serialised directly with no
+	 * DTO, so it restores the root too.
+	 *
+	 * @param array<string, mixed> $schema    The prepared schema.
+	 * @param bool                 $skip_root Whether to leave the top-level maps as arrays.
 	 *
 	 * @return array<string, mixed> The schema with empty keyword maps re-objected.
 	 * @since 1.4.0
 	 */
-	private function restore_object_maps( array $schema ): array {
+	private function restore_object_maps( array $schema, bool $skip_root = false ): array {
 		$object_map_keywords = [ 'properties', 'patternProperties', 'dependentSchemas', 'definitions', '$defs' ];
 
 		foreach ( $schema as $key => $value ) {
@@ -184,9 +194,10 @@ class SchemaPreparer {
 				continue;
 			}
 
+			// Nested levels always restore; only the caller's root may be skipped.
 			$value = $this->restore_object_maps( $value );
 
-			$schema[ $key ] = ( $value === [] && in_array( $key, $object_map_keywords, true ) )
+			$schema[ $key ] = ( $value === [] && ! $skip_root && in_array( $key, $object_map_keywords, true ) )
 				? new \stdClass()
 				: $value;
 		}
@@ -231,7 +242,8 @@ class SchemaPreparer {
 
 		foreach ( [ 'input_schema', 'output_schema' ] as $key ) {
 			if ( isset( $result[ $key ] ) && is_array( $result[ $key ] ) ) {
-				$result[ $key ] = $this->prepare_schema( $result[ $key ] );
+				// No DTO here: serialised directly, so restore the root too.
+				$result[ $key ] = $this->restore_object_maps( $this->prepare_schema( $result[ $key ] ) );
 			}
 		}
 
