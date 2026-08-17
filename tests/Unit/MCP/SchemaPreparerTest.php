@@ -50,6 +50,7 @@ require_once dirname( __DIR__, 2 ) . '/wp-function-stubs.php';
 require_once dirname( __DIR__ ) . '/stubs/function-exists-shadow.php';
 
 use Albert\MCP\SchemaPreparer;
+use Albert\Vendor\WP\MCP\Core\McpServer;
 use Albert\Vendor\WP\McpSchema\Server\Tools\DTO\Tool;
 use PHPUnit\Framework\TestCase;
 use WP_Error;
@@ -93,6 +94,16 @@ class SchemaPreparerTest extends TestCase {
 	}
 
 	/**
+	 * A stand-in for Albert's own MCP server, which the filters require before
+	 * acting (so they never touch another plugin's MCP server).
+	 *
+	 * @return McpServer
+	 */
+	private function server(): McpServer {
+		return $this->createMock( McpServer::class );
+	}
+
+	/**
 	 * Reset capability overrides before each test.
 	 *
 	 * @return void
@@ -126,7 +137,7 @@ class SchemaPreparerTest extends TestCase {
 				'inputSchema' => $this->schema_with_server_keys(),
 			]
 		);
-		$result = ( new SchemaPreparer() )->prepare_tools_list( [ $tool ] );
+		$result = ( new SchemaPreparer() )->prepare_tools_list( [ $tool ], $this->server() );
 
 		$this->assertInstanceOf( Tool::class, $result[0] );
 
@@ -152,7 +163,7 @@ class SchemaPreparerTest extends TestCase {
 				'inputSchema' => $this->schema_with_server_keys(),
 			]
 		);
-		$result = ( new SchemaPreparer() )->prepare_tools_list( [ $tool ] );
+		$result = ( new SchemaPreparer() )->prepare_tools_list( [ $tool ], $this->server() );
 
 		$this->assertSame( $tool, $result[0] );
 	}
@@ -165,7 +176,7 @@ class SchemaPreparerTest extends TestCase {
 	public function test_tools_list_ignores_non_array(): void {
 		$this->set_71( true );
 
-		$this->assertSame( 'unexpected', ( new SchemaPreparer() )->prepare_tools_list( 'unexpected' ) );
+		$this->assertSame( 'unexpected', ( new SchemaPreparer() )->prepare_tools_list( 'unexpected', $this->server() ) );
 	}
 
 	/**
@@ -182,7 +193,7 @@ class SchemaPreparerTest extends TestCase {
 			'output_schema' => $this->schema_with_server_keys(),
 		];
 
-		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result( $result, [], 'mcp-adapter/get-ability-info' );
+		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result( $result, [], 'mcp-adapter/get-ability-info', null, $this->server() );
 
 		$this->assertArrayNotHasKey( 'sanitize_callback', $prepared['input_schema']['properties']['title'] );
 		$this->assertArrayNotHasKey( 'validate_callback', $prepared['output_schema']['properties']['title'] );
@@ -197,7 +208,7 @@ class SchemaPreparerTest extends TestCase {
 		$this->set_71( true );
 
 		$result   = [ 'input_schema' => $this->schema_with_server_keys() ];
-		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result( $result, [], 'albert/find-posts' );
+		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result( $result, [], 'albert/find-posts', null, $this->server() );
 
 		$this->assertSame( $result, $prepared );
 	}
@@ -211,7 +222,7 @@ class SchemaPreparerTest extends TestCase {
 		$this->set_71( true );
 
 		$error    = new WP_Error( 'nope', 'No.' );
-		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result( $error, [], 'mcp-adapter/get-ability-info' );
+		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result( $error, [], 'mcp-adapter/get-ability-info', null, $this->server() );
 
 		$this->assertSame( $error, $prepared );
 	}
@@ -225,8 +236,101 @@ class SchemaPreparerTest extends TestCase {
 		$this->set_71( false );
 
 		$result   = [ 'input_schema' => $this->schema_with_server_keys() ];
-		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result( $result, [], 'mcp-adapter/get-ability-info' );
+		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result( $result, [], 'mcp-adapter/get-ability-info', null, $this->server() );
 
 		$this->assertSame( $result, $prepared );
+	}
+
+	/**
+	 * Both filters ignore a call from another plugin's MCP server (or none),
+	 * so Albert never mutates a foreign server's tools or results.
+	 *
+	 * @return void
+	 */
+	public function test_ignores_foreign_or_missing_server(): void {
+		$this->set_71( true );
+
+		$tool    = Tool::fromArray(
+			[
+				'name'        => 'albert/demo',
+				'inputSchema' => $this->schema_with_server_keys(),
+			]
+		);
+		$foreign = new \stdClass();
+
+		// Foreign server: tools list untouched (same Tool instance back).
+		$tools = ( new SchemaPreparer() )->prepare_tools_list( [ $tool ], $foreign );
+		$this->assertSame( $tool, $tools[0] );
+
+		// Missing server: get-ability-info result untouched.
+		$result   = [ 'input_schema' => $this->schema_with_server_keys() ];
+		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result( $result, [], 'mcp-adapter/get-ability-info', null, null );
+		$this->assertSame( $result, $prepared );
+	}
+
+	/**
+	 * A schema value that cannot be JSON-encoded (e.g. a callback closure) must
+	 * not make preparation fail open and return the raw, unstripped schema.
+	 *
+	 * @return void
+	 */
+	public function test_does_not_fail_open_on_unencodable_value(): void {
+		$this->set_71( true );
+
+		$schema = [
+			'type'       => 'object',
+			'properties' => [
+				'title' => [
+					'type'              => 'string',
+					'sanitize_callback' => static function () {},
+				],
+			],
+		];
+
+		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result(
+			[ 'input_schema' => $schema ],
+			[],
+			'mcp-adapter/get-ability-info',
+			null,
+			$this->server()
+		);
+
+		$this->assertArrayNotHasKey( 'sanitize_callback', $prepared['input_schema']['properties']['title'] );
+		$this->assertSame( 'string', $prepared['input_schema']['properties']['title']['type'] );
+	}
+
+	/**
+	 * A nested empty object map (`properties: {}`) must survive as an object,
+	 * not collapse to an array that would serialise as invalid `[]`.
+	 *
+	 * @return void
+	 */
+	public function test_empty_nested_object_map_stays_object(): void {
+		$this->set_71( true );
+
+		$schema = [
+			'type'       => 'object',
+			'properties' => [
+				'meta' => [
+					'type'       => 'object',
+					'properties' => [],
+				],
+			],
+		];
+
+		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result(
+			[ 'input_schema' => $schema ],
+			[],
+			'mcp-adapter/get-ability-info',
+			null,
+			$this->server()
+		);
+
+		$meta_properties = $prepared['input_schema']['properties']['meta']['properties'];
+		$this->assertInstanceOf( \stdClass::class, $meta_properties );
+		$this->assertStringContainsString(
+			'"properties":{}',
+			(string) wp_json_encode( $prepared['input_schema']['properties']['meta'] )
+		);
 	}
 }

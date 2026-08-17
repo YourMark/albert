@@ -12,6 +12,7 @@
 namespace Albert\Core;
 
 use Albert\MCP\Server;
+use Albert\Vendor\WP\MCP\Abilities\McpAbilityExposure;
 
 /**
  * Abilities Registry class
@@ -247,15 +248,13 @@ class AbilitiesRegistry {
 	/**
 	 * Whether an ability is exposed to MCP clients through the default server.
 	 *
-	 * Resolves the exposure flag with the precedence WordPress 7.1 and the MCP
-	 * adapter (0.6.0+) use: `meta.mcp.public` wins, then top-level `meta.public`,
-	 * then not exposed. Because `??` only falls through on `null`, an explicit
-	 * `meta.mcp.public = false` deliberately opts an ability *out* even when
-	 * `meta.public` is true.
-	 *
-	 * `meta.public` is the forward-looking flag; `meta.mcp.public` is retained
-	 * for backward compatibility and remains the more specific override. Albert's
-	 * built-in abilities set `meta.mcp.public`.
+	 * Albert-side accessor that defers to the bundled MCP adapter's single source
+	 * of truth, {@see McpAbilityExposure::is_meta_public()}, so exposure is
+	 * resolved by exactly the same logic the adapter applies at runtime: an
+	 * explicit `meta.mcp.public` wins (including an explicit `false`, which opts
+	 * an ability out), otherwise the forward-looking `meta.public` flag applies,
+	 * and a malformed `meta.mcp` fails closed. Re-implementing this here would
+	 * risk drifting from the adapter, so it is not re-implemented.
 	 *
 	 * @param array<string, mixed> $meta The ability meta array.
 	 *
@@ -263,9 +262,7 @@ class AbilitiesRegistry {
 	 * @since 1.4.0
 	 */
 	public static function is_mcp_public( array $meta ): bool {
-		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : [];
-
-		return (bool) ( $mcp['public'] ?? $meta['public'] ?? false );
+		return McpAbilityExposure::is_meta_public( $meta );
 	}
 
 	/**

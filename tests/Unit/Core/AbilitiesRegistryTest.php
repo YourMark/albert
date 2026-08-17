@@ -235,7 +235,8 @@ class AbilitiesRegistryTest extends TestCase {
 	}
 
 	/**
-	 * All four flag combinations plus the two override edges.
+	 * Every flag combination and edge the adapter's exposure logic defines,
+	 * including the malformed-mcp fail-closed case and the strict meta.public rule.
 	 *
 	 * @return array<string, array{0: array<string, mixed>, 1: bool}>
 	 */
@@ -265,6 +266,14 @@ class AbilitiesRegistryTest extends TestCase {
 				],
 				true,
 			],
+			'malformed mcp fails closed'         => [
+				[
+					'mcp'    => 'oops',
+					'public' => true,
+				],
+				false,
+			],
+			'non-bool public is not exposed'     => [ [ 'public' => 1 ], false ],
 		];
 	}
 }
