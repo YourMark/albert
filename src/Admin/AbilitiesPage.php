@@ -55,7 +55,7 @@ class AbilitiesPage implements Hookable {
 	 * @since 1.1.0
 	 */
 	public function register_hooks(): void {
-		add_action( 'admin_menu', [ $this, 'add_menu_page' ] );
+		add_action( 'admin_menu', [ $this, 'add_menu_page' ], Menu::POSITION_ABILITIES );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 	}
 
@@ -202,7 +202,7 @@ class AbilitiesPage implements Hookable {
 		wp_enqueue_style(
 			'albert-abilities',
 			ALBERT_PLUGIN_URL . 'assets/css/admin-abilities.css',
-			$has_dataviews_css ? [ 'albert-dataviews' ] : [ 'wp-components' ],
+			[ Assets::PRIMITIVES_HANDLE, $has_dataviews_css ? 'albert-dataviews' : 'wp-components' ],
 			ALBERT_VERSION
 		);
 

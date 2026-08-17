@@ -47,7 +47,7 @@ class Settings implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function register_hooks(): void {
-		add_action( 'admin_menu', [ $this, 'add_settings_page' ], 20 );
+		add_action( 'admin_menu', [ $this, 'add_settings_page' ], Menu::POSITION_SETTINGS );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'admin_post_albert_save_settings', [ $this, 'handle_save_settings' ] );
 	}
@@ -412,7 +412,7 @@ class Settings implements Hookable {
 		wp_enqueue_style(
 			'albert-admin',
 			ALBERT_PLUGIN_URL . 'assets/css/admin-settings.css',
-			[],
+			[ Assets::PRIMITIVES_HANDLE ],
 			ALBERT_VERSION
 		);
 

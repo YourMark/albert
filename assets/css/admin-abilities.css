@@ -26,14 +26,14 @@
 	font-size: 23px;
 	font-weight: 600;
 	line-height: 1.2;
-	color: #1e1e1e;
+	color: var(--albert-color-text);
 }
 
 .albert-abilities__subtitle {
 	margin: 7px 0 0;
 	max-width: 640px;
 	font-size: 13.5px;
-	color: #646970;
+	color: var(--albert-color-text-muted);
 }
 
 .albert-abilities__summary-row {
@@ -50,12 +50,12 @@
 	gap: 18px;
 	margin: 0;
 	font-size: 12.5px;
-	color: #646970;
+	color: var(--albert-color-text-muted);
 }
 
 .albert-abilities__summary strong {
 	font-weight: 600;
-	color: #1e1e1e;
+	color: var(--albert-color-text);
 }
 
 .albert-abilities__bulk-all {
@@ -75,8 +75,8 @@
 
 /* White card framing the DataViews component. */
 .albert-abilities__card {
-	background: #fff;
-	border: 1px solid #e0e0e0;
+	background: var(--albert-color-surface);
+	border: 1px solid var(--albert-color-border);
 	border-radius: 4px;
 	overflow: hidden;
 }
@@ -89,7 +89,7 @@
 	justify-content: space-between;
 	gap: 10px;
 	padding: 12px;
-	border-bottom: 1px solid #e0e0e0;
+	border-bottom: 1px solid var(--albert-color-border);
 }
 
 .albert-toolbar__group {
@@ -121,7 +121,7 @@
 .albert-ability-cell__label {
 	font-size: 14px;
 	font-weight: 600;
-	color: var( --wp-admin-theme-color, #2271b1 );
+	color: var(--albert-color-accent);
 }
 
 .albert-ability-cell:hover .albert-ability-cell__label {
@@ -131,7 +131,7 @@
 .albert-ability-cell__id {
 	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	font-size: 11.5px;
-	color: #6c7177;
+	color: var(--albert-color-text-faint);
 	background: none;
 	padding: 0;
 	overflow: hidden;
@@ -141,7 +141,7 @@
 
 /* Description: single line + ellipsis in the table. Full text lives in the fly-in. */
 .albert-ability-cell__desc {
-	color: #646970;
+	color: var(--albert-color-text-muted);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -177,18 +177,18 @@
 }
 
 .albert-op-badge--read {
-	background: #e6f4ea;
-	color: #0a7a3b;
+	background: var(--albert-color-success-surface);
+	color: var(--albert-color-success);
 }
 
 .albert-op-badge--write {
-	background: #fbf1df;
-	color: #9a5b00;
+	background: var(--albert-color-warning-surface);
+	color: var(--albert-color-warning);
 }
 
 .albert-op-badge--delete {
-	background: #fdecea;
-	color: #b32d2e;
+	background: var(--albert-color-danger-surface);
+	color: var(--albert-color-danger);
 }
 
 /* Generic add-on badges — appended to rows via the
@@ -200,30 +200,14 @@
 	gap: 4px;
 }
 
-.albert-badge {
-	display: inline-flex;
-	align-items: center;
-	padding: 1px 8px;
-	border-radius: 10px;
-	font-size: 11px;
-	font-weight: 600;
-	line-height: 1.6;
-	white-space: nowrap;
-}
-
-.albert-badge--info {
-	background: #e7f0fb;
-	color: #1d4f91;
-}
-
-.albert-badge--warning {
-	background: #fbf1df;
-	color: #9a5b00;
-}
+/* The badge is a primitive. Its base, tones and sizing live in
+   albert-primitives.css — this sheet depends on that one and therefore cascades
+   after it, so redeclaring any of them here would silently take ownership back
+   and give us the two definitions the design system exists to collapse. */
 
 .albert-badge--neutral {
-	background: #eef0f2;
-	color: #50575e;
+	background: var(--albert-color-neutral-surface);
+	color: var(--albert-color-neutral);
 }
 
 /* ---------------------------------------------------------------------------
@@ -246,7 +230,7 @@
 	flex-direction: column;
 	width: 452px;
 	max-width: 92vw;
-	background: #fff;
+	background: var(--albert-color-surface);
 	box-shadow: -8px 0 30px rgba(0, 0, 0, 0.16);
 }
 
@@ -280,7 +264,7 @@
 	justify-content: space-between;
 	gap: 12px;
 	padding: 18px 22px 16px;
-	border-bottom: 1px solid #e0e0e0;
+	border-bottom: 1px solid var(--albert-color-border);
 }
 
 .albert-flyin__title {
@@ -288,13 +272,13 @@
 	padding: 0;
 	font-size: 19px;
 	font-weight: 600;
-	color: #1e1e1e;
+	color: var(--albert-color-text);
 }
 
 .albert-flyin__id {
 	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	font-size: 12.5px;
-	color: var( --wp-admin-theme-color, #2271b1 );
+	color: var(--albert-color-accent);
 	background: none;
 	padding: 0;
 }
@@ -314,7 +298,7 @@
 	font-weight: 600;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
-	color: #6c7177;
+	color: var(--albert-color-text-faint);
 }
 
 .albert-flyin__category-value {
@@ -322,8 +306,8 @@
 	align-items: center;
 	padding: 2px 10px;
 	border-radius: 11px;
-	background: #f0f0f1;
-	color: #1e1e1e;
+	background: var(--albert-color-canvas);
+	color: var(--albert-color-text);
 	font-size: 12px;
 	font-weight: 500;
 }
@@ -333,7 +317,7 @@
 	margin: 0 0 18px;
 	font-size: 13.5px;
 	line-height: 1.55;
-	color: #3c434a;
+	color: var(--albert-color-neutral);
 }
 
 .albert-flyin__confirm-actions {
@@ -357,9 +341,9 @@
 
 .albert-flyin__enabled {
 	padding: 13px 14px;
-	border: 1px solid #e0e0e0;
+	border: 1px solid var(--albert-color-border);
 	border-radius: 5px;
-	background: #fbfbfc;
+	background: var(--albert-color-surface-sunken);
 }
 
 .albert-flyin__section {
@@ -377,7 +361,7 @@
 	font-weight: 600;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
-	color: #6c7177;
+	color: var(--albert-color-text-faint);
 }
 
 /* Parameters accordion card (collapsible), placed under the description. */
@@ -385,9 +369,9 @@
 	/* flex:none — the body is a flex column; overflow:hidden would otherwise
 	   strip the item's auto min-height and let it collapse. */
 	flex: none;
-	border: 1px solid #e8e8e8;
+	border: 1px solid var(--albert-color-border);
 	border-radius: 6px;
-	background: #fff;
+	background: var(--albert-color-surface);
 	overflow: hidden;
 }
 
@@ -410,17 +394,17 @@
 }
 
 .albert-flyin__accordion-toggle:hover {
-	background: #f6f7f7;
+	background: var(--albert-color-surface-sunken);
 }
 
 .albert-flyin__accordion-toggle:focus-visible {
-	outline: 2px solid var( --wp-admin-theme-color, #2271b1 );
+	outline: 2px solid var(--albert-color-accent);
 	outline-offset: -2px;
 }
 
 .albert-flyin__accordion-chevron {
 	flex: none;
-	fill: #50575e;
+	fill: var(--albert-color-neutral);
 	transition: transform 0.15s ease;
 }
 
@@ -440,17 +424,17 @@
 	font-weight: 600;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
-	color: #2c3338;
+	color: var(--albert-color-text);
 }
 
 .albert-flyin__accordion-summary {
 	margin-inline-start: auto;
 	font-size: 12px;
-	color: #6c7177;
+	color: var(--albert-color-text-faint);
 }
 
 .albert-flyin__accordion-panel {
-	border-block-start: 1px solid #f0f0f1;
+	border-block-start: 1px solid var(--albert-color-border-subtle);
 }
 
 .albert-flyin__accordion-panel[ hidden ] {
@@ -467,7 +451,7 @@
 .albert-flyin__param {
 	margin: 0;
 	padding: 8px 12px;
-	border-block-end: 1px solid #f4f4f5;
+	border-block-end: 1px solid var(--albert-color-border-subtle);
 }
 
 .albert-flyin__param:last-child {
@@ -486,16 +470,16 @@
 	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	font-size: 12px;
 	font-weight: 600;
-	color: #1e1e1e;
+	color: var(--albert-color-text);
 }
 
 .albert-flyin__param-type {
 	padding: 0 6px;
 	border-radius: 3px;
-	background: #f0f0f1;
+	background: var(--albert-color-canvas);
 	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	font-size: 10.5px;
-	color: #50575e;
+	color: var(--albert-color-neutral);
 }
 
 .albert-flyin__param-flag {
@@ -504,18 +488,18 @@
 	font-weight: 600;
 	letter-spacing: 0.03em;
 	text-transform: uppercase;
-	color: #6c7177;
+	color: var(--albert-color-text-faint);
 }
 
 .albert-flyin__param.is-required .albert-flyin__param-flag {
-	color: var( --wp-admin-theme-color, #2271b1 );
+	color: var(--albert-color-accent);
 }
 
 .albert-flyin__param-desc {
 	margin: 3px 0 0;
 	font-size: 12px;
 	line-height: 1.45;
-	color: #646970;
+	color: var(--albert-color-text-muted);
 }
 
 .albert-flyin__description,
@@ -523,13 +507,13 @@
 	margin: 0;
 	font-size: 13.5px;
 	line-height: 1.55;
-	color: #3c434a;
+	color: var(--albert-color-neutral);
 }
 
 .albert-flyin__returns {
 	padding: 11px 13px;
-	background: #fbfbfc;
-	border: 1px solid #e0e0e0;
+	background: var(--albert-color-surface-sunken);
+	border: 1px solid var(--albert-color-border);
 	border-radius: 5px;
 }
 
@@ -544,7 +528,7 @@
 	flex-direction: column;
 	gap: 4px;
 	padding: 11px 13px;
-	border: 1px solid #e0e0e0;
+	border: 1px solid var(--albert-color-border);
 	border-radius: 5px;
 }
 
@@ -552,12 +536,12 @@
 	font-size: 11px;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
-	color: #6c7177;
+	color: var(--albert-color-text-faint);
 }
 
 .albert-flyin__card-value {
 	font-size: 13.5px;
-	color: #1e1e1e;
+	color: var(--albert-color-text);
 	background: none;
 	padding: 0;
 }
@@ -577,11 +561,11 @@ code.albert-flyin__card-value {
 	display: inline-flex;
 	align-items: center;
 	padding: 4px 10px;
-	border: 1px solid #e0e0e0;
+	border: 1px solid var(--albert-color-border);
 	border-radius: 12px;
-	background: #fbfbfc;
+	background: var(--albert-color-surface-sunken);
 	font-size: 12px;
-	color: #3c434a;
+	color: var(--albert-color-neutral);
 }
 
 .albert-flyin__footer {
@@ -591,7 +575,7 @@ code.albert-flyin__card-value {
 	justify-content: space-between;
 	gap: 10px;
 	padding: 14px 22px;
-	border-top: 1px solid #e0e0e0;
+	border-top: 1px solid var(--albert-color-border);
 }
 
 /* Panel-level save status (fed by an add-on via api.setSaveStatus). Empty until
@@ -603,7 +587,7 @@ code.albert-flyin__card-value {
 	min-height: 20px;
 	font-size: 12px;
 	font-weight: 600;
-	color: var( --wp-admin-theme-color, #2271b1 );
+	color: var(--albert-color-accent);
 }
 
 .albert-flyin__status:empty {
@@ -637,7 +621,7 @@ code.albert-flyin__card-value {
 	height: 24px;
 	padding: 0;
 	border-radius: 4px;
-	color: #6c7177;
+	color: var(--albert-color-text-faint);
 }
 
 .albert-info .components-button.is-small .dashicons {
@@ -651,10 +635,10 @@ code.albert-flyin__card-value {
 .albert-info .components-button.is-small:hover,
 .albert-info .components-button.is-small:focus,
 .albert-info .components-button.is-small[ aria-expanded="true" ] {
-	color: var( --wp-admin-theme-color, #2271b1 );
+	color: var(--albert-color-accent);
 	background: color-mix(
 		in oklch,
-		var( --wp-admin-theme-color, #2271b1 ) 12%,
+		var(--albert-color-accent) 12%,
 		transparent
 	);
 }
@@ -662,7 +646,7 @@ code.albert-flyin__card-value {
 /* Lift the info popover clearly above the content beneath it — without this it
    reads as merged with the white card it overlaps. */
 .albert-info__popover .components-popover__content {
-	border: 1px solid #dcdcde;
+	border: 1px solid var(--albert-color-border-input);
 	border-radius: 6px;
 	box-shadow: 0 8px 28px oklch( 0 0 0 / 0.16 ), 0 2px 6px oklch( 0 0 0 / 0.08 );
 }
@@ -673,7 +657,7 @@ code.albert-flyin__card-value {
 	padding: 12px 14px;
 	font-size: 12.5px;
 	line-height: 1.5;
-	color: #3c434a;
+	color: var(--albert-color-neutral);
 }
 
 .albert-info__content p {
@@ -690,27 +674,27 @@ code.albert-flyin__card-value {
 	align-items: center;
 	gap: 6px;
 	font-size: 12.5px;
-	color: #3c434a;
+	color: var(--albert-color-neutral);
 }
 
 .albert-lastused--never {
-	color: #6c7177;
+	color: var(--albert-color-text-faint);
 }
 
 .albert-lastused__dot {
 	width: 7px;
 	height: 7px;
 	border-radius: 50%;
-	background: #a7aaad;
+	background: var(--albert-color-switch-off);
 	flex: none;
 }
 
 .albert-lastused__dot--success {
-	background: #1a9e54;
+	background: var(--albert-color-success-dot);
 }
 
 .albert-lastused__dot--error {
-	background: #d63638;
+	background: var(--albert-color-danger);
 }
 
 /* Bulk selection is exposed via the checkbox column + the selection toolbar.
@@ -732,8 +716,8 @@ code.albert-flyin__card-value {
 /* Selection bulk bar, moved to the top (below the toolbar). Only styled when it
    actually has content, so there's no empty bar when nothing is selected. */
 .albert-abilities__bulkbar {
-	background: #f0f6fc;
-	border-bottom: 1px solid #e0e0e0;
+	background: var(--albert-color-accent-surface);
+	border-bottom: 1px solid var(--albert-color-border);
 	padding: 6px 12px;
 }
 
@@ -749,16 +733,16 @@ code.albert-flyin__card-value {
 	flex-direction: column;
 	gap: 14px;
 	padding: 14px;
-	border: 1px solid #e0e0e0;
+	border: 1px solid var(--albert-color-border);
 	border-radius: 8px;
-	background: #fff;
+	background: var(--albert-color-surface);
 }
 
 .albert-perms-panel__intro {
 	margin: 0;
 	font-size: 13px;
 	line-height: 1.5;
-	color: #50575e;
+	color: var(--albert-color-neutral);
 }
 
 /* The shared "Required capability" card is unframed inside the panel (no
@@ -789,7 +773,7 @@ code.albert-flyin__card-value {
    positioned from those vars but inset 4px (no control padding, which would
    double-offset it). The slide comes from transitioning the position. */
 .albert-perms-panel .components-toggle-group-control {
-	background: #f0f0f1;
+	background: var(--albert-color-canvas);
 	border: none;
 	border-radius: 10px;
 	box-shadow: none;
@@ -804,7 +788,7 @@ code.albert-flyin__card-value {
 	   changing custom property interpolates, so the pill slides instead of
 	   jumping. The +4px is the inset. */
 	transform: translateX( calc( var( --selected-left, 0 ) * 1px + 4px ) );
-	background: #fff;
+	background: var(--albert-color-surface);
 	border: none;
 	border-radius: 6px;
 	box-shadow: 0 1px 3px oklch( 0 0 0 / 0.16 ),
@@ -817,12 +801,12 @@ code.albert-flyin__card-value {
 	z-index: 1;
 	background: transparent;
 	border: none;
-	color: #5e636a;
+	color: var(--albert-color-text-muted);
 }
 
 .albert-perms-upsell
 	.components-toggle-group-control-option-base[ aria-checked="true" ] {
-	color: #1e1e1e;
+	color: var(--albert-color-text);
 }
 
 @media ( prefers-reduced-motion: reduce ) {
@@ -849,7 +833,7 @@ code.albert-flyin__card-value {
 	padding-inline-start: 22px;
 	font-size: 12.5px;
 	line-height: 1.7;
-	color: #2c3338;
+	color: var(--albert-color-text);
 }
 
 .albert-perms-upsell__benefits li::before {
@@ -859,7 +843,7 @@ code.albert-flyin__card-value {
 	inset-block-start: 0.5em;
 	inline-size: 8px;
 	block-size: 5px;
-	border: 1.5px solid var( --wp-admin-theme-color, #2271b1 );
+	border: 1.5px solid var(--albert-color-accent);
 	border-block-start: 0;
 	border-inline-end: 0;
 	transform: rotate( -45deg );
@@ -872,7 +856,7 @@ code.albert-flyin__card-value {
 	font-weight: 600;
 	letter-spacing: 0.06em;
 	text-transform: uppercase;
-	color: #8a8f94;
+	color: var(--albert-color-text-faint);
 }
 
 /* Decorative showcase of the rule builder. The example rules stay readable but
@@ -883,9 +867,9 @@ code.albert-flyin__card-value {
 	overflow: hidden;
 	min-block-size: 132px;
 	padding: 12px;
-	border: 1px dashed #dcdcde;
+	border: 1px dashed var(--albert-color-border-input);
 	border-radius: 8px;
-	background: #fafafa;
+	background: var(--albert-color-surface-sunken);
 }
 
 /* Scrim that fades the example out toward the overlaid CTA. */
@@ -898,8 +882,8 @@ code.albert-flyin__card-value {
 	background: linear-gradient(
 		to bottom,
 		transparent,
-		color-mix( in oklch, #fafafa 70%, transparent ) 45%,
-		#fafafa 82%
+		color-mix( in oklch, var(--albert-color-surface-sunken) 70%, transparent ) 45%,
+		var(--albert-color-surface-sunken) 82%
 	);
 	pointer-events: none;
 }
@@ -919,10 +903,10 @@ code.albert-flyin__card-value {
 	gap: 8px;
 	margin: 0;
 	padding: 8px 10px;
-	border: 1px dashed #d7d7d9;
+	border: 1px dashed var(--albert-color-border);
 	border-radius: 6px;
 	font-size: 12.5px;
-	color: #50575e;
+	color: var(--albert-color-neutral);
 }
 
 .albert-perms-upsell__token {
@@ -930,14 +914,14 @@ code.albert-flyin__card-value {
 }
 
 .albert-perms-upsell__word {
-	color: #6c7177;
+	color: var(--albert-color-text-faint);
 }
 
 .albert-perms-upsell__chip {
 	margin-inline-start: auto;
 	padding: 2px 10px;
 	border-radius: 11px;
-	background: #f0f0f1;
+	background: var(--albert-color-canvas);
 	font-weight: 500;
 }
 

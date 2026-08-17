@@ -53,7 +53,9 @@ use Albert\Abilities\WooCommerce\ViewCustomer;
 use Albert\Abilities\WooCommerce\ViewOrder;
 use Albert\Abilities\WooCommerce\ViewProduct;
 use Albert\Admin\AbilitiesPage;
+use Albert\Admin\Assets;
 use Albert\Admin\Connections;
+use Albert\Admin\Menu;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
 use Albert\Database\Installer as DatabaseInstaller;
@@ -169,6 +171,15 @@ class Plugin {
 
 		// Register admin components.
 		if ( is_admin() ) {
+			// Shared admin assets. Registers the design-token stylesheet every
+			// Albert screen (and every add-on screen) depends on, before any
+			// screen enqueues its own styles.
+			( new Assets() )->register_hooks();
+
+			// Page navigation above the screen content. Menu also owns the
+			// submenu ordering constants every screen below registers with.
+			( new Menu() )->register_hooks();
+
 			// Dashboard page (creates top-level menu and first submenu).
 			( new Dashboard( $logging_repository ) )->register_hooks();
 
@@ -181,8 +192,8 @@ class Plugin {
 			// Settings page (MCP endpoint, developer options, licenses).
 			( new Settings() )->register_hooks();
 
-			// Addon submenu pages (registered via filter at priority 15).
-			add_action( 'admin_menu', [ $this, 'register_addon_admin_pages' ], 15 );
+			// Addon submenu pages (registered via filter — see Menu for ordering).
+			add_action( 'admin_menu', [ $this, 'register_addon_admin_pages' ], Menu::POSITION_ADDONS );
 		}
 
 		// Register the abilities REST controller (data + toggles for the admin screen).
