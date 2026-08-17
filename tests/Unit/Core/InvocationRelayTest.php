@@ -13,6 +13,7 @@
 namespace Albert\Tests\Unit\Core;
 
 require_once dirname( __DIR__ ) . '/stubs/wordpress.php';
+require_once dirname( __DIR__ ) . '/stubs/WP_Ability.php';
 
 use Albert\Core\InvocationRelay;
 use PHPUnit\Framework\TestCase;
@@ -99,6 +100,28 @@ class InvocationRelayTest extends TestCase {
 
 		$this->assertCount( 1, $fired );
 		$this->assertNull( $fired[0]['args'][1] );
+	}
+
+	/**
+	 * A throwing observer cannot break the ability it observes.
+	 *
+	 * The relay fires from the top of WP_Ability::execute(), outside any Albert
+	 * try/catch, for every ability on the site. Without the guard a subscriber
+	 * that throws would take the whole tool call down with it.
+	 *
+	 * @return void
+	 */
+	public function test_a_throwing_observer_does_not_break_the_call(): void {
+		$GLOBALS['albert_test_throw_on_action'] = 'albert/abilities/invoked';
+
+		try {
+			( new InvocationRelay() )->relay( 'albert/create-post', [], $this->ability( 'albert/create-post' ) );
+			$this->addToAssertionCount( 1 );
+		} catch ( \Throwable $e ) {
+			$this->fail( 'The relay let an observer Throwable escape: ' . $e->getMessage() );
+		} finally {
+			unset( $GLOBALS['albert_test_throw_on_action'] );
+		}
 	}
 
 	/**

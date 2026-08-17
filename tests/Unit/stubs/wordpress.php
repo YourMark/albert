@@ -50,6 +50,12 @@ if ( ! function_exists( 'do_action' ) ) {
 	 * @param mixed  ...$args   Hook arguments.
 	 */
 	function do_action( string $hook_name, ...$args ): void {
+		// Lets a test simulate a subscriber that throws, so guards around
+		// observer dispatch can be asserted rather than assumed.
+		if ( isset( $GLOBALS['albert_test_throw_on_action'] ) && $GLOBALS['albert_test_throw_on_action'] === $hook_name ) {
+			throw new \RuntimeException( 'observer exploded' );
+		}
+
 		$GLOBALS['albert_test_hooks'][] = [
 			'type' => 'action',
 			'hook' => $hook_name,

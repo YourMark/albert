@@ -70,27 +70,40 @@ class InvocationRelay {
 	 * @since 1.4.0
 	 */
 	public function relay( string $ability_name, $input, WP_Ability $ability ): void {
-		/**
-		 * Fires when any registered ability is invoked, before any processing.
-		 *
-		 * Mirrors WordPress 7.1's `wp_ability_invoked` and fires for every call
-		 * regardless of outcome — including calls that go on to fail validation,
-		 * be denied by a permission check, or be short-circuited. Covers every
-		 * registered ability, not only Albert's own.
-		 *
-		 * Observers must not throw and must not block: this runs on the hot path
-		 * of every ability call. Use `albert/abilities/after_execute` when the
-		 * result matters.
-		 *
-		 * Never fires below WordPress 7.1 — see
-		 * {@see WpCompat::supports_execution_lifecycle()}.
-		 *
-		 * @since 1.4.0
-		 *
-		 * @param string     $ability_name The ability being invoked.
-		 * @param mixed      $input        Raw input, before normalisation.
-		 * @param WP_Ability $ability      The ability instance.
-		 */
-		do_action( 'albert/abilities/invoked', $ability_name, $input, $ability );
+		// Wrapped for the same reason BaseAbility::guarded_execute() wraps its own
+		// observer hooks: an observer must never break the call it observes. This
+		// one needs it most. It fires from the very top of WP_Ability::execute(),
+		// outside any Albert try/catch, for every ability on the site including
+		// ones Albert does not own — so a subscriber that throws (a logger whose
+		// insert fails, a JSON encode that chokes on the raw pre-normalisation
+		// input this hook uniquely exposes) would take the whole tool call down
+		// with it. Enforced, not merely documented.
+		try {
+			/**
+			 * Fires when any registered ability is invoked, before any processing.
+			 *
+			 * Mirrors WordPress 7.1's `wp_ability_invoked` and fires for every call
+			 * regardless of outcome — including calls that go on to fail validation,
+			 * be denied by a permission check, or be short-circuited. Covers every
+			 * registered ability, not only Albert's own.
+			 *
+			 * Observers should not block: this runs on the hot path of every ability
+			 * call. Use `albert/abilities/after_execute` when the result matters. A
+			 * Throwable from an observer is caught and swallowed rather than allowed
+			 * to break the call being observed.
+			 *
+			 * Never fires below WordPress 7.1 — see
+			 * {@see WpCompat::supports_execution_lifecycle()}.
+			 *
+			 * @since 1.4.0
+			 *
+			 * @param string     $ability_name The ability being invoked.
+			 * @param mixed      $input        Raw input, before normalisation.
+			 * @param WP_Ability $ability      The ability instance.
+			 */
+			do_action( 'albert/abilities/invoked', $ability_name, $input, $ability );
+		} catch ( \Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+			// An observer must never break the ability it observes.
+		}
 	}
 }
