@@ -70,7 +70,7 @@ class Dashboard implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function register_hooks(): void {
-		add_action( 'admin_menu', [ $this, 'add_menu_pages' ], 9 ); // Priority 9 to run before Abilities at 10.
+		add_action( 'admin_menu', [ $this, 'add_menu_pages' ], Menu::POSITION_DASHBOARD );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 	}
 
@@ -123,7 +123,7 @@ class Dashboard implements Hookable {
 		wp_enqueue_style(
 			'albert-admin',
 			ALBERT_PLUGIN_URL . 'assets/css/admin-settings.css',
-			[],
+			[ Assets::PRIMITIVES_HANDLE ],
 			ALBERT_VERSION
 		);
 

@@ -1,0 +1,579 @@
+/**
+ * Albert admin primitives.
+ *
+ * The shared component vocabulary every Albert screen is built from, in this
+ * plugin and in add-ons. Depends on the `albert-tokens` handle and declares no
+ * raw colour, size or duration of its own — if a value is missing here, it
+ * belongs in the token sheet, not inline.
+ *
+ * Deliberately absent: buttons. WordPress already ships `.button`,
+ * `.button-primary` and `.button-secondary`; they follow the admin colour
+ * scheme, are maintained by core, and make Albert look like the rest of
+ * wp-admin. Re-implementing them would be duplicated effort and a standing
+ * divergence risk for no gain. Use core's classes.
+ *
+ * Accessibility rules that apply throughout, so they are not repeated per
+ * component:
+ *   - Every interactive element gets the same visible :focus-visible ring.
+ *   - State is never signalled by colour alone — weight, an icon, a border or
+ *     text always changes with it.
+ *   - All motion sits inside prefers-reduced-motion: no-preference.
+ *
+ * @package Albert
+ * @since 1.4.0
+ */
+
+/* ==========================================================================
+   Page shell
+   ========================================================================== */
+
+/**
+ * Card screens cap their measure; table screens (Abilities, Activity Log) run
+ * full width because a table's usefulness scales with the room it gets.
+ */
+.albert-page {
+	max-width: 1280px;
+}
+
+.albert-page--wide {
+	max-width: none;
+}
+
+.albert-page__header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--albert-space-400);
+	flex-wrap: wrap;
+	margin-block-end: var(--albert-space-400);
+}
+
+.albert-page__title {
+	margin: 0 0 var(--albert-space-100);
+	padding: 0;
+	font-size: var(--albert-font-size-page-title);
+	font-weight: var(--albert-font-weight-semibold);
+	line-height: var(--albert-line-height-tight);
+	color: var(--albert-color-text);
+}
+
+.albert-page__description {
+	margin: 0;
+	max-width: 640px;
+	font-size: var(--albert-font-size-body);
+	line-height: var(--albert-line-height-snug);
+	color: var(--albert-color-text-muted);
+}
+
+/* Header-right cluster: primary control and/or save state. */
+.albert-page__actions {
+	display: flex;
+	align-items: center;
+	gap: var(--albert-space-300);
+}
+
+/* The section rhythm every screen inherits. */
+.albert-page__body > * + * {
+	margin-block-start: var(--albert-space-400);
+}
+
+/* ==========================================================================
+   Card
+   ========================================================================== */
+
+.albert-card {
+	background: var(--albert-color-surface);
+	border: 1px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
+}
+
+.albert-card__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--albert-space-300);
+	padding: 14px 18px;
+	border-block-end: 1px solid var(--albert-color-border);
+}
+
+.albert-card__title {
+	margin: 0;
+	font-size: var(--albert-font-size-card-title);
+	font-weight: var(--albert-font-weight-semibold);
+	color: var(--albert-color-text);
+}
+
+.albert-card__description {
+	margin: var(--albert-space-100) 0 0;
+	font-size: var(--albert-font-size-sm);
+	line-height: var(--albert-line-height-snug);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-card__body {
+	padding: 18px;
+}
+
+/* A card whose body is a list of rows manages its own dividers. */
+.albert-card__body--flush {
+	padding: 0;
+}
+
+/* ==========================================================================
+   Toggle row
+   ========================================================================== */
+
+.albert-toggle-row {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--albert-space-400);
+	padding: var(--albert-space-400) 18px;
+}
+
+.albert-toggle-row + .albert-toggle-row {
+	border-block-start: 1px solid var(--albert-color-border-subtle);
+}
+
+.albert-toggle-row__label {
+	font-size: var(--albert-font-size-body);
+	font-weight: var(--albert-font-weight-semibold);
+	color: var(--albert-color-text);
+}
+
+.albert-toggle-row__description {
+	margin: var(--albert-space-100) 0 0;
+	font-size: var(--albert-font-size-sm);
+	line-height: var(--albert-line-height-snug);
+	color: var(--albert-color-text-muted);
+}
+
+/* A one-line preview of the value the row controls. */
+.albert-toggle-row__peek {
+	margin: var(--albert-space-200) 0 0;
+	font-family: var(--albert-font-family-mono);
+	font-size: var(--albert-font-size-mono-sm);
+	color: var(--albert-color-text-faint);
+}
+
+/**
+ * Switched-off state uses `inert` (set on the element, styled here), never
+ * `pointer-events: none` — that leaves the subtree keyboard reachable and
+ * announces controls a user cannot operate. Text stays at full contrast: a
+ * dimmed label is harder to read for everyone and communicates nothing that
+ * the control state does not already say.
+ */
+.albert-toggle-row[inert] .albert-toggle-row__description,
+.albert-toggle-row[inert] .albert-toggle-row__peek {
+	color: var(--albert-color-text-faint);
+}
+
+/* ==========================================================================
+   Switch
+   ========================================================================== */
+
+/**
+ * Always rendered as <button role="switch" aria-checked> with an accessible
+ * name that says what it switches — "Enable Create post", not "Enable".
+ */
+.albert-switch {
+	position: relative;
+	flex: none;
+	inline-size: 40px;
+	block-size: 22px;
+	padding: 0;
+	border: none;
+	border-radius: var(--albert-radius-pill);
+	background: var(--albert-color-switch-off);
+	cursor: pointer;
+	-webkit-appearance: none;
+	appearance: none;
+}
+
+.albert-switch::after {
+	content: "";
+	position: absolute;
+	inset-block-start: 3px;
+	inset-inline-start: 3px;
+	inline-size: 16px;
+	block-size: 16px;
+	border-radius: 50%;
+	background: var(--albert-color-surface);
+}
+
+.albert-switch[aria-checked="true"] {
+	background: var(--albert-color-accent);
+}
+
+.albert-switch[aria-checked="true"]::after {
+	inset-inline-start: 21px;
+}
+
+.albert-switch:disabled {
+	cursor: not-allowed;
+	opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.albert-switch::after {
+		transition: inset-inline-start var(--albert-duration-fast) var(--albert-easing-fast);
+	}
+}
+
+/* ==========================================================================
+   Badge / pill
+   ========================================================================== */
+
+/**
+ * One definition, replacing the two shapes shipped before this file existed.
+ * Tone sets both surface and text; the pair is measured in docs/design-system.md.
+ */
+.albert-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--albert-space-100);
+	padding: 2px var(--albert-space-200);
+	border-radius: var(--albert-radius-pill);
+	font-size: var(--albert-font-size-micro);
+	font-weight: var(--albert-font-weight-semibold);
+	line-height: 1.6;
+	white-space: nowrap;
+	background: var(--albert-color-neutral-surface);
+	color: var(--albert-color-neutral);
+}
+
+.albert-badge--info {
+	background: var(--albert-color-info-surface);
+	color: var(--albert-color-info);
+}
+
+.albert-badge--success {
+	background: var(--albert-color-success-surface);
+	color: var(--albert-color-success);
+}
+
+.albert-badge--warning {
+	background: var(--albert-color-warning-surface);
+	color: var(--albert-color-warning);
+}
+
+.albert-badge--danger {
+	background: var(--albert-color-danger-surface);
+	color: var(--albert-color-danger);
+}
+
+.albert-badge--outline {
+	background: transparent;
+	border: 1px solid var(--albert-color-border-input);
+	color: var(--albert-color-text-muted);
+}
+
+/* Operation badges carry a dot so the tone is not the only signal. */
+.albert-badge__dot {
+	inline-size: 6px;
+	block-size: 6px;
+	border-radius: 50%;
+	background: currentcolor;
+}
+
+/* ==========================================================================
+   Inline hint
+   ========================================================================== */
+
+/**
+ * Scoped to the thing it explains. Never a full-width banner — that is what
+ * WordPress notices are for, and Albert should not compete with them.
+ */
+.albert-hint {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--albert-space-200);
+	padding: var(--albert-space-300);
+	border-inline-start: 3px solid var(--albert-color-notice-accent);
+	border-radius: 0 var(--albert-radius-md) var(--albert-radius-md) 0;
+	background: var(--albert-color-surface-sunken);
+	font-size: var(--albert-font-size-sm);
+	line-height: var(--albert-line-height-snug);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-hint--info {
+	border-inline-start-color: var(--albert-color-accent);
+	background: var(--albert-color-accent-surface);
+}
+
+.albert-hint--warning {
+	border-inline-start-color: var(--albert-color-warning);
+	background: var(--albert-color-warning-surface);
+	color: var(--albert-color-text);
+}
+
+/* ==========================================================================
+   Save state
+   ========================================================================== */
+
+/**
+ * Replaces a submit button on instant-save screens. Must live inside an
+ * aria-live="polite" region so the change is announced without stealing focus.
+ */
+.albert-savestate {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--albert-space-200);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-savestate__dot {
+	inline-size: 7px;
+	block-size: 7px;
+	border-radius: 50%;
+	background: var(--albert-color-text-faint);
+}
+
+.albert-savestate--saved .albert-savestate__dot {
+	background: var(--albert-color-success-dot);
+}
+
+.albert-savestate--error .albert-savestate__dot {
+	background: var(--albert-color-danger);
+}
+
+/* ==========================================================================
+   Data table
+   ========================================================================== */
+
+.albert-table {
+	inline-size: 100%;
+	border-collapse: collapse;
+}
+
+.albert-table th {
+	padding: var(--albert-space-300);
+	background: var(--albert-color-surface-sunken);
+	border-block-end: 1px solid var(--albert-color-border);
+	font-size: var(--albert-font-size-micro);
+	font-weight: var(--albert-font-weight-semibold);
+	letter-spacing: var(--albert-letter-spacing-micro);
+	text-transform: uppercase;
+	color: var(--albert-color-text-faint);
+	text-align: start;
+}
+
+.albert-table td {
+	padding: 14px var(--albert-space-300);
+	border-block-end: 1px solid var(--albert-color-border-subtle);
+	font-size: var(--albert-font-size-body);
+	color: var(--albert-color-text);
+}
+
+.albert-table th:first-child,
+.albert-table td:first-child {
+	padding-inline-start: 18px;
+}
+
+.albert-table th:last-child,
+.albert-table td:last-child {
+	padding-inline-end: 18px;
+}
+
+.albert-table tr:last-child td {
+	border-block-end: none;
+}
+
+/* Wide tables scroll inside their own container, never the page. */
+.albert-table-scroll {
+	overflow-x: auto;
+}
+
+/* ==========================================================================
+   Meter
+   ========================================================================== */
+
+/**
+ * Warns, never blocks. The written-out value in the label is the accessible
+ * source of truth; the bar is a visual echo of it, so the track carries
+ * role="img" with an aria-label repeating the same numbers.
+ */
+.albert-meter__label {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--albert-space-300);
+	margin-block-end: var(--albert-space-200);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-meter__track {
+	block-size: 8px;
+	border-radius: var(--albert-radius-pill);
+	background: var(--albert-color-surface-sunken);
+	border: 1px solid var(--albert-color-border-input);
+	overflow: hidden;
+}
+
+.albert-meter__fill {
+	block-size: 100%;
+	background: var(--albert-color-accent);
+}
+
+.albert-meter--over .albert-meter__fill {
+	background: var(--albert-color-warning);
+}
+
+.albert-meter--exceeded .albert-meter__fill {
+	background: var(--albert-color-danger);
+}
+
+.albert-meter__note {
+	margin: var(--albert-space-200) 0 0;
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.albert-meter__fill {
+		transition: inline-size var(--albert-duration-fast) var(--albert-easing-fast);
+	}
+}
+
+/* ==========================================================================
+   Payload preview
+   ========================================================================== */
+
+.albert-preview__body {
+	max-block-size: 300px;
+	overflow: auto;
+	padding: var(--albert-space-300);
+	background: var(--albert-color-surface-sunken);
+	font-family: var(--albert-font-family-mono);
+	font-size: var(--albert-font-size-mono-sm);
+	line-height: var(--albert-line-height-mono);
+	white-space: pre-wrap;
+	color: var(--albert-color-text);
+}
+
+/* The region contributed by the site owner, marked so it is visibly theirs. */
+.albert-preview__highlight {
+	display: block;
+	padding-inline-start: var(--albert-space-200);
+	border-inline-start: 3px solid var(--albert-color-accent);
+	background: var(--albert-color-accent-surface);
+}
+
+/* ==========================================================================
+   Swatch
+   ========================================================================== */
+
+.albert-swatch {
+	display: inline-block;
+	inline-size: 22px;
+	block-size: 22px;
+	border: 1px solid var(--albert-color-border-input);
+	border-radius: var(--albert-radius-sm);
+	vertical-align: middle;
+}
+
+/* ==========================================================================
+   Focus
+   ========================================================================== */
+
+/**
+ * One ring for everything interactive, including switches, rows that open a
+ * panel, and accordion summaries — the elements most often missed.
+ */
+.albert-switch:focus-visible,
+.albert-badge[tabindex]:focus-visible,
+.albert-toggle-row [tabindex]:focus-visible,
+.albert-preview summary:focus-visible,
+.albert-card summary:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+/**
+ * Page navigation
+ *
+ * A second, page-level nav that complements WordPress's own submenu in the
+ * sidebar rather than replacing it. The sidebar is the native path and stays;
+ * this row keeps you oriented once you are inside Albert, which the sidebar
+ * cannot do when the admin menu is collapsed.
+ *
+ * Rendered on `in_admin_header`, so it sits outside `.wrap` and runs edge to
+ * edge without negative margins fighting core's gutters.
+ *
+ * Real links with `aria-current="page"` — never `role="tab"`. Each entry is a
+ * separate page load; tab semantics would promise in-page panels and arrow-key
+ * navigation that do not exist.
+ */
+.albert-nav {
+	background: var(--albert-color-surface);
+	border-bottom: 1px solid var(--albert-color-border);
+	/* Cancel the padding #wpbody-content puts on its children so the strip
+	   reaches both edges. */
+	margin: 0 0 0 -20px;
+	padding-inline-start: 20px;
+}
+
+.albert-nav__inner {
+	display: flex;
+	align-items: stretch;
+	gap: var(--albert-space-400);
+	flex-wrap: wrap;
+	padding-inline-end: var(--albert-space-500);
+}
+
+.albert-nav__brand {
+	display: flex;
+	align-items: center;
+	font-size: var(--albert-font-size-sm);
+	font-weight: var(--albert-font-weight-semibold);
+	letter-spacing: var(--albert-letter-spacing-micro);
+	text-transform: uppercase;
+	color: var(--albert-color-text-faint);
+}
+
+.albert-nav__list {
+	display: flex;
+	align-items: stretch;
+	gap: var(--albert-space-100);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	overflow-x: auto;
+}
+
+.albert-nav__item {
+	margin: 0;
+}
+
+.albert-nav__link {
+	display: flex;
+	align-items: center;
+	padding: 14px var(--albert-space-300) 12px;
+	font-size: var(--albert-font-size-body);
+	line-height: 1;
+	color: var(--albert-color-text-muted);
+	text-decoration: none;
+	white-space: nowrap;
+	border-bottom: 3px solid transparent;
+}
+
+.albert-nav__link:hover,
+.albert-nav__link:focus {
+	color: var(--albert-color-text);
+}
+
+.albert-nav__link:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: calc(var(--albert-focus-offset) * -1);
+}
+
+/* The current page. Colour and weight change alongside the underline, so the
+   state is never signalled by colour alone. */
+.albert-nav__link[aria-current="page"] {
+	color: var(--albert-color-text);
+	font-weight: var(--albert-font-weight-semibold);
+	border-bottom-color: var(--albert-color-accent);
+}

@@ -51,7 +51,7 @@ class Connections implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function register_hooks(): void {
-		add_action( 'admin_menu', [ $this, 'add_menu_page' ] );
+		add_action( 'admin_menu', [ $this, 'add_menu_page' ], Menu::POSITION_CONNECTIONS );
 		add_action( 'admin_init', [ $this, 'handle_actions' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'admin_post_albert_add_allowed_user', [ $this, 'handle_add_allowed_user' ] );
@@ -1119,7 +1119,7 @@ class Connections implements Hookable {
 		wp_enqueue_style(
 			'albert-admin',
 			ALBERT_PLUGIN_URL . 'assets/css/admin-settings.css',
-			[],
+			[ Assets::PRIMITIVES_HANDLE ],
 			ALBERT_VERSION
 		);
 

@@ -7,70 +7,16 @@
 
 :root {
 	/* Colors - OKLCH */
-	--albert-primary: oklch(0.49 0.12 248);
-	--albert-primary-hover: oklch(0.42 0.11 248);
-	--albert-border: oklch(0.81 0.005 265);
-	--albert-border-light: oklch(0.89 0.003 265);
-	--albert-bg-white: oklch(1 0 0);
-	--albert-bg-light: oklch(0.97 0.002 210);
-	--albert-text-primary: oklch(0.22 0.01 240);
-	--albert-text-secondary: oklch(0.49 0.015 250);
-	--albert-success: oklch(0.55 0.17 145);
-	--albert-error: oklch(0.52 0.18 25);
-	--albert-error-hover: oklch(0.44 0.18 25);
-	--albert-warning: oklch(0.50 0.12 75);
-	--albert-success-bg: oklch(0.97 0.03 150);
-	--albert-copy-hover-bg: oklch(0.92 0 0);
-	--albert-source-core-bg: oklch(0.95 0.002 265);
-	--albert-source-core-text: oklch(0.42 0.01 250);
-	--albert-third-party-text: oklch(0.43 0.14 150);
-	--albert-modal-backdrop: oklch(0 0 0 / 0.7);
 
 	/* Derived alpha colors */
-	--albert-primary-8: oklch(0.49 0.12 248 / 0.08);
-	--albert-primary-10: oklch(0.49 0.12 248 / 0.1);
-	--albert-primary-20: oklch(0.49 0.12 248 / 0.2);
-	--albert-primary-40: oklch(0.49 0.12 248 / 0.4);
-	--albert-primary-60: oklch(0.49 0.12 248 / 0.6);
-	--albert-warning-10: oklch(0.50 0.12 75 / 0.1);
-	--albert-warning-20: oklch(0.50 0.12 75 / 0.2);
-	--albert-success-10: oklch(0.55 0.17 145 / 0.1);
-	--albert-success-20: oklch(0.55 0.17 145 / 0.2);
-	--albert-danger-10: oklch(0.52 0.18 25 / 0.1);
-	--albert-danger-20: oklch(0.52 0.18 25 / 0.2);
-	--albert-info-10: oklch(0.49 0.12 248 / 0.1);
-	--albert-info-20: oklch(0.49 0.12 248 / 0.2);
-	--albert-black-5: oklch(0 0 0 / 0.05);
-	--albert-black-8: oklch(0 0 0 / 0.08);
-	--albert-black-10: oklch(0 0 0 / 0.1);
-	--albert-black-30: oklch(0 0 0 / 0.3);
 
 	/* Font sizes */
-	--albert-font-2xs: 9px;
-	--albert-font-xs: 11px;
-	--albert-font-sm: 12px;
-	--albert-font-base: 13px;
-	--albert-font-md: 14px;
-	--albert-font-lg: 15px;
-	--albert-font-xl: 16px;
-	--albert-font-2xl: 18px;
-	--albert-font-3xl: 24px;
-	--albert-font-4xl: 32px;
-	--albert-font-5xl: 64px;
 
 	/* Spacing */
-	--albert-spacing-xs: 6px;
-	--albert-spacing-sm: 8px;
-	--albert-spacing-md: 12px;
-	--albert-spacing-lg: 16px;
-	--albert-spacing-xl: 24px;
 
 	/* Other */
-	--albert-border-radius: 4px;
-	--albert-border-radius-lg: 8px;
-	--albert-transition: 0.2s;
-	--albert-shadow-sm: 0 1px 2px var(--albert-black-5);
-	--albert-shadow-md: 0 1px 3px var(--albert-black-10);
+	--albert-shadow-sm: 0 1px 2px oklch(0 0 0 / 0.05);
+	--albert-shadow-md: 0 1px 3px oklch(0 0 0 / 0.1);
 }
 
 /* Main wrapper — Albert admin pages. Apply to every `.wrap` container. */
@@ -81,7 +27,7 @@
 
 .albert-wrap > h1,
 .albert-settings > h1 {
-	margin-bottom: var(--albert-spacing-lg);
+	margin-bottom: var(--albert-space-400);
 }
 
 /* --------------------------------------------------------------
@@ -91,7 +37,7 @@
 .albert-page {
 	display: flex;
 	flex-direction: column;
-	gap: var(--albert-spacing-lg);
+	gap: var(--albert-space-400);
 	max-width: none;
 }
 
@@ -101,8 +47,8 @@
 
 .albert-page__intro {
 	margin: 0;
-	font-size: var(--albert-font-md);
-	color: var(--albert-text-secondary);
+	font-size: var(--albert-font-size-card-title);
+	color: var(--albert-color-text-muted);
 	line-height: 1.5;
 	max-width: 72ch;
 }
@@ -114,14 +60,14 @@
 .albert-settings-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
-	gap: var(--albert-spacing-lg);
+	gap: var(--albert-space-400);
 }
 
 /* Settings card */
 .albert-settings-card {
-	background: var(--albert-bg-white);
-	border: 1px solid var(--albert-border);
-	border-radius: var(--albert-border-radius-lg);
+	background: var(--albert-color-surface);
+	border: 1px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
 	box-shadow: var(--albert-shadow-sm);
 	overflow: hidden;
 }
@@ -129,39 +75,39 @@
 .albert-settings-card-header {
 	display: flex;
 	align-items: center;
-	gap: var(--albert-spacing-sm);
-	padding: var(--albert-spacing-md) var(--albert-spacing-lg);
-	background: var(--albert-bg-light);
-	border-bottom: 1px solid var(--albert-border-light);
+	gap: var(--albert-space-200);
+	padding: var(--albert-space-300) var(--albert-space-400);
+	background: var(--albert-color-canvas);
+	border-bottom: 1px solid var(--albert-color-border-subtle);
 }
 
 .albert-settings-card-header .dashicons {
-	color: var(--albert-text-secondary);
-	font-size: var(--albert-font-2xl);
+	color: var(--albert-color-text-muted);
+	font-size: var(--albert-font-size-page-title);
 	width: 18px;
 	height: 18px;
 }
 
 .albert-settings-card-header h2 {
-	font-size: var(--albert-font-base);
+	font-size: var(--albert-font-size-base);
 	font-weight: 600;
-	color: var(--albert-text-primary);
+	color: var(--albert-color-text);
 	margin: 0;
 	text-transform: uppercase;
 	letter-spacing: 0.3px;
 }
 
 .albert-settings-card-body {
-	padding: var(--albert-spacing-lg);
+	padding: var(--albert-space-400);
 }
 
 /* Field groups — two-column compact row for built-in types */
 .albert-field-group {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-	gap: var(--albert-spacing-lg);
+	gap: var(--albert-space-400);
 	align-items: start;
-	margin-block-end: var(--albert-spacing-lg);
+	margin-block-end: var(--albert-space-400);
 }
 
 .albert-field-group:last-child {
@@ -180,7 +126,7 @@
 .albert-field-label-wrap {
 	display: flex;
 	flex-direction: column;
-	gap: var(--albert-spacing-xs);
+	gap: var(--albert-space-100);
 }
 
 .albert-field-input-wrap {
@@ -200,39 +146,39 @@
 .albert-field-label {
 	display: block;
 	font-weight: 600;
-	font-size: var(--albert-font-base);
-	color: var(--albert-text-primary);
+	font-size: var(--albert-font-size-base);
+	color: var(--albert-color-text);
 	margin-bottom: 0;
 }
 
 /* Legacy one-column layout for custom fields still needs a small gap below the label. */
 .albert-field-group--custom .albert-field-label {
-	margin-bottom: var(--albert-spacing-xs);
+	margin-bottom: var(--albert-space-100);
 }
 
 .albert-field-badge {
 	display: inline-block;
-	margin-inline-start: var(--albert-spacing-xs);
+	margin-inline-start: var(--albert-space-100);
 	padding: 1px 6px;
-	font-size: var(--albert-font-2xs);
+	font-size: var(--albert-font-size-micro);
 	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: 0.03em;
-	color: var(--albert-primary);
-	background: color-mix(in oklab, var(--albert-primary) 12%, transparent);
+	color: var(--albert-color-accent);
+	background: color-mix(in oklab, var(--albert-color-accent) 12%, transparent);
 	border-radius: 3px;
 	vertical-align: middle;
 }
 
 .albert-field-description {
-	font-size: var(--albert-font-sm);
-	color: var(--albert-text-secondary);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
 	margin: 0;
 	line-height: 1.5;
 }
 
 .albert-field-group--custom .albert-field-description {
-	margin: 0 0 var(--albert-spacing-sm) 0;
+	margin: 0 0 var(--albert-space-200) 0;
 }
 
 @media (max-width: 782px) {
@@ -245,16 +191,16 @@
 .albert-url-field {
 	display: flex;
 	align-items: center;
-	gap: var(--albert-spacing-sm);
+	gap: var(--albert-space-200);
 }
 
 .albert-url-value {
 	flex: 1;
-	padding: var(--albert-spacing-sm) var(--albert-spacing-md);
-	background: var(--albert-bg-light);
-	border: 1px solid var(--albert-border-light);
-	border-radius: var(--albert-border-radius);
-	font-size: var(--albert-font-sm);
+	padding: var(--albert-space-200) var(--albert-space-300);
+	background: var(--albert-color-canvas);
+	border: 1px solid var(--albert-color-border-subtle);
+	border-radius: var(--albert-radius-md);
+	font-size: var(--albert-font-size-sm);
 	word-break: break-all;
 	line-height: 1.4;
 }
@@ -263,17 +209,17 @@
 .albert-inline-form {
 	display: flex;
 	align-items: center;
-	gap: var(--albert-spacing-sm);
+	gap: var(--albert-space-200);
 	flex-wrap: wrap;
 }
 
 .albert-text-input {
 	flex: 1;
 	min-width: 200px;
-	padding: var(--albert-spacing-xs) var(--albert-spacing-sm);
-	border: 1px solid var(--albert-border);
-	border-radius: var(--albert-border-radius);
-	font-size: var(--albert-font-base);
+	padding: var(--albert-space-100) var(--albert-space-200);
+	border: 1px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
+	font-size: var(--albert-font-size-base);
 }
 
 .albert-text-input--block {
@@ -286,88 +232,88 @@
 .albert-developer-field {
 	display: flex;
 	flex-direction: column;
-	gap: var(--albert-spacing-md);
+	gap: var(--albert-space-300);
 }
 
 .albert-developer-info {
 	display: flex;
-	gap: var(--albert-spacing-md);
+	gap: var(--albert-space-300);
 	align-items: flex-start;
-	padding: var(--albert-spacing-md) var(--albert-spacing-lg);
-	background: color-mix(in oklab, var(--albert-bg-light, #f6f7f7) 60%, transparent);
-	border-inline-start: 3px solid var(--albert-border, #c3c4c7);
-	border-radius: var(--albert-border-radius);
+	padding: var(--albert-space-300) var(--albert-space-400);
+	background: color-mix(in oklab, var(--albert-color-canvas) 60%, transparent);
+	border-inline-start: 3px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
 }
 
 .albert-developer-info .dashicons {
 	flex-shrink: 0;
 	margin-block-start: 2px;
-	color: var(--albert-text-secondary);
+	color: var(--albert-color-text-muted);
 }
 
 .albert-developer-info p {
 	margin: 0;
-	font-size: var(--albert-font-sm);
-	color: var(--albert-text-secondary);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
 	line-height: 1.5;
 }
 
 .albert-developer-info p + p {
-	margin-block-start: var(--albert-spacing-xs);
+	margin-block-start: var(--albert-space-100);
 }
 
 .albert-developer-info code {
 	padding: 1px 6px;
-	background: var(--albert-bg-white, #fff);
-	border: 1px solid var(--albert-border, #c3c4c7);
+	background: var(--albert-color-surface);
+	border: 1px solid var(--albert-color-border);
 	border-radius: 3px;
 	font-size: 0.95em;
 }
 
 .albert-select-input {
 	min-width: 200px;
-	padding: var(--albert-spacing-xs) var(--albert-spacing-sm);
-	border: 1px solid var(--albert-border);
-	border-radius: var(--albert-border-radius);
-	font-size: var(--albert-font-base);
-	background: var(--albert-bg-white);
+	padding: var(--albert-space-100) var(--albert-space-200);
+	border: 1px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
+	font-size: var(--albert-font-size-base);
+	background: var(--albert-color-surface);
 }
 
 /* Empty state */
 .albert-empty-state {
 	text-align: center;
-	padding: var(--albert-spacing-xl) var(--albert-spacing-lg);
-	color: var(--albert-text-secondary);
+	padding: var(--albert-space-600) var(--albert-space-400);
+	color: var(--albert-color-text-muted);
 }
 
 .albert-empty-state .dashicons {
-	font-size: var(--albert-font-4xl);
+	font-size: var(--albert-font-size-stat);
 	width: 32px;
 	height: 32px;
-	margin-bottom: var(--albert-spacing-sm);
+	margin-bottom: var(--albert-space-200);
 	opacity: 0.5;
 }
 
 .albert-empty-state p {
 	margin: 0;
-	font-size: var(--albert-font-base);
+	font-size: var(--albert-font-size-base);
 }
 
 /* Users list */
 .albert-users-list {
-	margin-top: var(--albert-spacing-md);
-	border: 1px solid var(--albert-border-light);
-	border-radius: var(--albert-border-radius);
+	margin-top: var(--albert-space-300);
+	border: 1px solid var(--albert-color-border-subtle);
+	border-radius: var(--albert-radius-md);
 	overflow: hidden;
 }
 
 .albert-user-row {
 	display: flex;
 	align-items: center;
-	gap: var(--albert-spacing-md);
-	padding: var(--albert-spacing-sm) var(--albert-spacing-md);
-	background: var(--albert-bg-white);
-	border-bottom: 1px solid var(--albert-border-light);
+	gap: var(--albert-space-300);
+	padding: var(--albert-space-200) var(--albert-space-300);
+	background: var(--albert-color-surface);
+	border-bottom: 1px solid var(--albert-color-border-subtle);
 }
 
 .albert-user-row:last-child {
@@ -375,13 +321,13 @@
 }
 
 .albert-user-row:hover {
-	background: var(--albert-bg-light);
+	background: var(--albert-color-canvas);
 }
 
 .albert-user-info {
 	display: flex;
 	align-items: center;
-	gap: var(--albert-spacing-sm);
+	gap: var(--albert-space-200);
 	flex: 1;
 	min-width: 0;
 }
@@ -397,8 +343,8 @@
 
 .albert-user-name {
 	display: block;
-	font-size: var(--albert-font-base);
-	color: var(--albert-text-primary);
+	font-size: var(--albert-font-size-base);
+	color: var(--albert-color-text);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -406,8 +352,8 @@
 
 .albert-user-email {
 	display: block;
-	font-size: var(--albert-font-xs);
-	color: var(--albert-text-secondary);
+	font-size: var(--albert-font-size-micro);
+	color: var(--albert-color-text-muted);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -418,8 +364,8 @@
 }
 
 .albert-sessions-link {
-	font-size: var(--albert-font-sm);
-	color: var(--albert-primary);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-accent);
 	text-decoration: none;
 }
 
@@ -428,8 +374,8 @@
 }
 
 .albert-no-sessions {
-	font-size: var(--albert-font-sm);
-	color: var(--albert-text-secondary);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
 }
 
 .albert-user-actions {
@@ -437,42 +383,42 @@
 }
 
 .albert-remove-link {
-	font-size: var(--albert-font-sm);
-	color: var(--albert-error);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-danger);
 	text-decoration: none;
 }
 
 .albert-remove-link:hover {
 	text-decoration: underline;
-	color: var(--albert-error-hover);
+	color: var(--albert-color-danger-hover);
 }
 
 .albert-remove-link:focus-visible {
-	outline: 2px solid var(--albert-primary);
+	outline: 2px solid var(--albert-color-accent);
 	outline-offset: 2px;
 	border-radius: 2px;
 }
 
 /* Legacy settings sections (keep for compatibility) */
 .albert-settings-section {
-	margin-bottom: var(--albert-spacing-xl);
+	margin-bottom: var(--albert-space-600);
 }
 
 .albert-settings-section h2 {
-	font-size: var(--albert-font-2xl);
+	font-size: var(--albert-font-size-page-title);
 	font-weight: 600;
-	margin: 0 0 var(--albert-spacing-lg) 0;
-	padding-bottom: var(--albert-spacing-sm);
-	border-bottom: 1px solid var(--albert-border-light);
+	margin: 0 0 var(--albert-space-400) 0;
+	padding-bottom: var(--albert-space-200);
+	border-bottom: 1px solid var(--albert-color-border-subtle);
 }
 
 /* OAuth Info Box (legacy) */
 .albert-oauth-info-box {
-	background: var(--albert-bg-light);
-	border: 1px solid var(--albert-border);
-	border-radius: var(--albert-border-radius);
-	padding: var(--albert-spacing-md);
-	margin-bottom: var(--albert-spacing-lg);
+	background: var(--albert-color-canvas);
+	border: 1px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
+	padding: var(--albert-space-300);
+	margin-bottom: var(--albert-space-400);
 }
 
 .albert-oauth-info-box:last-child {
@@ -480,8 +426,8 @@
 }
 
 .albert-oauth-info-box h3 {
-	margin: 0 0 var(--albert-spacing-md) 0;
-	font-size: var(--albert-font-md);
+	margin: 0 0 var(--albert-space-300) 0;
+	font-size: var(--albert-font-size-card-title);
 }
 
 .albert-oauth-info-box .form-table {
@@ -489,14 +435,14 @@
 }
 
 .albert-oauth-info-box .form-table th {
-	padding: var(--albert-spacing-xs) 0;
+	padding: var(--albert-space-100) 0;
 	width: 150px;
 	font-weight: normal;
-	color: var(--albert-text-secondary);
+	color: var(--albert-color-text-muted);
 }
 
 .albert-oauth-info-box .form-table td {
-	padding: var(--albert-spacing-xs) 0;
+	padding: var(--albert-space-100) 0;
 }
 
 .albert-copy-button {
@@ -504,11 +450,11 @@
 }
 
 .albert-copy-button.copied {
-	color: var(--albert-success);
+	color: var(--albert-color-success);
 }
 
 .albert-copy-button:focus-visible {
-	outline: 2px solid var(--albert-primary);
+	outline: 2px solid var(--albert-color-accent);
 	outline-offset: 1px;
 }
 
@@ -521,7 +467,7 @@
 }
 
 .albert-copy-text:hover {
-	background: var(--albert-copy-hover-bg);
+	background: var(--albert-color-surface-hover);
 	border-radius: 2px;
 }
 
@@ -531,21 +477,21 @@
 	top: -28px;
 	left: 50%;
 	transform: translateX(-50%);
-	background: var(--albert-text-primary);
-	color: var(--albert-bg-white);
+	background: var(--albert-color-text);
+	color: var(--albert-color-surface);
 	padding: 4px 8px;
 	border-radius: 3px;
-	font-size: var(--albert-font-xs);
+	font-size: var(--albert-font-size-micro);
 	white-space: nowrap;
 }
 
 /* OAuth clients table */
 .albert-auth-tab .wp-list-table {
-	margin-top: var(--albert-spacing-md);
+	margin-top: var(--albert-space-300);
 }
 
 .albert-auth-tab .tablenav {
-	margin: var(--albert-spacing-md) 0;
+	margin: var(--albert-space-300) 0;
 }
 
 .albert-uri-list {
@@ -581,7 +527,7 @@
 
 	.albert-user-row {
 		flex-wrap: wrap;
-		gap: var(--albert-spacing-sm);
+		gap: var(--albert-space-200);
 	}
 
 	.albert-user-info {
@@ -604,17 +550,17 @@
 
 	.albert-wrap .submit,
 	.albert-settings .submit {
-		margin: var(--albert-spacing-md) 0 0 0;
-		padding: var(--albert-spacing-sm) var(--albert-spacing-md);
+		margin: var(--albert-space-300) 0 0 0;
+		padding: var(--albert-space-200) var(--albert-space-300);
 	}
 }
 
 /* Save success notice prominence */
 .albert-wrap .notice-success,
 .albert-settings .notice-success {
-	border-left-color: var(--albert-success);
+	border-left-color: var(--albert-color-success);
 	border-left-width: 4px;
-	background: var(--albert-success-bg);
+	background: var(--albert-color-success-surface);
 	animation: albert-fade-in 0.3s ease-out;
 }
 
@@ -635,34 +581,34 @@
 }
 
 .albert-card {
-	background: var(--albert-bg-white);
-	border: 1px solid var(--albert-border);
-	border-radius: var(--albert-border-radius-lg);
+	background: var(--albert-color-surface);
+	border: 1px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
 	box-shadow: 0 1px 1px oklch(0 0 0 / 0.04);
 	overflow: hidden;
 	transition: box-shadow 0.2s ease;
 }
 
 .albert-card:hover {
-	box-shadow: 0 2px 4px var(--albert-black-8);
+	box-shadow: 0 2px 4px oklch(0 0 0 / 0.08);
 }
 
 .albert-card h2 {
-	font-size: var(--albert-font-xl);
+	font-size: var(--albert-font-size-section-title);
 	font-weight: 600;
 	margin: 0;
-	padding: var(--albert-spacing-lg) 20px;
-	background: var(--albert-bg-light);
-	border-bottom: 1px solid var(--albert-border-light);
-	color: var(--albert-text-primary);
+	padding: var(--albert-space-400) 20px;
+	background: var(--albert-color-canvas);
+	border-bottom: 1px solid var(--albert-color-border-subtle);
+	color: var(--albert-color-text);
 	display: flex;
 	align-items: center;
-	gap: var(--albert-spacing-sm);
+	gap: var(--albert-space-200);
 }
 
 .albert-card .description {
-	font-size: var(--albert-font-base);
-	color: var(--albert-text-secondary);
+	font-size: var(--albert-font-size-base);
+	color: var(--albert-color-text-muted);
 	margin: 0;
 	line-height: 1.6;
 }
@@ -673,25 +619,25 @@
 }
 
 .albert-endpoint-card p.description {
-	padding: var(--albert-spacing-lg) 20px 0;
+	padding: var(--albert-space-400) 20px 0;
 }
 
 .albert-endpoint-box {
 	display: flex;
 	align-items: stretch;
 	gap: 10px;
-	padding: var(--albert-spacing-lg) 20px 20px;
+	padding: var(--albert-space-400) 20px 20px;
 }
 
 .albert-endpoint-url {
 	flex: 1;
 	padding: 10px 14px;
-	background: var(--albert-bg-light);
-	border: 1px solid var(--albert-border);
-	border-radius: var(--albert-border-radius);
+	background: var(--albert-color-canvas);
+	border: 1px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
 	font-family: 'Courier New', Courier, monospace;
-	font-size: var(--albert-font-base);
-	color: var(--albert-text-primary);
+	font-size: var(--albert-font-size-base);
+	color: var(--albert-color-text);
 	line-height: 1.4;
 }
 
@@ -699,35 +645,35 @@
 	flex-shrink: 0;
 	min-width: 80px;
 	height: auto;
-	padding: 10px var(--albert-spacing-lg);
-	font-size: var(--albert-font-base);
+	padding: 10px var(--albert-space-400);
+	font-size: var(--albert-font-size-base);
 	font-weight: 500;
 }
 
 .albert-copy-success {
-	background-color: var(--albert-success) !important;
-	border-color: var(--albert-success) !important;
-	color: var(--albert-bg-white) !important;
+	background-color: var(--albert-color-success) !important;
+	border-color: var(--albert-color-success) !important;
+	color: var(--albert-color-surface) !important;
 }
 
 .albert-copy-error {
-	background-color: var(--albert-error) !important;
-	border-color: var(--albert-error) !important;
-	color: var(--albert-bg-white) !important;
+	background-color: var(--albert-color-danger) !important;
+	border-color: var(--albert-color-danger) !important;
+	color: var(--albert-color-surface) !important;
 }
 
 /* Setup Card */
 .albert-setup-card ol.albert-setup-steps {
 	margin: 0;
-	padding: var(--albert-spacing-lg) 20px var(--albert-spacing-lg) 44px;
+	padding: var(--albert-space-400) 20px var(--albert-space-400) 44px;
 	list-style-position: outside;
 }
 
 .albert-setup-steps li {
-	font-size: var(--albert-font-base);
+	font-size: var(--albert-font-size-base);
 	line-height: 1.8;
-	color: var(--albert-text-primary);
-	margin-bottom: var(--albert-spacing-sm);
+	color: var(--albert-color-text);
+	margin-bottom: var(--albert-space-200);
 }
 
 .albert-setup-steps li:last-child {
@@ -737,29 +683,29 @@
 .albert-setup-card > p {
 	padding: 0 20px 20px;
 	margin: 0;
-	border-top: 1px solid var(--albert-border-light);
-	padding-top: var(--albert-spacing-lg);
+	border-top: 1px solid var(--albert-color-border-subtle);
+	padding-top: var(--albert-space-400);
 }
 
 .albert-setup-card .button {
-	font-size: var(--albert-font-base);
+	font-size: var(--albert-font-size-base);
 }
 
 /* Status Card */
 .albert-status-list {
 	list-style: none;
 	margin: 0;
-	padding: var(--albert-spacing-lg) 20px;
+	padding: var(--albert-space-400) 20px;
 }
 
 .albert-status-list li {
 	display: grid;
 	grid-template-columns: 12px 160px 1fr;
 	align-items: center;
-	gap: var(--albert-spacing-md);
+	gap: var(--albert-space-300);
 	padding: 10px 0;
-	font-size: var(--albert-font-base);
-	border-bottom: 1px solid var(--albert-source-core-bg);
+	font-size: var(--albert-font-size-base);
+	border-bottom: 1px solid var(--albert-color-neutral-surface);
 }
 
 .albert-status-list li:last-child {
@@ -776,44 +722,44 @@
 	height: 10px;
 	border-radius: 50%;
 	flex-shrink: 0;
-	box-shadow: 0 0 0 2px var(--albert-black-8);
+	box-shadow: 0 0 0 2px oklch(0 0 0 / 0.08);
 }
 
 .albert-status-active {
-	background-color: var(--albert-success);
+	background-color: var(--albert-color-success);
 }
 
 .albert-status-inactive {
-	background-color: var(--albert-error);
+	background-color: var(--albert-color-danger);
 }
 
 .albert-status-info {
-	background-color: var(--albert-primary);
+	background-color: var(--albert-color-accent);
 }
 
 .albert-status-list strong {
-	color: var(--albert-source-core-text);
+	color: var(--albert-color-neutral);
 	font-weight: 500;
-	font-size: var(--albert-font-base);
+	font-size: var(--albert-font-size-base);
 }
 
 .albert-status-value {
-	color: var(--albert-text-primary);
+	color: var(--albert-color-text);
 	font-weight: 600;
-	font-size: var(--albert-font-md);
+	font-size: var(--albert-font-size-card-title);
 	text-align: right;
 }
 
 .albert-status-card > p {
-	padding: var(--albert-spacing-lg) 20px 20px;
+	padding: var(--albert-space-400) 20px 20px;
 	margin: 0;
 	display: flex;
-	gap: var(--albert-spacing-sm);
-	border-top: 1px solid var(--albert-border-light);
+	gap: var(--albert-space-200);
+	border-top: 1px solid var(--albert-color-border-subtle);
 }
 
 .albert-status-card .button {
-	font-size: var(--albert-font-base);
+	font-size: var(--albert-font-size-base);
 	padding: 6px 12px;
 	height: auto;
 	line-height: 1.4;
@@ -829,15 +775,15 @@
 .albert-activity-list li {
 	display: flex;
 	align-items: center;
-	gap: var(--albert-spacing-md);
+	gap: var(--albert-space-300);
 	padding: 14px 20px;
-	font-size: var(--albert-font-base);
-	border-bottom: 1px solid var(--albert-source-core-bg);
+	font-size: var(--albert-font-size-base);
+	border-bottom: 1px solid var(--albert-color-neutral-surface);
 	transition: background-color 0.15s ease;
 }
 
 .albert-activity-list li:hover {
-	background-color: var(--albert-bg-light);
+	background-color: var(--albert-color-canvas);
 }
 
 .albert-activity-list li:last-child {
@@ -845,28 +791,28 @@
 }
 
 .albert-activity-icon {
-	font-size: var(--albert-font-2xl);
+	font-size: var(--albert-font-size-page-title);
 	flex-shrink: 0;
 	line-height: 1;
 }
 
 .albert-activity-text {
 	flex: 1;
-	color: var(--albert-text-primary);
+	color: var(--albert-color-text);
 	line-height: 1.5;
 }
 
 .albert-activity-time {
 	flex-shrink: 0;
-	font-size: var(--albert-font-sm);
-	color: var(--albert-text-secondary);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
 	font-weight: 500;
 }
 
 .albert-activity-card p.description {
-	padding: var(--albert-spacing-lg) 20px;
+	padding: var(--albert-space-400) 20px;
 	margin: 0;
-	color: var(--albert-text-secondary);
+	color: var(--albert-color-text-muted);
 }
 
 /* Dashboard Responsive */
@@ -892,7 +838,7 @@
 
 	.albert-status-list li {
 		grid-template-columns: 12px 1fr;
-		gap: var(--albert-spacing-sm);
+		gap: var(--albert-space-200);
 	}
 
 	.albert-status-list strong {
@@ -922,19 +868,19 @@
 .albert-connections-table {
 	width: 100%;
 	border-collapse: collapse;
-	margin-top: var(--albert-spacing-md);
+	margin-top: var(--albert-space-300);
 	table-layout: fixed;
 }
 
 .albert-connections-table th {
 	text-align: left;
-	font-size: var(--albert-font-xs);
+	font-size: var(--albert-font-size-micro);
 	font-weight: 600;
-	color: var(--albert-text-secondary);
+	color: var(--albert-color-text-muted);
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
-	padding: var(--albert-spacing-sm) var(--albert-spacing-md);
-	border-bottom: 2px solid var(--albert-border-light);
+	padding: var(--albert-space-200) var(--albert-space-300);
+	border-bottom: 2px solid var(--albert-color-border-subtle);
 }
 
 .albert-connections-table th:nth-child(1) { width: 35%; }
@@ -943,10 +889,10 @@
 .albert-connections-table th:nth-child(4) { width: 15%; }
 
 .albert-connections-table td {
-	padding: var(--albert-spacing-md);
-	border-bottom: 1px solid var(--albert-border-light);
-	font-size: var(--albert-font-base);
-	color: var(--albert-text-primary);
+	padding: var(--albert-space-300);
+	border-bottom: 1px solid var(--albert-color-border-subtle);
+	font-size: var(--albert-font-size-base);
+	color: var(--albert-color-text);
 	vertical-align: middle;
 }
 
@@ -960,8 +906,8 @@
 }
 
 .albert-connection-session {
-	font-size: var(--albert-font-xs);
-	color: var(--albert-text-secondary);
+	font-size: var(--albert-font-size-micro);
+	color: var(--albert-color-text-muted);
 	font-family: 'Courier New', Courier, monospace;
 	display: block;
 	margin-top: 2px;
@@ -973,35 +919,35 @@
 
 .albert-disconnect-link {
 	display: inline-block;
-	color: var(--albert-error);
+	color: var(--albert-color-danger);
 	text-decoration: none;
-	font-size: var(--albert-font-xs);
+	font-size: var(--albert-font-size-micro);
 	font-weight: 500;
 	padding: 4px 12px;
-	border: 1px solid var(--albert-error);
-	border-radius: var(--albert-border-radius);
+	border: 1px solid var(--albert-color-danger);
+	border-radius: var(--albert-radius-md);
 	transition: background 0.15s, color 0.15s;
 }
 
 .albert-disconnect-link:hover {
-	background: var(--albert-error);
-	color: var(--albert-bg-white);
+	background: var(--albert-color-danger);
+	color: var(--albert-color-surface);
 }
 
 .albert-connections-actions {
-	margin-top: var(--albert-spacing-md);
-	padding-top: var(--albert-spacing-md);
-	border-top: 1px solid var(--albert-border-light);
+	margin-top: var(--albert-space-300);
+	padding-top: var(--albert-space-300);
+	border-top: 1px solid var(--albert-color-border-subtle);
 	text-align: right;
 }
 
 .albert-disconnect-all-link {
-	color: var(--albert-error);
-	font-size: var(--albert-font-sm);
+	color: var(--albert-color-danger);
+	font-size: var(--albert-font-size-sm);
 }
 
 .albert-disconnect-all-link:hover {
-	color: var(--albert-error);
+	color: var(--albert-color-danger);
 	text-decoration: underline;
 }
 
@@ -1013,16 +959,16 @@
 	background: none;
 	border: none;
 	padding: 0;
-	margin-left: var(--albert-spacing-xs);
+	margin-left: var(--albert-space-100);
 	cursor: pointer;
 	vertical-align: middle;
 }
 
 .albert-info-trigger .dashicons {
-	font-size: var(--albert-font-xl);
+	font-size: var(--albert-font-size-section-title);
 	width: 18px;
 	height: 18px;
-	color: var(--albert-text-secondary);
+	color: var(--albert-color-text-muted);
 	opacity: 0.6;
 	transition: opacity 0.15s;
 }
@@ -1034,7 +980,7 @@
 }
 
 .albert-info-trigger:focus-visible {
-	outline: 2px solid var(--albert-primary);
+	outline: 2px solid var(--albert-color-accent);
 	outline-offset: 2px;
 	border-radius: 50%;
 }
@@ -1047,12 +993,12 @@
 	position: fixed;
 	width: 300px;
 	padding: 12px 16px;
-	background: var(--albert-text-primary);
-	color: var(--albert-bg-white);
-	font-size: var(--albert-font-sm);
+	background: var(--albert-color-text);
+	color: var(--albert-color-surface);
+	font-size: var(--albert-font-size-sm);
 	font-weight: 400;
 	line-height: 1.5;
-	border-radius: var(--albert-border-radius);
+	border-radius: var(--albert-radius-md);
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 	z-index: 100000;
 	text-transform: none;
@@ -1064,37 +1010,37 @@
 .albert-endpoint-bar {
 	display: flex;
 	flex-direction: column;
-	gap: var(--albert-spacing-xs);
-	padding: var(--albert-spacing-md);
-	background: var(--albert-bg-light);
-	border: 1px solid var(--albert-border-light);
-	border-radius: var(--albert-border-radius);
-	margin: var(--albert-spacing-lg) 0;
+	gap: var(--albert-space-100);
+	padding: var(--albert-space-300);
+	background: var(--albert-color-canvas);
+	border: 1px solid var(--albert-color-border-subtle);
+	border-radius: var(--albert-radius-md);
+	margin: var(--albert-space-400) 0;
 }
 
 .albert-endpoint-bar-header {
 	display: flex;
 	align-items: baseline;
-	gap: var(--albert-spacing-sm);
+	gap: var(--albert-space-200);
 	flex-wrap: wrap;
 }
 
 .albert-endpoint-bar-label {
-	font-size: var(--albert-font-sm);
+	font-size: var(--albert-font-size-sm);
 	font-weight: 600;
-	color: var(--albert-text-primary);
+	color: var(--albert-color-text);
 	white-space: nowrap;
 }
 
 .albert-endpoint-bar-helper {
-	font-size: var(--albert-font-sm);
-	color: var(--albert-text-secondary);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
 }
 
 .albert-endpoint-bar-field {
 	display: flex;
 	align-items: center;
-	gap: var(--albert-spacing-sm);
+	gap: var(--albert-space-200);
 }
 
 .albert-endpoint-bar-field .albert-endpoint-url {
@@ -1107,15 +1053,15 @@
 
 /* Endpoint filter notice (albert/mcp/external_url state) */
 .albert-endpoint-notice {
-	margin: calc(-1 * var(--albert-spacing-sm)) 0 var(--albert-spacing-lg);
-	padding: var(--albert-spacing-md) var(--albert-spacing-lg);
-	border: 1px solid var(--albert-border-light);
+	margin: calc(-1 * var(--albert-space-200)) 0 var(--albert-space-400);
+	padding: var(--albert-space-300) var(--albert-space-400);
+	border: 1px solid var(--albert-color-border-subtle);
 	border-inline-start-width: 4px;
-	border-radius: var(--albert-border-radius);
-	background: var(--albert-bg-white);
-	font-size: var(--albert-font-sm);
+	border-radius: var(--albert-radius-md);
+	background: var(--albert-color-surface);
+	font-size: var(--albert-font-size-sm);
 	line-height: 1.5;
-	color: var(--albert-text-primary);
+	color: var(--albert-color-text);
 }
 
 .albert-endpoint-notice p {
@@ -1123,40 +1069,40 @@
 }
 
 .albert-endpoint-notice p + p {
-	margin-block-start: var(--albert-spacing-xs);
+	margin-block-start: var(--albert-space-100);
 }
 
 .albert-endpoint-notice code {
 	padding: 1px 6px;
-	background: var(--albert-bg-light);
-	border: 1px solid var(--albert-border-light);
+	background: var(--albert-color-canvas);
+	border: 1px solid var(--albert-color-border-subtle);
 	border-radius: 3px;
 	font-size: 0.95em;
 }
 
 .albert-endpoint-notice--info {
-	border-inline-start-color: var(--albert-primary);
-	background: var(--albert-info-10);
+	border-inline-start-color: var(--albert-color-accent);
+	background: var(--albert-color-info-tint-10);
 }
 
 .albert-endpoint-notice--warning {
-	border-inline-start-color: var(--albert-warning);
-	background: var(--albert-warning-10);
+	border-inline-start-color: var(--albert-color-warning);
+	background: var(--albert-color-warning-tint-10);
 }
 
 /* Resources List */
 .albert-resources-list {
 	list-style: none;
 	margin: 0;
-	padding: var(--albert-spacing-lg) 20px;
+	padding: var(--albert-space-400) 20px;
 }
 
 .albert-resources-list li {
 	display: flex;
 	align-items: center;
-	gap: var(--albert-spacing-md);
+	gap: var(--albert-space-300);
 	padding: 10px 0;
-	border-bottom: 1px solid var(--albert-source-core-bg);
+	border-bottom: 1px solid var(--albert-color-neutral-surface);
 }
 
 .albert-resources-list li:last-child {
@@ -1169,8 +1115,8 @@
 }
 
 .albert-resources-list li .dashicons {
-	color: var(--albert-text-secondary);
-	font-size: var(--albert-font-lg);
+	color: var(--albert-color-text-muted);
+	font-size: var(--albert-font-size-section-title);
 	width: 20px;
 	height: 20px;
 	flex-shrink: 0;
@@ -1178,13 +1124,13 @@
 
 .albert-resources-list a {
 	text-decoration: none;
-	color: var(--albert-primary);
-	font-size: var(--albert-font-base);
+	color: var(--albert-color-accent);
+	font-size: var(--albert-font-size-base);
 }
 
 .albert-resources-list a:hover {
 	text-decoration: underline;
-	color: var(--albert-primary-hover);
+	color: var(--albert-color-accent-hover);
 }
 
 /* Setup complete state - vertical centering */
@@ -1203,7 +1149,7 @@
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	padding: var(--albert-spacing-xl) 20px;
+	padding: var(--albert-space-600) 20px;
 }
 
 .albert-setup-complete-bar {
@@ -1211,10 +1157,10 @@
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: var(--albert-spacing-md);
-	font-size: var(--albert-font-lg);
+	gap: var(--albert-space-300);
+	font-size: var(--albert-font-size-section-title);
 	font-weight: 600;
-	color: var(--albert-success);
+	color: var(--albert-color-success);
 	text-align: center;
 }
 
@@ -1222,7 +1168,7 @@
 	font-size: 48px;
 	width: 48px;
 	height: 48px;
-	background: var(--albert-success-10);
+	background: var(--albert-color-success-tint-10);
 	border-radius: 50%;
 	padding: 12px;
 	box-sizing: content-box;
@@ -1244,54 +1190,54 @@
 }
 
 .albert-setup-complete-content {
-	margin-top: var(--albert-spacing-lg);
+	margin-top: var(--albert-space-400);
 	text-align: center;
 }
 
 .albert-setup-complete-actions {
 	display: flex;
 	justify-content: center;
-	gap: var(--albert-spacing-sm);
+	gap: var(--albert-space-200);
 	flex-wrap: wrap;
 }
 
 .albert-setup-complete-actions .button {
-	font-size: var(--albert-font-base);
+	font-size: var(--albert-font-size-base);
 }
 
 .albert-checklist {
 	list-style: none;
 	margin: 0;
-	padding: var(--albert-spacing-lg) 20px 20px;
+	padding: var(--albert-space-400) 20px 20px;
 	counter-reset: none;
 }
 
 .albert-checklist-item {
 	display: flex;
 	align-items: center;
-	gap: var(--albert-spacing-md);
-	padding: var(--albert-spacing-sm) 0;
-	font-size: var(--albert-font-base);
-	color: var(--albert-text-primary);
+	gap: var(--albert-space-300);
+	padding: var(--albert-space-200) 0;
+	font-size: var(--albert-font-size-base);
+	color: var(--albert-color-text);
 }
 
 .albert-checklist-icon {
 	flex-shrink: 0;
-	font-size: var(--albert-font-2xl);
+	font-size: var(--albert-font-size-page-title);
 	width: 18px;
 	height: 18px;
 }
 
 .albert-checklist-done .albert-checklist-icon {
-	color: var(--albert-success);
+	color: var(--albert-color-success);
 }
 
 .albert-checklist-current .albert-checklist-icon {
-	color: var(--albert-primary);
+	color: var(--albert-color-accent);
 }
 
 .albert-checklist-pending .albert-checklist-icon {
-	color: var(--albert-text-secondary);
+	color: var(--albert-color-text-muted);
 	opacity: 0.4;
 }
 
@@ -1300,25 +1246,25 @@
 }
 
 .albert-checklist-done .albert-checklist-text {
-	color: var(--albert-text-secondary);
+	color: var(--albert-color-text-muted);
 }
 
 .albert-checklist-endpoint {
 	list-style: none;
-	margin-top: var(--albert-spacing-md);
-	padding: var(--albert-spacing-md);
-	background: var(--albert-bg-light);
-	border: 1px solid var(--albert-border-light);
-	border-radius: var(--albert-border-radius);
+	margin-top: var(--albert-space-300);
+	padding: var(--albert-space-300);
+	background: var(--albert-color-canvas);
+	border: 1px solid var(--albert-color-border-subtle);
+	border-radius: var(--albert-radius-md);
 }
 
 .albert-checklist-endpoint .albert-field-label {
-	margin-bottom: var(--albert-spacing-xs);
+	margin-bottom: var(--albert-space-100);
 }
 
 .albert-checklist-endpoint .albert-endpoint-box {
 	padding: 0;
-	margin-top: var(--albert-spacing-sm);
+	margin-top: var(--albert-space-200);
 }
 
 /* Connections Responsive */
@@ -1335,18 +1281,18 @@
 	}
 
 	.albert-connections-table tr {
-		padding: var(--albert-spacing-md) 0;
-		border-bottom: 1px solid var(--albert-border-light);
+		padding: var(--albert-space-300) 0;
+		border-bottom: 1px solid var(--albert-color-border-subtle);
 	}
 
 	.albert-connections-table td {
-		padding: 2px var(--albert-spacing-md);
+		padding: 2px var(--albert-space-300);
 		border-bottom: none;
 	}
 
 	.albert-connections-table-actions {
 		text-align: left;
-		padding-top: var(--albert-spacing-sm);
+		padding-top: var(--albert-space-200);
 	}
 
 	.albert-endpoint-bar {
@@ -1359,26 +1305,26 @@
 	max-width: 440px;
 	width: 90%;
 	padding: 0;
-	border: 1px solid var(--albert-border);
-	border-radius: var(--albert-border-radius-lg);
-	box-shadow: 0 5px 15px var(--albert-black-30);
+	border: 1px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
+	box-shadow: 0 5px 15px oklch(0 0 0 / 0.3);
 }
 
 #albert-disconnect-dialog::backdrop {
-	background: var(--albert-modal-backdrop);
+	background: var(--albert-color-overlay);
 }
 
 .albert-disconnect-dialog-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--albert-spacing-md) var(--albert-spacing-lg);
-	border-bottom: 1px solid var(--albert-border-light);
+	padding: var(--albert-space-300) var(--albert-space-400);
+	border-bottom: 1px solid var(--albert-color-border-subtle);
 }
 
 .albert-disconnect-dialog-header h2 {
 	margin: 0;
-	font-size: var(--albert-font-2xl);
+	font-size: var(--albert-font-size-page-title);
 }
 
 .albert-disconnect-dialog-close {
@@ -1386,60 +1332,60 @@
 	border: none;
 	cursor: pointer;
 	padding: 0;
-	color: var(--albert-text-secondary);
+	color: var(--albert-color-text-muted);
 	display: flex;
 	align-items: center;
 }
 
 .albert-disconnect-dialog-close:hover {
-	color: var(--albert-text-primary);
+	color: var(--albert-color-text);
 }
 
 .albert-disconnect-options {
 	display: flex;
 	flex-direction: column;
-	gap: var(--albert-spacing-sm);
-	padding: var(--albert-spacing-lg);
+	gap: var(--albert-space-200);
+	padding: var(--albert-space-400);
 }
 
 .albert-disconnect-option {
 	display: block;
-	padding: var(--albert-spacing-md) var(--albert-spacing-lg);
-	border: 1px solid var(--albert-border);
-	border-radius: var(--albert-border-radius);
+	padding: var(--albert-space-300) var(--albert-space-400);
+	border: 1px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
 	text-decoration: none;
-	color: var(--albert-text-primary);
-	transition: border-color var(--albert-transition), background-color var(--albert-transition);
+	color: var(--albert-color-text);
+	transition: border-color var(--albert-duration-fast), background-color var(--albert-duration-fast);
 }
 
 .albert-disconnect-option:hover {
-	border-color: var(--albert-primary);
-	background: var(--albert-primary-8);
-	color: var(--albert-text-primary);
+	border-color: var(--albert-color-accent);
+	background: var(--albert-color-accent-tint-8);
+	color: var(--albert-color-text);
 }
 
 .albert-disconnect-option strong {
 	display: block;
-	font-size: var(--albert-font-md);
+	font-size: var(--albert-font-size-card-title);
 	margin-bottom: 2px;
 }
 
 .albert-disconnect-option span {
 	display: block;
-	font-size: var(--albert-font-sm);
-	color: var(--albert-text-secondary);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
 	line-height: 1.4;
 }
 
 .albert-disconnect-option--destructive:hover {
-	border-color: var(--albert-error);
+	border-color: var(--albert-color-danger);
 	background: oklch(0.52 0.18 25 / 0.06);
 }
 
 #albert-disconnect-dialog .albert-disconnect-cancel {
 	display: block;
-	width: calc(100% - 2 * var(--albert-spacing-lg));
-	margin: 0 var(--albert-spacing-lg) var(--albert-spacing-lg);
+	width: calc(100% - 2 * var(--albert-space-400));
+	margin: 0 var(--albert-space-400) var(--albert-space-400);
 	text-align: center;
 }
 
@@ -1453,32 +1399,32 @@
 	gap: 3px;
 	padding: 1px 6px;
 	border-radius: 10px;
-	font-size: var(--albert-font-xs);
+	font-size: var(--albert-font-size-micro);
 	font-weight: 600;
 	line-height: 1.6;
 	vertical-align: middle;
 	/* Neutral default — overridden by modifiers. */
 	background-color: oklch(0.93 0.003 265);
-	color: var(--albert-text-secondary);
+	color: var(--albert-color-text-muted);
 }
 
 .albert-log-pill--success {
-	background-color: var(--albert-success-10);
+	background-color: var(--albert-color-success-tint-10);
 	color: oklch(0.38 0.14 145);
-	border: 1px solid var(--albert-success-20);
+	border: 1px solid var(--albert-color-success-tint-20);
 }
 
 .albert-log-pill--error {
-	background-color: var(--albert-danger-10);
+	background-color: var(--albert-color-danger-tint-10);
 	color: oklch(0.38 0.16 25);
-	border: 1px solid var(--albert-danger-20);
+	border: 1px solid var(--albert-color-danger-tint-20);
 }
 
 /* Upsell hint beneath log lines and activity cards */
 .albert-upsell-hint {
-	margin-block-start: var(--albert-spacing-xs);
-	font-size: var(--albert-font-xs);
-	color: var(--albert-text-secondary);
+	margin-block-start: var(--albert-space-100);
+	font-size: var(--albert-font-size-micro);
+	color: var(--albert-color-text-muted);
 }
 
 /* Activity list pill alignment */
@@ -1486,7 +1432,7 @@
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: var(--albert-spacing-xs);
+	gap: var(--albert-space-100);
 }
 
 /* --------------------------------------------------------------
@@ -1497,7 +1443,7 @@
 .albert-status-dot {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--albert-spacing-xs);
+	gap: var(--albert-space-100);
 	vertical-align: middle;
 	line-height: 1.4;
 }
@@ -1508,35 +1454,35 @@
 	block-size: 8px;
 	border-radius: 50%;
 	/* Glow rings built from alpha tokens — no animation (reduced-motion safe). */
-	box-shadow: 0 0 0 3px var(--albert-primary-10), 0 0 6px var(--albert-primary-20);
-	background-color: var(--albert-primary);
+	box-shadow: 0 0 0 3px var(--albert-color-accent-tint-10), 0 0 6px var(--albert-color-accent-tint-20);
+	background-color: var(--albert-color-accent);
 }
 
 .albert-status-dot__label {
-	font-size: var(--albert-font-sm);
+	font-size: var(--albert-font-size-sm);
 	font-weight: 600;
-	color: var(--albert-text-primary);
+	color: var(--albert-color-text);
 }
 
 .albert-status-dot--success .albert-status-dot__dot {
-	background-color: var(--albert-success);
-	box-shadow: 0 0 0 3px var(--albert-success-10), 0 0 6px var(--albert-success-20);
+	background-color: var(--albert-color-success);
+	box-shadow: 0 0 0 3px var(--albert-color-success-tint-10), 0 0 6px var(--albert-color-success-tint-20);
 }
 
 /* Failures read as more prominent: stronger glow + bolder label. */
 .albert-status-dot--error .albert-status-dot__dot {
-	background-color: var(--albert-error);
-	box-shadow: 0 0 0 3px var(--albert-danger-20), 0 0 8px var(--albert-danger-20);
+	background-color: var(--albert-color-danger);
+	box-shadow: 0 0 0 3px var(--albert-color-danger-tint-20), 0 0 8px var(--albert-color-danger-tint-20);
 }
 
 .albert-status-dot--error .albert-status-dot__label {
 	font-weight: 700;
-	color: var(--albert-error);
+	color: var(--albert-color-danger);
 }
 
 .albert-status-dot--connection .albert-status-dot__dot {
-	background-color: var(--albert-primary);
-	box-shadow: 0 0 0 3px var(--albert-primary-10), 0 0 6px var(--albert-primary-20);
+	background-color: var(--albert-color-accent);
+	box-shadow: 0 0 0 3px var(--albert-color-accent-tint-10), 0 0 6px var(--albert-color-accent-tint-20);
 }
 
 /* --------------------------------------------------------------
@@ -1546,28 +1492,28 @@
 .albert-log-table {
 	inline-size: 100%;
 	border-collapse: collapse;
-	font-size: var(--albert-font-base);
+	font-size: var(--albert-font-size-base);
 	text-align: start;
 }
 
 .albert-log-table thead th {
-	padding-block: var(--albert-spacing-sm);
+	padding-block: var(--albert-space-200);
 	padding-inline: 20px;
 	text-align: start;
-	font-size: var(--albert-font-xs);
+	font-size: var(--albert-font-size-micro);
 	font-weight: 600;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
-	color: var(--albert-text-secondary);
-	background-color: var(--albert-bg-light);
-	border-block-end: 1px solid var(--albert-border);
+	color: var(--albert-color-text-muted);
+	background-color: var(--albert-color-canvas);
+	border-block-end: 1px solid var(--albert-color-border);
 }
 
 .albert-log-table tbody td {
-	padding-block: var(--albert-spacing-md);
+	padding-block: var(--albert-space-300);
 	padding-inline: 20px;
-	border-block-end: 1px solid var(--albert-border-light);
-	color: var(--albert-text-primary);
+	border-block-end: 1px solid var(--albert-color-border-subtle);
+	color: var(--albert-color-text);
 	vertical-align: middle;
 }
 
@@ -1576,7 +1522,7 @@
 }
 
 .albert-log-table tbody tr:hover {
-	background-color: var(--albert-bg-light);
+	background-color: var(--albert-color-canvas);
 }
 
 .albert-log-table__event {
@@ -1584,13 +1530,13 @@
 }
 
 .albert-log-table__by {
-	color: var(--albert-text-secondary);
+	color: var(--albert-color-text-muted);
 }
 
 .albert-log-table__when {
 	white-space: nowrap;
-	color: var(--albert-text-secondary);
-	font-size: var(--albert-font-sm);
+	color: var(--albert-color-text-muted);
+	font-size: var(--albert-font-size-sm);
 }
 
 /*
@@ -1603,12 +1549,12 @@
  */
 @media screen and (max-width: 600px) {
 	.albert-log-table {
-		font-size: var(--albert-font-sm);
+		font-size: var(--albert-font-size-sm);
 	}
 
 	.albert-log-table thead th,
 	.albert-log-table tbody td {
-		padding-inline: var(--albert-spacing-sm);
+		padding-inline: var(--albert-space-200);
 	}
 
 	.albert-log-table__by,
@@ -1635,23 +1581,23 @@
 	inset-block-end: 0;
 	block-size: 64px;
 	pointer-events: none;
-	background: linear-gradient(to bottom, transparent, var(--albert-bg-white));
+	background: linear-gradient(to bottom, transparent, var(--albert-color-surface));
 }
 
 .albert-upsell-cta {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: var(--albert-spacing-sm);
+	gap: var(--albert-space-200);
 	text-align: center;
-	padding-block: var(--albert-spacing-lg) var(--albert-spacing-xl);
+	padding-block: var(--albert-space-400) var(--albert-space-600);
 	padding-inline: 20px;
 }
 
 .albert-upsell-cta__title {
 	margin: 0;
-	font-size: var(--albert-font-xl);
-	color: var(--albert-text-primary);
+	font-size: var(--albert-font-size-section-title);
+	color: var(--albert-color-text);
 }
 
 .albert-upsell-cta__benefits {
@@ -1661,8 +1607,8 @@
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
-	font-size: var(--albert-font-base);
-	color: var(--albert-text-secondary);
+	font-size: var(--albert-font-size-base);
+	color: var(--albert-color-text-muted);
 }
 
 .albert-upsell-cta__benefits li {
@@ -1671,8 +1617,8 @@
 
 .albert-upsell-cta__benefits li::before {
 	content: "✓";
-	margin-inline-end: var(--albert-spacing-xs);
-	color: var(--albert-success);
+	margin-inline-end: var(--albert-space-100);
+	color: var(--albert-color-success);
 	font-weight: 700;
 }
 
@@ -1689,10 +1635,10 @@
  */
 .albert-upsell-cta .albert-upsell-cta__button {
 	box-sizing: border-box;
-	margin-block-start: var(--albert-spacing-xs);
+	margin-block-start: var(--albert-space-100);
 	min-block-size: 44px;
 	block-size: auto;
-	padding-block: var(--albert-spacing-sm);
+	padding-block: var(--albert-space-200);
 	line-height: 1.2;
 	display: inline-flex;
 	align-items: center;
@@ -1700,7 +1646,7 @@
 }
 
 .albert-upsell-cta__button:focus-visible {
-	outline: 2px solid var(--albert-primary);
+	outline: 2px solid var(--albert-color-accent);
 	outline-offset: 2px;
 }
 
