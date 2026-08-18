@@ -120,3 +120,8 @@ temp/
 /src/generated/
 dependencies.json
 dependencies.md
+
+# Planning docs. Working notes, deliberately not shipped with the plugin.
+docs/features/
+docs/plans/
+docs/references/
