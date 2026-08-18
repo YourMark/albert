@@ -203,7 +203,7 @@ class AbilitiesPage implements Hookable {
 			'albert-abilities',
 			ALBERT_PLUGIN_URL . 'assets/css/admin-abilities.css',
 			[ Assets::PRIMITIVES_HANDLE, $has_dataviews_css ? 'albert-dataviews' : 'wp-components' ],
-			ALBERT_VERSION
+			Assets::version( 'assets/css/admin-abilities.css' )
 		);
 
 		wp_enqueue_script(
