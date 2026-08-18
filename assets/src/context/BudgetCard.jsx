@@ -14,7 +14,7 @@
  */
 import { __, sprintf } from '@wordpress/i18n';
 import InfoPopover from '../shared/InfoPopover';
-import { TOKEN_EXPLANATION } from './copy';
+import { TOKEN_ESTIMATE_NOTE, TOKEN_EXPLANATION } from './copy';
 
 /**
  * Render the cost card.
@@ -30,7 +30,12 @@ export default function BudgetCard( { budget, costs, enabled } ) {
 		<section className="albert-card albert-context__budget">
 			<div className="albert-card__body">
 				<div className="albert-context__budget-head">
-					<span className="albert-context__budget-title">
+					{ /*
+					 * A real heading. As a span this card and the preview were
+					 * invisible to heading navigation, which skipped straight
+					 * past the two cards carrying the numbers.
+					 */ }
+					<h2 className="albert-context__budget-title">
 						{ __( 'What this costs', 'albert-ai-butler' ) }
 						<InfoPopover
 							label={ __(
@@ -40,7 +45,7 @@ export default function BudgetCard( { budget, costs, enabled } ) {
 						>
 							<p>{ TOKEN_EXPLANATION }</p>
 						</InfoPopover>
-					</span>
+					</h2>
 					<span className="albert-context__budget-total">
 						{ enabled
 							? sprintf(
@@ -63,6 +68,12 @@ export default function BudgetCard( { budget, costs, enabled } ) {
 								'albert-ai-butler'
 						  ) }
 				</p>
+
+				{ enabled && (
+					<p className="albert-context__budget-note">
+						{ TOKEN_ESTIMATE_NOTE }
+					</p>
+				) }
 
 				{ enabled && costs.length > 0 && (
 					<ul className="albert-context__chips">

@@ -11,7 +11,7 @@
  * server would say.
  */
 import { FormToggle } from '@wordpress/components';
-import { useEffect, useState } from '@wordpress/element';
+import { useEffect, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { fetchContext, saveContext } from './api';
 import BudgetCard from './BudgetCard';
@@ -28,6 +28,14 @@ export default function ContextApp() {
 	const [ state, setState ] = useState( null );
 	const [ status, setStatus ] = useState( 'loading' );
 
+	// What the last save tried to write, kept so "Try again" can replay it.
+	const pending = useRef( null );
+
+	// Saves are fired by typing and by toggles, so two can be in flight at once.
+	// Only the newest may write state; an older response landing second would
+	// otherwise overwrite the newer answer with a staler one.
+	const latest = useRef( 0 );
+
 	useEffect( () => {
 		fetchContext()
 			.then( ( payload ) => {
@@ -37,16 +45,49 @@ export default function ContextApp() {
 			.catch( () => setStatus( 'load-error' ) );
 	}, [] );
 
+	/**
+	 * Write a change and report whether it landed.
+	 *
+	 * Returns a boolean rather than the promise, because a caller that keeps its
+	 * own copy of the value has to know. The instructions field learned this the
+	 * hard way: it advanced its "last sent" marker when the request was fired
+	 * rather than when it succeeded, and this function swallowed the rejection,
+	 * so a failed save left the typing unsent while the screen said "Saved".
+	 *
+	 * @param {Object} changes Partial settings to write.
+	 * @return {Promise<boolean>} Whether the write succeeded.
+	 */
 	const save = ( changes ) => {
+		const id = ++latest.current;
+
+		pending.current = changes;
 		setStatus( 'saving' );
 
 		return saveContext( changes )
 			.then( ( payload ) => {
+				if ( id !== latest.current ) {
+					return true;
+				}
+
+				pending.current = null;
 				setState( payload );
 				setStatus( 'saved' );
+
+				return true;
 			} )
-			.catch( () => setStatus( 'error' ) );
+			.catch( () => {
+				if ( id === latest.current ) {
+					setStatus( 'error' );
+				}
+
+				return false;
+			} );
 	};
+
+	// Replays the change that failed. Retrying with an empty body used to
+	// "succeed" without writing anything, flipping the indicator to Saved for
+	// work that was never stored.
+	const retry = () => save( pending.current || {} );
 
 	if ( status === 'loading' ) {
 		return (
@@ -77,7 +118,13 @@ export default function ContextApp() {
 
 	return (
 		<div className="albert-page albert-context">
-			<header className="albert-page__header">
+			{ /*
+			 * A div, not a <header>. A <header> is only scoped out of the banner
+			 * role by an article/aside/main/nav/section *element* ancestor, and
+			 * every ancestor here is a div, so wp-admin's role="main" does not
+			 * scope it. It would expose as a banner nested inside main.
+			 */ }
+			<div className="albert-page__header">
 				<div className="albert-page__text">
 					<h1 className="albert-page__title">
 						{ __( 'Context', 'albert-ai-butler' ) }
@@ -90,16 +137,30 @@ export default function ContextApp() {
 					</p>
 				</div>
 				<div className="albert-page__actions albert-context__master">
-					<div aria-live="polite">
-						<SaveState
-							status={ status }
-							onRetry={ () => save( {} ) }
-						/>
+					{ /*
+					 * Two regions, not one. A failed save is the only status here
+					 * that should interrupt, and the retry button sits outside
+					 * both: a control inside a live region gets re-announced with
+					 * every status change.
+					 */ }
+					<div aria-live="polite" aria-atomic="true">
+						{ status !== 'error' && <SaveState status={ status } /> }
 					</div>
-					<span
-						className="albert-context__master-label"
-						id="albert-context-master"
-					>
+					{ status === 'error' && (
+						<>
+							<div role="alert">
+								<SaveState status={ status } />
+							</div>
+							<button
+								type="button"
+								className="albert-link-button"
+								onClick={ retry }
+							>
+								{ __( 'Try again', 'albert-ai-butler' ) }
+							</button>
+						</>
+					) }
+					<span className="albert-context__master-label">
 						{ __( 'Send context', 'albert-ai-butler' ) }
 					</span>
 					<FormToggle
@@ -112,10 +173,28 @@ export default function ContextApp() {
 						onChange={ () => save( { enabled: ! state.enabled } ) }
 					/>
 				</div>
-			</header>
+			</div>
 
+			{ state.managed.enabled && (
+				<p className="albert-hint albert-hint--info albert-context__managed">
+					{ __(
+						'Whether context is sent is set in code on this site, so it cannot be changed here.',
+						'albert-ai-butler'
+					) }
+				</p>
+			) }
+
+			{ /*
+			 * role="status" because flipping the master switch also empties the
+			 * preview and stops every control below accepting input. Without it
+			 * a screen reader hears "not checked", then finds the screen changed
+			 * underneath with nothing said about why.
+			 */ }
 			{ ! state.enabled && (
-				<div className="albert-hint albert-hint--info albert-context__off-notice">
+				<div
+					role="status"
+					className="albert-hint albert-hint--info albert-context__off-notice"
+				>
 					{ __(
 						'Context is switched off. Assistants still work, but they receive nothing about this site: no language, no brand, no content model.',
 						'albert-ai-butler'
@@ -124,15 +203,18 @@ export default function ContextApp() {
 			) }
 
 			{ /*
-			 * `inert` rather than pointer-events: none, that only stops the
-			 * mouse, leaving every control keyboard reachable and announced as
-			 * operable. Text stays at full contrast: an earlier draft dimmed the
-			 * body to 1.99:1, which fails AA. The off state is signalled
-			 * structurally, by the notice above and the sunken surfaces.
+			 * The controls below are individually disabled rather than the body
+			 * being `inert`. `inert` removed the whole subtree from the
+			 * accessibility tree, so a screen-reader user lost what a sighted
+			 * user keeps: their own instructions, which sections are on, and
+			 * what each costs. The state is signalled structurally instead, by
+			 * the notice above and the sunken surfaces, and text stays at full
+			 * contrast, an earlier draft dimmed the body to 1.99:1 and failed AA.
 			 */ }
 			<div
-				className="albert-page__body"
-				inert={ state.enabled ? undefined : '' }
+				className={ `albert-page__body${
+					state.enabled ? '' : ' is-off'
+				}` }
 			>
 				<BudgetCard
 					budget={ state.budget }
@@ -143,6 +225,7 @@ export default function ContextApp() {
 				<InstructionsCard
 					value={ state.instructions }
 					managed={ state.managed.instructions }
+					off={ ! state.enabled }
 					tokens={ state.budget.instruction }
 					heading={ state.instructionHeading }
 					onChange={ ( instructions ) => save( { instructions } ) }
@@ -151,6 +234,7 @@ export default function ContextApp() {
 				<SectionsCard
 					sections={ state.sections }
 					managed={ state.managed.sections }
+					off={ ! state.enabled }
 					hasCommerce={ hasCommerce }
 					onToggle={ ( key, enabled ) =>
 						save( { sections: { [ key ]: enabled } } )
@@ -175,12 +259,19 @@ export default function ContextApp() {
 /**
  * The instant-save indicator that replaces a submit button.
  *
- * @param {Object}   props         Props.
- * @param {string}   props.status  Current save status.
- * @param {Function} props.onRetry Retry a failed save.
- * @return {Element|null} The indicator.
+ * Renders nothing until something has actually been saved. There used to be no
+ * branch for the idle state, so the fallback ran on first paint and the screen
+ * claimed "Saved" before the owner had changed anything, which some screen
+ * readers announced on load.
+ *
+ * The retry control is the caller's, not this component's, so it can sit outside
+ * the live region that announces this text.
+ *
+ * @param {Object} props        Props.
+ * @param {string} props.status Current save status.
+ * @return {Element|null} The indicator, or null when nothing has been saved yet.
  */
-function SaveState( { status, onRetry } ) {
+function SaveState( { status } ) {
 	if ( status === 'saving' ) {
 		return (
 			<span className="albert-savestate">
@@ -194,16 +285,13 @@ function SaveState( { status, onRetry } ) {
 		return (
 			<span className="albert-savestate albert-savestate--error">
 				<span className="albert-savestate__dot" />
-				{ __( 'Not saved.', 'albert-ai-butler' ) }{ ' ' }
-				<button
-					type="button"
-					className="albert-link-button"
-					onClick={ onRetry }
-				>
-					{ __( 'Try again', 'albert-ai-butler' ) }
-				</button>
+				{ __( 'Not saved.', 'albert-ai-butler' ) }
 			</span>
 		);
+	}
+
+	if ( status !== 'saved' ) {
+		return null;
 	}
 
 	return (

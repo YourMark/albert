@@ -57,6 +57,7 @@ function priceInstructions( text, heading ) {
  * @param {boolean}  props.managed      Whether a filter owns this value.
  * @param {number}   props.tokens       Server-side estimate of the stored value.
  * @param {string}   props.heading      The heading the payload wraps instructions in.
+ * @param {boolean}  props.off          Whether context is switched off entirely.
  * @param {Function} props.onChange     Called with the new text, debounced.
  * @return {Element} The card.
  */
@@ -65,6 +66,7 @@ export default function InstructionsCard( {
 	managed,
 	tokens,
 	heading,
+	off,
 	onChange,
 } ) {
 	const [ draft, setDraft ] = useState( value );
@@ -83,12 +85,23 @@ export default function InstructionsCard( {
 
 	useEffect( () => () => clearTimeout( timer.current ), [] );
 
+	// The marker advances only once the write has actually landed. Advancing it
+	// when the request was fired meant a failed save left the typing unsent
+	// while the screen reported "Saved", and the retry sent an empty change that
+	// succeeded, confirming a save that had never happened.
+	//
+	// Leaving it behind on failure is also what protects the draft: the sync
+	// effect above only overwrites the field when the server's value differs
+	// from the marker, and after a failure they still agree.
 	const update = ( next ) => {
 		setDraft( next );
 		clearTimeout( timer.current );
 		timer.current = setTimeout( () => {
-			lastSent.current = next;
-			onChange( next );
+			Promise.resolve( onChange( next ) ).then( ( saved ) => {
+				if ( saved ) {
+					lastSent.current = next;
+				}
+			} );
 		}, SAVE_DELAY );
 	};
 
@@ -117,7 +130,10 @@ export default function InstructionsCard( {
 			</header>
 
 			{ managed && (
-				<p className="albert-hint albert-hint--info albert-context__managed">
+				<p
+					className="albert-hint albert-hint--info albert-context__managed"
+					id="albert-context-instructions-managed"
+				>
 					{ __(
 						'These instructions are set in code on this site, so they cannot be edited here. Below is what is being sent.',
 						'albert-ai-butler'
@@ -132,12 +148,26 @@ export default function InstructionsCard( {
 				>
 					{ __( 'Site instructions', 'albert-ai-butler' ) }
 				</label>
+				{ /*
+				 * Described by the help text below and, when it applies, by the
+				 * reason the field is not editable. Both are genuinely
+				 * instructional, and jumping straight to the field by form-control
+				 * navigation skipped both.
+				 */ }
 				<textarea
 					id="albert-context-instructions"
 					className="albert-context__textarea"
 					rows="8"
 					value={ draft }
-					readOnly={ managed }
+					readOnly={ managed || off }
+					aria-describedby={ [
+						'albert-context-instructions-help',
+						managed
+							? 'albert-context-instructions-managed'
+							: null,
+					]
+						.filter( Boolean )
+						.join( ' ' ) }
 					onChange={ ( event ) => update( event.target.value ) }
 					placeholder={ __(
 						'For example: We are a small furniture workshop in Utrecht. Write in Dutch, informally, in short sentences. Call our products meubels, never furniture. Prices are in euros. Leave new pages as drafts for review, and never change the header or footer.',
@@ -145,7 +175,10 @@ export default function InstructionsCard( {
 					) }
 				/>
 				<div className="albert-context__field-foot">
-					<span className="albert-context__field-help">
+					<span
+						className="albert-context__field-help"
+						id="albert-context-instructions-help"
+					>
 						{ __(
 							'Plain sentences work best. Assistants read this as background, not as commands.',
 							'albert-ai-butler'

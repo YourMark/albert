@@ -429,6 +429,12 @@
    Payload preview
    ========================================================================== */
 
+/*
+ * Focusable, because it scrolls. Chrome, Edge and Safari do not focus scroll
+ * containers on their own, so without tabindex a keyboard-only reader is stuck
+ * at whatever fits in 300px. That makes a visible focus ring mandatory here,
+ * inset so it is not clipped by the card edge it sits flush against.
+ */
 .albert-preview__body {
 	max-block-size: 300px;
 	overflow: auto;
@@ -439,6 +445,11 @@
 	line-height: var(--albert-line-height-mono);
 	white-space: pre-wrap;
 	color: var(--albert-color-text);
+}
+
+.albert-preview__body:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: calc(var(--albert-focus-offset) * -1);
 }
 
 /* ==========================================================================

@@ -41,8 +41,10 @@
 }
 
 /**
- * The switched-off notice. `inert` on the body below signals the state
- * structurally; this says what the state means, at full contrast.
+ * The switched-off notice. The body below drops to sunken surfaces and its
+ * controls stop accepting input; this says what the state means, at full
+ * contrast. It carries `role="status"` so the change is announced rather than
+ * only seen, since flipping the master switch also empties the preview.
  */
 .albert-context__off-notice {
 	margin-block-end: var(--albert-space-400);
@@ -53,7 +55,7 @@
  * inactive without dimming a single character of text, an earlier draft used
  * opacity on the whole body and pushed body text to 1.99:1, failing SC 1.4.3.
  */
-.albert-page__body[inert] .albert-card {
+.albert-page__body.is-off .albert-card {
 	background: var(--albert-color-surface-sunken);
 }
 
@@ -61,7 +63,13 @@
    Budget card
    ========================================================================== */
 
+/*
+ * An <h2>, so the browser default margin and size have to go. The element
+ * changed from a span to put this card on the heading outline; the look did not.
+ */
 .albert-context__budget-title {
+	margin: 0;
+	padding: 0;
 	display: inline-flex;
 	align-items: center;
 	font-size: var(--albert-font-size-card-title);
@@ -174,6 +182,16 @@
 	background: var(--albert-color-surface-sunken);
 }
 
+/*
+ * The placeholder holds the only worked example of what to write here, so it is
+ * not left to the user agent. Chrome's default computes to 4.61:1 and other
+ * engines render it lighter; this token measures 5.53:1 on the surface.
+ */
+.albert-context__textarea::placeholder {
+	color: var(--albert-color-text-muted);
+	opacity: 1;
+}
+
 .albert-context__field-foot {
 	display: flex;
 	align-items: baseline;
@@ -245,6 +263,15 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--albert-space-400);
+}
+
+/* Wraps the disclosure button only, so it carries none of its own box. */
+.albert-context__preview-heading {
+	margin: 0;
+	padding: 0;
+	font-size: inherit;
+	font-weight: inherit;
+	line-height: inherit;
 }
 
 .albert-context__preview-toggle {

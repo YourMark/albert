@@ -52,7 +52,7 @@
 	/* CORRECTED: the handoff's #dcdcde measured 1.37:1 on surface and fails SC
 	   1.4.11 (3:1 for control boundaries). This is core's own input border,
 	   wp-admin/css/forms.css, chosen for exactly that threshold. */
-	--albert-color-border-input: oklch(0.667 0 0);              /* #949494 — 3.03:1 */
+	--albert-color-border-input: oklch(0.655 0 0);              /* #909090 — 3.17:1 on surface, 3.06:1 on surface-sunken */
 
 	/* Text */
 	--albert-color-text: oklch(0.235 0 0);                      /* #1e1e1e — titles, values */

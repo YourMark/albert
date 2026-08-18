@@ -44,6 +44,12 @@ export default function PreviewCard( { segments, tokens } ) {
 	return (
 		<section className="albert-card albert-preview">
 			<header className="albert-card__header albert-context__preview-head">
+				{ /*
+				 * <h2><button> is the standard disclosure pattern: the heading
+				 * puts the card on the heading outline, the button carries the
+				 * expanded state.
+				 */ }
+				<h2 className="albert-context__preview-heading">
 				<button
 					type="button"
 					className="albert-context__preview-toggle"
@@ -64,6 +70,7 @@ export default function PreviewCard( { segments, tokens } ) {
 						) }
 					</span>
 				</button>
+				</h2>
 				<span className="albert-badge albert-badge--outline">
 					{ sprintf(
 						/* translators: %d: estimated token cost of the whole payload. */
@@ -73,19 +80,33 @@ export default function PreviewCard( { segments, tokens } ) {
 				</span>
 			</header>
 
-			{ open && (
-				<div
-					className="albert-preview__body"
-					id="albert-context-preview"
-				>
-					{ segments.map( ( segment, index ) => (
-						<Fragment key={ segment.key }>
-							{ index > 0 ? '\n\n' : '' }
-							{ segment.text }
-						</Fragment>
-					) ) }
-				</div>
-			) }
+			{ /*
+			 * Always rendered, hidden when collapsed, so `aria-controls` above
+			 * always resolves to something. Conditionally rendering it left the
+			 * reference dangling whenever the card was shut.
+			 *
+			 * tabIndex and a name because the body scrolls at 300px. Firefox
+			 * focuses scrollable regions on its own; Chrome, Edge and Safari do
+			 * not, so without this a keyboard-only user could read only the
+			 * first screenful of the payload this card exists to show. A
+			 * focusable region needs a name or it announces as an unlabelled
+			 * group.
+			 */ }
+			<div
+				className="albert-preview__body"
+				id="albert-context-preview"
+				hidden={ ! open }
+				tabIndex={ 0 }
+				role="region"
+				aria-label={ __( 'Payload preview', 'albert-ai-butler' ) }
+			>
+				{ segments.map( ( segment, index ) => (
+					<Fragment key={ segment.key }>
+						{ index > 0 ? '\n\n' : '' }
+						{ segment.text }
+					</Fragment>
+				) ) }
+			</div>
 
 			{ /*
 			 * Outside the collapsible body on purpose. Collapsing the preview

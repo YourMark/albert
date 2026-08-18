@@ -21,6 +21,25 @@ import { __, sprintf } from '@wordpress/i18n';
  * @param {Array}  props.fonts   Detected font families.
  * @return {Element|null} The preview, or null when there is nothing to show.
  */
+// Colours come from the active theme's theme.json, which WordPress does not
+// sanitise for the `theme` origin, so the value is whatever the theme author
+// typed. Anything that is not a plain colour is dropped rather than painted:
+// `background: url(https://…)` in an inline style would have wp-admin fetch a
+// third-party URL every time this screen is opened.
+const SAFE_COLOUR = /^(#[0-9a-f]{3,8}|(rgba?|hsla?|oklch|oklab|lch|lab|color)\([^;{}()]*\)|[a-z]{3,20})$/i;
+
+/**
+ * The swatch background, when the theme gave us something paintable.
+ *
+ * @param {string} value The colour as the theme declared it.
+ * @return {Object} Style props, empty when the value is not a plain colour.
+ */
+function swatchStyle( value ) {
+	const colour = String( value || '' ).trim();
+
+	return SAFE_COLOUR.test( colour ) ? { background: colour } : {};
+}
+
 function DesignPeek( { palette, fonts } ) {
 	if ( ! palette.length && ! fonts.length ) {
 		return null;
@@ -34,7 +53,7 @@ function DesignPeek( { palette, fonts } ) {
 						<li key={ colour.slug || colour.color }>
 							<span
 								className="albert-swatch"
-								style={ { background: colour.color } }
+								style={ swatchStyle( colour.color ) }
 								title={ `${ colour.slug || colour.name }: ${
 									colour.color
 								}` }
@@ -69,6 +88,7 @@ function DesignPeek( { palette, fonts } ) {
  * @param {Object}   props            Props.
  * @param {Array}    props.sections   Section rows from the REST payload.
  * @param {boolean}  props.managed    Whether a filter owns the section choices.
+ * @param {boolean}  props.off        Whether context is switched off entirely.
  * @param {boolean}  props.hasCommerce Whether a Commerce row is present.
  * @param {Function} props.onToggle   Called with (key, enabled).
  * @return {Element} The card.
@@ -76,6 +96,7 @@ function DesignPeek( { palette, fonts } ) {
 export default function SectionsCard( {
 	sections,
 	managed,
+	off,
 	hasCommerce,
 	onToggle,
 } ) {
@@ -110,7 +131,10 @@ export default function SectionsCard( {
 						<div className="albert-toggle-row__text">
 							<div className="albert-toggle-row__label">
 								<span>{ section.label }</span>
-								<span className="albert-context__row-cost">
+								<span
+									className="albert-context__row-cost"
+									id={ `albert-context-${ section.key }-cost` }
+								>
 									{ sprintf(
 										/* translators: %d: estimated token cost of this section. */
 										__( '≈%d tokens', 'albert-ai-butler' ),
@@ -118,12 +142,18 @@ export default function SectionsCard( {
 									) }
 								</span>
 							</div>
-							<p className="albert-toggle-row__description">
+							<p
+								className="albert-toggle-row__description"
+								id={ `albert-context-${ section.key }-desc` }
+							>
 								{ section.description }
 							</p>
 
 							{ section.available && section.peek && (
-								<p className="albert-toggle-row__peek">
+								<p
+									className="albert-toggle-row__peek"
+									id={ `albert-context-${ section.key }-peek` }
+								>
 									{ section.peek }
 								</p>
 							) }
@@ -136,7 +166,10 @@ export default function SectionsCard( {
 							) }
 
 							{ ! section.available && section.hint && (
-								<p className="albert-hint albert-hint--info">
+								<p
+									className="albert-hint albert-hint--info"
+									id={ `albert-context-${ section.key }-hint` }
+								>
 									{ section.hint }
 								</p>
 							) }
@@ -147,10 +180,30 @@ export default function SectionsCard( {
 						 * carrying on/off, so it never announces "Include
 						 * Design tokens, checked" for a section already
 						 * included. Same shape as the Abilities row toggle.
+						 *
+						 * Described by the cost, the description and whichever
+						 * of the peek or the unavailable hint is showing. The
+						 * cost matters most: it is the entire premise of the
+						 * screen, and reaching the switch without it means
+						 * choosing blind.
 						 */ }
 						<FormToggle
 							checked={ section.enabled }
-							disabled={ ! section.available || managed }
+							disabled={
+								! section.available || managed || off
+							}
+							aria-describedby={ [
+								`albert-context-${ section.key }-cost`,
+								`albert-context-${ section.key }-desc`,
+								section.available && section.peek
+									? `albert-context-${ section.key }-peek`
+									: null,
+								! section.available && section.hint
+									? `albert-context-${ section.key }-hint`
+									: null,
+							]
+								.filter( Boolean )
+								.join( ' ' ) }
 							aria-label={ sprintf(
 								/* translators: %s: the name of a context section, e.g. "Design tokens". */
 								__( '%s included', 'albert-ai-butler' ),
