@@ -35,6 +35,13 @@ src/
   Contracts/       # Interfaces (Ability, Hookable)
   Core/            # Plugin bootstrap, AbilitiesManager, AbilitiesRegistry
                    #   InvocationRelay — WP 7.1 wp_ability_invoked -> albert/abilities/invoked
+  Context/         # Agent context (doc 21): what a connected assistant is told
+                   #   ContextSettings : the owner's choices, option + filters
+                   #   SiteContext     : assembles the structured array (the API)
+                   #   PayloadRenderer : renders it to the wire text (the format)
+                   #   Payload         : the two discovery fields + screen preview
+                   #   TokenEstimator  : script-aware token estimate; see docs/context-token-budget.md
+                   #   Readers/        : Environment, DesignTokens, ContentModel, Commerce
   Support/         # WpCompat — WordPress version-capability detection (7.1 feature probes)
   MCP/             # MCP protocol server
   OAuth/           # Full OAuth 2.0 server (entities, repos, endpoints)
@@ -89,6 +96,12 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | Hook | Type | Purpose |
 |------|------|---------|
 | `albert/abilities/register` | action | Register custom abilities |
+| `albert/context/enabled` | filter | Whether Albert sends any context with the discovery response |
+| `albert/context/instructions` | filter | The site owner's context instructions, set in code to manage a fleet |
+| `albert/context/sections` | filter | Which auto-detected sections are included, keyed by section |
+| `albert/context/site` | filter | The assembled site context array, before it is rendered to the wire text. Add, drop or rewrite a section; unrecognised sections render generically. The untrusted-data framing is deliberately outside this array and cannot be filtered away |
+| `albert/context/skills` | filter | The skills index entries, after preconditions have been applied |
+| `albert/skills/registry` | filter | Register a skill: `slug`, `summary`, and either `file` or `body`, plus optional `requires` / `when` preconditions |
 | `albert/abilities/payload_row` | filter | Augment a normalized ability row before it reaches the Abilities screen (e.g. append `badges`). Fires on both the bulk build and single-row paths. See `docs/extending-the-abilities-screen.md` |
 | `albert/abilities/required_capability` | filter | Override the best-effort capability shown on the Abilities screen |
 | `albert/abilities/before_execute` | action | Before any ability runs |
@@ -142,6 +155,21 @@ styled whether or not it declares the dependency. Declare it anyway; that is
 what guarantees load order for the add-on's own stylesheet.
 
 Full token and primitive reference: `docs/design-system.md`.
+
+### Agent context: array in, text out
+
+`site` is **built** as a structured array and **rendered** to a compact labeled
+text block at the MCP boundary. The array is the API, filters run on it, tests
+assert its keys, the screen prices its sections. The text is the wire format,
+and it is what the Context screen's payload preview shows, byte for byte: the
+preview is `Payload::segments()`, and the wire fields are the join of those same
+segments. Never emit the array as nested JSON, and never render the payload a
+second time for display, a screen with its own opinion of what gets sent stops
+being a preview.
+
+The token estimate is script-aware, not characters ÷ 4; that shortcut was
+measured at −67% on Japanese. See `docs/context-token-budget.md` and re-check any
+change with `php bin/calibrate-token-estimator.php`.
 
 JS (client-side) seams for the Abilities DataViews screen (`@wordpress/hooks` filters):
 `albert.abilities.permissions_section` replaces the fly-in's Permissions section (its `api` exposes
