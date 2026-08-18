@@ -303,7 +303,7 @@ class ContextSettings {
 		$clean = trim( $clean );
 
 		if ( strlen( $clean ) > self::MAX_INSTRUCTIONS_BYTES ) {
-			$clean = mb_strcut( $clean, 0, self::MAX_INSTRUCTIONS_BYTES );
+			$clean = mb_strcut( $clean, 0, self::MAX_INSTRUCTIONS_BYTES, 'UTF-8' );
 			$clean = trim( $clean );
 		}
 

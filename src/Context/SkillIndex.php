@@ -42,6 +42,21 @@ class SkillIndex {
 	public const FETCH_ABILITY = 'albert/get-skill';
 
 	/**
+	 * The built index, or null before it has been built.
+	 *
+	 * Memoised because one screen render reads this four times over: {@see
+	 * \Albert\Admin\ContextPayload::build()} calls it for the preview segment,
+	 * the availability check and the cost breakdown, and the wire path reads it
+	 * again through {@see Payload::skills()}. Without this the
+	 * `albert/context/skills` filter ran four times per request, which is
+	 * wasted work and a surprise to any add-on that assumed one call each.
+	 *
+	 * @var list<array{slug: string, summary: string}>|null
+	 * @since 1.4.0
+	 */
+	private static $entries = null;
+
+	/**
 	 * Build the index entries for this site.
 	 *
 	 * Preconditions are applied before the filter runs, so `albert/context/skills`
@@ -54,6 +69,10 @@ class SkillIndex {
 	 * @since 1.4.0
 	 */
 	public static function entries(): array {
+		if ( self::$entries !== null ) {
+			return self::$entries;
+		}
+
 		$entries = [];
 
 		foreach ( SkillRegistry::available() as $skill ) {
@@ -77,7 +96,22 @@ class SkillIndex {
 		 */
 		$filtered = apply_filters( 'albert/context/skills', $entries );
 
-		return is_array( $filtered ) ? array_values( $filtered ) : $entries;
+		self::$entries = is_array( $filtered ) ? array_values( $filtered ) : $entries;
+
+		return self::$entries;
+	}
+
+	/**
+	 * Forget the memoised index.
+	 *
+	 * For tests and for any caller that changes what the registry would return
+	 * after the index has already been built once in the same request.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	public static function reset_cache(): void {
+		self::$entries = null;
 	}
 
 	/**
