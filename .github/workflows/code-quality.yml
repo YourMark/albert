@@ -74,13 +74,21 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
-      # The DataViews admin screen require()s assets/build/js/abilities.asset.php,
-      # a gitignored build artifact rebuilt by release.yml. This job is PHP-only,
-      # so stub the file to let PHPStan resolve the (runtime-guarded) require path.
-      - name: Stub build asset for analysis
+      # The React admin screens require() assets/build/js/*.asset.php, gitignored
+      # build artifacts rebuilt by release.yml. This job is PHP-only, so stub them
+      # to let PHPStan resolve the (runtime-guarded) require paths.
+      #
+      # Derived from the source rather than listed, because the list was hard-coded
+      # for one screen and adding a second broke this job on a branch that had
+      # passed locally: the build existed there, and PHPStan's result cache kept
+      # the failure hidden even after it was deleted.
+      - name: Stub build assets for analysis
         run: |
           mkdir -p assets/build/js
-          printf '<?php return array( "dependencies" => array(), "version" => "dev" );\n' > assets/build/js/abilities.asset.php
+          grep -rhoE "assets/build/js/[a-z0-9-]+\.asset\.php" src/ | sort -u | while read -r asset; do
+            printf '<?php return array( "dependencies" => array(), "version" => "dev" );\n' > "$asset"
+            echo "stubbed $asset"
+          done
 
       - name: Run PHPStan
         run: ./vendor/bin/phpstan analyse --no-progress
