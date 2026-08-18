@@ -27,19 +27,20 @@ class SkillFileParser {
 	/**
 	 * Parse raw skill-file contents into frontmatter fields and body.
 	 *
-	 * Recognises the keys `name`, `description`, and an optional `arguments`
-	 * block. When no valid frontmatter fence is present, the whole input is
-	 * treated as the body and the field keys are returned empty.
+	 * Recognises the keys `name`, `description`, `requires`, and an optional
+	 * `arguments` block. When no valid frontmatter fence is present, the whole
+	 * input is treated as the body and the field keys are returned empty.
 	 *
 	 * @param string $contents The raw file contents.
 	 *
-	 * @return array{name: ?string, description: ?string, arguments: array<int, array<string, mixed>>, body: string}
+	 * @return array{name: ?string, description: ?string, requires: list<string>, arguments: array<int, array<string, mixed>>, body: string}
 	 * @since 1.2.0
 	 */
 	public function parse( string $contents ): array {
 		$result = [
 			'name'        => null,
 			'description' => null,
+			'requires'    => [],
 			'arguments'   => [],
 			'body'        => $contents,
 		];
@@ -61,6 +62,7 @@ class SkillFileParser {
 		$parsed                = $this->parse_frontmatter( $frontmatter );
 		$result['name']        = $parsed['name'];
 		$result['description'] = $parsed['description'];
+		$result['requires']    = $parsed['requires'];
 		$result['arguments']   = $parsed['arguments'];
 
 		return $result;
@@ -71,13 +73,14 @@ class SkillFileParser {
 	 *
 	 * @param string $frontmatter The text between the opening and closing fences.
 	 *
-	 * @return array{name: ?string, description: ?string, arguments: array<int, array<string, mixed>>}
+	 * @return array{name: ?string, description: ?string, requires: list<string>, arguments: array<int, array<string, mixed>>}
 	 * @since 1.2.0
 	 */
 	private function parse_frontmatter( string $frontmatter ): array {
 		$fields = [
 			'name'        => null,
 			'description' => null,
+			'requires'    => [],
 			'arguments'   => [],
 		];
 
@@ -99,12 +102,49 @@ class SkillFileParser {
 				$fields['name'] = $value;
 			} elseif ( $key === 'description' && $value !== '' ) {
 				$fields['description'] = $value;
+			} elseif ( $key === 'requires' ) {
+				$fields['requires'] = $this->parse_requires( $value );
 			} elseif ( $key === 'arguments' ) {
 				$fields['arguments'] = $this->parse_arguments( $value );
 			}
 		}
 
 		return $fields;
+	}
+
+	/**
+	 * Parse the preconditions under which a skill is worth listing.
+	 *
+	 * Accepted as a comma-separated list or an inline YAML flow sequence, so
+	 * both `requires: woocommerce, block_editor` and
+	 * `requires: [woocommerce, block_editor]` read the same. Names are lowercased
+	 * and matched against {@see \Albert\MCP\Skills\Skill::KNOWN_CONDITIONS}
+	 * at evaluation time, not here, this class stays free of WordPress so it
+	 * can be unit-tested on its own.
+	 *
+	 * @param string $value The raw value following `requires:`.
+	 *
+	 * @return list<string>
+	 * @since 1.4.0
+	 */
+	private function parse_requires( string $value ): array {
+		$value = trim( $value, " \t[]" );
+
+		if ( $value === '' ) {
+			return [];
+		}
+
+		$conditions = [];
+
+		foreach ( explode( ',', $value ) as $condition ) {
+			$condition = strtolower( $this->unquote( trim( $condition ) ) );
+
+			if ( $condition !== '' ) {
+				$conditions[ $condition ] = $condition;
+			}
+		}
+
+		return array_values( $conditions );
 	}
 
 	/**

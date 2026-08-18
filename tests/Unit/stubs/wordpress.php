@@ -48,6 +48,8 @@ if ( ! function_exists( 'do_action' ) ) {
 	 *
 	 * @param string $hook_name Hook name.
 	 * @param mixed  ...$args   Hook arguments.
+	 *
+	 * @throws \RuntimeException When a test has armed `albert_test_throw_on_action` for this hook.
 	 */
 	function do_action( string $hook_name, ...$args ): void {
 		// Lets a test simulate a subscriber that throws, so guards around
@@ -115,6 +117,16 @@ if ( ! function_exists( 'apply_filters' ) ) {
 			return $GLOBALS['albert_test_filter_returns'][ $hook_name ];
 		}
 
+		// A callback, for filters whose result depends on the value they are
+		// handed. `albert/context/site` adds a section to whatever it receives,
+		// which a fixed return value cannot express.
+		if ( isset( $GLOBALS['albert_test_filter_callbacks'][ $hook_name ] ) ) {
+			return call_user_func_array(
+				$GLOBALS['albert_test_filter_callbacks'][ $hook_name ],
+				array_merge( [ $value ], $args )
+			);
+		}
+
 		return $value;
 	}
 }
@@ -152,11 +164,19 @@ if ( ! function_exists( 'current_user_can' ) ) {
 	 * do not set the global keep passing. When `$GLOBALS['albert_test_caps']`
 	 * is set (array of allowed capability names), only those return true.
 	 *
+	 * Variadic, like WordPress's own. A meta capability takes an object id,
+	 * Albert's read abilities call `current_user_can( 'read_post', $post_id )`,
+	 * and a single-argument stub would fatal the moment a unit test reached one
+	 * of those paths. The extra arguments are accepted and ignored: this stub
+	 * answers from a flat cap list, and pretending to resolve a meta capability
+	 * against it would be worse than plainly not doing so.
+	 *
 	 * @param string $capability Capability name.
+	 * @param mixed  ...$args    Object id and any further arguments, as WordPress accepts.
 	 *
 	 * @return bool
 	 */
-	function current_user_can( string $capability ): bool {
+	function current_user_can( string $capability, ...$args ): bool {
 		if ( ! isset( $GLOBALS['albert_test_caps'] ) ) {
 			return true;
 		}

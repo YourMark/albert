@@ -102,14 +102,21 @@ class AbilitiesManager implements Hookable {
 		// Albert's own categories. WP 6.9 ships 'site' and 'user' as
 		// built-ins on the same hook at default priority; the
 		// wp_has_ability_category() guard below skips slugs core (or any
-		// other plugin) has already registered. 'user' is kept here as a
+		// other plugin) has already registered. Both are kept here as a
 		// defensive fallback for environments where core's registration
-		// has not (yet) fired — without it, our Users abilities cannot
-		// register because their category does not exist.
+		// has not (yet) fired, without them, our Users and Skills abilities
+		// cannot register because their category does not exist. That is not
+		// hypothetical: the WordPress test suite reaches ability registration
+		// with neither built-in present, and `albert/get-skill` silently failed
+		// to register until 'site' was listed here.
 		$categories = [
 			'content'     => [
 				'label'       => __( 'Content', 'albert-ai-butler' ),
 				'description' => __( 'Posts, pages, and media management.', 'albert-ai-butler' ),
+			],
+			'site'        => [
+				'label'       => __( 'Site', 'albert-ai-butler' ),
+				'description' => __( 'Site-level information and guidance.', 'albert-ai-butler' ),
 			],
 			'user'        => [
 				'label'       => __( 'Users', 'albert-ai-butler' ),

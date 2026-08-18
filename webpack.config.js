@@ -30,6 +30,7 @@ module.exports = {
 	...defaultConfig,
 	entry: {
 		abilities: path.resolve( __dirname, 'assets/src/abilities/index.js' ),
+		context: path.resolve( __dirname, 'assets/src/context/index.js' ),
 	},
 	output: {
 		...defaultConfig.output,

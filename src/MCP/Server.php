@@ -91,6 +91,10 @@ class Server implements Hookable {
 		// Strip server-only keys from schemas before they reach the client
 		// (WordPress 7.1+); a no-op on older versions.
 		( new SchemaPreparer() )->register_hooks();
+
+		// Add `site` and `skills` to the discovery response, so an assistant
+		// knows what this site is before it starts guessing.
+		( new DiscoveryContext() )->register_hooks();
 	}
 
 	/**
