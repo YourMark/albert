@@ -42,7 +42,12 @@ class Create extends BaseAbility {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::create(),
+			'annotations' => Annotations::create(
+				'Call `albert/list-block-types` first and compose only from what it returns, an unlisted '
+				. 'block fails validation and nothing is saved. Send block specs in `blocks`, never '
+				. 'hand-written `<!-- wp:… -->` markup, and put child blocks in `innerBlocks` rather than '
+				. 'in attributes. For a classic-editor post type, send HTML in `content` instead.'
+			),
 		];
 
 		parent::__construct();

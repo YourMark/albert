@@ -40,7 +40,11 @@ class FindProducts extends BaseAbility {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::read(),
+			'annotations' => Annotations::read(
+				'Prices come back in the shop\'s own currency and follow its tax display setting, both of '
+				. 'which are in the discovery response, quote a price as the shop states it rather than '
+				. 'recalculating. A variable product\'s price is a range across its variations.'
+			),
 		];
 
 		parent::__construct();

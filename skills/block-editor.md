@@ -1,6 +1,7 @@
 ---
 name: block-editor
 description: How to read and write WordPress block-editor content with Albert's structured block format. Read this before creating or editing posts and pages.
+requires: block_editor
 ---
 
 # Working with the WordPress block editor through Albert
@@ -12,6 +13,11 @@ correct block-editor markup for you — you never hand-write block comments or i
 
 Always prefer the structured `blocks` field over a raw `content` string. The exception
 is the classic editor (see "Classic-editor sites" at the end).
+
+This guide covers composition: what a block spec looks like and how to build one. The
+argument-level detail for any single ability lives on that ability: call
+`get-ability-info` before using one and read its `instructions`. The two are meant to be
+read together, and only this guide is worth reading end to end.
 
 ## Know which blocks you may use
 
@@ -172,36 +178,11 @@ exactly one block and preserve every other block **byte-for-byte**:
 
 (Use the `albert/*-page-block` equivalents for pages.)
 
-**Address blocks by position (`path`), not by id.** First **read** the post with
-`albert/view-post` and `"format": ["blocks"]`. Every block in the returned tree carries
-a `path` — an array of integers giving its position:
-
-- `[0]` is the first top-level block, `[2]` the third.
-- `[2, 0]` is the first child of the third block (e.g. the first paragraph inside the
-  third block, a `core/group` or `core/column`).
-
-Pass that `path` to the edit/add/remove/move ability. You do **not** resend the whole
-post — only the one block (for `edit`/`add`) and its `path`.
-
-```json
-// Replace the 3rd top-level block with a new heading:
-{ "id": 42, "path": [2], "block": { "name": "core/heading", "attributes": { "level": 2, "content": "New title" } } }
-```
-
-For `add`, also pass `position`: `before` / `after` (as a sibling of `path`) or
-`inside_start` / `inside_end` (inside the block at `path`, for layout blocks). Use
-`after` with the last block's path to append to the end. For `move`, pass `to_index` —
-the new position among the block's siblings.
-
-**Guard against staleness with `expect`.** Pass `expect` set to the block name you read
-at that `path` (e.g. `"expect": "core/paragraph"`). If the post changed since your read
-and a different block is now there, the edit is rejected with `block_path_mismatch` —
-re-read and retry. An out-of-range path returns `block_path_not_found`.
-
-**Use the refreshed tree after every op.** Each granular op returns the post's refreshed
-`blocks` tree (with up-to-date `path`s) and `_meta`. After an `add`/`remove`/`move`, the
-paths of later blocks shift — always use the `blocks` from the **last** response for your
-next edit, not the paths from an earlier read.
+Each of these takes the block's `path`: its position in the tree, from a fresh read,
+plus an `expect` guard so a post that changed under you is rejected rather than
+overwritten. The exact arguments differ per operation and each ability carries its own
+instructions: call `get-ability-info` on the one you are about to use and follow what it
+says there. That is where the detail is kept current.
 
 **When to use which:** prefer granular ops for large posts or single-block changes;
 use whole-content `update-*` when you are rewriting most of the body. Granular block

@@ -42,7 +42,12 @@ class UploadMedia extends BaseAbility {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::create(),
+			'annotations' => Annotations::create(
+				'Check with `albert/find-media` before uploading: re-uploading a file the library already '
+				. 'holds leaves two copies and the wrong one gets used. This sideloads from a URL the site '
+				. 'must be able to reach, a local path or a link behind a login will fail. Always send '
+				. '`alt` unless the image is decorative.'
+			),
 		];
 
 		parent::__construct();

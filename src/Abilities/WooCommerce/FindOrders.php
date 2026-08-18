@@ -40,7 +40,11 @@ class FindOrders extends BaseAbility {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::read(),
+			'annotations' => Annotations::read(
+				'Order statuses are per-shop and this shop may have its own; the discovery response lists '
+				. 'the ones that exist here. Pass them without the internal `wc-` prefix. Money comes back '
+				. 'in the shop\'s own currency, quote it with that currency, never assume.'
+			),
 		];
 
 		parent::__construct();
