@@ -48,6 +48,16 @@
 	margin-block-end: var(--albert-space-400);
 }
 
+/**
+ * The text half of the header. Both header primitives are two-child flexes with
+ * space-between, so a header that has a title, a description AND a control needs
+ * the first two wrapped, as three siblings they space apart and the description
+ * ends up beside the title instead of under it.
+ */
+.albert-page__text {
+	min-inline-size: 0;
+}
+
 .albert-page__title {
 	margin: 0 0 var(--albert-space-100);
 	padding: 0;
@@ -96,6 +106,10 @@
 	border-block-end: 1px solid var(--albert-color-border);
 }
 
+.albert-card__text {
+	min-inline-size: 0;
+}
+
 .albert-card__title {
 	margin: 0;
 	font-size: var(--albert-font-size-card-title);
@@ -135,6 +149,18 @@
 	border-block-start: 1px solid var(--albert-color-border-subtle);
 }
 
+/**
+ * The text half of the row: the same shape as `.albert-page__text` and
+ * `.albert-card__text`, and named the same for that reason. The row is a
+ * two-child flex with space-between, so everything except the control has to
+ * live inside one element; as siblings, the label, description and peek would
+ * space apart from each other rather than stack. `min-inline-size: 0` lets a
+ * long peek line wrap rather than push the control off the edge.
+ */
+.albert-toggle-row__text {
+	min-inline-size: 0;
+}
+
 .albert-toggle-row__label {
 	font-size: var(--albert-font-size-body);
 	font-weight: var(--albert-font-weight-semibold);
@@ -166,58 +192,6 @@
 .albert-toggle-row[inert] .albert-toggle-row__description,
 .albert-toggle-row[inert] .albert-toggle-row__peek {
 	color: var(--albert-color-text-faint);
-}
-
-/* ==========================================================================
-   Switch
-   ========================================================================== */
-
-/**
- * Always rendered as <button role="switch" aria-checked> with an accessible
- * name that says what it switches — "Enable Create post", not "Enable".
- */
-.albert-switch {
-	position: relative;
-	flex: none;
-	inline-size: 40px;
-	block-size: 22px;
-	padding: 0;
-	border: none;
-	border-radius: var(--albert-radius-pill);
-	background: var(--albert-color-switch-off);
-	cursor: pointer;
-	-webkit-appearance: none;
-	appearance: none;
-}
-
-.albert-switch::after {
-	content: "";
-	position: absolute;
-	inset-block-start: 3px;
-	inset-inline-start: 3px;
-	inline-size: 16px;
-	block-size: 16px;
-	border-radius: 50%;
-	background: var(--albert-color-surface);
-}
-
-.albert-switch[aria-checked="true"] {
-	background: var(--albert-color-accent);
-}
-
-.albert-switch[aria-checked="true"]::after {
-	inset-inline-start: 21px;
-}
-
-.albert-switch:disabled {
-	cursor: not-allowed;
-	opacity: 0.7;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-	.albert-switch::after {
-		transition: inset-inline-start var(--albert-duration-fast) var(--albert-easing-fast);
-	}
 }
 
 /* ==========================================================================
@@ -284,13 +258,25 @@
  * Scoped to the thing it explains. Never a full-width banner — that is what
  * WordPress notices are for, and Albert should not compete with them.
  */
+/**
+ * A quiet panel, not a chat bubble.
+ *
+ * Deliberately no thick coloured edge down one side. A tinted, rounded panel
+ * with a heavy accent rule is the house style of every AI product on the market,
+ * and on a WordPress admin screen it announces "an assistant wrote this" when
+ * the thing speaking is the site. WordPress's own `.notice` does use a left
+ * border, but square-cornered, full width, on white; the two do not read alike.
+ *
+ * Tone is carried by the surface tint and a matching hairline, so a hint reads
+ * as part of the screen rather than as something pasted onto it.
+ */
 .albert-hint {
 	display: flex;
 	align-items: flex-start;
 	gap: var(--albert-space-200);
 	padding: var(--albert-space-300);
-	border-inline-start: 3px solid var(--albert-color-notice-accent);
-	border-radius: 0 var(--albert-radius-md) var(--albert-radius-md) 0;
+	border: 1px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
 	background: var(--albert-color-surface-sunken);
 	font-size: var(--albert-font-size-sm);
 	line-height: var(--albert-line-height-snug);
@@ -298,12 +284,13 @@
 }
 
 .albert-hint--info {
-	border-inline-start-color: var(--albert-color-accent);
-	background: var(--albert-color-accent-surface);
+	border-color: var(--albert-color-info-tint-20);
+	background: var(--albert-color-info-surface);
+	color: var(--albert-color-text);
 }
 
 .albert-hint--warning {
-	border-inline-start-color: var(--albert-color-warning);
+	border-color: var(--albert-color-warning-tint-20);
 	background: var(--albert-color-warning-surface);
 	color: var(--albert-color-text);
 }
@@ -454,14 +441,6 @@
 	color: var(--albert-color-text);
 }
 
-/* The region contributed by the site owner, marked so it is visibly theirs. */
-.albert-preview__highlight {
-	display: block;
-	padding-inline-start: var(--albert-space-200);
-	border-inline-start: 3px solid var(--albert-color-accent);
-	background: var(--albert-color-accent-surface);
-}
-
 /* ==========================================================================
    Swatch
    ========================================================================== */
@@ -476,6 +455,173 @@
 }
 
 /* ==========================================================================
+   Info control
+   ========================================================================== */
+
+/**
+ * The "(i)" that explains a term without putting anything required behind it.
+ *
+ * Two implementations exist, split by rendering context rather than by screen.
+ * This one styles core's `Dropdown` and is what every React screen uses through
+ * `assets/src/shared/InfoPopover.jsx`; core handles open state, Escape,
+ * outside-click, focus and collision detection. `.albert-tip` below is the
+ * CSS-anchored equivalent for server-rendered screens, which have no Dropdown to
+ * reach for.
+ *
+ * Promoted here from `admin-abilities.css`, where it was written for the
+ * abilities fly-in and then, being invisible from anywhere else, got rebuilt
+ * from scratch for the Context screen. One definition, both screens.
+ */
+.albert-info {
+	display: inline-flex;
+	line-height: 0;
+}
+
+.albert-info .components-button.is-small {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 24px;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border-radius: var(--albert-radius-md);
+	color: var(--albert-color-text-faint);
+}
+
+/* 16px, not `--albert-icon-size-sm` (18px). The glyph is sized to sit inside the
+   24px button above with room to breathe; swapping in the token grows it and
+   crowds the button. A size token is not automatically the right size. */
+.albert-info .components-button.is-small .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 1;
+}
+
+/* Hover / focus / active (popover open) state. */
+.albert-info .components-button.is-small:hover,
+.albert-info .components-button.is-small:focus,
+.albert-info .components-button.is-small[ aria-expanded="true" ] {
+	color: var(--albert-color-accent);
+	background: color-mix(
+		in oklch,
+		var(--albert-color-accent) 12%,
+		transparent
+	);
+}
+
+/* Lift the info popover clearly above the content beneath it. Without this it
+   reads as merged with the white card it overlaps. */
+.albert-info__popover .components-popover__content {
+	border: 1px solid var(--albert-color-border-input);
+	border-radius: var(--albert-radius-md);
+	box-shadow: 0 8px 28px oklch( 0 0 0 / 0.16 ), 0 2px 6px oklch( 0 0 0 / 0.08 );
+}
+
+.albert-info__content {
+	width: 300px;
+	max-width: calc( 100vw - 32px );
+	padding: var(--albert-space-300) var(--albert-space-400);
+	font-size: var(--albert-font-size-sm);
+	line-height: var(--albert-line-height-snug);
+	color: var(--albert-color-neutral);
+}
+
+.albert-info__content p {
+	margin: 0 0 var(--albert-space-200);
+}
+
+/* ==========================================================================
+   Info control, server-rendered variant
+   ========================================================================== */
+
+/**
+ * For a term that sits on the line of common knowledge: "tokens", "MCP
+ * endpoint", "abilities". The rule that keeps it honest: the sentence has to
+ * read correctly without opening the toggle, and the toggle adds the mechanism.
+ * Never put required information behind it.
+ *
+ * Positioned in CSS against `.albert-tip`, not by script. An earlier version
+ * was `position: fixed` with top/left written by `admin-popover.js` on every
+ * open, which meant it did not follow the page when it scrolled and could not be
+ * used from a React screen without reimplementing the same maths.
+ *
+ * The wrapper is `.albert-tip` and not `.albert-info`, which the
+ * Abilities fly-in has used for its own control since 1.3. Two definitions of
+ * one class name in two stylesheets that load together is a collision waiting
+ * for whichever loads last.
+ */
+/**
+ * One value for the trigger's size, consumed by both the icon and the
+ * popover's offset, see the popover rule for why that offset is not a
+ * percentage.
+ */
+.albert-tip {
+	--albert-tip-trigger-size: 18px;
+
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+}
+
+.albert-tip__trigger {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: none;
+	border: none;
+	padding: 0;
+	margin-inline-start: var(--albert-space-100);
+	cursor: pointer;
+	vertical-align: middle;
+	color: var(--albert-color-text-muted);
+}
+
+.albert-tip__trigger .dashicons {
+	inline-size: var(--albert-tip-trigger-size);
+	block-size: var(--albert-tip-trigger-size);
+	font-size: var(--albert-tip-trigger-size);
+}
+
+.albert-tip__trigger:hover,
+.albert-tip__trigger:focus,
+.albert-tip__trigger[aria-expanded="true"] {
+	color: var(--albert-color-text);
+}
+
+.albert-tip__trigger:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+	border-radius: 50%;
+}
+
+/**
+ * Offset from the trigger's own size, not `calc(100% + …)`. The wrapper is a
+ * flex item, so its height is indefinite for percentage resolution and the
+ * percentage resolved against an ancestor instead, the popover landed a card's
+ * height below where it belonged. An explicit offset has no such ambiguity.
+ */
+.albert-tip__popover {
+	position: absolute;
+	inset-block-start: calc(var(--albert-tip-trigger-size) + var(--albert-space-200));
+	inset-inline-start: 0;
+	z-index: 20;
+	inline-size: min(300px, 80vw);
+	padding: var(--albert-space-300) var(--albert-space-400);
+	background: var(--albert-color-text);
+	color: var(--albert-color-surface);
+	font-size: var(--albert-font-size-sm);
+	font-weight: 400;
+	line-height: var(--albert-line-height-body);
+	text-transform: none;
+	letter-spacing: normal;
+	white-space: normal;
+	border-radius: var(--albert-radius-md);
+	box-shadow: var(--albert-shadow-md);
+}
+
+/* ==========================================================================
    Focus
    ========================================================================== */
 
@@ -483,7 +629,6 @@
  * One ring for everything interactive, including switches, rows that open a
  * panel, and accordion summaries — the elements most often missed.
  */
-.albert-switch:focus-visible,
 .albert-badge[tabindex]:focus-visible,
 .albert-toggle-row [tabindex]:focus-visible,
 .albert-preview summary:focus-visible,

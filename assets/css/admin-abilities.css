@@ -607,62 +607,7 @@ code.albert-flyin__card-value {
 	gap: 2px;
 }
 
-.albert-info {
-	display: inline-flex;
-	line-height: 0;
-}
-
-.albert-info .components-button.is-small {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 24px;
-	width: 24px;
-	height: 24px;
-	padding: 0;
-	border-radius: 4px;
-	color: var(--albert-color-text-faint);
-}
-
-.albert-info .components-button.is-small .dashicons {
-	font-size: 16px;
-	width: 16px;
-	height: 16px;
-	line-height: 1;
-}
-
-/* Hover / focus / active (popover open) state. */
-.albert-info .components-button.is-small:hover,
-.albert-info .components-button.is-small:focus,
-.albert-info .components-button.is-small[ aria-expanded="true" ] {
-	color: var(--albert-color-accent);
-	background: color-mix(
-		in oklch,
-		var(--albert-color-accent) 12%,
-		transparent
-	);
-}
-
-/* Lift the info popover clearly above the content beneath it — without this it
-   reads as merged with the white card it overlaps. */
-.albert-info__popover .components-popover__content {
-	border: 1px solid var(--albert-color-border-input);
-	border-radius: 6px;
-	box-shadow: 0 8px 28px oklch( 0 0 0 / 0.16 ), 0 2px 6px oklch( 0 0 0 / 0.08 );
-}
-
-.albert-info__content {
-	width: 300px;
-	max-width: calc( 100vw - 32px );
-	padding: 12px 14px;
-	font-size: 12.5px;
-	line-height: 1.5;
-	color: var(--albert-color-neutral);
-}
-
-.albert-info__content p {
-	margin: 0 0 8px;
-}
+/* The info control moved into albert-primitives.css: both React screens use it. */
 
 .albert-info__content p:last-child {
 	margin: 0;

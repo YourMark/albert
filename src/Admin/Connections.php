@@ -793,12 +793,14 @@ class Connections implements Hookable {
 			<div class="albert-settings-card-header">
 				<span class="dashicons dashicons-networking" aria-hidden="true"></span>
 				<h2><?php esc_html_e( 'Active Connections', 'albert-ai-butler' ); ?></h2>
-				<button type="button" class="albert-info-trigger" aria-expanded="false" aria-label="<?php esc_attr_e( 'More info about active connections', 'albert-ai-butler' ); ?>">
-					<span class="dashicons dashicons-editor-help" aria-hidden="true"></span>
-				</button>
-				<div class="albert-info-popover" role="tooltip" hidden>
-					<?php esc_html_e( 'Active connections show current access tokens. Tokens refresh automatically every hour as long as the session is active (up to 30 days).', 'albert-ai-butler' ); ?>
-				</div>
+				<span class="albert-tip">
+					<button type="button" class="albert-tip__trigger" aria-expanded="false" aria-label="<?php esc_attr_e( 'More info about active connections', 'albert-ai-butler' ); ?>">
+						<span class="dashicons dashicons-editor-help" aria-hidden="true"></span>
+					</button>
+					<div class="albert-tip__popover" role="tooltip" hidden>
+						<?php esc_html_e( 'Active connections show current access tokens. Tokens refresh automatically every hour as long as the session is active (up to 30 days).', 'albert-ai-butler' ); ?>
+					</div>
+				</span>
 			</div>
 			<div class="albert-settings-card-body">
 				<?php if ( empty( $sessions ) ) { ?>
@@ -1120,7 +1122,7 @@ class Connections implements Hookable {
 			'albert-admin',
 			ALBERT_PLUGIN_URL . 'assets/css/admin-settings.css',
 			[ Assets::PRIMITIVES_HANDLE ],
-			ALBERT_VERSION
+			Assets::version( 'assets/css/admin-settings.css' )
 		);
 
 		wp_enqueue_script(
@@ -1135,7 +1137,7 @@ class Connections implements Hookable {
 			'albert-admin',
 			ALBERT_PLUGIN_URL . 'assets/js/admin-settings.js',
 			[ 'albert-admin-utils' ],
-			ALBERT_VERSION,
+			Assets::version( 'assets/js/admin-settings.js' ),
 			true
 		);
 
@@ -1156,7 +1158,7 @@ class Connections implements Hookable {
 			'albert-admin-popover',
 			ALBERT_PLUGIN_URL . 'assets/js/admin-popover.js',
 			[],
-			ALBERT_VERSION,
+			Assets::version( 'assets/js/admin-popover.js' ),
 			true
 		);
 	}
