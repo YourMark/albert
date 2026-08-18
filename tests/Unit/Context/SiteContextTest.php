@@ -207,6 +207,48 @@ class SiteContextTest extends TestCase {
 	}
 
 	/**
+	 * A theme's own full palette cannot push a custom colour off the end.
+	 *
+	 * Reported directly by the site owner: they added a colour of their own in
+	 * the Styles editor and it never reached the payload. The theme here
+	 * declares exactly {@see \Albert\Context\Readers\DesignTokens::MAX_COLOURS}
+	 * colours of its own, filling the cap before the custom entry is even
+	 * considered if entries are kept in merge order. The custom colour, the one
+	 * thing on this screen a person chose rather than a theme author, has to
+	 * survive regardless of where the theme's own palette happens to end.
+	 *
+	 * @return void
+	 */
+	public function test_a_custom_colour_survives_a_theme_that_fills_the_cap(): void {
+		$theme = array_map(
+			static fn( int $i ): array => [
+				'slug'  => "theme-{$i}",
+				'color' => sprintf( '#%06x', $i ),
+			],
+			range( 1, 8 )
+		);
+
+		$this->declare_tokens(
+			[
+				'theme'  => $theme,
+				'custom' => [
+					[
+						'slug'  => 'custom-marks-kleur',
+						'name'  => "Mark's colour",
+						'color' => '#23abcd',
+					],
+				],
+			]
+		);
+
+		$palette = SiteContext::detected()['design']['palette'];
+		$slugs   = array_column( $palette, 'slug' );
+
+		$this->assertContains( 'custom-marks-kleur', $slugs );
+		$this->assertCount( 8, $palette, 'The cap still holds; the custom entry is kept, not added on top of it.' );
+	}
+
+	/**
 	 * Media is not offered as a content type.
 	 *
 	 * The assistant reaches media through the media abilities; naming

@@ -50,8 +50,10 @@ class DesignTokens {
 	 * Most palette entries to send.
 	 *
 	 * A theme can declare thirty colours; the model needs the brand, not the
-	 * catalogue. The first entries are the ones themes put first, the primary,
-	 * secondary and base colours, so a cap reads better than a sample.
+	 * catalogue. Within a theme's own entries, the first ones are what themes
+	 * put first, the primary, secondary and base colours, so a cap reads
+	 * better than a sample; a person's own custom colours are kept ahead of
+	 * that cap regardless of position, see {@see self::cap_prioritising_custom()}.
 	 *
 	 * @since 1.4.0
 	 * @var int
@@ -115,13 +117,22 @@ class DesignTokens {
 	/**
 	 * The declared colour palette.
 	 *
+	 * Custom-origin entries survive the cap ahead of theme ones, {@see
+	 * self::cap_prioritising_custom()}, they are the one part of this section a
+	 * person chose deliberately in the Styles editor rather than a theme author
+	 * choosing on their behalf, and a theme with a full palette of its own would
+	 * otherwise push every one of them off the end silently.
+	 *
 	 * @return list<array{name: string, slug: string, color: string}>
 	 * @since 1.4.0
 	 */
 	private function palette(): array {
 		$colours = [];
 
-		foreach ( $this->site_origin_values( [ 'color', 'palette' ] ) as $entry ) {
+		foreach ( $this->site_origin_values( [ 'color', 'palette' ] ) as $tagged ) {
+			$origin = $tagged['origin'];
+			$entry  = $tagged['value'];
+
 			if ( ! is_array( $entry ) || ! isset( $entry['color'] ) || ! is_string( $entry['color'] ) ) {
 				continue;
 			}
@@ -132,13 +143,16 @@ class DesignTokens {
 			// the slug, so keying on it keeps the override and drops the
 			// original rather than sending both.
 			$colours[ $slug !== '' ? $slug : $entry['color'] ] = [
-				'name'  => isset( $entry['name'] ) && is_string( $entry['name'] ) ? $entry['name'] : $slug,
-				'slug'  => $slug,
-				'color' => $entry['color'],
+				'origin' => $origin,
+				'value'  => [
+					'name'  => isset( $entry['name'] ) && is_string( $entry['name'] ) ? $entry['name'] : $slug,
+					'slug'  => $slug,
+					'color' => $entry['color'],
+				],
 			];
 		}
 
-		return array_slice( array_values( $colours ), 0, self::MAX_COLOURS );
+		return $this->cap_prioritising_custom( array_values( $colours ), self::MAX_COLOURS );
 	}
 
 	/**
@@ -154,7 +168,10 @@ class DesignTokens {
 	private function fonts(): array {
 		$fonts = [];
 
-		foreach ( $this->site_origin_values( [ 'typography', 'fontFamilies' ] ) as $entry ) {
+		foreach ( $this->site_origin_values( [ 'typography', 'fontFamilies' ] ) as $tagged ) {
+			$origin = $tagged['origin'];
+			$entry  = $tagged['value'];
+
 			if ( ! is_array( $entry ) ) {
 				continue;
 			}
@@ -169,11 +186,14 @@ class DesignTokens {
 			}
 
 			if ( $name !== '' ) {
-				$fonts[ strtolower( $name ) ] = $name;
+				$fonts[ strtolower( $name ) ] = [
+					'origin' => $origin,
+					'value'  => $name,
+				];
 			}
 		}
 
-		return array_slice( array_values( $fonts ), 0, self::MAX_FONTS );
+		return $this->cap_prioritising_custom( array_values( $fonts ), self::MAX_FONTS );
 	}
 
 	/**
@@ -192,7 +212,9 @@ class DesignTokens {
 	private function spacing(): array {
 		$slugs = [];
 
-		foreach ( $this->site_origin_values( [ 'spacing', 'spacingSizes' ] ) as $entry ) {
+		foreach ( $this->site_origin_values( [ 'spacing', 'spacingSizes' ] ) as $tagged ) {
+			$entry = $tagged['value'];
+
 			if ( is_array( $entry ) && isset( $entry['slug'] ) && is_string( $entry['slug'] ) && $entry['slug'] !== '' ) {
 				$slugs[ $entry['slug'] ] = $entry['slug'];
 			}
@@ -209,9 +231,17 @@ class DesignTokens {
 	 * setting comes back as a plain list. Both shapes are handled, and the
 	 * `default` origin is dropped either way.
 	 *
+	 * Each entry keeps the origin it came from, `theme` or `custom`, because a
+	 * cap applied later has to know which entries a person chose deliberately
+	 * in the Styles editor rather than which ones a theme author shipped, see
+	 * {@see self::cap_prioritising_custom()}. The single-origin fallback shape
+	 * carries no origin of its own; it is tagged `theme`, the only origin that
+	 * shape represents once the excluded `default`-only case above has already
+	 * returned.
+	 *
 	 * @param list<string> $path Global settings path, e.g. `[ 'color', 'palette' ]`.
 	 *
-	 * @return array<int, mixed> Entries declared by the theme or the site owner.
+	 * @return list<array{origin: string, value: mixed}> Entries declared by the theme or the site owner, tagged with their origin.
 	 * @since 1.4.0
 	 */
 	private function site_origin_values( array $path ): array {
@@ -230,17 +260,67 @@ class DesignTokens {
 			// `default` exactly when the theme declares no theme.json and no
 			// editor-palette support, which is the case this class exists to
 			// exclude.
-			return $this->theme_declares_tokens() ? array_values( $setting ) : [];
+			if ( ! $this->theme_declares_tokens() ) {
+				return [];
+			}
+
+			return array_map(
+				static fn( $value ): array => [
+					'origin' => 'theme',
+					'value'  => $value,
+				],
+				array_values( $setting )
+			);
 		}
 
 		$values = [];
 		foreach ( self::SITE_ORIGINS as $origin ) {
-			if ( isset( $setting[ $origin ] ) && is_array( $setting[ $origin ] ) ) {
-				$values = array_merge( $values, array_values( $setting[ $origin ] ) );
+			if ( ! isset( $setting[ $origin ] ) || ! is_array( $setting[ $origin ] ) ) {
+				continue;
+			}
+
+			foreach ( array_values( $setting[ $origin ] ) as $value ) {
+				$values[] = [
+					'origin' => $origin,
+					'value'  => $value,
+				];
 			}
 		}
 
 		return $values;
+	}
+
+	/**
+	 * Cap a list of origin-tagged entries, keeping custom-origin ones first.
+	 *
+	 * `array_slice` from the front over-represents whichever origin merged
+	 * first, which {@see self::SITE_ORIGINS} always makes `theme`, so an
+	 * override can reuse a theme slug. A theme that already declares as many
+	 * entries as the cap allows then pushed every custom entry off the end
+	 * silently, dropping the one thing here a person chose deliberately in
+	 * favour of what a theme author shipped, which is backwards. Custom
+	 * entries are kept first here, and only the remaining budget is filled from
+	 * what the theme declared.
+	 *
+	 * @param list<array{origin: string, value: mixed}> $entries Origin-tagged entries.
+	 * @param int                                       $limit   Maximum entries to keep.
+	 *
+	 * @return list<mixed> Values, custom-origin ones prioritised, capped at $limit.
+	 * @since 1.4.0
+	 */
+	private function cap_prioritising_custom( array $entries, int $limit ): array {
+		$custom = [];
+		$theme  = [];
+
+		foreach ( $entries as $entry ) {
+			if ( $entry['origin'] === 'custom' ) {
+				$custom[] = $entry['value'];
+			} else {
+				$theme[] = $entry['value'];
+			}
+		}
+
+		return array_slice( array_merge( $custom, $theme ), 0, $limit );
 	}
 
 	/**
