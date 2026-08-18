@@ -21,9 +21,16 @@
  * would mean shipping two vocabularies for one palette. Add-ons migrate to these
  * names in the release that adopts them.
  *
- * Colour space: oklch() throughout, light and dark, so a lightness change is a
- * lightness change and hues stay put. Values converted from the design handoff's
- * hex round-trip exactly; the source hex is recorded in docs/design-system.md.
+ * Colour space: oklch() throughout, so a lightness change is a lightness change
+ * and hues stay put. Values converted from the design handoff's hex round-trip
+ * exactly; the source hex is recorded in docs/design-system.md.
+ *
+ * One palette, not two. An earlier draft carried a full dark set behind a
+ * `[data-albert-color-scheme="dark"]` selector that nothing ever set, so ~64
+ * values shipped that no browser could render and no test or screenshot could
+ * check, three real dark-only bugs got through review on exactly that basis.
+ * WordPress ships no dark admin scheme, so the honest position is to have one
+ * palette that is verified. See docs/design-system.md, "One palette".
  *
  * @package Albert
  * @since 1.4.0
@@ -55,9 +62,9 @@
 	/* Accent — see the `body` rule below. Declared there, not here, and
 	   deliberately absent from this block. */
 	/* NEW: the handoff specified "accent surface, white text" but shipped no
-	   token for the label, so dark mode inverted the accent to a light blue and
-	   left white on it at 2.25:1. This is the label colour for any filled
-	   control, and it flips with the mode. */
+	   token for the label, so every filled control hardcoded white. This names
+	   the role instead, which is what lets a component follow rule 1 and
+	   declare no raw colour of its own. */
 	--albert-color-accent-contrast: oklch(1 0 0);               /* white — 5.60:1 on the default accent */
 
 	--albert-color-link: oklch(0.534 0.1249 247.7);             /* #2271b1 */
@@ -66,14 +73,14 @@
 	--albert-color-success: oklch(0.508 0.1332 151.1);          /* #0a7a3b */
 	--albert-color-success-surface: oklch(0.954 0.0199 154.9);  /* #e6f4ea */
 	--albert-color-success-dot: oklch(0.615 0.1538 152.2);      /* #1a9e54 */
-	--albert-color-success-contrast: oklch(1 0 0);              /* NEW — 10.25:1 on success */
+	--albert-color-success-contrast: oklch(1 0 0);              /* NEW, 5.45:1 on success */
 
 	--albert-color-warning: oklch(0.531 0.119 65.1);            /* #9a5b00 */
 	--albert-color-warning-surface: oklch(0.961 0.0261 82.4);   /* #fbf1df */
 
 	--albert-color-danger: oklch(0.509 0.1708 25.4);            /* #b32d2e */
 	--albert-color-danger-surface: oklch(0.956 0.0187 25.6);    /* #fdecea */
-	--albert-color-danger-contrast: oklch(1 0 0);               /* NEW — 7.95:1 on danger */
+	--albert-color-danger-contrast: oklch(1 0 0);               /* NEW, 6.31:1 on danger */
 
 	/* Core's blue-60. The obvious choice was blue-50 (#2271b1, the same blue as
 	   --albert-color-link), but it measures 4.49:1 on the info surface below and
@@ -85,15 +92,13 @@
 	--albert-color-neutral: oklch(0.453 0.0145 248.1);          /* #50575e */
 	--albert-color-neutral-surface: oklch(0.954 0.0034 247.9);  /* #eef0f2 */
 
+
 	/* Controls */
-	/* CORRECTED: the handoff's #a7aaad measured 2.33:1 light and 1.88:1 dark.
+	/* CORRECTED: the handoff's #a7aaad measured 2.33:1 on surface.
 	   An off switch carries no text, so the track IS the state indicator and
 	   owes 3:1 under SC 1.4.11. Same hue and chroma, lightness moved the least
 	   distance that clears the threshold. */
 	--albert-color-switch-off: oklch(0.66 0.01 265);            /* 3.11:1 */
-	/* CORRECTED: the handoff's #72aee6 measured 2.36:1 — and on a calm notice
-	   that border is the only thing distinguishing it from plain text. */
-	--albert-color-notice-accent: oklch(0.66 0.08 245);         /* 3.08:1 */
 
 	/* ---------------------------------------------------------------------
 	 * Overlays and tints
@@ -228,11 +233,9 @@ body {
 	--albert-color-accent-hover: color-mix(in oklab, var(--albert-color-accent) 82%, black);
 	--albert-color-accent-surface: color-mix(in oklab, var(--albert-color-accent) 8%, white);
 
-	/* Tints of tokens the dark block overrides. A custom property substitutes
-	   var() on the element that DECLARES it, so a tint left on :root keeps its
-	   light-mode source once dark applies to <body> — light ink on a dark
-	   surface. They live beside their sources, and are restated in the dark
-	   block, for exactly that reason. */
+	/* Tints live beside the tokens they mix, because a custom property
+	   substitutes var() on the element that DECLARES it, a tint declared on a
+	   different element than its source would freeze that source's value. */
 	--albert-color-success-tint-10: color-mix(in oklab, var(--albert-color-success) 10%, transparent);
 	--albert-color-success-tint-20: color-mix(in oklab, var(--albert-color-success) 20%, transparent);
 	--albert-color-warning-tint-10: color-mix(in oklab, var(--albert-color-warning) 10%, transparent);
@@ -243,94 +246,4 @@ body {
 	--albert-color-info-tint-20: color-mix(in oklab, var(--albert-color-info) 20%, transparent);
 	--albert-color-surface-hover: color-mix(in oklab, var(--albert-color-text) 8%, transparent);
 	--albert-color-danger-hover: color-mix(in oklab, var(--albert-color-danger) 80%, black);
-}
-
-/**
- * Dark palette — declared, not triggered.
- *
- * WordPress has no dark admin scheme, so there is no honest trigger to commit
- * to yet. Every dark value lives here and nowhere else: component stylesheets
- * must never carry a dark-specific rule. When core ships a scheme, or Albert
- * adds a setting, the only edit is this selector — add
- * `@media (prefers-color-scheme: dark)` or keep the attribute and set it from
- * PHP. Nothing else in the codebase changes.
- *
- * The attribute must go on `<body>`, not `<html>`. The accent is declared on
- * `body` (see above), so an `html`-level dark block would set the accent on a
- * parent and then have it overwritten on `body` — dark would get every token
- * except the one that carries the brand.
- *
- * Every pair below is measured in docs/design-system.md, same as light.
- */
-[data-albert-color-scheme="dark"] {
-	--albert-color-canvas: oklch(0.2 0.006 265);
-	--albert-color-surface: oklch(0.25 0.008 265);
-	--albert-color-surface-sunken: oklch(0.23 0.007 265);
-
-	--albert-color-border: oklch(0.37 0.01 265);
-	--albert-color-border-subtle: oklch(0.31 0.008 265);
-	/* CORRECTED: the handoff's dark border-input repeated the card border at
-	   1.53:1 on the dark surface — the same SC 1.4.11 failure as light, which
-	   the source design recorded only for light. */
-	--albert-color-border-input: oklch(0.54 0.01 265);          /* 3.16:1 */
-
-	--albert-color-text: oklch(0.96 0.003 265);
-	--albert-color-text-muted: oklch(0.8 0.008 265);
-	--albert-color-text-faint: oklch(0.71 0.01 265);
-
-	/* Not var(--wp-admin-theme-color) here: that value is tuned against a light
-	   chrome and goes muddy on a dark surface. Dark owns its own accent. */
-	--albert-color-accent: oklch(0.75 0.128 262);               /* chroma trimmed to stay in sRGB */
-	/* Near-canvas, not white: white on the lightened dark accent measures
-	   2.24:1. This is the correction that makes the *-contrast tokens exist. */
-	--albert-color-accent-contrast: oklch(0.2 0.006 265);       /* 8.08:1 on accent */
-
-	--albert-color-link: oklch(0.8 0.1 245);
-
-	--albert-color-success: oklch(0.8 0.15 150);
-	--albert-color-success-surface: oklch(0.32 0.05 150);
-	--albert-color-success-dot: oklch(0.8 0.15 150);
-	--albert-color-success-contrast: oklch(0.2 0.006 265);      /* 10.25:1 */
-
-	--albert-color-warning: oklch(0.85 0.13 80);
-	--albert-color-warning-surface: oklch(0.33 0.05 80);
-
-	--albert-color-danger: oklch(0.76 0.143 25);                /* chroma trimmed to stay in sRGB */
-	--albert-color-danger-surface: oklch(0.32 0.06 25);
-	--albert-color-danger-contrast: oklch(0.2 0.006 265);       /* 7.95:1 */
-
-	--albert-color-info: oklch(0.86 0.067 262);                 /* chroma trimmed to stay in sRGB */
-	--albert-color-info-surface: oklch(0.31 0.05 262);
-
-	--albert-color-neutral: oklch(0.84 0.008 265);
-	--albert-color-neutral-surface: oklch(0.31 0.008 265);
-
-	--albert-color-danger-hover: oklch(0.85 0.12 25);
-
-	/* CORRECTED: 1.89:1 in the handoff. Same reasoning as light. */
-	--albert-color-switch-off: oklch(0.54 0.01 265);            /* 3.11:1 */
-	--albert-color-notice-accent: oklch(0.7 0.08 245);          /* 6.04:1, already passing */
-
-	/* Restated so each mixes the DARK source, not the light one. */
-	--albert-color-accent-hover: color-mix(in oklab, var(--albert-color-accent) 82%, white);
-	--albert-color-accent-surface: color-mix(in oklab, var(--albert-color-accent) 18%, black);
-	--albert-color-accent-tint-8: color-mix(in oklab, var(--albert-color-accent) 8%, transparent);
-	--albert-color-accent-tint-10: color-mix(in oklab, var(--albert-color-accent) 10%, transparent);
-	--albert-color-accent-tint-20: color-mix(in oklab, var(--albert-color-accent) 20%, transparent);
-	--albert-color-success-tint-10: color-mix(in oklab, var(--albert-color-success) 10%, transparent);
-	--albert-color-success-tint-20: color-mix(in oklab, var(--albert-color-success) 20%, transparent);
-	--albert-color-warning-tint-10: color-mix(in oklab, var(--albert-color-warning) 10%, transparent);
-	--albert-color-warning-tint-20: color-mix(in oklab, var(--albert-color-warning) 20%, transparent);
-	--albert-color-danger-tint-10: color-mix(in oklab, var(--albert-color-danger) 10%, transparent);
-	--albert-color-danger-tint-20: color-mix(in oklab, var(--albert-color-danger) 20%, transparent);
-	--albert-color-info-tint-10: color-mix(in oklab, var(--albert-color-info) 10%, transparent);
-	--albert-color-info-tint-20: color-mix(in oklab, var(--albert-color-info) 20%, transparent);
-	--albert-color-surface-hover: color-mix(in oklab, var(--albert-color-text) 8%, transparent);
-	--albert-color-danger-hover: color-mix(in oklab, var(--albert-color-danger) 80%, white);
-	--albert-focus-color: var(--albert-color-accent);
-	--albert-color-overlay: oklch(0 0 0 / 0.8);
-
-	--albert-shadow-sm: 0 1px 2px oklch(0 0 0 / 0.3);
-	--albert-shadow-md: 0 1px 3px oklch(0 0 0 / 0.4);
-	--albert-shadow-panel: -4px 0 16px oklch(0 0 0 / 0.5);
 }
