@@ -793,15 +793,7 @@ class Connections implements Hookable {
 			<div class="albert-settings-card-header">
 				<span class="dashicons dashicons-networking" aria-hidden="true"></span>
 				<h2><?php esc_html_e( 'Active Connections', 'albert-ai-butler' ); ?></h2>
-				<?php
-				// A dashed-ident, unique per instance: CSS anchor positioning ties one
-				// popover to one anchor by name, so two tips on the same page sharing a
-				// name would leave the browser to guess which trigger a popover belongs
-				// to. Set once on the wrapper and read by both children via
-				// var(--albert-tip-anchor), see albert-primitives.css.
-				$tip_anchor = '--' . wp_unique_id( 'albert-tip-' );
-				?>
-				<span class="albert-tip" style="--albert-tip-anchor: <?php echo esc_attr( $tip_anchor ); ?>;">
+				<span class="albert-tip">
 					<button type="button" class="albert-tip__trigger" aria-expanded="false" aria-label="<?php esc_attr_e( 'More info about active connections', 'albert-ai-butler' ); ?>">
 						<span class="dashicons dashicons-editor-help" aria-hidden="true"></span>
 					</button>
