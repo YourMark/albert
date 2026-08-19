@@ -14,7 +14,6 @@ use Albert\Context\Payload;
 use Albert\Context\PayloadRenderer;
 use Albert\Context\SkillIndex;
 use Albert\Context\SiteContext;
-use Albert\Context\TokenEstimator;
 use Albert\MCP\DiscoveryContext;
 use Albert\MCP\Skills\SkillRegistry;
 use Albert\Tests\TestCase;
@@ -23,7 +22,7 @@ use WP_Error;
 /**
  * Agent context integration tests.
  *
- * These run against a real WordPress, which is what makes the budget assertion
+ * These run against a real WordPress, which is what makes the size assertion
  * worth anything: the payload is assembled from the actual theme, post types and
  * taxonomies rather than from fixtures that would drift from them.
  *
@@ -50,25 +49,26 @@ class AgentContextTest extends TestCase {
 	/**
 	 * The context stays the small part of the discovery response.
 	 *
-	 * Not a budget: measurement established there is no threshold worth
-	 * drawing, since the ability list in the same response is ten times larger
-	 * (see `docs/context-token-budget.md`). This is a regression guard with a
-	 * deliberately loose bound: it catches a section that quietly doubles the
-	 * payload, and stays quiet about the ordinary drift that means nothing.
+	 * Not a budget: there is no threshold worth drawing, and the ability list
+	 * in the same response is ten times larger regardless. This is a
+	 * regression guard with a deliberately loose bound, measured in raw
+	 * characters rather than a token estimate, no estimator survives to price
+	 * this with: it catches a section that quietly doubles the payload, and
+	 * stays quiet about the ordinary drift that means nothing.
 	 *
 	 * @return void
 	 */
 	public function test_tier_zero_stays_small_relative_to_the_response(): void {
 		$payload = Payload::build();
-		$total   = TokenEstimator::estimate( Payload::text() );
+		$length  = strlen( Payload::text() );
 
 		$this->assertNotEmpty( $payload );
 		$this->assertLessThan(
-			1500,
-			$total,
+			5000,
+			$length,
 			sprintf(
-				'The context payload is %d estimated tokens. Measured payloads run 315-502; something has grown by a lot. Confirm it is intended and record the new measurement in docs/context-token-budget.md.',
-				$total
+				'The context payload is %d characters. A reference site measures around 1500; something has grown by a lot. Confirm it is intended.',
+				$length
 			)
 		);
 	}

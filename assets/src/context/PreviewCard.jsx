@@ -21,17 +21,16 @@
  * second one is about the contents of the first.
  */
 import { Fragment, useState } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { __ } from '@wordpress/i18n';
 
 /**
  * Render the preview card.
  *
  * @param {Object} props          Props.
  * @param {Array}  props.segments Rendered payload segments.
- * @param {number} props.tokens   Estimated cost of the whole payload.
  * @return {Element|null} The card, or null when nothing is being sent.
  */
-export default function PreviewCard( { segments, tokens } ) {
+export default function PreviewCard( { segments } ) {
 	const [ open, setOpen ] = useState( true );
 
 	// With context switched off there is no payload to preview, and the footer
@@ -71,13 +70,6 @@ export default function PreviewCard( { segments, tokens } ) {
 					</span>
 				</button>
 				</h2>
-				<span className="albert-badge albert-badge--outline">
-					{ sprintf(
-						/* translators: %d: estimated token cost of the whole payload. */
-						__( '≈%d tokens', 'albert-ai-butler' ),
-						tokens
-					) }
-				</span>
 			</header>
 
 			{ /*

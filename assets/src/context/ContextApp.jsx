@@ -2,19 +2,23 @@
  * Albert → Context screen.
  *
  * The site owner tells connected assistants what this site is and how to behave.
- * The screen's job is to make the trade visible: everything included costs space
- * in what the assistant receives, and the cost, the preview and the switches all
- * move together.
  *
- * Every write returns the full recomputed state, so the budget and the preview
- * are always the server's answer rather than the client's guess about what the
- * server would say.
+ * Token counts used to sit alongside every section and in a dedicated cost
+ * card, priced by an estimator calibrated against one reference tokeniser.
+ * Removed: different assistants tokenise differently, the estimate could only
+ * ever be shown as a wide, provider-specific error band, and it did not change
+ * what an owner should do, the section descriptions already say what each one
+ * includes, well enough to decide on without a number attached. What is
+ * actually sent is still shown in full, in the preview card below.
+ *
+ * Every write returns the full recomputed state, so the screen is always the
+ * server's answer rather than the client's guess about what the server would
+ * say.
  */
 import { FormToggle } from '@wordpress/components';
 import { useEffect, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { fetchContext, saveContext } from './api';
-import BudgetCard from './BudgetCard';
 import InstructionsCard from './InstructionsCard';
 import PreviewCard from './PreviewCard';
 import SectionsCard from './SectionsCard';
@@ -206,28 +210,20 @@ export default function ContextApp() {
 			 * The controls below are individually disabled rather than the body
 			 * being `inert`. `inert` removed the whole subtree from the
 			 * accessibility tree, so a screen-reader user lost what a sighted
-			 * user keeps: their own instructions, which sections are on, and
-			 * what each costs. The state is signalled structurally instead, by
-			 * the notice above and the sunken surfaces, and text stays at full
-			 * contrast, an earlier draft dimmed the body to 1.99:1 and failed AA.
+			 * user keeps: their own instructions and which sections are on.
+			 * The state is signalled structurally instead, by the notice above
+			 * and the sunken surfaces, and text stays at full contrast, an
+			 * earlier draft dimmed the body to 1.99:1 and failed AA.
 			 */ }
 			<div
 				className={ `albert-page__body${
 					state.enabled ? '' : ' is-off'
 				}` }
 			>
-				<BudgetCard
-					budget={ state.budget }
-					costs={ state.costs }
-					enabled={ state.enabled }
-				/>
-
 				<InstructionsCard
 					value={ state.instructions }
 					managed={ state.managed.instructions }
 					off={ ! state.enabled }
-					tokens={ state.budget.instruction }
-					heading={ state.instructionHeading }
 					onChange={ ( instructions ) => save( { instructions } ) }
 				/>
 
@@ -241,16 +237,7 @@ export default function ContextApp() {
 					}
 				/>
 
-				{ /*
-				 * The same total the card above reports. They were two numbers
-				 * for one payload before, the card excluded the owner's
-				 * instructions so it could budget them separately, and the
-				 * preview counted everything.
-				 */ }
-				<PreviewCard
-					segments={ state.preview }
-					tokens={ state.budget.total }
-				/>
+				<PreviewCard segments={ state.preview } />
 			</div>
 		</div>
 	);

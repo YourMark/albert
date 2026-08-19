@@ -4,9 +4,7 @@
  * The only editable content on the screen, and the only part of the payload
  * Albert cannot derive from the site itself.
  *
- * Typing is local state saved on a debounce; the token count under the field
- * follows the keystrokes rather than the save, because a counter that only moved
- * when a request came back would lag exactly when it is being watched.
+ * Typing is local state saved on a debounce.
  *
  * The field starts empty, with an example in the placeholder. An earlier version
  * wrote a generated draft into it and saved that draft on first visit, which was
@@ -17,55 +15,25 @@
  * rather than restate facts the payload already carries.
  */
 import { useEffect, useRef, useState } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
-import { estimateTokens } from './tokens';
+import { __ } from '@wordpress/i18n';
 
 // Long enough that ordinary typing does not queue a request per word, short
 // enough that pausing to think produces a save before you look away.
 const SAVE_DELAY = 900;
 
 /**
- * Price what is in the field the same way the server prices what it stores.
- *
- * Two things have to match, and both got this wrong before. The *estimator* is
- * now the shared port in `tokens.js` rather than a rougher second opinion, the
- * two disagreed by 10% on the same sentence. And the *scope* includes the
- * heading Albert wraps the instructions in, because that heading exists only if
- * you write something, so it is part of what having instructions costs. Counting
- * it on the server and not in the field is why the card said 51 and the field
- * said 30.
- *
- * @param {string} text    The instructions as typed.
- * @param {string} heading The heading the payload wraps them in.
- * @return {number} Estimated tokens.
- */
-function priceInstructions( text, heading ) {
-	const trimmed = text.trim();
-
-	if ( ! trimmed ) {
-		return 0;
-	}
-
-	return estimateTokens( `${ heading }\n${ trimmed }` );
-}
-
-/**
  * Render the instructions card.
  *
- * @param {Object}   props              Props.
- * @param {string}   props.value        Stored instructions.
- * @param {boolean}  props.managed      Whether a filter owns this value.
- * @param {number}   props.tokens       Server-side estimate of the stored value.
- * @param {string}   props.heading      The heading the payload wraps instructions in.
- * @param {boolean}  props.off          Whether context is switched off entirely.
- * @param {Function} props.onChange     Called with the new text, debounced.
+ * @param {Object}   props          Props.
+ * @param {string}   props.value    Stored instructions.
+ * @param {boolean}  props.managed  Whether a filter owns this value.
+ * @param {boolean}  props.off      Whether context is switched off entirely.
+ * @param {Function} props.onChange Called with the new text, debounced.
  * @return {Element} The card.
  */
 export default function InstructionsCard( {
 	value,
 	managed,
-	tokens,
-	heading,
 	off,
 	onChange,
 } ) {
@@ -104,14 +72,6 @@ export default function InstructionsCard( {
 			} );
 		}, SAVE_DELAY );
 	};
-
-	// While a filter owns the value the field shows what will actually be sent
-	// and refuses edits, because a control that accepts typing and changes
-	// nothing is worse than one that is plainly not yours to change.
-	const liveTokens =
-		draft === lastSent.current
-			? tokens
-			: priceInstructions( draft, heading );
 
 	return (
 		<section className="albert-card">
@@ -182,13 +142,6 @@ export default function InstructionsCard( {
 						{ __(
 							'Plain sentences work best. Assistants read this as background, not as commands.',
 							'albert-ai-butler'
-						) }
-					</span>
-					<span className="albert-context__field-count">
-						{ sprintf(
-							/* translators: %d: estimated token cost of the instructions. */
-							__( '≈%d tokens', 'albert-ai-butler' ),
-							liveTokens
 						) }
 					</span>
 				</div>

@@ -1,10 +1,10 @@
 /**
  * "What Albert sends", one switchable row per auto-detected section.
  *
- * Each row answers three questions at a glance: what the section is, what it
- * found on this site, and what it costs. The peek is what makes the switch a
- * decision rather than a guess. "Environment, 44 tokens" is not enough to
- * choose on, "nl_NL · Europe/Amsterdam · Ollie 1.6.0" is.
+ * Each row answers two questions at a glance: what the section is, and what
+ * it found on this site. The peek is what makes the switch a decision rather
+ * than a guess. "Environment" alone is not enough to choose on, "nl_NL ·
+ * Europe/Amsterdam · Ollie 1.6.0" is.
  */
 import { FormToggle } from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
@@ -109,7 +109,7 @@ export default function SectionsCard( {
 					</h2>
 					<p className="albert-card__description">
 						{ __(
-							'Albert detects these from your site. Switch off anything an assistant does not need, since each one costs part of your budget.',
+							'Albert detects these from your site. Switch off anything an assistant does not need.',
 							'albert-ai-butler'
 						) }
 					</p>
@@ -131,16 +131,6 @@ export default function SectionsCard( {
 						<div className="albert-toggle-row__text">
 							<div className="albert-toggle-row__label">
 								<span>{ section.label }</span>
-								<span
-									className="albert-context__row-cost"
-									id={ `albert-context-${ section.key }-cost` }
-								>
-									{ sprintf(
-										/* translators: %d: estimated token cost of this section. */
-										__( '≈%d tokens', 'albert-ai-butler' ),
-										section.tokens
-									) }
-								</span>
 							</div>
 							<p
 								className="albert-toggle-row__description"
@@ -181,11 +171,8 @@ export default function SectionsCard( {
 						 * Design tokens, checked" for a section already
 						 * included. Same shape as the Abilities row toggle.
 						 *
-						 * Described by the cost, the description and whichever
-						 * of the peek or the unavailable hint is showing. The
-						 * cost matters most: it is the entire premise of the
-						 * screen, and reaching the switch without it means
-						 * choosing blind.
+						 * Described by the description and whichever of the
+						 * peek or the unavailable hint is showing.
 						 */ }
 						<FormToggle
 							checked={ section.enabled }
@@ -193,7 +180,6 @@ export default function SectionsCard( {
 								! section.available || managed || off
 							}
 							aria-describedby={ [
-								`albert-context-${ section.key }-cost`,
 								`albert-context-${ section.key }-desc`,
 								section.available && section.peek
 									? `albert-context-${ section.key }-peek`

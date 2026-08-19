@@ -129,9 +129,7 @@ class Payload {
 	 * The full payload as the assistant reads it, both fields end to end.
 	 *
 	 * Exists so the equality between what the screen previews and what the wire
-	 * carries can be asserted in one line rather than described in a comment. The
-	 * budget measurement in `docs/context-token-budget.md` is taken from this too,
-	 * so anything that changes its output changes the numbers recorded there.
+	 * carries can be asserted in one line rather than described in a comment.
 	 *
 	 * @return string The `site` and `skills` fields, joined as the screen shows them.
 	 * @since 1.4.0

@@ -16,60 +16,33 @@ use Albert\Context\Payload;
 use Albert\Context\PayloadRenderer;
 use Albert\Context\SiteContext;
 use Albert\Context\SkillIndex;
-use Albert\Context\TokenEstimator;
 use Albert\Core\AbilitiesState;
 
 /**
  * Normalises everything the Albert → Context screen renders into one payload.
  *
- * The screen shows three things that have to agree: a preview of what the
- * assistant receives, a price per section, and a peek at each section's detected
- * values. They agree because all three are derived here from the same source,
- * the preview is {@see Payload::segments()} verbatim, and every price is that
- * same rendered text run through the estimator. Nothing on this screen is
- * re-rendered for display.
+ * The screen shows two things that have to agree: a preview of what the
+ * assistant receives, and a peek at each section's detected values. They agree
+ * because both are derived here from the same source, the preview is
+ * {@see Payload::segments()} verbatim. Nothing on this screen is re-rendered
+ * for display.
  *
- * Prices are given for sections that are switched *off* as well as on. "What
- * would turning this back on cost me" is a question the owner can only answer
- * from a figure the payload does not currently contain, so the row carries its
- * own cost whether or not it is included.
+ * There used to be a third thing: a token cost per section and for the whole
+ * payload, priced by an estimator calibrated against one reference tokeniser.
+ * Removed, not because the estimate was wrong for what it measured, but
+ * because different assistants tokenise differently, so the number could only
+ * ever be shown with a wide, provider-specific error band attached, and it did
+ * not change what an owner should do: the section descriptions already say
+ * what each one includes, which is what a decision to switch one off actually
+ * needs. See `docs/context-token-budget.md`'s git history for the measurement
+ * that was made before removing it.
  *
  * @since 1.4.0
  */
 class ContextPayload {
 
 	/**
-	 * There is deliberately no budget ceiling here, and that is a finding rather
-	 * than an omission.
-	 *
-	 * Doc 21 carried 600 as a working target and said it must not reach this
-	 * screen as a threshold until someone had checked what it meant. Checking it
-	 * settled the question in the other direction. Measured on a real site, the
-	 * whole context block is **433 tokens against the ability list's 4,411**, the
-	 * tool definitions the same response already carries are ten times larger, and
-	 * the entire discovery response is 2.4% of a 200k context window. Nothing
-	 * observable happens at 600, or at 900. A meter drawn against that number
-	 * would be a warning about a cliff that is not there, and would point the
-	 * owner at the smaller of the two things they can change.
-	 *
-	 * So the screen reports what each part costs and stops. The per-section
-	 * figures are still worth having, they answer "design tokens is a third of
-	 * this, do I need it", but as a relative comparison, not a limit.
-	 *
-	 * See `docs/context-token-budget.md` for the measurement.
-	 *
-	 * @since 1.4.0
-	 */
-
-	/**
 	 * Build the screen payload.
-	 *
-	 * Three numbers on the screen have to reconcile, and they do because all
-	 * three come from one call to {@see Payload::segments()}: the total in the
-	 * card header, the sum of the cost chips, and the tag on the preview. If a
-	 * future change prices anything from a second source, they will drift apart
-	 * and the screen will show two totals for one payload, which is the bug this
-	 * shape was written to prevent.
 	 *
 	 * @return array<string, mixed> Everything the Context screen renders.
 	 * @since 1.4.0
@@ -83,30 +56,17 @@ class ContextPayload {
 		$segments = Payload::segments();
 		$sections = self::sections( $detected, $settings['enabled'], array_column( $segments, 'key' ) );
 
-		$instructions = self::instruction_cost( $segments );
-
 		return [
-			'enabled'            => $settings['enabled'],
-			'instructions'       => $settings['instructions'],
-			'sections'           => $sections,
-			'managed'            => ContextSettings::filtered_keys(),
-			'budget'             => [
-				'total'       => self::total_cost( $segments ),
-				'instruction' => $instructions,
-			],
-			// The heading Albert wraps the owner's instructions in. The screen
-			// needs it to price what they are typing the same way the server
-			// prices what it stores. The heading is part of what having
-			// instructions costs, and counting it on one side only was why the
-			// field counter and the cost chip disagreed.
-			'instructionHeading' => PayloadRenderer::INSTRUCTIONS_HEADING,
-			'costs'              => self::costs( $segments ),
-			'preview'            => $segments,
+			'enabled'      => $settings['enabled'],
+			'instructions' => $settings['instructions'],
+			'sections'     => $sections,
+			'managed'      => ContextSettings::filtered_keys(),
+			'preview'      => $segments,
 		];
 	}
 
 	/**
-	 * Describe each switchable section: what it is, what it found, what it costs.
+	 * Describe each switchable section: what it is and what it found.
 	 *
 	 * A section absent from the detected set is still described: with
 	 * `available` false, for every case except Commerce. The design tokens row
@@ -131,9 +91,8 @@ class ContextPayload {
 	 * @since 1.4.0
 	 */
 	private static function sections( array $detected, bool $enabled, array $sent ): array {
-		$renderer = new PayloadRenderer();
-		$chosen   = ContextSettings::sections();
-		$rows     = [];
+		$chosen = ContextSettings::sections();
+		$rows   = [];
 
 		foreach ( ContextSettings::SECTIONS as $key ) {
 			$available = self::is_available( $key, $detected );
@@ -143,9 +102,6 @@ class ContextPayload {
 			}
 
 			$data = $detected[ $key ] ?? null;
-			$text = $key === 'skills'
-				? $renderer->render_skills( SkillIndex::entries() )
-				: ( $data === null ? '' : $renderer->render_section( $key, $data ) );
 
 			$rows[] = [
 				'key'         => $key,
@@ -155,7 +111,6 @@ class ContextPayload {
 				'enabled'     => $available && (
 					$enabled ? in_array( $key, $sent, true ) : ( $chosen[ $key ] ?? false )
 				),
-				'tokens'      => $available ? TokenEstimator::estimate( $text ) : 0,
 				'peek'        => self::peek( $key, $data ),
 				'palette'     => $key === 'design' && is_array( $data ) ? ( $data['palette'] ?? [] ) : [],
 				'fonts'       => $key === 'design' && is_array( $data ) ? ( $data['fonts'] ?? [] ) : [],
@@ -180,7 +135,7 @@ class ContextPayload {
 			// The index names guides and tells the assistant to fetch them with
 			// `albert/get-skill`. With that ability switched off on the Abilities
 			// screen the fetch fails, so the row reports itself unavailable
-			// rather than offering to spend budget on a dead end.
+			// rather than offering a switch that leads to a dead end.
 			return SkillIndex::entries() !== [] && AbilitiesState::is_enabled( SkillIndex::FETCH_ABILITY );
 		}
 
@@ -188,86 +143,13 @@ class ContextPayload {
 	}
 
 	/**
-	 * Estimated cost of the whole payload.
-	 *
-	 * Every part, the owner's instructions included. An earlier version excluded
-	 * them so they could be budgeted separately, which left the card reporting
-	 * one total and the preview below it reporting a larger one, two numbers for
-	 * one payload, with nothing on screen to explain the gap.
-	 *
-	 * @param list<array{key: string, text: string}> $segments Rendered segments.
-	 *
-	 * @return int Estimated tokens for the whole payload.
-	 * @since 1.4.0
-	 */
-	private static function total_cost( array $segments ): int {
-		$total = 0;
-
-		foreach ( $segments as $segment ) {
-			$total += TokenEstimator::estimate( $segment['text'] );
-		}
-
-		return $total;
-	}
-
-	/**
-	 * Estimated cost of the owner's own instructions.
-	 *
-	 * @param list<array{key: string, text: string}> $segments Rendered segments.
-	 *
-	 * @return int Estimated tokens for the owner's section, heading included, or 0 when they wrote nothing.
-	 * @since 1.4.0
-	 */
-	private static function instruction_cost( array $segments ): int {
-		foreach ( $segments as $segment ) {
-			if ( $segment['key'] === PayloadRenderer::OWNER_SECTION ) {
-				return TokenEstimator::estimate( $segment['text'] );
-			}
-		}
-
-		return 0;
-	}
-
-	/**
-	 * The per-part cost chips, in payload order.
-	 *
-	 * Built from the rendered segments rather than from the section list, so the
-	 * chips account for every part of the payload including the ones that have no
-	 * switch, the site identity and the safety note. Chips that summed to less
-	 * than the total would be the screen quietly hiding what it spent.
-	 *
-	 * Every chip is counted the same way. An earlier version marked the owner's
-	 * instructions with a dashed outline to say they sat outside the budget;
-	 * with no budget to sit outside, that distinction became a difference in the
-	 * UI standing for nothing.
-	 *
-	 * @param list<array{key: string, text: string}> $segments Rendered segments.
-	 *
-	 * @return list<array{key: string, label: string, tokens: int}>
-	 * @since 1.4.0
-	 */
-	private static function costs( array $segments ): array {
-		$chips = [];
-
-		foreach ( $segments as $segment ) {
-			$chips[] = [
-				'key'    => $segment['key'],
-				'label'  => self::label( $segment['key'] ),
-				'tokens' => TokenEstimator::estimate( $segment['text'] ),
-			];
-		}
-
-		return $chips;
-	}
-
-	/**
 	 * The human label for a payload part.
 	 *
-	 * These names appear in three places that must agree: the cost chip here, the
-	 * card heading in the React screen, and the heading the renderer writes into
-	 * the payload itself. Changing one alone produces a screen that calls the same
-	 * thing two names, which it did until "Your instructions" and "Site
-	 * instructions" were reconciled.
+	 * These names appear in two places that must agree: the card heading in the
+	 * React screen, and the heading the renderer writes into the payload itself.
+	 * Changing one alone produces a screen that calls the same thing two names,
+	 * which it did until "Your instructions" and "Site instructions" were
+	 * reconciled.
 	 *
 	 * @param string $key Section key.
 	 *

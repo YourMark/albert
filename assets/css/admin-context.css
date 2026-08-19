@@ -60,63 +60,6 @@
 }
 
 /* ==========================================================================
-   Budget card
-   ========================================================================== */
-
-/*
- * An <h2>, so the browser default margin and size have to go. The element
- * changed from a span to put this card on the heading outline; the look did not.
- */
-.albert-context__budget-title {
-	margin: 0;
-	padding: 0;
-	display: inline-flex;
-	align-items: center;
-	font-size: var(--albert-font-size-card-title);
-	font-weight: var(--albert-font-weight-semibold);
-	color: var(--albert-color-text);
-}
-
-/* One chip per contributing part of the payload, so the parts account for the
-   whole and nothing is spent off-screen. */
-.albert-context__chips {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--albert-space-200);
-	margin: var(--albert-space-400) 0 0;
-	padding: 0;
-	list-style: none;
-}
-
-.albert-context__chip-count {
-	margin-inline-start: var(--albert-space-200);
-	font-family: var(--albert-font-family-mono);
-	font-size: var(--albert-font-size-mono-sm);
-	color: var(--albert-color-text);
-}
-
-/* The card head: what this is, and what it costs. */
-.albert-context__budget-head {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: var(--albert-space-300);
-}
-
-.albert-context__budget-total {
-	font-family: var(--albert-font-family-mono);
-	font-size: var(--albert-font-size-mono-sm);
-	color: var(--albert-color-text);
-}
-
-.albert-context__budget-note {
-	margin: var(--albert-space-200) 0 0;
-	font-size: var(--albert-font-size-sm);
-	line-height: var(--albert-line-height-snug);
-	color: var(--albert-color-text-muted);
-}
-
-/* ==========================================================================
    Instructions card
    ========================================================================== */
 
@@ -205,24 +148,9 @@
 	color: var(--albert-color-text-muted);
 }
 
-.albert-context__field-count {
-	flex-shrink: 0;
-	font-family: var(--albert-font-family-mono);
-	font-size: var(--albert-font-size-mono-sm);
-	color: var(--albert-color-text-faint);
-}
-
 /* ==========================================================================
    Sections card
    ========================================================================== */
-
-.albert-context__row-cost {
-	margin-inline-start: var(--albert-space-200);
-	font-family: var(--albert-font-family-mono);
-	font-size: var(--albert-font-size-mono-sm);
-	font-weight: var(--albert-font-weight-normal);
-	color: var(--albert-color-text-faint);
-}
 
 .albert-context__design-peek {
 	display: flex;
