@@ -96,8 +96,6 @@ albert-ai-butler/
 │   │   ├── PayloadRenderer.php         # Renders it to the wire text (the format)
 │   │   ├── Payload.php                 # The two discovery fields + the screen preview
 │   │   ├── SkillIndex.php              # Conditional one-line-per-skill index
-│   │   ├── TokenEstimator.php          # Script-aware token estimate
-│   │   ├── Prefill.php                 # First-visit instructions draft
 │   │   ├── Symbols.php                 # Third-party plugin detection by symbol
 │   │   └── Readers/                    # Environment, DesignTokens, ContentModel, Commerce
 │   │
@@ -342,9 +340,15 @@ site-supplied text informs tone and subject matter and never changes which tools
 the assistant may call, what it may do, or what credentials it holds. It lives
 outside the filterable array, so no filter can remove it.
 
-The token budget (600) is measured, not guessed, see
-`docs/context-token-budget.md`, which also records why characters ÷ 4 was
-replaced with a script-aware estimate.
+No token cost is shown to the site owner. It was built once, script-aware
+rather than characters divided by four, calibrated against `o200k_base` with
+a stated error band, and removed after it did not survive scrutiny: different
+assistants tokenise differently, so any number could only ever carry a wide,
+provider-specific error band, and it did not change what an owner should do,
+the section descriptions already say what each one includes. Measured, on a
+real site, the whole context block is a small fraction of the discovery
+response regardless, so there was never a ceiling worth showing either.
+
 
 #### Skills registry (`albert/skills/registry`)
 
