@@ -207,25 +207,27 @@ class SiteContextTest extends TestCase {
 	}
 
 	/**
-	 * A theme's own full palette cannot push a custom colour off the end.
+	 * A theme's own full palette does not push a custom colour out.
 	 *
 	 * Reported directly by the site owner: they added a colour of their own in
-	 * the Styles editor and it never reached the payload. The theme here
-	 * declares exactly {@see \Albert\Context\Readers\DesignTokens::MAX_COLOURS}
-	 * colours of its own, filling the cap before the custom entry is even
-	 * considered if entries are kept in merge order. The custom colour, the one
-	 * thing on this screen a person chose rather than a theme author, has to
-	 * survive regardless of where the theme's own palette happens to end.
+	 * the Styles editor and it never reached the payload. The palette used to
+	 * be capped at eight entries, filled front-to-back in merge order, theme
+	 * first and custom last, so any theme declaring eight or more colours of
+	 * its own filled the cap before the custom entry was even considered. The
+	 * cap is gone, every declared colour is sent uncapped, a palette entry
+	 * costs a handful of tokens, so a large theme palette is not worth
+	 * dropping anything for, least of all the one colour a person chose
+	 * themselves.
 	 *
 	 * @return void
 	 */
-	public function test_a_custom_colour_survives_a_theme_that_fills_the_cap(): void {
+	public function test_a_large_theme_palette_does_not_push_a_custom_colour_out(): void {
 		$theme = array_map(
 			static fn( int $i ): array => [
 				'slug'  => "theme-{$i}",
 				'color' => sprintf( '#%06x', $i ),
 			],
-			range( 1, 8 )
+			range( 1, 12 )
 		);
 
 		$this->declare_tokens(
@@ -245,7 +247,7 @@ class SiteContextTest extends TestCase {
 		$slugs   = array_column( $palette, 'slug' );
 
 		$this->assertContains( 'custom-marks-kleur', $slugs );
-		$this->assertCount( 8, $palette, 'The cap still holds; the custom entry is kept, not added on top of it.' );
+		$this->assertCount( 13, $palette, 'Nothing is dropped; every declared colour, theme and custom, is sent.' );
 	}
 
 	/**
