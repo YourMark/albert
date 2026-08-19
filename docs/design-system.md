@@ -191,8 +191,15 @@ outside-click, focus-on-mount and collision detection, and `popoverProps.inline`
 keeps the popover inside the Abilities fly-in's focus trap.
 
 `.albert-tip` is the CSS-anchored equivalent for server-rendered screens, which
-have no `Dropdown` to reach for. It is the weaker control by design: placement is
-fixed, and `admin-popover.js` only opens, closes and returns focus.
+have no `Dropdown` to reach for. `admin-popover.js` only opens, closes and
+returns focus; placement is native CSS anchor positioning (`anchor-name`,
+`position-anchor`, `anchor()`, `position-try-fallbacks`) where a browser
+supports it, Chrome/Edge/Opera 125+, Safari 26+, Firefox 147+, ~84% global —
+which gets the same viewport-edge flip `.albert-info` gets from floating-ui, a
+tip opened near the bottom of the screen moves above the trigger instead of
+rendering clipped. Browsers without support fall back to a fixed offset below
+the trigger with no flip, `@supports` gates the enhancement, nothing above the
+fallback is required for the control to work.
 
 The split is by rendering context, never by screen. Picking the CSS one for a
 React screen is how the Context screen ended up with a second, worse

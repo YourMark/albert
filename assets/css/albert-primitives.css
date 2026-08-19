@@ -562,6 +562,23 @@
  * Abilities fly-in has used for its own control since 1.3. Two definitions of
  * one class name in two stylesheets that load together is a collision waiting
  * for whichever loads last.
+ *
+ * The popover's placement is native CSS anchor positioning where a browser
+ * supports it (Chrome/Edge/Opera 125+, Safari 26+, Firefox 147+, ~84% global
+ * as of writing), behind `@supports` below. It replaces a fixed
+ * `calc(trigger-size + gap)` offset with the browser's own measurement of the
+ * trigger, and it can flip above the trigger when there is no room below,
+ * `position-try-fallbacks`, which the fixed-offset fallback cannot do: a tip
+ * opened near the bottom of the viewport there stays clipped rather than
+ * unreachable, matching the collision handling `.albert-info` already gets
+ * for free from floating-ui. Browsers without support keep the fixed offset
+ * exactly as before; nothing is lost, only gained where it lands.
+ *
+ * `anchor-name` needs a value unique per instance, one page can carry more
+ * than one tip. `--albert-tip-anchor` is set inline per instance (see
+ * `Connections.php`), a plain custom property, not itself the anchor-name, so
+ * `anchor-name`/`position-anchor` reference it with `var()` rather than
+ * repeating the generated ident in two places.
  */
 /**
  * One value for the trigger's size, consumed by both the icon and the
@@ -577,6 +594,7 @@
 }
 
 .albert-tip__trigger {
+	anchor-name: var(--albert-tip-anchor, none);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -630,6 +648,43 @@
 	white-space: normal;
 	border-radius: var(--albert-radius-md);
 	box-shadow: var(--albert-shadow-md);
+}
+
+/**
+ * Anchor positioning, layered over the fixed-offset rule above rather than
+ * replacing it: a browser without support for the feature tested in
+ * `@supports` ignores this block entirely and keeps the fallback, which is
+ * why every property the fallback set also needs overriding here rather than
+ * only adding the anchor-specific ones.
+ *
+ * `position: fixed`, not `absolute`. Anchor positioning works with either,
+ * fixed is the one that cannot be clipped by an ancestor's own `overflow`,
+ * the fixed-offset fallback above has no such protection because it is
+ * positioned against its containing block rather than measured against the
+ * trigger directly.
+ *
+ * `inset-*: anchor(...)` rather than `position-area`, deliberately: the
+ * 9-tile grid `position-area` describes is a region around the anchor, not an
+ * edge alignment, `block-end inline-start` places the popover in the tile to
+ * the trigger's start side, not flush against it, confirmed by measuring the
+ * rendered result rather than assumed. `anchor(bottom)`/`anchor(start)`
+ * reproduce the fallback's own placement exactly, below the trigger and flush
+ * with its start edge, so supporting and non-supporting browsers render the
+ * same layout under normal conditions, and the browser's own measurement of
+ * the trigger replaces the fallback's fixed `trigger-size` assumption.
+ * `position-try-fallbacks: flip-block` is the part the fallback cannot do at
+ * all: when the tip is opened with too little room below, the browser tries
+ * the trigger's top edge instead, placing the popover above it, rather than
+ * rendering it clipped or scrolled out of reach.
+ */
+@supports (anchor-name: --albert-tip-probe) {
+	.albert-tip__popover {
+		position: fixed;
+		position-anchor: var(--albert-tip-anchor, none);
+		position-try-fallbacks: flip-block;
+		inset-block-start: calc(anchor(bottom) + var(--albert-space-200));
+		inset-inline-start: anchor(start);
+	}
 }
 
 /* ==========================================================================
