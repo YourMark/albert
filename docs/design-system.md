@@ -170,14 +170,12 @@ controls bring their own ring.
 
 | Primitive | Class root | Notes |
 |---|---|---|
-| Page shell | `.albert-page` | Header (title, description, optional actions) then body. Card screens cap at 1280px; add `--wide` for table screens. |
+| Page shell | `.albert-page` | Header (title, description, optional actions) then body. Caps at 1280px; a table-shaped screen wanting the full width simply doesn't use this wrapper. |
 | Card | `.albert-card` | Optional `__header`; `__body--flush` when the body is a row list that manages its own dividers. |
-| Toggle row | `.albert-toggle-row` | Label, description, optional mono `__peek`. Switched-off state uses `inert`, never `pointer-events: none`. |
+| Toggle row | `.albert-toggle-row` | Label, description, optional mono `__peek`. A switched-off state disables each control individually, never `inert` on the row, that removes readable text from the accessibility tree along with the controls. |
 | Badge | `.albert-badge` | One definition, replacing the two shapes shipped before. Tones: neutral, info, success, warning, danger, outline. |
 | Inline hint | `.albert-hint` | Scoped to what it explains. Never a full-width banner; that is what WordPress notices are for. Tone is a surface tint and a hairline, never a thick coloured edge: see below. |
 | Save state | `.albert-savestate` | Put it inside `aria-live="polite"`. Replaces a submit button on instant-save screens. |
-| Table | `.albert-table` | Wrap wide tables in `.albert-table-scroll` so they scroll inside their container, never the page. |
-| Meter | `.albert-meter` | Warns, never blocks. The written-out value is the accessible source of truth; the bar echoes it. |
 | Payload preview | `.albert-preview` | Mono, `pre-wrap`, capped height. Deliberately has no region highlight: see below. |
 | Swatch | `.albert-swatch` | Give it a `title` with the value it shows. |
 | Info control | `.albert-info` | The "(i)" for a term on the line of common knowledge. React screens use `shared/InfoPopover.jsx`; server-rendered screens use `.albert-tip`. The sentence must read correctly without opening it. |

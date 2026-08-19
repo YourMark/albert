@@ -63,25 +63,6 @@
    Instructions card
    ========================================================================== */
 
-/* "We drafted this for you", first visit only. */
-.albert-context__prefill {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: var(--albert-space-400);
-	padding: var(--albert-space-300) 18px;
-	background: var(--albert-color-accent-surface);
-	border-block-end: 1px solid var(--albert-color-border-subtle);
-}
-
-.albert-context__prefill p {
-	margin: 0;
-	font-size: var(--albert-font-size-sm);
-	line-height: var(--albert-line-height-snug);
-	color: var(--albert-color-text);
-}
-
-.albert-context__prefill-dismiss,
 .albert-link-button {
 	flex-shrink: 0;
 	padding: 0;
@@ -93,7 +74,6 @@
 	cursor: pointer;
 }
 
-.albert-context__prefill-dismiss:focus-visible,
 .albert-link-button:focus-visible {
 	outline: var(--albert-focus-width) solid var(--albert-focus-color);
 	outline-offset: var(--albert-focus-offset);

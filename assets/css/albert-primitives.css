@@ -28,15 +28,12 @@
    ========================================================================== */
 
 /**
- * Card screens cap their measure; table screens (Abilities, Activity Log) run
- * full width because a table's usefulness scales with the room it gets.
+ * Card screens cap their measure so prose and card content stay readable.
+ * The Abilities screen, table-shaped and wanting the full width a table
+ * benefits from, doesn't use this wrapper at all rather than opting out of it.
  */
 .albert-page {
 	max-width: 1280px;
-}
-
-.albert-page--wide {
-	max-width: none;
 }
 
 .albert-page__header {
@@ -182,18 +179,6 @@
 	color: var(--albert-color-text-faint);
 }
 
-/**
- * Switched-off state uses `inert` (set on the element, styled here), never
- * `pointer-events: none` — that leaves the subtree keyboard reachable and
- * announces controls a user cannot operate. Text stays at full contrast: a
- * dimmed label is harder to read for everyone and communicates nothing that
- * the control state does not already say.
- */
-.albert-toggle-row[inert] .albert-toggle-row__description,
-.albert-toggle-row[inert] .albert-toggle-row__peek {
-	color: var(--albert-color-text-faint);
-}
-
 /* ==========================================================================
    Badge / pill
    ========================================================================== */
@@ -242,14 +227,6 @@
 	color: var(--albert-color-text-muted);
 }
 
-/* Operation badges carry a dot so the tone is not the only signal. */
-.albert-badge__dot {
-	inline-size: 6px;
-	block-size: 6px;
-	border-radius: 50%;
-	background: currentcolor;
-}
-
 /* ==========================================================================
    Inline hint
    ========================================================================== */
@@ -289,12 +266,6 @@
 	color: var(--albert-color-text);
 }
 
-.albert-hint--warning {
-	border-color: var(--albert-color-warning-tint-20);
-	background: var(--albert-color-warning-surface);
-	color: var(--albert-color-text);
-}
-
 /* ==========================================================================
    Save state
    ========================================================================== */
@@ -324,105 +295,6 @@
 
 .albert-savestate--error .albert-savestate__dot {
 	background: var(--albert-color-danger);
-}
-
-/* ==========================================================================
-   Data table
-   ========================================================================== */
-
-.albert-table {
-	inline-size: 100%;
-	border-collapse: collapse;
-}
-
-.albert-table th {
-	padding: var(--albert-space-300);
-	background: var(--albert-color-surface-sunken);
-	border-block-end: 1px solid var(--albert-color-border);
-	font-size: var(--albert-font-size-micro);
-	font-weight: var(--albert-font-weight-semibold);
-	letter-spacing: var(--albert-letter-spacing-micro);
-	text-transform: uppercase;
-	color: var(--albert-color-text-faint);
-	text-align: start;
-}
-
-.albert-table td {
-	padding: 14px var(--albert-space-300);
-	border-block-end: 1px solid var(--albert-color-border-subtle);
-	font-size: var(--albert-font-size-body);
-	color: var(--albert-color-text);
-}
-
-.albert-table th:first-child,
-.albert-table td:first-child {
-	padding-inline-start: 18px;
-}
-
-.albert-table th:last-child,
-.albert-table td:last-child {
-	padding-inline-end: 18px;
-}
-
-.albert-table tr:last-child td {
-	border-block-end: none;
-}
-
-/* Wide tables scroll inside their own container, never the page. */
-.albert-table-scroll {
-	overflow-x: auto;
-}
-
-/* ==========================================================================
-   Meter
-   ========================================================================== */
-
-/**
- * Warns, never blocks. The written-out value in the label is the accessible
- * source of truth; the bar is a visual echo of it, so the track carries
- * role="img" with an aria-label repeating the same numbers.
- */
-.albert-meter__label {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: var(--albert-space-300);
-	margin-block-end: var(--albert-space-200);
-	font-size: var(--albert-font-size-sm);
-	color: var(--albert-color-text-muted);
-}
-
-.albert-meter__track {
-	block-size: 8px;
-	border-radius: var(--albert-radius-pill);
-	background: var(--albert-color-surface-sunken);
-	border: 1px solid var(--albert-color-border-input);
-	overflow: hidden;
-}
-
-.albert-meter__fill {
-	block-size: 100%;
-	background: var(--albert-color-accent);
-}
-
-.albert-meter--over .albert-meter__fill {
-	background: var(--albert-color-warning);
-}
-
-.albert-meter--exceeded .albert-meter__fill {
-	background: var(--albert-color-danger);
-}
-
-.albert-meter__note {
-	margin: var(--albert-space-200) 0 0;
-	font-size: var(--albert-font-size-sm);
-	color: var(--albert-color-text-muted);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-	.albert-meter__fill {
-		transition: inline-size var(--albert-duration-fast) var(--albert-easing-fast);
-	}
 }
 
 /* ==========================================================================

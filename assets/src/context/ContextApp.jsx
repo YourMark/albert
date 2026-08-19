@@ -179,8 +179,17 @@ export default function ContextApp() {
 				</div>
 			</div>
 
+			{ /*
+			 * `.albert-context__off-notice`, the same class the notice below it
+			 * uses, not `.albert-context__managed`. That class carries a
+			 * horizontal margin to line up with a card's own header/body
+			 * padding, correct where the other two managed hints sit (inside a
+			 * card, InstructionsCard and SectionsCard), wrong here, where this
+			 * hint is a page-level sibling of the notice below it and needs to
+			 * align edge to edge with it instead.
+			 */ }
 			{ state.managed.enabled && (
-				<p className="albert-hint albert-hint--info albert-context__managed">
+				<p className="albert-hint albert-hint--info albert-context__off-notice">
 					{ __(
 						'Whether context is sent is set in code on this site, so it cannot be changed here.',
 						'albert-ai-butler'
