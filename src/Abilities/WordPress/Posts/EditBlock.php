@@ -40,7 +40,14 @@ class EditBlock extends AbstractEditBlock {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::update(),
+			'annotations' => Annotations::update(
+				'Address the block by `path`, the position array from a fresh `albert/view-post` read '
+				. 'with `"format": ["blocks"]`, not by id. Pass `expect` set to the block name you read at '
+				. 'that path, so a post that changed under you is rejected rather than overwritten. Send '
+				. 'only the one block, never the whole body. Every op returns the refreshed tree; paths '
+				. 'shift after an insert or a delete, so take your next path from that response and not '
+				. 'from an earlier read.'
+			),
 		];
 
 		parent::__construct();

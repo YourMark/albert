@@ -41,7 +41,11 @@ class FindTerms extends BaseAbility {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::read(),
+			'annotations' => Annotations::read(
+				'Terms are per-taxonomy, so pass the `taxonomy` you mean. `category` and `post_tag` are '
+				. 'the built-in ones, and this site may have others. Use `albert/find-taxonomies` first '
+				. 'when you are not sure which exist here.'
+			),
 		];
 
 		parent::__construct();

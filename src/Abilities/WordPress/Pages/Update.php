@@ -42,7 +42,14 @@ class Update extends BaseAbility {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::update(),
+			'annotations' => Annotations::update(
+				'This replaces the whole page body. Read the page first with `albert/view-page` and '
+				. '`"format": ["blocks"]`, edit that tree, and send it back, writing without reading '
+				. 'silently discards everything you did not include. Keep every existing image block\'s `id` '
+				. 'and `url` exactly as they were unless you were asked to change the image. To change one '
+				. 'block, use `albert/edit-page-block` instead: it is cheaper and leaves every other block '
+				. 'byte-for-byte intact.'
+			),
 		];
 
 		parent::__construct();

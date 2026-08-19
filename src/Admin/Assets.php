@@ -100,6 +100,41 @@ class Assets implements Hookable {
 	}
 
 	/**
+	 * The cache-busting version for one of Albert's own stylesheets.
+	 *
+	 * `ALBERT_VERSION` alone is wrong during development, and wrong in a way that
+	 * wastes time rather than breaking anything. Version bumps happen only in
+	 * release branches, so every CSS edit on `development` ships under the
+	 * version already sitting in the browser cache. The stylesheet does not
+	 * reload, the screen looks unchanged, and the natural conclusion is that the
+	 * change did not work. That misdiagnosis cost an hour during the 1.4.0
+	 * context build, chasing a positioning bug that was a stale cached file.
+	 *
+	 * So: the file's own modification time when it can be read, falling back to
+	 * the plugin version. On a release that is stable per deploy, which is all a
+	 * cache needs, and it additionally covers a patch that changes a stylesheet
+	 * without touching the version constant.
+	 *
+	 * @param string $relative_path Path below the plugin directory, e.g. `assets/css/albert-tokens.css`.
+	 *
+	 * @return string A version string safe to hand to `wp_enqueue_style()`.
+	 * @since 1.4.0
+	 */
+	public static function version( string $relative_path ): string {
+		$file = ALBERT_PLUGIN_DIR . ltrim( $relative_path, '/' );
+
+		if ( is_readable( $file ) ) {
+			$modified = filemtime( $file );
+
+			if ( $modified !== false ) {
+				return (string) $modified;
+			}
+		}
+
+		return (string) ALBERT_VERSION;
+	}
+
+	/**
 	 * Register the design-token stylesheet.
 	 *
 	 * @return void
@@ -110,14 +145,14 @@ class Assets implements Hookable {
 			self::TOKENS_HANDLE,
 			ALBERT_PLUGIN_URL . 'assets/css/albert-tokens.css',
 			[],
-			ALBERT_VERSION
+			self::version( 'assets/css/albert-tokens.css' )
 		);
 
 		wp_register_style(
 			self::PRIMITIVES_HANDLE,
 			ALBERT_PLUGIN_URL . 'assets/css/albert-primitives.css',
 			[ self::TOKENS_HANDLE ],
-			ALBERT_VERSION
+			self::version( 'assets/css/albert-primitives.css' )
 		);
 	}
 }

@@ -124,7 +124,7 @@ class Dashboard implements Hookable {
 			'albert-admin',
 			ALBERT_PLUGIN_URL . 'assets/css/admin-settings.css',
 			[ Assets::PRIMITIVES_HANDLE ],
-			ALBERT_VERSION
+			Assets::version( 'assets/css/admin-settings.css' )
 		);
 
 		wp_enqueue_script(

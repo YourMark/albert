@@ -12,7 +12,6 @@
  */
 import {
 	Button,
-	Dropdown,
 	Icon,
 	Modal,
 	ToggleControl,
@@ -32,51 +31,10 @@ import {
 import { applyFilters } from '@wordpress/hooks';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { chevronRight, close } from '@wordpress/icons';
+import InfoPopover from '../shared/InfoPopover';
 import { OPERATION_LABELS } from './constants';
 import { Badges } from './fields';
 import AdvancedPermissionsUpsell from './AdvancedPermissionsUpsell';
-
-/**
- * An info "(i)" button that opens a small explanatory popover.
- *
- * Rendered inline (popoverProps.inline) so it lives inside the fly-in's focus
- * trap; Dropdown handles open state, Escape, outside-click, and focus.
- *
- * @param {Object}  props          Props.
- * @param {string}  props.label    Accessible button label.
- * @param {Element} props.children Popover content.
- * @return {Element} The info control.
- */
-function InfoPopover( { label, children } ) {
-	return (
-		<Dropdown
-			className="albert-info"
-			focusOnMount={ true }
-			popoverProps={ {
-				placement: 'bottom',
-				inline: true,
-				offset: 10,
-				className: 'albert-info__popover',
-			} }
-			renderToggle={ ( { isOpen, onToggle } ) => (
-				<Button
-					size="small"
-					label={ label }
-					onClick={ onToggle }
-					aria-expanded={ isOpen }
-				>
-					<span
-						className="dashicons dashicons-info-outline"
-						aria-hidden="true"
-					/>
-				</Button>
-			) }
-			renderContent={ () => (
-				<div className="albert-info__content">{ children }</div>
-			) }
-		/>
-	);
-}
 
 /**
  * Invokes one add-on section's render factory.
@@ -305,6 +263,7 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 					{ __( 'Required capability', 'albert-ai-butler' ) }
 				</span>
 				<InfoPopover
+					inline
 					label={ __(
 						'About required capability',
 						'albert-ai-butler'
@@ -361,6 +320,7 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 			title={ __( 'Permissions', 'albert-ai-butler' ) }
 			info={
 				<InfoPopover
+					inline
 					label={ __( 'About permissions', 'albert-ai-butler' ) }
 				>
 					<p>

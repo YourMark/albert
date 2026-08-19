@@ -41,7 +41,11 @@ class SetFeaturedImage extends BaseAbility {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::update(),
+			'annotations' => Annotations::update(
+				'Takes an attachment id from `albert/find-media` or `albert/upload-media`, not a URL. The '
+				. 'featured image is separate from anything in the post body, setting it does not put the '
+				. 'image in the content, and adding an image block does not set it.'
+			),
 		];
 
 		parent::__construct();

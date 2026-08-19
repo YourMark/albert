@@ -63,7 +63,13 @@ class ListBlockTypes extends BaseAbility {
 
 		$this->meta = [
 			'mcp'         => [ 'public' => true ],
-			'annotations' => Annotations::read(),
+			'annotations' => Annotations::read(
+				'Pass the `post_type` you are about to write to. Sites can allow different blocks per '
+				. 'post type, so the site-wide list is a superset and composing from it can still fail '
+				. 'validation. What comes back already reflects your permissions, treat it as the complete '
+				. 'set of names you may use, and use `core/html` when you genuinely need markup no block '
+				. 'covers.'
+			),
 		];
 
 		parent::__construct();

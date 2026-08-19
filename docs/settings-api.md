@@ -74,6 +74,25 @@ Missing a required key — or registering a `select` without `options` — logs 
 The checkbox renders a paired hidden input so unchecked submissions still
 post a `0`. Without it WordPress would never know the user unchecked the box.
 
+## Styling (1.4.0+)
+
+Anything rendered through this API inherits Albert's design system — you do not
+style it yourself, and you should not need to. Fields, sections and the page
+shell are drawn with the shared primitives, so a setting registered by an add-on
+looks identical to a core one and follows the admin colour scheme.
+
+If an add-on renders its own screen under the Albert menu, declare the shared
+stylesheet as a dependency rather than restating any value:
+
+```php
+wp_enqueue_style( 'my-screen', $url, [ 'albert-primitives' ], $version );
+```
+
+Use the literal handle, not `Albert\Admin\Assets::PRIMITIVES_HANDLE`, so an
+older Albert without that class cannot fatal your plugin. Every token and
+primitive is listed in `docs/design-system.md`; the add-on contract, including
+menu ordering, is in `.claude/CLAUDE.md`.
+
 ## MCP external URL filter
 
 The MCP endpoint URL is rendered on the **Connections** screen. There is no

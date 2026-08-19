@@ -160,6 +160,12 @@ add_filter(
   operation, enabled, capability, capabilityRoles, lastUsed, badges, inputs, output, annotations }`.
   Free always sets `badges` to `[]`.
 - **Badge shape** — `{ id, label, tone, title? }`; `tone` maps to the `albert-badge--{tone}` pill.
+  Since 1.4.0 that pill is the shared `.albert-badge` primitive in
+  `assets/css/albert-primitives.css` — there is one definition, not one per screen. Its size,
+  radius and tone colours come from the design tokens, so a badge looks the same wherever it
+  appears and follows the admin colour scheme. Do not restyle `.albert-badge` from an add-on
+  stylesheet: add-on sheets load after the primitives, so any property you redeclare silently
+  takes ownership from the primitive and the two drift apart. Add a modifier class instead.
 - **Social contract** — add-ons may **append** keys to `$row` (and entries to `badges`) but must
   **not** remove or overwrite Core keys.
 

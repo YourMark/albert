@@ -40,6 +40,7 @@ use Albert\Abilities\WordPress\Media\SetFeaturedImage;
 use Albert\Abilities\WordPress\Media\UploadMedia;
 use Albert\Abilities\WordPress\Blocks\GetBlockType;
 use Albert\Abilities\WordPress\Blocks\ListBlockTypes;
+use Albert\Abilities\WordPress\Skills\GetSkill;
 use Albert\Abilities\WordPress\Taxonomies\FindTaxonomies;
 use Albert\Abilities\WordPress\Taxonomies\FindTerms;
 use Albert\Abilities\WordPress\Taxonomies\ViewTerm;
@@ -55,6 +56,7 @@ use Albert\Abilities\WooCommerce\ViewProduct;
 use Albert\Admin\AbilitiesPage;
 use Albert\Admin\Assets;
 use Albert\Admin\Connections;
+use Albert\Admin\ContextPage;
 use Albert\Admin\Menu;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
@@ -66,6 +68,7 @@ use Albert\OAuth\Endpoints\AuthorizationPage;
 use Albert\OAuth\Endpoints\ClientRegistration;
 use Albert\OAuth\Endpoints\OAuthController;
 use Albert\Admin\Rest\AbilitiesController;
+use Albert\Admin\Rest\ContextController;
 use Albert\OAuth\Endpoints\OAuthDiscovery;
 use Albert\Vendor\WP\MCP\Core\McpAdapter;
 
@@ -186,6 +189,9 @@ class Plugin {
 			// Unified abilities page (toggle abilities on/off).
 			( new AbilitiesPage() )->register_hooks();
 
+			// Context page (what connected assistants are told about this site).
+			( new ContextPage() )->register_hooks();
+
 			// Connections page (allowed users + active sessions).
 			( new Connections() )->register_hooks();
 
@@ -198,6 +204,9 @@ class Plugin {
 
 		// Register the abilities REST controller (data + toggles for the admin screen).
 		( new AbilitiesController() )->register_hooks();
+
+		// Register the context REST controller (data + instant save for the Context screen).
+		( new ContextController() )->register_hooks();
 
 		// Register OAuth controller (REST API endpoints for token exchange).
 		( new OAuthController() )->register_hooks();
@@ -292,6 +301,9 @@ class Plugin {
 		// Block abilities (block type discovery).
 		$this->abilities_manager->add_ability( new ListBlockTypes() );
 		$this->abilities_manager->add_ability( new GetBlockType() );
+
+		// Returns the full text of one task guide, by slug.
+		$this->abilities_manager->add_ability( new GetSkill() );
 
 		// WooCommerce abilities (only when WooCommerce is active).
 		if ( class_exists( 'WooCommerce' ) ) {

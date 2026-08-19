@@ -41,7 +41,11 @@ class Delete extends BaseAbility {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::delete(),
+			'annotations' => Annotations::delete(
+				'This is not reversible through Albert. Confirm which post you have, with `albert/view-post` '
+				. 'on the id, before calling it, because an id from a stale list may now be a different '
+				. 'post.'
+			),
 		];
 
 		parent::__construct();

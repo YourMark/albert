@@ -1,0 +1,250 @@
+/**
+ * Albert → Context screen.
+ *
+ * Everything shared lives in albert-primitives.css, the page shell, the cards,
+ * the toggle rows, the switch, the meter, the payload preview, the swatches, the
+ * badges, the save state and the info toggle. This file only holds what is
+ * genuinely particular to this screen: the master switch in the header, the cost
+ * chips, the first-visit bar, the instructions field, and the collapsible
+ * preview header.
+ *
+ * Consumes tokens only. No raw colour, no raw size.
+ *
+ * @package Albert
+ * @since 1.4.0
+ */
+
+/* ==========================================================================
+   Page
+   ========================================================================== */
+
+/**
+ * Narrower than the 1280px card default. This screen is one column of prose and
+ * one of controls; a full-width payload preview would put a hundred characters
+ * on a line, and the design caps it at 1000px for the same reason.
+ */
+.albert-context.albert-page {
+	max-inline-size: 1000px;
+}
+
+/* The master switch and the save state, on the header's right. */
+.albert-context__master {
+	display: flex;
+	align-items: center;
+	gap: var(--albert-space-300);
+}
+
+.albert-context__master-label {
+	font-size: var(--albert-font-size-body);
+	font-weight: var(--albert-font-weight-semibold);
+	color: var(--albert-color-text);
+}
+
+/**
+ * The switched-off notice. The body below drops to sunken surfaces and its
+ * controls stop accepting input; this says what the state means, at full
+ * contrast. It carries `role="status"` so the change is announced rather than
+ * only seen, since flipping the master switch also empties the preview.
+ */
+.albert-context__off-notice {
+	margin-block-end: var(--albert-space-400);
+}
+
+/**
+ * The off state. Card surfaces drop to the sunken colour so the page reads as
+ * inactive without dimming a single character of text, an earlier draft used
+ * opacity on the whole body and pushed body text to 1.99:1, failing SC 1.4.3.
+ */
+.albert-page__body.is-off .albert-card {
+	background: var(--albert-color-surface-sunken);
+}
+
+/* ==========================================================================
+   Instructions card
+   ========================================================================== */
+
+.albert-link-button {
+	flex-shrink: 0;
+	padding: 0;
+	background: none;
+	border: none;
+	color: var(--albert-color-link);
+	font-size: var(--albert-font-size-sm);
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.albert-link-button:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+/* A filter owns this value; the control is read-only and says so. */
+.albert-context__managed {
+	margin: 0 18px var(--albert-space-300);
+}
+
+.albert-context__textarea {
+	inline-size: 100%;
+	padding: var(--albert-space-300);
+	font-size: var(--albert-font-size-body);
+	line-height: var(--albert-line-height-body);
+	color: var(--albert-color-text);
+	background: var(--albert-color-surface);
+	border: 1px solid var(--albert-color-border-input);
+	border-radius: var(--albert-radius-md);
+	resize: vertical;
+}
+
+.albert-context__textarea:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+.albert-context__textarea[readonly] {
+	background: var(--albert-color-surface-sunken);
+}
+
+/*
+ * The placeholder holds the only worked example of what to write here, so it is
+ * not left to the user agent. Chrome's default computes to 4.61:1 and other
+ * engines render it lighter; this token measures 5.53:1 on the surface.
+ */
+.albert-context__textarea::placeholder {
+	color: var(--albert-color-text-muted);
+	opacity: 1;
+}
+
+.albert-context__field-foot {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--albert-space-400);
+	margin-block-start: var(--albert-space-200);
+}
+
+.albert-context__field-help {
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
+}
+
+/* ==========================================================================
+   Sections card
+   ========================================================================== */
+
+.albert-context__design-peek {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--albert-space-300);
+	margin-block-start: var(--albert-space-200);
+}
+
+.albert-context__swatches,
+.albert-context__fonts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--albert-space-100);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.albert-context__fonts {
+	gap: var(--albert-space-200);
+}
+
+.albert-card__footnote {
+	margin: 0;
+	padding: var(--albert-space-300) 18px var(--albert-space-400);
+	font-size: var(--albert-font-size-sm);
+	line-height: var(--albert-line-height-snug);
+	color: var(--albert-color-text-muted);
+}
+
+/* ==========================================================================
+   Payload preview
+   ========================================================================== */
+
+.albert-context__preview-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--albert-space-400);
+}
+
+/* Wraps the disclosure button only, so it carries none of its own box. */
+.albert-context__preview-heading {
+	margin: 0;
+	padding: 0;
+	font-size: inherit;
+	font-weight: inherit;
+	line-height: inherit;
+}
+
+.albert-context__preview-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--albert-space-200);
+	padding: 0;
+	background: none;
+	border: none;
+	cursor: pointer;
+	text-align: start;
+}
+
+.albert-context__preview-toggle:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+/* A chevron drawn in CSS rather than shipped as an icon: it is two borders. */
+.albert-context__chevron {
+	inline-size: 8px;
+	block-size: 8px;
+	border-inline-end: 2px solid var(--albert-color-text-muted);
+	border-block-end: 2px solid var(--albert-color-text-muted);
+	transform: rotate(-45deg);
+}
+
+.albert-context__chevron.is-open {
+	transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.albert-context__chevron {
+		transition: transform var(--albert-duration-fast) var(--albert-easing-fast);
+	}
+}
+
+/* ==========================================================================
+   Closing note
+   ========================================================================== */
+
+/**
+ * The warning tone, not the accent. An accent-bordered panel on an AI product
+ * reads as the assistant speaking; this is the site speaking about the
+ * assistant, and it is the one thing on the screen worth a second's pause.
+ *
+ * Still a note rather than an alarm: warning-tinted surface, warning rule, body
+ * text at full contrast. Nothing here has gone wrong.
+ */
+.albert-context__caution {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--albert-space-300);
+	margin: 0;
+	padding: var(--albert-space-400);
+	background: var(--albert-color-warning-surface);
+	border-block-start: 1px solid var(--albert-color-warning-tint-20);
+	border-end-start-radius: var(--albert-radius-md);
+	border-end-end-radius: var(--albert-radius-md);
+	font-size: var(--albert-font-size-sm);
+	line-height: var(--albert-line-height-body);
+	color: var(--albert-color-text);
+}
+
+.albert-context__caution .dashicons {
+	flex-shrink: 0;
+	color: var(--albert-color-warning);
+}

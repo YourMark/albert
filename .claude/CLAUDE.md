@@ -30,8 +30,19 @@ src/
   Abstracts/       # BaseAbility (all abilities extend this)
   Abilities/       # Ability implementations (WordPress/, WooCommerce/)
   Admin/           # Admin pages (abilities toggles, settings, connections)
+                   #   Assets  — registers the shared token + primitive stylesheets
+                   #   Menu    — submenu ordering constants + the page navigation
   Contracts/       # Interfaces (Ability, Hookable)
   Core/            # Plugin bootstrap, AbilitiesManager, AbilitiesRegistry
+                   #   InvocationRelay — WP 7.1 wp_ability_invoked -> albert/abilities/invoked
+  Context/         # Agent context (doc 21): what a connected assistant is told
+                   #   ContextSettings : the owner's choices, option + filters
+                   #   SiteContext     : assembles the structured array (the API)
+                   #   PayloadRenderer : renders it to the wire text (the format)
+                   #   Payload         : the two discovery fields + screen preview
+                   #   TokenEstimator  : script-aware token estimate; see docs/context-token-budget.md
+                   #   Readers/        : Environment, DesignTokens, ContentModel, Commerce
+  Support/         # WpCompat — WordPress version-capability detection (7.1 feature probes)
   MCP/             # MCP protocol server
   OAuth/           # Full OAuth 2.0 server (entities, repos, endpoints)
   Utilities/       # Standalone helpers (BlockConverter)
@@ -85,12 +96,19 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | Hook | Type | Purpose |
 |------|------|---------|
 | `albert/abilities/register` | action | Register custom abilities |
+| `albert/context/enabled` | filter | Whether Albert sends any context with the discovery response |
+| `albert/context/instructions` | filter | The site owner's context instructions, set in code to manage a fleet |
+| `albert/context/sections` | filter | Which auto-detected sections are included, keyed by section |
+| `albert/context/site` | filter | The assembled site context array, before it is rendered to the wire text. Add, drop or rewrite a section; unrecognised sections render generically. The untrusted-data framing is deliberately outside this array and cannot be filtered away |
+| `albert/context/skills` | filter | The skills index entries, after preconditions have been applied |
+| `albert/skills/registry` | filter | Register a skill: `slug`, `summary`, and either `file` or `body`, plus optional `requires` / `when` preconditions |
 | `albert/abilities/payload_row` | filter | Augment a normalized ability row before it reaches the Abilities screen (e.g. append `badges`). Fires on both the bulk build and single-row paths. See `docs/extending-the-abilities-screen.md` |
 | `albert/abilities/required_capability` | filter | Override the best-effort capability shown on the Abilities screen |
 | `albert/abilities/before_execute` | action | Before any ability runs |
 | `albert/abilities/after_execute` | action | After any ability runs |
 | `albert/abilities/before_execute/{id}` | action | Before a specific ability |
 | `albert/abilities/after_execute/{id}` | action | After a specific ability |
+| `albert/abilities/invoked` | action | Relayed from WP 7.1's `wp_ability_invoked`. Fires for EVERY invocation whatever the outcome — denied, invalid, short-circuited — and for abilities Albert does not own, which is wider than `after_execute` can see. Inert below 7.1; ask `WpCompat::supports_execution_lifecycle()`. Observer Throwables are swallowed |
 | `albert/admin/submenu_pages` | filter | Add addon admin pages |
 | `albert/abilities_icons` | filter | Customize category icons |
 | `albert/developer_mode` | filter | Toggle developer mode |
@@ -104,6 +122,54 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | `albert/privacy/reveal_capability` | filter | Capability gating a `reveal_personal_data` request (default `manage_options`). Consulted only when an ability passes no explicit `reveal_capability` option. See `PiiPolicy` |
 | `albert/activated` | action | Plugin activated |
 | `albert/deactivated` | action | Plugin deactivated |
+
+### Admin asset and menu contracts (1.4.0+)
+
+Add-ons that render a screen under the Albert menu depend on two published
+handles and one set of constants. All three are part of the public contract.
+
+| Handle / constant | What it is |
+|---|---|
+| `albert-tokens` (`Admin\Assets::TOKENS_HANDLE`) | The design tokens. Colour, spacing, type, radius, motion. |
+| `albert-primitives` (`Admin\Assets::PRIMITIVES_HANDLE`) | The shared components. Depends on the tokens, so naming this one alone is enough. |
+| `Admin\Menu::POSITION_*` | `admin_menu` priorities that fix submenu order. Add-ons use `POSITION_ADDONS` or later so a future core screen cannot be pushed below third-party entries. |
+
+```php
+// In an add-on. Literal strings, not the class constants, so an older Albert
+// without those classes cannot fatal the add-on.
+wp_enqueue_style( 'my-screen', $url, [ 'albert-primitives' ], $version );
+```
+
+Naming a handle that does not exist is not a soft failure — WordPress drops the
+dependent stylesheet from the queue entirely. That is the intended degradation
+for an add-on running against an Albert too old to have the tokens: the screen
+falls back to core admin styling rather than rendering half-painted. Do **not**
+express the same requirement as a plugin-wide version floor; `ALBERT_VERSION`
+reads the *previous* release on `development` (version bumps happen only in
+release branches), so a floor naming the upcoming version stops the add-on
+booting against the very branch it is developed against.
+
+Albert renders its page navigation on every screen under its menu, add-on pages
+included, and enqueues the primitives there itself — so an add-on page is
+styled whether or not it declares the dependency. Declare it anyway; that is
+what guarantees load order for the add-on's own stylesheet.
+
+Full token and primitive reference: `docs/design-system.md`.
+
+### Agent context: array in, text out
+
+`site` is **built** as a structured array and **rendered** to a compact labeled
+text block at the MCP boundary. The array is the API, filters run on it, tests
+assert its keys, the screen prices its sections. The text is the wire format,
+and it is what the Context screen's payload preview shows, byte for byte: the
+preview is `Payload::segments()`, and the wire fields are the join of those same
+segments. Never emit the array as nested JSON, and never render the payload a
+second time for display, a screen with its own opinion of what gets sent stops
+being a preview.
+
+The token estimate is script-aware, not characters ÷ 4; that shortcut was
+measured at −67% on Japanese. See `docs/context-token-budget.md` and re-check any
+change with `php bin/calibrate-token-estimator.php`.
 
 JS (client-side) seams for the Abilities DataViews screen (`@wordpress/hooks` filters):
 `albert.abilities.permissions_section` replaces the fly-in's Permissions section (its `api` exposes
