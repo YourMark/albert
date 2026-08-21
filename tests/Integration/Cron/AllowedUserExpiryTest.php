@@ -39,57 +39,61 @@ class AllowedUserExpiryTest extends TestCase {
 		( new LoggingRepository() )->truncate();
 
 		delete_option( AllowedUsers::OPTION );
-		delete_option( AllowedUserExpiry::OPTION );
+		delete_option( AllowedUsers::EXPIRY_OPTION );
 
 		$this->cron = new AllowedUserExpiry();
 	}
 
 	/**
-	 * Backdate an allowed-user entry's `added_at` without going through
-	 * `add()`, which always stamps "now".
+	 * Seed an entry with an `expires_at` computed from `$added_days_ago` and
+	 * `$expiry_days`, the way `AllowedUsers::add()` would have at the time.
+	 * The sweep only ever reads the stored `expires_at`, never the live
+	 * setting, so tests seed it directly rather than relying on the option.
 	 *
-	 * @param int $user_id     The user id.
-	 * @param int $days_ago    How many days ago they were added.
-	 * @param bool $authorised Whether to also mark them as having authorised.
+	 * @param int  $user_id        The user id.
+	 * @param int  $added_days_ago How many days ago they were added.
+	 * @param int  $expiry_days    The window in force when they were added. 0 = never expires.
+	 * @param bool $authorised     Whether to also mark them as having authorised.
 	 *
 	 * @return void
 	 */
-	private function backdate( int $user_id, int $days_ago, bool $authorised = false ): void {
-		AllowedUsers::add( $user_id );
+	private function seed( int $user_id, int $added_days_ago, int $expiry_days, bool $authorised = false ): void {
+		$added_at = time() - ( $added_days_ago * DAY_IN_SECONDS );
 
-		$all                              = get_option( AllowedUsers::OPTION, [] );
-		$all[ $user_id ]['added_at']      = gmdate( 'Y-m-d H:i:s', time() - ( $days_ago * DAY_IN_SECONDS ) );
-		$all[ $user_id ]['authorised_at'] = $authorised ? gmdate( 'Y-m-d H:i:s', time() - ( $days_ago * DAY_IN_SECONDS ) + HOUR_IN_SECONDS ) : null;
+		$all             = get_option( AllowedUsers::OPTION, [] );
+		$all[ $user_id ] = [
+			'added_at'      => gmdate( 'Y-m-d H:i:s', $added_at ),
+			'authorised_at' => $authorised ? gmdate( 'Y-m-d H:i:s', $added_at + HOUR_IN_SECONDS ) : null,
+			'expires_at'    => $expiry_days > 0 ? gmdate( 'Y-m-d H:i:s', $added_at + ( $expiry_days * DAY_IN_SECONDS ) ) : null,
+		];
 		update_option( AllowedUsers::OPTION, $all );
 	}
 
 	/**
-	 * 0 (the default) disables the sweep entirely: nobody is removed, however
-	 * old and unused their invitation is.
+	 * No stored `expires_at` (expiry was off when the invitation was
+	 * granted) is never swept, however old the invitation is.
 	 *
 	 * @return void
 	 */
-	public function test_zero_disables_the_sweep(): void {
+	public function test_no_expires_at_is_never_swept(): void {
 		$user_id = self::factory()->user->create();
-		$this->backdate( $user_id, 365 );
+		$this->seed( $user_id, 365, 0 );
 
-		update_option( AllowedUserExpiry::OPTION, 0 );
 		$this->cron->run();
 
 		$this->assertTrue( AllowedUsers::is_allowed( $user_id ) );
 	}
 
 	/**
-	 * A never-authorised invitation older than the configured window is
+	 * A never-authorised invitation whose stored `expires_at` has passed is
 	 * removed, and the removal is logged.
 	 *
 	 * @return void
 	 */
-	public function test_removes_a_never_authorised_invitation_past_the_window(): void {
+	public function test_removes_an_entry_whose_expires_at_has_passed(): void {
 		$user_id = self::factory()->user->create();
-		$this->backdate( $user_id, 15 );
+		$this->seed( $user_id, 15, 14 );
 
-		update_option( AllowedUserExpiry::OPTION, 14 );
 		$this->cron->run();
 
 		$this->assertFalse( AllowedUsers::is_allowed( $user_id ) );
@@ -101,15 +105,14 @@ class AllowedUserExpiryTest extends TestCase {
 	}
 
 	/**
-	 * A never-authorised invitation still inside the window is left alone.
+	 * An entry whose `expires_at` is still in the future is left alone.
 	 *
 	 * @return void
 	 */
-	public function test_leaves_a_never_authorised_invitation_inside_the_window(): void {
+	public function test_leaves_an_entry_inside_its_window(): void {
 		$user_id = self::factory()->user->create();
-		$this->backdate( $user_id, 5 );
+		$this->seed( $user_id, 5, 14 );
 
-		update_option( AllowedUserExpiry::OPTION, 14 );
 		$this->cron->run();
 
 		$this->assertTrue( AllowedUsers::is_allowed( $user_id ) );
@@ -117,24 +120,23 @@ class AllowedUserExpiryTest extends TestCase {
 
 	/**
 	 * Somebody who authorised at least once is never swept for going unused,
-	 * however old the invitation is or how small the window is set: the
-	 * invitation was exercised, that is what it was for.
+	 * however far in the past their `expires_at` is: the invitation was
+	 * exercised, that is what it was for.
 	 *
 	 * @return void
 	 */
 	public function test_never_sweeps_somebody_who_has_authorised(): void {
 		$user_id = self::factory()->user->create();
-		$this->backdate( $user_id, 365, true );
+		$this->seed( $user_id, 365, 1, true );
 
-		update_option( AllowedUserExpiry::OPTION, 1 );
 		$this->cron->run();
 
 		$this->assertTrue( AllowedUsers::is_allowed( $user_id ) );
 	}
 
 	/**
-	 * A mixed sweep only removes the never-authorised, past-window entries;
-	 * everyone else on the list is untouched.
+	 * A mixed sweep only removes the never-authorised entries whose
+	 * `expires_at` has passed; everyone else on the list is untouched.
 	 *
 	 * @return void
 	 */
@@ -143,11 +145,10 @@ class AllowedUserExpiryTest extends TestCase {
 		$fresh_id      = self::factory()->user->create();
 		$authorised_id = self::factory()->user->create();
 
-		$this->backdate( $expired_id, 30 );
-		$this->backdate( $fresh_id, 1 );
-		$this->backdate( $authorised_id, 30, true );
+		$this->seed( $expired_id, 30, 14 );
+		$this->seed( $fresh_id, 1, 14 );
+		$this->seed( $authorised_id, 30, 14, true );
 
-		update_option( AllowedUserExpiry::OPTION, 14 );
 		$this->cron->run();
 
 		$this->assertFalse( AllowedUsers::is_allowed( $expired_id ) );

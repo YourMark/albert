@@ -18,16 +18,28 @@ use Albert\OAuth\AllowedUsers;
 /**
  * AllowedUserExpiry class
  *
- * Daily WP-Cron job that removes anyone from the allowed-users list who was
- * added but never actually completed an authorisation within the configured
+ * Daily WP-Cron job that removes anyone from the allowed-users list whose
+ * invitation has expired: added, never authorised, past the configured
  * window (docs/features/31-connections.md §5, "Invitation expiry").
  *
- * A standing "this person could approve an assistant" grant that nobody is
- * relying on is the same pure-risk-zero-benefit shape as an unused
- * connection, one layer earlier. Somebody who *did* authorise at least once
- * is never swept for this reason, however long that connection lived or
- * whatever happened to it since: the invitation was exercised, that is what
- * it was for. See {@see \Albert\OAuth\AllowedUsers::mark_authorised()}.
+ * This is cleanup, not the security boundary. An expired invitation is
+ * already refused live at {@see \Albert\OAuth\AllowedUsers::is_allowed()}
+ * the moment somebody tries to use it, whether or not this has run since it
+ * expired, the same way an expired OAuth token cannot be used regardless of
+ * whether its cleanup job has run yet. This job exists only so the stored
+ * list does not accumulate invitations nobody can act on any more, and so
+ * the Connections screen and the Dashboard's Recent Activity reflect it.
+ *
+ * WP-Cron's own mechanics already give this two ways to actually run: a
+ * front-end or admin page load past its scheduled time (core's normal
+ * pseudo-cron), or a real system crontab hitting `wp-cron.php` directly on
+ * sites that disable pseudo-cron (`DISABLE_WP_CRON`). Nothing extra to build
+ * here for either.
+ *
+ * Somebody who *did* authorise at least once is never swept for this reason,
+ * however long that connection lived or whatever happened to it since: the
+ * invitation was exercised, that is what it was for. See
+ * {@see \Albert\OAuth\AllowedUsers::mark_authorised()}.
  *
  * @since 1.4.0
  */
@@ -40,24 +52,6 @@ class AllowedUserExpiry implements Hookable {
 	 * @var string
 	 */
 	const HOOK = 'albert_sweep_allowed_users';
-
-	/**
-	 * Option name for the expiry window (in days). 0 = never.
-	 *
-	 * @since 1.4.0
-	 * @var string
-	 */
-	const OPTION = 'albert_allowed_user_expiry_days';
-
-	/**
-	 * Default expiry window (in days). Off by default: a site upgrading to
-	 * this feature should not start silently sweeping people until the owner
-	 * has actually looked at the new setting and chosen a window.
-	 *
-	 * @since 1.4.0
-	 * @var int
-	 */
-	const DEFAULT_DAYS = 0;
 
 	/**
 	 * Register WordPress hooks.
@@ -77,23 +71,10 @@ class AllowedUserExpiry implements Hookable {
 	 */
 	public function run(): void {
 		try {
-			$days = (int) get_option( self::OPTION, self::DEFAULT_DAYS );
-
-			if ( $days < 1 ) {
-				return;
-			}
-
-			$cutoff  = time() - ( $days * DAY_IN_SECONDS );
 			$logging = new LoggingRepository();
 
-			foreach ( AllowedUsers::all() as $user_id => $entry ) {
-				if ( $entry['authorised_at'] !== null ) {
-					continue;
-				}
-
-				$added_at = $entry['added_at'];
-
-				if ( $added_at === null || $added_at > $cutoff ) {
+			foreach ( AllowedUsers::ids() as $user_id ) {
+				if ( ! AllowedUsers::has_expired_invitation( $user_id ) ) {
 					continue;
 				}
 

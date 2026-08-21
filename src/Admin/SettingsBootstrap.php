@@ -16,7 +16,7 @@ namespace Albert\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
-use Albert\Cron\AllowedUserExpiry;
+use Albert\OAuth\AllowedUsers;
 use Albert\Privacy\PrivacyMode;
 
 /**
@@ -72,14 +72,22 @@ class SettingsBootstrap {
 						'id'          => 'invitation_expiry_days',
 						'type'        => 'number',
 						'label'       => __( 'Invitation expiry (days)', 'albert-ai-butler' ),
-						'description' => __( 'Someone added to the allowed list who never approves an assistant is automatically removed after this many days. Once they approve one, they keep their access no matter what happens to it later. Set to 0 to disable.', 'albert-ai-butler' ),
-						'option_name' => AllowedUserExpiry::OPTION,
-						'default'     => AllowedUserExpiry::DEFAULT_DAYS,
+						'description' => __( 'Someone added to the allowed list who never approves an assistant can no longer do so after this many days, the same way a WordPress account-activation link expires. Once they approve one, they keep their access no matter what happens to it later. Set to 0 to disable.', 'albert-ai-butler' ),
+						'option_name' => AllowedUsers::EXPIRY_OPTION,
+						'default'     => AllowedUsers::DEFAULT_EXPIRY_DAYS,
 						'attributes'  => [
 							'min'  => 0,
 							'max'  => 3650,
 							'step' => 1,
 						],
+					],
+					[
+						'id'          => 'apply_expiry_to_existing',
+						'type'        => 'checkbox',
+						'label'       => __( 'Apply to invitations already waiting', 'albert-ai-butler' ),
+						'description' => __( 'Recalculates the expiry date for everyone who has not approved yet, using their original invite date and the number of days above. Leave unchecked and they keep the deadline they were already given.', 'albert-ai-butler' ),
+						'option_name' => AllowedUsers::APPLY_TO_EXISTING_OPTION,
+						'default'     => false,
 					],
 				],
 			],

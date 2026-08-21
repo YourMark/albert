@@ -53,6 +53,7 @@ class Installer {
 		'albert_installed_version',
 		'albert_allowed_users',
 		'albert_allowed_user_expiry_days',
+		'albert_allowed_user_apply_expiry_to_existing',
 		'albert_disabled_abilities',
 		'albert_abilities_saved',
 		'albert_known_abilities',
@@ -149,20 +150,38 @@ class Installer {
 
 	/**
 	 * Rewrap `albert_allowed_users` from a flat array of user ids into a
-	 * structure carrying `added_at` (and `authorised_at`) per entry. Called
-	 * once from {@see self::maybe_upgrade()} when upgrading from below
-	 * 1.4.0. See {@see \Albert\OAuth\AllowedUsers} for the shape and how it
-	 * is read/written afterwards.
+	 * structure carrying `added_at`, `authorised_at` and `expires_at` per
+	 * entry. Called once from {@see self::maybe_upgrade()} when upgrading
+	 * from below 1.4.0. This is the one, definitive migration off the
+	 * pre-1.4.0 flat-array shape: every field the new shape needs is
+	 * backfilled here in a single pass, not spread across several
+	 * version-gated steps. See {@see \Albert\OAuth\AllowedUsers} for the
+	 * shape and how it is read/written afterwards.
 	 *
 	 * Existing entries carry no record of when they were actually added, and
 	 * we have no way to reconstruct one, so `added_at` is backfilled to the
 	 * moment of *this* upgrade rather than a guessed historical date:
-	 * starting everyone's clock here is the only honest choice, and it
-	 * guarantees every existing site a full grace window before an
-	 * invitation-expiry sweep can remove anyone.
+	 * starting everyone's clock here is the only honest choice.
 	 *
-	 * Idempotent: an entry that is already an array (the new shape) is left
-	 * untouched, so re-running this is safe.
+	 * `authorised_at` is backfilled to that same moment, not left null:
+	 * invitation expiry (default 1 day) is a new rule with no exemption for
+	 * "predates this feature". A flat pre-1.4.0 entry could be someone who
+	 * connected the day it was added, or someone who never got around to it;
+	 * the option alone cannot tell those apart, and there is no record to
+	 * consult. Refusing to guess which is which and applying the new,
+	 * tight default retroactively risks locking out an already-working
+	 * connection within a day of an unrelated plugin update, which is a far
+	 * worse surprise than grandfathering in a handful of stale invitations
+	 * that predate the feature meant to catch them. Only invitations granted
+	 * *after* this upgrade go through the real expire-if-unused lifecycle,
+	 * so `expires_at` is left null for every migrated entry: they are exempt
+	 * via `authorised_at`, and moot regardless.
+	 *
+	 * Idempotent, and safe to re-run from any intermediate state: an entry
+	 * that is already an array (the new shape, or a partial one from an
+	 * interrupted upgrade) is merged onto complete defaults rather than
+	 * assumed whole, so a missing field is filled in without disturbing
+	 * fields that are already correct.
 	 *
 	 * @return void
 	 * @since 1.4.0
@@ -175,13 +194,18 @@ class Installer {
 		}
 
 		$now      = gmdate( 'Y-m-d H:i:s' );
+		$defaults = [
+			'added_at'      => null,
+			'authorised_at' => null,
+			'expires_at'    => null,
+		];
 		$migrated = [];
 
 		foreach ( $raw as $key => $value ) {
 			if ( is_array( $value ) ) {
 				$id = (int) $key;
 				if ( $id > 0 ) {
-					$migrated[ $id ] = $value;
+					$migrated[ $id ] = array_merge( $defaults, $value );
 				}
 				continue;
 			}
@@ -190,7 +214,8 @@ class Installer {
 			if ( $id > 0 && ! isset( $migrated[ $id ] ) ) {
 				$migrated[ $id ] = [
 					'added_at'      => $now,
-					'authorised_at' => null,
+					'authorised_at' => $now,
+					'expires_at'    => null,
 				];
 			}
 		}

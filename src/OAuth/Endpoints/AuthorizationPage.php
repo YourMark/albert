@@ -484,6 +484,13 @@ class AuthorizationPage implements Hookable {
 	/**
 	 * Render an access denied page for users not in the allowed list.
 	 *
+	 * Distinguishes two different denials: never invited at all, versus an
+	 * invitation that existed but expired unused. Someone who was told "you
+	 * can connect now" and then hits a plain "not authorized" wall a day
+	 * later has no way to know whether they were forgotten or timed out;
+	 * {@see \Albert\OAuth\AllowedUsers::has_expired_invitation()} already
+	 * knows which one it is.
+	 *
 	 * @param \WP_User $user The current user.
 	 *
 	 * @return void
@@ -495,6 +502,7 @@ class AuthorizationPage implements Hookable {
 		status_header( 403 );
 
 		$site_name = get_bloginfo( 'name' );
+		$expired   = AllowedUsers::has_expired_invitation( $user->ID );
 
 		$this->enqueue_oauth_styles();
 
@@ -512,7 +520,13 @@ class AuthorizationPage implements Hookable {
 		<div class="icon">🚫</div>
 		<h1><?php esc_html_e( 'Access Not Authorized', 'albert-ai-butler' ); ?></h1>
 		<p>
-			<?php esc_html_e( 'Your account has not been granted access to connect AI tools to this site.', 'albert-ai-butler' ); ?>
+			<?php
+			echo esc_html(
+				$expired
+					? __( 'Your invitation to connect an AI assistant has expired. It was not used in time.', 'albert-ai-butler' )
+					: __( 'Your account has not been granted access to connect AI tools to this site.', 'albert-ai-butler' )
+			);
+			?>
 		</p>
 		<div class="user-info">
 			<?php

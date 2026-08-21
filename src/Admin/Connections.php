@@ -18,7 +18,6 @@ defined( 'ABSPATH' ) || exit;
 use Albert\Admin\Connections\ClientSetupGuides;
 use Albert\Admin\Connections\UserPickerModal;
 use Albert\Contracts\Interfaces\Hookable;
-use Albert\Cron\AllowedUserExpiry;
 use Albert\Database\Tables;
 use Albert\MCP\Server as McpServer;
 use Albert\OAuth\AllowedUsers;
@@ -82,6 +81,7 @@ class Connections implements Hookable {
 		add_action( 'admin_post_' . UserPickerModal::ACTION, [ $this, 'handle_add_allowed_users' ] );
 		add_action( 'admin_post_albert_set_connection_label', [ $this, 'handle_set_connection_label' ] );
 		add_action( 'admin_post_albert_revoke_selected', [ $this, 'handle_revoke_selected' ] );
+		add_action( 'albert/settings/saved', [ $this, 'handle_settings_saved' ] );
 	}
 
 	/**
@@ -586,6 +586,35 @@ class Connections implements Hookable {
 		);
 
 		$this->redirect_to_page();
+	}
+
+	/**
+	 * After the unified Settings form saves, optionally recalculate the
+	 * expiry date on every invitation still waiting.
+	 *
+	 * Changing the expiry window never moves an existing invitation's
+	 * deadline on its own (see {@see \Albert\OAuth\AllowedUsers} class
+	 * docblock): that is a deliberate choice the owner makes here, via a
+	 * checkbox on the same form, not something the setting does silently.
+	 * The checkbox is a one-shot trigger, not a standing preference: it is
+	 * reset to unchecked immediately after acting, so it does not silently
+	 * re-apply the next time an unrelated setting is saved.
+	 *
+	 * @param array<string, mixed> $saved Map of option_name => sanitized value, from the save.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	public function handle_settings_saved( array $saved ): void {
+		if ( empty( $saved[ AllowedUsers::APPLY_TO_EXISTING_OPTION ] ) ) {
+			return;
+		}
+
+		$days = (int) get_option( AllowedUsers::EXPIRY_OPTION, AllowedUsers::DEFAULT_EXPIRY_DAYS );
+
+		AllowedUsers::reset_expiry_clock( $days );
+
+		update_option( AllowedUsers::APPLY_TO_EXISTING_OPTION, false );
 	}
 
 	/**
@@ -1337,7 +1366,7 @@ class Connections implements Hookable {
 	 * exactly what the page would have rendered, rather than a second copy of
 	 * this markup living in JS.
 	 *
-	 * @param array<int, array{added_at: int|null, authorised_at: int|null}> $allowed_users The allowed users, from {@see \Albert\OAuth\AllowedUsers::all()}.
+	 * @param array<int, array{added_at: int|null, authorised_at: int|null, expires_at: int|null}> $allowed_users The allowed users, from {@see \Albert\OAuth\AllowedUsers::all()}.
 	 *
 	 * @return void
 	 * @since 1.4.0
@@ -1354,13 +1383,11 @@ class Connections implements Hookable {
 			return;
 		}
 
-		$expiry_days = (int) get_option( AllowedUserExpiry::OPTION, AllowedUserExpiry::DEFAULT_DAYS );
-
 		?>
 		<div class="albert-card__body albert-card__body--flush albert-userlist">
 			<ul class="albert-userlist__rows" aria-label="<?php esc_attr_e( 'Users who may approve an assistant', 'albert-ai-butler' ); ?>">
 				<?php foreach ( $allowed_users as $user_id => $entry ) { ?>
-					<?php $this->render_allowed_user_row( (int) $user_id, $entry, $expiry_days ); ?>
+					<?php $this->render_allowed_user_row( (int) $user_id, $entry ); ?>
 				<?php } ?>
 			</ul>
 		</div>
@@ -1422,14 +1449,13 @@ class Connections implements Hookable {
 	/**
 	 * Render one allowed user.
 	 *
-	 * @param int                                                $user_id     The user ID.
-	 * @param array{added_at: int|null, authorised_at: int|null} $entry       Their entry from {@see \Albert\OAuth\AllowedUsers::all()}.
-	 * @param int                                                $expiry_days The configured invitation-expiry window, 0 = never.
+	 * @param int                                                                      $user_id The user ID.
+	 * @param array{added_at: int|null, authorised_at: int|null, expires_at: int|null} $entry   Their entry from {@see \Albert\OAuth\AllowedUsers::all()}.
 	 *
 	 * @return void
 	 * @since 1.4.0
 	 */
-	private function render_allowed_user_row( int $user_id, array $entry, int $expiry_days ): void {
+	private function render_allowed_user_row( int $user_id, array $entry ): void {
 		$user = get_user_by( 'id', $user_id );
 
 		if ( ! $user ) {
@@ -1460,7 +1486,7 @@ class Connections implements Hookable {
 		);
 
 		$meta   = $user->user_email . ' · ' . $this->role_label_for( $user );
-		$expiry = $this->format_allowed_user_expiry( $entry, $expiry_days );
+		$expiry = $this->format_allowed_user_expiry( $entry );
 
 		?>
 		<li class="albert-user-item" data-albert-user-row data-user-id="<?php echo esc_attr( (string) $user_id ); ?>" data-search="<?php echo esc_attr( $this->normalise( $user->display_name . ' ' . $meta ) ); ?>">
@@ -1852,28 +1878,30 @@ class Connections implements Hookable {
 	}
 
 	/**
-	 * "Added 3 days ago", or "Expires in 11 days if unused".
+	 * "Added 3 days ago", "Expires at 21 August 2026, 14:32", or "Invitation
+	 * expired 20 August 2026, 09:14".
 	 *
-	 * Exercised invitations (an `authorised_at`) and a disabled window
-	 * (`$expiry_days` of 0) both just say when the person was added: neither
-	 * is ever swept, so there is nothing to count down. Only a never-used
-	 * invitation with a real window gets the countdown, which is the one
-	 * case {@see \Albert\Cron\AllowedUserExpiry} can actually act on.
+	 * An exercised invitation (an `authorised_at`) or one with no stored
+	 * `expires_at` (expiry was off when it was granted) just says when the
+	 * person was added: neither is ever refused, so there is nothing to show
+	 * a deadline for. Otherwise it is always the exact date and time, not a
+	 * relative countdown: a fixed deadline is simpler to act on at a glance
+	 * than "in 11 hours" is, and it does not go stale the way a relative
+	 * phrase would between page loads.
 	 *
-	 * @param array{added_at: int|null, authorised_at: int|null} $entry       The user's entry.
-	 * @param int                                                $expiry_days The configured window, 0 = never.
+	 * @param array{added_at: int|null, authorised_at: int|null, expires_at: int|null} $entry The user's entry.
 	 *
 	 * @return string A translated phrase, or '' when there is no added_at to show.
 	 * @since 1.4.0
 	 */
-	private function format_allowed_user_expiry( array $entry, int $expiry_days ): string {
+	private function format_allowed_user_expiry( array $entry ): string {
 		$added_at = $entry['added_at'];
 
 		if ( $added_at === null ) {
 			return '';
 		}
 
-		if ( $entry['authorised_at'] !== null || $expiry_days <= 0 ) {
+		if ( $entry['authorised_at'] !== null || $entry['expires_at'] === null ) {
 			return sprintf(
 				/* translators: %s: human-readable time since they were added, e.g. "3 days ago". */
 				__( 'Added %s', 'albert-ai-butler' ),
@@ -1881,18 +1909,75 @@ class Connections implements Hookable {
 			);
 		}
 
-		$expires_at = $added_at + ( $expiry_days * DAY_IN_SECONDS );
-		$remaining  = $expires_at - time();
+		$expires_at = $entry['expires_at'];
+		$when       = $this->format_datetime( $expires_at );
 
-		if ( $remaining <= 0 ) {
-			return __( 'Expires soon if unused', 'albert-ai-butler' );
+		if ( $expires_at <= time() ) {
+			return sprintf(
+				/* translators: %s: the date and time it expired. */
+				__( 'Invitation expired %s', 'albert-ai-butler' ),
+				$when
+			);
 		}
 
 		return sprintf(
-			/* translators: %s: human-readable time until expiry, e.g. "11 days". */
-			__( 'Expires in %s if unused', 'albert-ai-butler' ),
-			human_time_diff( time(), $expires_at )
+			/* translators: %s: the exact date and time it expires. */
+			__( 'Expires at %s', 'albert-ai-butler' ),
+			$when
 		);
+	}
+
+	/**
+	 * A UTC timestamp, converted to the site's timezone and formatted for
+	 * the viewing admin's own language, e.g. "Aug 21, 2026, 2:32 PM" for an
+	 * English admin, "21 aug. 2026, 14:32" for a Dutch one on the same site.
+	 *
+	 * Two things a naive `date_i18n()` call gets wrong, both fixed here:
+	 *
+	 * 1. Timezone: passed a raw timestamp, `date_i18n()` formats it as-is
+	 *    without applying the site's UTC offset, which is correct for a
+	 *    `current_time()`-derived value but silently wrong for a true UTC
+	 *    one like the timestamps stored here. On any site not actually set
+	 *    to UTC, that reads as the right time in the wrong zone.
+	 * 2. Convention, not just translation: the site's `time_format` option
+	 *    is one fixed pattern for the whole site (typically whatever the
+	 *    installer's own language defaulted to), so relying on it always
+	 *    shows the same 12- or 24-hour convention to every admin regardless
+	 *    of which language *they* use. `IntlDateFormatter` derives the
+	 *    correct convention (and date ordering) from
+	 *    {@see get_user_locale()} instead, using ICU's own locale data
+	 *    rather than a hand-maintained guess: no assumption here about
+	 *    which languages prefer which.
+	 *
+	 * Falls back to the site's configured format (still timezone-corrected
+	 * via `wp_date()`) when the `intl` extension is not loaded, so this
+	 * degrades rather than fatals on a host without it.
+	 *
+	 * @param int $timestamp A UNIX (UTC) timestamp.
+	 *
+	 * @return string
+	 * @since 1.4.0
+	 */
+	private function format_datetime( int $timestamp ): string {
+		if ( class_exists( '\IntlDateFormatter' ) ) {
+			$formatter = new \IntlDateFormatter(
+				get_user_locale(),
+				\IntlDateFormatter::MEDIUM,
+				\IntlDateFormatter::SHORT,
+				wp_timezone()
+			);
+
+			$formatted = $formatter->format( $timestamp );
+
+			if ( $formatted !== false ) {
+				return $formatted;
+			}
+		}
+
+		$format    = trim( (string) get_option( 'date_format' ) . ' ' . (string) get_option( 'time_format' ) );
+		$formatted = wp_date( $format, $timestamp );
+
+		return $formatted !== false ? $formatted : '';
 	}
 
 	/**

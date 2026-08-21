@@ -19,21 +19,42 @@ defined( 'ABSPATH' ) || exit;
  * {@see \Albert\OAuth\Endpoints\AuthorizationPage::handle_authorization()}.
  *
  * Stored keyed by user id, each entry carrying `added_at` (when they were
- * granted the standing invitation) and `authorised_at` (when they first
- * actually used it, null until then):
+ * granted the standing invitation), `authorised_at` (when they first
+ * actually used it, null until then), and `expires_at`:
  *
- *     [ 42 => [ 'added_at' => 1755765600, 'authorised_at' => null ], ... ]
+ *     [ 42 => [ 'added_at' => 1755765600, 'authorised_at' => null, 'expires_at' => 1755852000 ], ... ]
  *
- * Before 1.4.0 this was a flat array of ints with no timestamp.
+ * `expires_at` is computed once, at {@see self::add()}, from the expiry
+ * window in force *at that moment* ({@see self::EXPIRY_OPTION}), and stored
+ * as an absolute timestamp, not recomputed from the live setting on every
+ * check. An invitation's deadline is a property of that invitation, decided
+ * when it was granted: if the owner later tightens or loosens the window,
+ * every invitation already waiting keeps the deadline it was given, unless
+ * the owner explicitly opts to recalculate it ({@see self::reset_expiry_clock()},
+ * offered as a choice when the setting is saved, see
+ * {@see \Albert\Admin\Connections::handle_settings_saved()}). Silently
+ * moving someone's deadline because an unrelated setting changed would be a
+ * surprise no security control should spring on someone.
+ *
+ * Before 1.4.0 this was a flat array of ints with no timestamps at all.
  * {@see \Albert\Database\Installer} migrates existing sites once, on
  * upgrade, before any of these methods can run in the same request (its
  * `maybe_upgrade()` fires first in {@see \Albert\Core\Plugin::init()}).
- * `added_at`/`authorised_at` are still read defensively here in case an
- * entry somehow predates that migration.
+ * Fields are still read defensively here in case an entry somehow predates
+ * that migration.
  *
- * `authorised_at` is what {@see \Albert\Cron\AllowedUserExpiry} checks: an
- * invitation that was exercised at least once is never swept for going
- * unused, no matter what happens to that connection later.
+ * `authorised_at` is the exemption: an invitation that was exercised at
+ * least once is allowed forever, no matter what happens to that connection
+ * later or what its `expires_at` says, checked nowhere but here.
+ *
+ * Invitation expiry is enforced live, at {@see self::is_allowed()}, not only
+ * by the sweep. The same reasoning already applies to token expiry
+ * (docs/features/31-connections.md §4): whether a stale row has been
+ * physically removed yet is bookkeeping, not the security boundary. An
+ * invitation past its stored `expires_at` is refused the moment somebody
+ * tries to use it, whether or not {@see \Albert\Cron\AllowedUserExpiry} has
+ * run since it expired. The cron exists to keep the stored list tidy, not to
+ * be the thing standing between an expired invitation and a connection.
  *
  * @since 1.4.0
  */
@@ -48,9 +69,42 @@ class AllowedUsers {
 	const OPTION = 'albert_allowed_users';
 
 	/**
+	 * Option name for the invitation-expiry window, in days. 0 = never.
+	 * Only consulted when an invitation's `expires_at` is computed: at
+	 * {@see self::add()}, and at an owner-requested {@see self::reset_expiry_clock()}.
+	 *
+	 * @since 1.4.0
+	 * @var string
+	 */
+	const EXPIRY_OPTION = 'albert_allowed_user_expiry_days';
+
+	/**
+	 * Default expiry window, in days. A never-authorised invitation is
+	 * refused after this long: short by design, the same way a WordPress
+	 * account-activation link is only good for a limited time. Somebody who
+	 * misses it is not locked out forever, they are re-added with one click
+	 * on the Connections screen.
+	 *
+	 * @since 1.4.0
+	 * @var int
+	 */
+	const DEFAULT_EXPIRY_DAYS = 1;
+
+	/**
+	 * Option name for the one-shot "also apply this to invitations already
+	 * waiting" checkbox on the Settings screen. Read and immediately reset to
+	 * false by {@see \Albert\Admin\Connections::handle_settings_saved()}, so
+	 * it never silently re-applies on a later, unrelated settings save.
+	 *
+	 * @since 1.4.0
+	 * @var string
+	 */
+	const APPLY_TO_EXISTING_OPTION = 'albert_allowed_user_apply_expiry_to_existing';
+
+	/**
 	 * Every allowed user, normalised.
 	 *
-	 * @return array<int, array{added_at: int|null, authorised_at: int|null}>
+	 * @return array<int, array{added_at: int|null, authorised_at: int|null, expires_at: int|null}>
 	 * @since 1.4.0
 	 */
 	public static function all(): array {
@@ -74,6 +128,7 @@ class AllowedUsers {
 			$normalised[ $id ] = [
 				'added_at'      => self::to_timestamp( $entry['added_at'] ?? null ),
 				'authorised_at' => self::to_timestamp( $entry['authorised_at'] ?? null ),
+				'expires_at'    => self::to_timestamp( $entry['expires_at'] ?? null ),
 			];
 		}
 
@@ -101,7 +156,12 @@ class AllowedUsers {
 	}
 
 	/**
-	 * Whether a user may complete an OAuth authorisation.
+	 * Whether a user may complete an OAuth authorisation right now.
+	 *
+	 * Not just membership: a never-authorised entry past its stored
+	 * `expires_at` is refused here too, live, rather than waiting for
+	 * {@see \Albert\Cron\AllowedUserExpiry} to have physically removed it.
+	 * Checked at {@see \Albert\OAuth\Endpoints\AuthorizationPage::handle_authorization()}.
 	 *
 	 * @param int $user_id The user id.
 	 *
@@ -109,7 +169,47 @@ class AllowedUsers {
 	 * @since 1.4.0
 	 */
 	public static function is_allowed( int $user_id ): bool {
-		return array_key_exists( $user_id, self::all() );
+		$entry = self::all()[ $user_id ] ?? null;
+
+		return $entry !== null && ! self::is_expired( $entry );
+	}
+
+	/**
+	 * Whether a user is still on the list, but their invitation has expired:
+	 * never authorised, and past its stored `expires_at`. Distinct from
+	 * `! is_allowed()`, which is also true for somebody never invited at all;
+	 * this is what {@see self::is_allowed()} internally checks before
+	 * refusing, and what the sweep and the access-denied page use to tell
+	 * "you were never invited" apart from "your invitation expired".
+	 *
+	 * @param int $user_id The user id.
+	 *
+	 * @return bool
+	 * @since 1.4.0
+	 */
+	public static function has_expired_invitation( int $user_id ): bool {
+		$entry = self::all()[ $user_id ] ?? null;
+
+		return $entry !== null && self::is_expired( $entry );
+	}
+
+	/**
+	 * Whether an entry is a never-authorised invitation past its stored
+	 * `expires_at`. The single rule both the live gate
+	 * ({@see self::is_allowed()}) and the sweep ({@see \Albert\Cron\AllowedUserExpiry})
+	 * apply, so the two can never disagree about who has expired.
+	 *
+	 * @param array{added_at: int|null, authorised_at: int|null, expires_at: int|null} $entry A normalised entry.
+	 *
+	 * @return bool
+	 * @since 1.4.0
+	 */
+	private static function is_expired( array $entry ): bool {
+		if ( $entry['authorised_at'] !== null || $entry['expires_at'] === null ) {
+			return false;
+		}
+
+		return $entry['expires_at'] <= time();
 	}
 
 	/**
@@ -138,6 +238,20 @@ class AllowedUsers {
 	}
 
 	/**
+	 * When a user's invitation expires (or expired), or null if it does not
+	 * expire: expiry was off when it was granted, they are not on the list,
+	 * or the entry predates the 1.4.0 migration.
+	 *
+	 * @param int $user_id The user id.
+	 *
+	 * @return int|null Unix timestamp.
+	 * @since 1.4.0
+	 */
+	public static function expires_at( int $user_id ): ?int {
+		return self::all()[ $user_id ]['expires_at'] ?? null;
+	}
+
+	/**
 	 * Whether a user has ever completed an authorisation.
 	 *
 	 * @param int $user_id The user id.
@@ -152,6 +266,10 @@ class AllowedUsers {
 	/**
 	 * Add a user to the allowed list, if they are not already on it.
 	 *
+	 * `expires_at` is computed now, from whatever the expiry window is at
+	 * this moment, and stored: it does not move if the window changes later
+	 * (see the class docblock).
+	 *
 	 * @param int $user_id The user id.
 	 *
 	 * @return bool True if the user was newly added, false if already allowed.
@@ -164,9 +282,12 @@ class AllowedUsers {
 			return false;
 		}
 
+		$now = time();
+
 		$all[ $user_id ] = [
-			'added_at'      => time(),
+			'added_at'      => $now,
 			'authorised_at' => null,
+			'expires_at'    => self::compute_expiry( $now ),
 		];
 
 		self::save( $all );
@@ -220,9 +341,60 @@ class AllowedUsers {
 	}
 
 	/**
+	 * Recalculate `expires_at` for every still-pending (never-authorised)
+	 * invitation, using each one's own `added_at` plus the given window.
+	 *
+	 * Not run automatically when the expiry setting changes: an invitation's
+	 * deadline is only ever moved on the owner's explicit say-so, offered as
+	 * a checkbox at save time (see the class docblock and
+	 * {@see \Albert\Admin\Connections::handle_settings_saved()}). Already
+	 * exercised invitations are untouched: their `authorised_at` exemption
+	 * makes `expires_at` moot for them regardless.
+	 *
+	 * @param int $days The new expiry window, in days. 0 clears expiry (never).
+	 *
+	 * @return int How many entries were recalculated.
+	 * @since 1.4.0
+	 */
+	public static function reset_expiry_clock( int $days ): int {
+		$all     = self::all();
+		$touched = 0;
+
+		foreach ( $all as $user_id => $entry ) {
+			if ( $entry['authorised_at'] !== null || $entry['added_at'] === null ) {
+				continue;
+			}
+
+			$all[ $user_id ]['expires_at'] = $days > 0 ? $entry['added_at'] + ( $days * DAY_IN_SECONDS ) : null;
+			++$touched;
+		}
+
+		if ( $touched > 0 ) {
+			self::save( $all );
+		}
+
+		return $touched;
+	}
+
+	/**
+	 * The expiry timestamp for an invitation granted right now, from the
+	 * currently configured window. Null when expiry is off (0 days).
+	 *
+	 * @param int $from Unix timestamp the invitation is granted at.
+	 *
+	 * @return int|null
+	 * @since 1.4.0
+	 */
+	private static function compute_expiry( int $from ): ?int {
+		$days = (int) get_option( self::EXPIRY_OPTION, self::DEFAULT_EXPIRY_DAYS );
+
+		return $days > 0 ? $from + ( $days * DAY_IN_SECONDS ) : null;
+	}
+
+	/**
 	 * Persist the normalised structure as MySQL-friendly datetime strings.
 	 *
-	 * @param array<int, array{added_at: int|null, authorised_at: int|null}> $all Normalised entries.
+	 * @param array<int, array{added_at: int|null, authorised_at: int|null, expires_at: int|null}> $all Normalised entries.
 	 *
 	 * @return void
 	 * @since 1.4.0
@@ -234,6 +406,7 @@ class AllowedUsers {
 			$stored[ $id ] = [
 				'added_at'      => $entry['added_at'] !== null ? gmdate( 'Y-m-d H:i:s', $entry['added_at'] ) : null,
 				'authorised_at' => $entry['authorised_at'] !== null ? gmdate( 'Y-m-d H:i:s', $entry['authorised_at'] ) : null,
+				'expires_at'    => $entry['expires_at'] !== null ? gmdate( 'Y-m-d H:i:s', $entry['expires_at'] ) : null,
 			];
 		}
 
