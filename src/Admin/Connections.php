@@ -576,7 +576,13 @@ class Connections implements Hookable {
 
 		$label = isset( $_POST['albert_connection_label'] ) ? sanitize_text_field( wp_unslash( $_POST['albert_connection_label'] ) ) : '';
 
-		( new ClientRepository() )->updateClientLabel( $client_id, $label, get_current_user_id() );
+		$saved = ( new ClientRepository() )->updateClientLabel( $client_id, $label, get_current_user_id() );
+
+		if ( ! $saved ) {
+			$this->notify( 'label_save_failed', __( 'Could not save the label. Please try again.', 'albert-ai-butler' ), 'error' );
+			$this->redirect_to_page( false );
+			return;
+		}
 
 		$this->notify(
 			'label_saved',
