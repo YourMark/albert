@@ -324,6 +324,17 @@ class AuthorizationPage implements Hookable {
 			// of theirs lives for. First-time only; see AllowedUsers::mark_authorised().
 			AllowedUsers::mark_authorised( get_current_user_id() );
 
+			// An optional label, offered here because this is the one moment the
+			// approving person has real context ("this is my laptop") that nobody
+			// reviewing the Connections screen later will have. Skippable: a blank
+			// field here is simply never saved, not cleared, so there is nothing to
+			// undo by leaving it empty.
+			$label = isset( $_POST['albert_connection_label'] ) ? sanitize_text_field( wp_unslash( $_POST['albert_connection_label'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in handle_authorization() before calling this method.
+
+			if ( $label !== '' ) {
+				( new ClientRepository() )->updateClientLabel( (string) $client->getIdentifier(), $label, get_current_user_id() );
+			}
+
 			// Get redirect location from response.
 			$location = $psr_response->getHeader( 'Location' );
 			if ( ! empty( $location[0] ) ) {
@@ -428,6 +439,21 @@ class AuthorizationPage implements Hookable {
 			<input type="hidden" name="code_challenge" value="<?php echo esc_attr( $code_challenge ); ?>">
 			<input type="hidden" name="code_challenge_method" value="<?php echo esc_attr( $code_challenge_method ); ?>">
 			<?php wp_nonce_field( 'albert_oauth_authorize', '_albert_nonce' ); ?>
+
+			<div class="connection-label">
+				<label for="albert-connection-label"><?php esc_html_e( 'Name this connection (optional)', 'albert-ai-butler' ); ?></label>
+				<input
+					type="text"
+					id="albert-connection-label"
+					name="albert_connection_label"
+					maxlength="255"
+					placeholder="<?php esc_attr_e( 'e.g. My laptop', 'albert-ai-butler' ); ?>"
+					autocomplete="off"
+				>
+				<p class="connection-label__hint">
+					<?php esc_html_e( 'Helps you tell it apart later on the Connections screen. You can leave this blank and add or change it anytime.', 'albert-ai-butler' ); ?>
+				</p>
+			</div>
 
 			<div class="button-group">
 				<button type="submit" name="approve" value="no" class="button button-secondary">
