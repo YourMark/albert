@@ -17,6 +17,7 @@ namespace Albert\Admin;
 defined( 'ABSPATH' ) || exit;
 
 use Albert\OAuth\AllowedUsers;
+use Albert\OAuth\ConnectionRetention;
 use Albert\Privacy\PrivacyMode;
 
 /**
@@ -66,7 +67,7 @@ class SettingsBootstrap {
 				'title'       => __( 'Connections', 'albert-ai-butler' ),
 				'priority'    => 65,
 				'icon'        => 'admin-users',
-				'description' => __( 'Controls the standing invitation granted when someone is added to the allowed list on the Connections screen.', 'albert-ai-butler' ),
+				'description' => __( 'Controls standing invitations and connections that nobody is actually using.', 'albert-ai-butler' ),
 				'fields'      => [
 					[
 						'id'          => 'invitation_expiry_days',
@@ -88,6 +89,32 @@ class SettingsBootstrap {
 						'description' => __( 'Recalculates the expiry date for everyone who has not approved yet, using their original invite date and the number of days above. Leave unchecked and they keep the deadline they were already given.', 'albert-ai-butler' ),
 						'option_name' => AllowedUsers::APPLY_TO_EXISTING_OPTION,
 						'default'     => false,
+					],
+					[
+						'id'          => 'connection_never_used_days',
+						'type'        => 'number',
+						'label'       => __( 'Drop never-used connections (days)', 'albert-ai-butler' ),
+						'description' => __( 'A connection that was approved but has never actually been used to do anything is removed after this many days. Once it is used at least once, it is never removed for this reason. Set to 0 to disable.', 'albert-ai-butler' ),
+						'option_name' => ConnectionRetention::NEVER_USED_OPTION,
+						'default'     => ConnectionRetention::DEFAULT_NEVER_USED_DAYS,
+						'attributes'  => [
+							'min'  => 0,
+							'max'  => 3650,
+							'step' => 1,
+						],
+					],
+					[
+						'id'          => 'connection_idle_days',
+						'type'        => 'number',
+						'label'       => __( 'Expire idle connections (days)', 'albert-ai-butler' ),
+						'description' => __( 'A connection that has not been used in this many days is removed automatically. Off by default: turn this on only once you have a sense of how often the assistants you use normally go quiet, so a normal gap is not mistaken for an idle one. Set to 0 to disable.', 'albert-ai-butler' ),
+						'option_name' => ConnectionRetention::IDLE_OPTION,
+						'default'     => ConnectionRetention::DEFAULT_IDLE_DAYS,
+						'attributes'  => [
+							'min'  => 0,
+							'max'  => 3650,
+							'step' => 1,
+						],
 					],
 				],
 			],

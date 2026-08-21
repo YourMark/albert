@@ -61,6 +61,7 @@ use Albert\Admin\Menu;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
 use Albert\Cron\AllowedUserExpiry;
+use Albert\Cron\ConnectionRetentionSweep;
 use Albert\Cron\TokenCleanup;
 use Albert\Database\Installer as DatabaseInstaller;
 use Albert\Logging\Logger;
@@ -179,6 +180,9 @@ class Plugin {
 
 		// Daily cleanup of expired OAuth token rows.
 		( new TokenCleanup() )->register_hooks();
+
+		// Daily sweep of never-used and idle connections.
+		( new ConnectionRetentionSweep() )->register_hooks();
 
 		// Register admin components.
 		if ( is_admin() ) {
@@ -482,6 +486,9 @@ class Plugin {
 		// Schedule the daily expired-token cleanup.
 		TokenCleanup::schedule();
 
+		// Schedule the daily never-used/idle connection sweep.
+		ConnectionRetentionSweep::schedule();
+
 		/**
 		 * Fires when the plugin is activated.
 		 *
@@ -507,6 +514,9 @@ class Plugin {
 
 		// Unschedule the daily expired-token cleanup.
 		TokenCleanup::unschedule();
+
+		// Unschedule the daily never-used/idle connection sweep.
+		ConnectionRetentionSweep::unschedule();
 
 		/**
 		 * Fires when the plugin is deactivated.

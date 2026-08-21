@@ -54,6 +54,8 @@ class Installer {
 		'albert_allowed_users',
 		'albert_allowed_user_expiry_days',
 		'albert_allowed_user_apply_expiry_to_existing',
+		'albert_connection_never_used_days',
+		'albert_connection_idle_days',
 		'albert_disabled_abilities',
 		'albert_abilities_saved',
 		'albert_known_abilities',

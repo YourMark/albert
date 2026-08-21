@@ -1639,99 +1639,19 @@ class Connections implements Hookable {
 	 */
 
 	/**
-	 * Every currently connected client, one entry each, most recently used first.
-	 *
-	 * "Connected" is *either* a live access token *or* a live refresh token
-	 * behind one. Access tokens last an hour, so a client that has been idle
-	 * since lunchtime holds an expired one and would otherwise vanish from this
-	 * list, while still being able to come back, unprompted, at any moment.
-	 * A list that hides a connection which is about to make a request is not
-	 * telling the owner what is connected.
-	 *
-	 * Sorted by last used rather than created, so the assistants somebody
-	 * actually relies on float to the top and the forgotten ones sink toward the
-	 * scroll boundary, which is where "spot one you don't recognise" gets easier
-	 * as the list grows rather than harder.
-	 *
-	 * Two queries rather than one join: the token aggregate, then the client row
-	 * through {@see ClientRepository}, which hydrates the newer columns
-	 * defensively. The second query runs once per connected client, and the
-	 * number of connected clients is single digits on every real site; a join
-	 * would trade that for a `SELECT c.*` whose column names collide with the
-	 * token table's.
+	 * Every currently connected client, one entry each, most recently used
+	 * first. Delegates to {@see ClientRepository::getLiveConnections()},
+	 * which is now the single source of truth for "what counts as a
+	 * connection": {@see \Albert\OAuth\ConnectionRetention}'s automatic
+	 * sweeps read the exact same list, so a client is never dropped as
+	 * never-used or idle while it is still something this screen shows as
+	 * connected.
 	 *
 	 * @return array<int, array<string, mixed>>
 	 * @since 1.4.0
 	 */
 	private function get_connections(): array {
-		global $wpdb;
-
-		$tables = Tables::oauth();
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, admin screen read.
-		$rows = $wpdb->get_results(
-			$wpdb->prepare(
-				'SELECT
-					t.client_id AS client_id,
-					COUNT( DISTINCT t.id ) AS token_count,
-					MAX( UNIX_TIMESTAMP( t.expires_at ) ) AS expires_ts,
-					MIN( UNIX_TIMESTAMP( t.created_at ) ) AS first_token_ts,
-					GROUP_CONCAT( DISTINCT t.user_id ) AS user_ids
-				FROM %i t
-				LEFT JOIN %i r
-					ON r.access_token_id = t.token_id
-					AND r.revoked = 0
-					AND r.expires_at > UTC_TIMESTAMP()
-				WHERE t.revoked = 0
-					AND ( t.expires_at > UTC_TIMESTAMP() OR r.id IS NOT NULL )
-				GROUP BY t.client_id
-				ORDER BY first_token_ts DESC',
-				$tables['access_tokens'],
-				$tables['refresh_tokens']
-			),
-			ARRAY_A
-		);
-
-		if ( ! is_array( $rows ) || empty( $rows ) ) {
-			return [];
-		}
-
-		$repository  = new ClientRepository();
-		$connections = [];
-
-		foreach ( $rows as $row ) {
-			$client_id = (string) $row['client_id'];
-			$client    = $repository->getClientEntity( $client_id );
-
-			$created      = $client ? $client->getCreatedAt() : null;
-			$last_used    = $client ? $client->getLastUsedAt() : null;
-			$label_set_at = $client ? $client->getLabelSetAt() : null;
-
-			$connections[] = [
-				'client_id'    => $client_id,
-				'name'         => $client && $client->getName() !== '' ? (string) $client->getName() : __( 'Unknown assistant', 'albert-ai-butler' ),
-				'label'        => $client ? (string) $client->getLabel() : '',
-				'label_set_by' => $client ? (int) $client->getLabelSetBy() : 0,
-				'label_set_at' => $label_set_at instanceof \DateTimeImmutable ? $label_set_at->getTimestamp() : 0,
-				'created_ts'   => $created instanceof \DateTimeImmutable ? $created->getTimestamp() : (int) $row['first_token_ts'],
-				'last_used_ts' => $last_used instanceof \DateTimeImmutable ? $last_used->getTimestamp() : 0,
-				'token_count'  => (int) $row['token_count'],
-				'user_ids'     => array_map( 'intval', array_filter( explode( ',', (string) $row['user_ids'] ) ) ),
-			];
-		}
-
-		usort(
-			$connections,
-			static function ( array $a, array $b ): int {
-				if ( $a['last_used_ts'] === $b['last_used_ts'] ) {
-					return $b['created_ts'] <=> $a['created_ts'];
-				}
-
-				return $b['last_used_ts'] <=> $a['last_used_ts'];
-			}
-		);
-
-		return $connections;
+		return ( new ClientRepository() )->getLiveConnections();
 	}
 
 	/**
