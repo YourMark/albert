@@ -18,6 +18,7 @@ use Albert\Contracts\Interfaces\Hookable;
 use Albert\OAuth\Entities\UserEntity;
 use Albert\OAuth\Repositories\ClientRepository;
 use Albert\OAuth\Server\AuthorizationServerFactory;
+use Albert\OAuth\Server\DomainGuard;
 use League\OAuth2\Server\Exception\OAuthServerException;
 
 /**
@@ -172,7 +173,7 @@ class AuthorizationPage implements Hookable {
 			return;
 		}
 
-		// Validate redirect URI — must exactly match a registered URI. There is no
+		// Validate redirect URI: must exactly match a registered URI. There is no
 		// wildcard: a client that did not register this exact URI is rejected.
 		$allowed_uris = $client->getRedirectUri();
 		if ( is_string( $allowed_uris ) ) {
@@ -188,7 +189,7 @@ class AuthorizationPage implements Hookable {
 		}
 
 		// PKCE policy: this server accepts only the S256 challenge method, and a
-		// public (native/loopback) client MUST use PKCE — a secret alone cannot
+		// public (native/loopback) client MUST use PKCE: a secret alone cannot
 		// protect it (RFC 8252). league enforces presence for public clients at
 		// token time; we reject a non-S256 method and a missing challenge up front.
 		if ( $code_challenge !== '' && $code_challenge_method !== 'S256' ) {
@@ -308,6 +309,15 @@ class AuthorizationPage implements Hookable {
 				$auth_request,
 				Psr7Bridge::create_response()
 			);
+
+			// Record the address this connection was authorised against.
+			// Recording only: suspending a connection when the site's address
+			// changes is designed but deliberately not enforced yet
+			// (docs/features/31-connections.md §6). Nothing reads this column to
+			// refuse a request. It is written now so the history exists on the
+			// day the control ships, rather than every existing connection
+			// looking like a fresh unknown. See Albert\OAuth\Server\DomainGuard.
+			DomainGuard::record_connection( (string) $client->getIdentifier() );
 
 			// Get redirect location from response.
 			$location = $psr_response->getHeader( 'Location' );
@@ -589,7 +599,7 @@ class AuthorizationPage implements Hookable {
 	/**
 	 * Format the redirect destination shown on the consent screen.
 	 *
-	 * The destination is the primary trust signal — for an https/http URI show
+	 * The destination is the primary trust signal: for an https/http URI show
 	 * the host; for a private-use scheme show the (short) URI itself.
 	 *
 	 * @param string $redirect_uri The validated redirect URI.
@@ -636,8 +646,8 @@ class AuthorizationPage implements Hookable {
 		return sprintf(
 			/* translators: %d: number of minutes since the application registered */
 			_n(
-				'This application registered %d minute ago — only continue if you are expecting it.',
-				'This application registered %d minutes ago — only continue if you are expecting it.',
+				'This application registered %d minute ago. Only continue if you are expecting it.',
+				'This application registered %d minutes ago. Only continue if you are expecting it.',
 				$minutes,
 				'albert-ai-butler'
 			),

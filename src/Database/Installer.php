@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
  * OAuth tables). Migrations are keyed on the plugin version, not a separate
  * schema number:
  *
- *  - {@see self::install()} runs on activation — creates the tables and stamps
+ *  - {@see self::install()} runs on activation: creates the tables and stamps
  *    the current plugin version.
  *  - {@see self::maybe_upgrade()} runs on every load (`plugins_loaded`) and is a
  *    cheap no-op until the plugin version advances, at which point it re-runs
@@ -27,7 +27,7 @@ defined( 'ABSPATH' ) || exit;
  * Keying on the plugin version means there is no separate db-version to forget
  * to bump: every release advances the gate, and `dbDelta` only adds what is
  * missing, so the schema always converges. The cost is one harmless `dbDelta`
- * on releases that did not touch the schema — negligible at Albert's cadence.
+ * on releases that did not touch the schema, negligible at Albert's cadence.
  *
  * @since 1.2.0
  */
@@ -43,7 +43,7 @@ class Installer {
 
 	/**
 	 * Every option the plugin owns. Cleared wholesale on uninstall so deleting
-	 * the plugin leaves no state behind — including OAuth key material.
+	 * the plugin leaves no state behind, including OAuth key material.
 	 *
 	 * @since 1.2.0
 	 * @var array<int, string>
@@ -60,16 +60,27 @@ class Installer {
 		'albert_oauth_encryption_key',
 		'albert_oauth_private_key',
 		'albert_oauth_public_key',
-		// Legacy options retired in earlier releases — cleared here for completeness.
+		// Legacy options retired in earlier releases, cleared here for completeness.
 		'albert_logging_db_version',
 		'albert_oauth_db_version',
 		'albert_external_url',
 	];
 
 	/**
+	 * Every user meta key the plugin owns, cleared on uninstall alongside the
+	 * options so no per-user state outlives the plugin.
+	 *
+	 * @since 1.4.0
+	 * @var array<int, string>
+	 */
+	const USER_META = [
+		'albert_dismissed_domain_host',
+	];
+
+	/**
 	 * Create or update all tables and record the schema version.
 	 *
-	 * Idempotent — safe to call on every activation. `dbDelta` only issues the
+	 * Idempotent: safe to call on every activation. `dbDelta` only issues the
 	 * ALTER/CREATE statements needed to reach the declared schema.
 	 *
 	 * @return void
@@ -81,11 +92,11 @@ class Installer {
 	}
 
 	/**
-	 * Remove OAuth clients stored with the legacy `'*'` wildcard redirect URI — a
+	 * Remove OAuth clients stored with the legacy `'*'` wildcard redirect URI, a
 	 * pre-1.3.1 hole that let any redirect be accepted. Called once from
 	 * {@see self::maybe_upgrade()} when upgrading from below 1.3.1; the version
 	 * gate makes it a true one-time migration (no persistent flag needed), and the
-	 * DELETE is idempotent besides. Only `'*'` rows are touched — properly
+	 * DELETE is idempotent besides. Only `'*'` rows are touched; properly
 	 * registered clients are never affected. Runs silently: such a row is
 	 * near-impossible in practice, and an affected connection simply reconnects.
 	 *
@@ -171,6 +182,10 @@ class Installer {
 		foreach ( self::OPTIONS as $option ) {
 			delete_option( $option );
 		}
+
+		foreach ( self::USER_META as $meta_key ) {
+			delete_metadata( 'user', 0, $meta_key, '', true );
+		}
 	}
 
 	/**
@@ -248,6 +263,10 @@ class Installer {
 			user_id bigint(20) unsigned DEFAULT NULL,
 			is_confidential tinyint(1) NOT NULL DEFAULT 1,
 			origin varchar(20) DEFAULT NULL,
+			label varchar(255) DEFAULT NULL,
+			label_set_by bigint(20) unsigned DEFAULT NULL,
+			label_set_at datetime DEFAULT NULL,
+			connect_host varchar(255) DEFAULT NULL,
 			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			last_used_at datetime DEFAULT NULL,

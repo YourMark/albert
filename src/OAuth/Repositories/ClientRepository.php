@@ -230,6 +230,16 @@ class ClientRepository implements ClientRepositoryInterface {
 		$client->setClientSecret( $row['client_secret'] );
 		$client->setOrigin( isset( $row['origin'] ) && $row['origin'] !== '' ? (string) $row['origin'] : null );
 
+		// Guarded with isset() rather than assumed: these columns arrive by
+		// dbDelta on upgrade, and a row read before that ran simply has no key.
+		$client->setLabel( isset( $row['label'] ) && $row['label'] !== '' ? (string) $row['label'] : null );
+		$client->setLabelSetBy( ! empty( $row['label_set_by'] ) ? (int) $row['label_set_by'] : null );
+		$client->setConnectHost( isset( $row['connect_host'] ) && $row['connect_host'] !== '' ? (string) $row['connect_host'] : null );
+
+		if ( ! empty( $row['label_set_at'] ) ) {
+			$client->setLabelSetAt( new \DateTimeImmutable( (string) $row['label_set_at'] ) );
+		}
+
 		if ( ! empty( $row['created_at'] ) ) {
 			$client->setCreatedAt( new \DateTimeImmutable( $row['created_at'] ) );
 		}
@@ -239,6 +249,94 @@ class ClientRepository implements ClientRepositoryInterface {
 		}
 
 		return $client;
+	}
+
+	/**
+	 * Set (or clear) the site owner's own name for a connection.
+	 *
+	 * The client's own `name` is never touched: it is what the client called
+	 * itself at registration, and rewriting it would lose the only record of
+	 * that. The label sits beside it.
+	 *
+	 * The label carries its own attribution. Who wrote it and when are stored
+	 * with it and rendered on the row, because a label is a display name one
+	 * administrator writes onto another person's connection on the very screen
+	 * where an owner decides what looks trustworthy. Clearing the label clears
+	 * the attribution with it: there is nothing left to attribute.
+	 *
+	 * @param string      $client_identifier The client's identifier.
+	 * @param string|null $label             The label, or null/'' to clear it.
+	 * @param int|null    $author_id         Who wrote it. Null records no author.
+	 *
+	 * @return bool Whether the write succeeded.
+	 * @since 1.4.0
+	 */
+	public function updateClientLabel( string $client_identifier, ?string $label, ?int $author_id = null ): bool {
+		global $wpdb;
+
+		$tables = Tables::oauth();
+
+		$label   = $label === null ? null : trim( $label );
+		$cleared = ( $label === null || $label === '' );
+
+		$data = [
+			'label'        => $cleared ? null : $label,
+			'label_set_by' => ( $cleared || ! $author_id ) ? null : $author_id,
+			'label_set_at' => $cleared ? null : gmdate( 'Y-m-d H:i:s' ),
+		];
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
+		$result = $wpdb->update(
+			$tables['clients'],
+			$data,
+			[ 'client_id' => $client_identifier ],
+			[ '%s', '%d', '%s' ],
+			[ '%s' ]
+		);
+
+		return $result !== false;
+	}
+
+	/**
+	 * Record that a client just authenticated.
+	 *
+	 * "Last used" is the signal an owner scans for a connection they do not
+	 * recognise, so the column has to actually be written: a Never that is
+	 * always Never is worse than no column, because it reads as "this assistant
+	 * has done nothing".
+	 *
+	 * Written on the authenticated-request path, which is hot, so the staleness
+	 * check is in the SQL rather than in a read-then-write. The statement matches
+	 * no rows on all but the first request in each interval, which is cheaper
+	 * than the SELECT that deciding in PHP would cost.
+	 *
+	 * @param string $client_identifier The client's identifier.
+	 * @param int    $interval_minutes  How stale the stored value must be before it is rewritten.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	public function touchLastUsed( string $client_identifier, int $interval_minutes = 5 ): void {
+		global $wpdb;
+
+		if ( $client_identifier === '' ) {
+			return;
+		}
+
+		$tables = Tables::oauth();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, throttled write.
+		$wpdb->query(
+			$wpdb->prepare(
+				'UPDATE %i
+				SET last_used_at = UTC_TIMESTAMP()
+				WHERE client_id = %s
+					AND ( last_used_at IS NULL OR last_used_at < DATE_SUB( UTC_TIMESTAMP(), INTERVAL %d MINUTE ) )',
+				$tables['clients'],
+				$client_identifier,
+				$interval_minutes
+			)
+		);
 	}
 
 	/**
