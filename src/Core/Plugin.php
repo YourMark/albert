@@ -175,14 +175,20 @@ class Plugin {
 		// consumers in Free; this is the seam Premium's activity log binds to.
 		( new InvocationRelay() )->register_hooks();
 
-		// Daily sweep of never-authorised allowed-user invitations.
+		// Daily sweep of never-authorised allowed-user invitations. schedule()
+		// is idempotent (guarded by wp_next_scheduled()), so calling it here
+		// too — not just from activate() — self-heals sites that already had
+		// Albert active before this cron was introduced and never re-activate.
 		( new AllowedUserExpiry() )->register_hooks();
+		AllowedUserExpiry::schedule();
 
-		// Daily cleanup of expired OAuth token rows.
+		// Daily cleanup of expired OAuth token rows. Same self-healing reason.
 		( new TokenCleanup() )->register_hooks();
+		TokenCleanup::schedule();
 
-		// Daily sweep of never-used and idle connections.
+		// Daily sweep of never-used and idle connections. Same self-healing reason.
 		( new ConnectionRetentionSweep() )->register_hooks();
+		ConnectionRetentionSweep::schedule();
 
 		// Register admin components.
 		if ( is_admin() ) {
