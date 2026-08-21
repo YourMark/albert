@@ -160,24 +160,27 @@ class Installer {
 	 * version-gated steps. See {@see \Albert\OAuth\AllowedUsers} for the
 	 * shape and how it is read/written afterwards.
 	 *
-	 * Existing entries carry no record of when they were actually added, and
-	 * we have no way to reconstruct one, so `added_at` is backfilled to the
-	 * moment of *this* upgrade rather than a guessed historical date:
-	 * starting everyone's clock here is the only honest choice.
-	 *
-	 * `authorised_at` is backfilled to that same moment, not left null:
-	 * invitation expiry (default 1 day) is a new rule with no exemption for
-	 * "predates this feature". A flat pre-1.4.0 entry could be someone who
-	 * connected the day it was added, or someone who never got around to it;
-	 * the option alone cannot tell those apart, and there is no record to
-	 * consult. Refusing to guess which is which and applying the new,
-	 * tight default retroactively risks locking out an already-working
-	 * connection within a day of an unrelated plugin update, which is a far
-	 * worse surprise than grandfathering in a handful of stale invitations
-	 * that predate the feature meant to catch them. Only invitations granted
-	 * *after* this upgrade go through the real expire-if-unused lifecycle,
-	 * so `expires_at` is left null for every migrated entry: they are exempt
-	 * via `authorised_at`, and moot regardless.
+	 * Existing entries carry no record of when they were actually added, who
+	 * they are, or whether they have ever connected anything, and there is
+	 * no way to reconstruct any of that. So none of it is invented: every
+	 * field is left `null`. A flat pre-1.4.0 entry could be someone who
+	 * connected the day it was added, or someone who never got around to
+	 * it; the option alone cannot tell those apart, and guessing either
+	 * `added_at` (displayed verbatim as "Added X ago", a factual claim
+	 * about a person actually reading it) or `authorised_at` (a real
+	 * OAuth event that never happened) would be stating something as fact
+	 * that is simply not known. `expires_at` staying `null` is what
+	 * actually exempts these entries from the sweep on its own
+	 * ({@see \Albert\OAuth\AllowedUsers::is_allowed()}: no `expires_at`
+	 * means no expiry, independent of `authorised_at`), which is why leaving
+	 * `authorised_at` null too costs nothing: nothing currently reads it
+	 * for a migrated entry except that same already-satisfied check.
+	 * Applying the new, tight default retroactively would risk locking out
+	 * an already-working connection within a day of an unrelated plugin
+	 * update, a far worse surprise than leaving a handful of legacy
+	 * entries permanently unlabelled. Only invitations granted *after*
+	 * this upgrade go through the real expire-if-unused lifecycle, with
+	 * real timestamps to show for it.
 	 *
 	 * Idempotent, and safe to re-run from any intermediate state: an entry
 	 * that is already an array (the new shape, or a partial one from an
@@ -195,7 +198,6 @@ class Installer {
 			return;
 		}
 
-		$now      = gmdate( 'Y-m-d H:i:s' );
 		$defaults = [
 			'added_at'      => null,
 			'authorised_at' => null,
@@ -214,11 +216,7 @@ class Installer {
 
 			$id = (int) $value;
 			if ( $id > 0 && ! isset( $migrated[ $id ] ) ) {
-				$migrated[ $id ] = [
-					'added_at'      => $now,
-					'authorised_at' => $now,
-					'expires_at'    => null,
-				];
+				$migrated[ $id ] = $defaults;
 			}
 		}
 

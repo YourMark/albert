@@ -39,13 +39,21 @@ defined( 'ABSPATH' ) || exit;
  * Before 1.4.0 this was a flat array of ints with no timestamps at all.
  * {@see \Albert\Database\Installer} migrates existing sites once, on
  * upgrade, before any of these methods can run in the same request (its
- * `maybe_upgrade()` fires first in {@see \Albert\Core\Plugin::init()}).
- * Fields are still read defensively here in case an entry somehow predates
- * that migration.
+ * `maybe_upgrade()` fires first in {@see \Albert\Core\Plugin::init()}), by
+ * leaving every field `null`: there is no record of when a legacy entry was
+ * actually added or whether it was ever exercised, and inventing either
+ * would be stating a fact nobody knows, displayed as one right on the row
+ * ("Added 2 hours ago" for an account that predates this feature entirely
+ * is not a rounding error, it is simply wrong). A migrated entry is exempt
+ * from expiry the same way a fresh one with expiry turned off is: `null`
+ * `expires_at` alone, {@see self::is_expired()}, needs no fabricated
+ * `authorised_at` to back it up. Fields are still read defensively here in
+ * case an entry somehow predates even that migration.
  *
- * `authorised_at` is the exemption: an invitation that was exercised at
- * least once is allowed forever, no matter what happens to that connection
- * later or what its `expires_at` says, checked nowhere but here.
+ * `authorised_at` is the exemption for entries that *do* have a real one: an
+ * invitation that was exercised at least once is allowed forever, no matter
+ * what happens to that connection later or what its `expires_at` says,
+ * checked nowhere but here.
  *
  * Invitation expiry is enforced live, at {@see self::is_allowed()}, not only
  * by the sweep. The same reasoning already applies to token expiry

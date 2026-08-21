@@ -191,22 +191,22 @@ class InstallerTest extends TestCase {
 
 	/**
 	 * Upgrading from below 1.4.0 rewraps a flat `albert_allowed_users` array
-	 * into the new per-entry shape, backfilling both `added_at` and
-	 * `authorised_at` to the moment of *this* upgrade.
+	 * into the new per-entry shape, leaving every field `null` rather than
+	 * inventing a value for any of them.
 	 *
-	 * `authorised_at` is backfilled too, not left null: invitation expiry
-	 * (default 1 day) is a new rule, and a legacy entry could be someone
-	 * already relying on a working connection. The option alone cannot tell
-	 * that apart from someone who never got around to it, and there is no
-	 * historical record to consult, so applying the new, tight default
-	 * retroactively risks locking out a real connection within a day of an
-	 * unrelated update. Grandfathering every pre-1.4.0 entry in as already
-	 * exercised is the safe choice; only invitations granted after this
-	 * upgrade go through the real expire-if-unused lifecycle.
+	 * Nothing is guessed: there is no record of when a legacy entry was
+	 * actually added or whether it was ever exercised, and a fabricated
+	 * `added_at` would be displayed on the row as a factual claim ("Added 2
+	 * hours ago") about an account that may predate the feature by years.
+	 * `expires_at` staying `null` is what exempts these entries from the
+	 * sweep on its own, no fabricated `authorised_at` required: applying the
+	 * new, tight default retroactively risks locking out a real connection
+	 * within a day of an unrelated update, so only invitations granted after
+	 * this upgrade go through the real expire-if-unused lifecycle.
 	 *
 	 * @return void
 	 */
-	public function test_maybe_upgrade_backfills_and_grandfathers_legacy_allowed_users(): void {
+	public function test_maybe_upgrade_leaves_legacy_allowed_users_unlabelled_and_exempt(): void {
 		$one = self::factory()->user->create();
 		$two = self::factory()->user->create();
 
@@ -219,12 +219,12 @@ class InstallerTest extends TestCase {
 		$this->assertSame( [ $one, $two ], AllowedUsers::ids() );
 
 		foreach ( [ $one, $two ] as $user_id ) {
-			$this->assertEqualsWithDelta( time(), AllowedUsers::added_at( $user_id ), 5 );
-			$this->assertEqualsWithDelta( time(), AllowedUsers::authorised_at( $user_id ), 5 );
-			$this->assertTrue( AllowedUsers::has_authorised( $user_id ) );
+			$this->assertNull( AllowedUsers::added_at( $user_id ) );
+			$this->assertNull( AllowedUsers::authorised_at( $user_id ) );
+			$this->assertFalse( AllowedUsers::has_authorised( $user_id ) );
 			$this->assertNull( AllowedUsers::expires_at( $user_id ) );
 
-			// Grandfathered in for good: still allowed even set far in the past.
+			// Exempt for good via expires_at alone, still allowed regardless.
 			$this->assertTrue( AllowedUsers::is_allowed( $user_id ) );
 		}
 	}
