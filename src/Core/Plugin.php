@@ -61,6 +61,7 @@ use Albert\Admin\Menu;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
 use Albert\Cron\AllowedUserExpiry;
+use Albert\Cron\TokenCleanup;
 use Albert\Database\Installer as DatabaseInstaller;
 use Albert\Logging\Logger;
 use Albert\Logging\Repository as LoggingRepository;
@@ -175,6 +176,9 @@ class Plugin {
 
 		// Daily sweep of never-authorised allowed-user invitations.
 		( new AllowedUserExpiry() )->register_hooks();
+
+		// Daily cleanup of expired OAuth token rows.
+		( new TokenCleanup() )->register_hooks();
 
 		// Register admin components.
 		if ( is_admin() ) {
@@ -475,6 +479,9 @@ class Plugin {
 		// Schedule the daily invitation-expiry sweep.
 		AllowedUserExpiry::schedule();
 
+		// Schedule the daily expired-token cleanup.
+		TokenCleanup::schedule();
+
 		/**
 		 * Fires when the plugin is activated.
 		 *
@@ -497,6 +504,9 @@ class Plugin {
 
 		// Unschedule the daily invitation-expiry sweep.
 		AllowedUserExpiry::unschedule();
+
+		// Unschedule the daily expired-token cleanup.
+		TokenCleanup::unschedule();
 
 		/**
 		 * Fires when the plugin is deactivated.
