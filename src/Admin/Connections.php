@@ -18,8 +18,10 @@ defined( 'ABSPATH' ) || exit;
 use Albert\Admin\Connections\ClientSetupGuides;
 use Albert\Admin\Connections\UserPickerModal;
 use Albert\Contracts\Interfaces\Hookable;
+use Albert\Cron\AllowedUserExpiry;
 use Albert\Database\Tables;
 use Albert\MCP\Server as McpServer;
+use Albert\OAuth\AllowedUsers;
 use Albert\OAuth\Repositories\ClientRepository;
 use Albert\OAuth\Repositories\RefreshTokenRepository;
 
@@ -362,7 +364,6 @@ class Connections implements Hookable {
 			$this->redirect_after_add( $return_to );
 		}
 
-		$allowed   = array_map( 'intval', (array) get_option( 'albert_allowed_users', [] ) );
 		$added_ids = [];
 
 		foreach ( $ids as $user_id ) {
@@ -370,15 +371,10 @@ class Connections implements Hookable {
 				continue;
 			}
 
-			if ( in_array( $user_id, $allowed, true ) ) {
-				continue;
+			if ( AllowedUsers::add( $user_id ) ) {
+				$added_ids[] = $user_id;
 			}
-
-			$allowed[]   = $user_id;
-			$added_ids[] = $user_id;
 		}
-
-		update_option( 'albert_allowed_users', array_values( $allowed ) );
 
 		$added   = count( $added_ids );
 		$message = $added === 0
@@ -395,7 +391,7 @@ class Connections implements Hookable {
 			}
 
 			ob_start();
-			$this->render_allowed_users_body( $allowed );
+			$this->render_allowed_users_body( AllowedUsers::all() );
 			$body_html = (string) ob_get_clean();
 
 			wp_send_json_success(
@@ -455,9 +451,7 @@ class Connections implements Hookable {
 
 		$this->require_capability( __( 'You do not have permission to manage MCP access.', 'albert-ai-butler' ), $is_ajax );
 
-		$allowed_users = (array) get_option( 'albert_allowed_users', [] );
-		$allowed_users = array_filter( $allowed_users, static fn( $id ): bool => (int) $id !== $user_id );
-		update_option( 'albert_allowed_users', array_values( $allowed_users ) );
+		AllowedUsers::remove( $user_id );
 
 		Settings::revoke_user_tokens( $user_id );
 
@@ -465,7 +459,7 @@ class Connections implements Hookable {
 
 		if ( $is_ajax ) {
 			ob_start();
-			$this->render_allowed_users_body( array_map( 'intval', array_values( $allowed_users ) ) );
+			$this->render_allowed_users_body( AllowedUsers::all() );
 			$users_html = (string) ob_get_clean();
 
 			$connections = $this->get_connections();
@@ -1342,7 +1336,7 @@ class Connections implements Hookable {
 	 * exactly what the page would have rendered, rather than a second copy of
 	 * this markup living in JS.
 	 *
-	 * @param array<int, int> $allowed_users The allowed user ids.
+	 * @param array<int, array{added_at: int|null, authorised_at: int|null}> $allowed_users The allowed users, from {@see \Albert\OAuth\AllowedUsers::all()}.
 	 *
 	 * @return void
 	 * @since 1.4.0
@@ -1359,11 +1353,13 @@ class Connections implements Hookable {
 			return;
 		}
 
+		$expiry_days = (int) get_option( AllowedUserExpiry::OPTION, AllowedUserExpiry::DEFAULT_DAYS );
+
 		?>
 		<div class="albert-card__body albert-card__body--flush albert-userlist">
 			<ul class="albert-userlist__rows" aria-label="<?php esc_attr_e( 'Users who may approve an assistant', 'albert-ai-butler' ); ?>">
-				<?php foreach ( $allowed_users as $user_id ) { ?>
-					<?php $this->render_allowed_user_row( (int) $user_id ); ?>
+				<?php foreach ( $allowed_users as $user_id => $entry ) { ?>
+					<?php $this->render_allowed_user_row( (int) $user_id, $entry, $expiry_days ); ?>
 				<?php } ?>
 			</ul>
 		</div>
@@ -1381,7 +1377,7 @@ class Connections implements Hookable {
 	 * @since 1.4.0
 	 */
 	private function render_allowed_users_card(): void {
-		$allowed_users = array_map( 'intval', (array) get_option( 'albert_allowed_users', [] ) );
+		$allowed_users = AllowedUsers::all();
 
 		?>
 		<section class="albert-card albert-connections__allowed">
@@ -1425,12 +1421,14 @@ class Connections implements Hookable {
 	/**
 	 * Render one allowed user.
 	 *
-	 * @param int $user_id The user ID.
+	 * @param int                                                $user_id     The user ID.
+	 * @param array{added_at: int|null, authorised_at: int|null} $entry       Their entry from {@see \Albert\OAuth\AllowedUsers::all()}.
+	 * @param int                                                $expiry_days The configured invitation-expiry window, 0 = never.
 	 *
 	 * @return void
 	 * @since 1.4.0
 	 */
-	private function render_allowed_user_row( int $user_id ): void {
+	private function render_allowed_user_row( int $user_id, array $entry, int $expiry_days ): void {
 		$user = get_user_by( 'id', $user_id );
 
 		if ( ! $user ) {
@@ -1460,7 +1458,8 @@ class Connections implements Hookable {
 			admin_url( 'admin.php' )
 		);
 
-		$meta = $user->user_email . ' · ' . $this->role_label_for( $user );
+		$meta   = $user->user_email . ' · ' . $this->role_label_for( $user );
+		$expiry = $this->format_allowed_user_expiry( $entry, $expiry_days );
 
 		?>
 		<li class="albert-user-item" data-albert-user-row data-user-id="<?php echo esc_attr( (string) $user_id ); ?>" data-search="<?php echo esc_attr( $this->normalise( $user->display_name . ' ' . $meta ) ); ?>">
@@ -1470,6 +1469,9 @@ class Connections implements Hookable {
 			<div class="albert-user-item__text">
 				<strong class="albert-user-item__name"><?php echo esc_html( $user->display_name ); ?></strong>
 				<span class="albert-user-item__meta"><?php echo esc_html( $meta ); ?></span>
+				<?php if ( $expiry !== '' ) { ?>
+					<span class="albert-user-item__expiry"><?php echo esc_html( $expiry ); ?></span>
+				<?php } ?>
 			</div>
 			<div class="albert-user-item__sessions">
 				<?php if ( $session_count > 0 ) { ?>
@@ -1845,6 +1847,50 @@ class Connections implements Hookable {
 			/* translators: %s: human-readable time difference, e.g. "2 hours". */
 			__( '%s ago', 'albert-ai-butler' ),
 			human_time_diff( $timestamp, time() )
+		);
+	}
+
+	/**
+	 * "Added 3 days ago", or "Expires in 11 days if unused".
+	 *
+	 * Exercised invitations (an `authorised_at`) and a disabled window
+	 * (`$expiry_days` of 0) both just say when the person was added: neither
+	 * is ever swept, so there is nothing to count down. Only a never-used
+	 * invitation with a real window gets the countdown, which is the one
+	 * case {@see \Albert\Cron\AllowedUserExpiry} can actually act on.
+	 *
+	 * @param array{added_at: int|null, authorised_at: int|null} $entry       The user's entry.
+	 * @param int                                                $expiry_days The configured window, 0 = never.
+	 *
+	 * @return string A translated phrase, or '' when there is no added_at to show.
+	 * @since 1.4.0
+	 */
+	private function format_allowed_user_expiry( array $entry, int $expiry_days ): string {
+		$added_at = $entry['added_at'];
+
+		if ( $added_at === null ) {
+			return '';
+		}
+
+		if ( $entry['authorised_at'] !== null || $expiry_days <= 0 ) {
+			return sprintf(
+				/* translators: %s: human-readable time since they were added, e.g. "3 days ago". */
+				__( 'Added %s', 'albert-ai-butler' ),
+				$this->format_ago( $added_at )
+			);
+		}
+
+		$expires_at = $added_at + ( $expiry_days * DAY_IN_SECONDS );
+		$remaining  = $expires_at - time();
+
+		if ( $remaining <= 0 ) {
+			return __( 'Expires soon if unused', 'albert-ai-butler' );
+		}
+
+		return sprintf(
+			/* translators: %s: human-readable time until expiry, e.g. "11 days". */
+			__( 'Expires in %s if unused', 'albert-ai-butler' ),
+			human_time_diff( time(), $expires_at )
 		);
 	}
 

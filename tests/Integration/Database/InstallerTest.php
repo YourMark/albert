@@ -13,6 +13,7 @@ namespace Albert\Tests\Integration\Database;
 
 use Albert\Database\Installer;
 use Albert\Database\Tables;
+use Albert\OAuth\AllowedUsers;
 use Albert\Tests\TestCase;
 
 /**
@@ -113,7 +114,7 @@ class InstallerTest extends TestCase {
 	}
 
 	/**
-	 * maybe_upgrade() is a no-op once the stored version is current.
+	 * A no-op once the stored version is current.
 	 *
 	 * @return void
 	 */
@@ -147,8 +148,8 @@ class InstallerTest extends TestCase {
 	}
 
 	/**
-	 * maybe_upgrade() runs the schema build when the stored version is behind,
-	 * advancing the version while preserving existing rows (additive migration).
+	 * Runs the schema build when the stored version is behind, advancing the
+	 * version while preserving existing rows (additive migration).
 	 *
 	 * @return void
 	 */
@@ -186,6 +187,57 @@ class InstallerTest extends TestCase {
 
 		$this->assertNotNull( $row );
 		$this->assertSame( $id_before, (int) $row->id );
+	}
+
+	/**
+	 * Upgrading from below 1.4.0 rewraps a flat `albert_allowed_users` array
+	 * into the new per-entry shape, backfilling `added_at` to the moment of
+	 * *this* upgrade rather than a guessed historical date: there is no
+	 * record of when a legacy entry was actually added, and starting
+	 * everyone's clock at the upgrade is what guarantees a full grace window
+	 * before an invitation-expiry sweep can remove anyone.
+	 *
+	 * @return void
+	 */
+	public function test_maybe_upgrade_backfills_added_at_for_legacy_allowed_users(): void {
+		$one = self::factory()->user->create();
+		$two = self::factory()->user->create();
+
+		// The pre-1.4.0 shape: a flat array of ints, no timestamps at all.
+		update_option( AllowedUsers::OPTION, [ $one, $two ] );
+		update_option( Installer::VERSION_OPTION, '0.0.0' );
+
+		Installer::maybe_upgrade();
+
+		$this->assertSame( [ $one, $two ], AllowedUsers::ids() );
+
+		foreach ( [ $one, $two ] as $user_id ) {
+			$this->assertEqualsWithDelta( time(), AllowedUsers::added_at( $user_id ), 5 );
+			$this->assertNull( AllowedUsers::authorised_at( $user_id ) );
+		}
+	}
+
+	/**
+	 * Re-running the migration (e.g. against a site already on the new shape)
+	 * leaves existing entries untouched rather than resetting their clock.
+	 *
+	 * @return void
+	 */
+	public function test_allowed_users_migration_is_idempotent(): void {
+		$user_id = self::factory()->user->create();
+
+		update_option( Installer::VERSION_OPTION, '0.0.0' );
+		Installer::maybe_upgrade();
+
+		AllowedUsers::add( $user_id );
+		$added_at = AllowedUsers::added_at( $user_id );
+
+		// Pretend the site is behind again and re-run: the entry is already
+		// the new shape, so it must be carried through unchanged.
+		update_option( Installer::VERSION_OPTION, '0.0.0' );
+		Installer::maybe_upgrade();
+
+		$this->assertSame( $added_at, AllowedUsers::added_at( $user_id ) );
 	}
 
 	/**

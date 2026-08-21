@@ -16,6 +16,7 @@ namespace Albert\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Cron\AllowedUserExpiry;
 use Albert\Privacy\PrivacyMode;
 
 /**
@@ -57,6 +58,28 @@ class SettingsBootstrap {
 							PrivacyMode::Off->value      => __( 'Off — do not anonymise personal data', 'albert-ai-butler' ),
 						],
 						'sanitize_callback' => [ PrivacyMode::class, 'sanitize' ],
+					],
+				],
+			],
+			[
+				'id'          => 'albert/connections',
+				'title'       => __( 'Connections', 'albert-ai-butler' ),
+				'priority'    => 65,
+				'icon'        => 'admin-users',
+				'description' => __( 'Controls the standing invitation granted when someone is added to the allowed list on the Connections screen.', 'albert-ai-butler' ),
+				'fields'      => [
+					[
+						'id'          => 'invitation_expiry_days',
+						'type'        => 'number',
+						'label'       => __( 'Invitation expiry (days)', 'albert-ai-butler' ),
+						'description' => __( 'Someone added to the allowed list who never approves an assistant is automatically removed after this many days. Once they approve one, they keep their access no matter what happens to it later. Set to 0 to disable.', 'albert-ai-butler' ),
+						'option_name' => AllowedUserExpiry::OPTION,
+						'default'     => AllowedUserExpiry::DEFAULT_DAYS,
+						'attributes'  => [
+							'min'  => 0,
+							'max'  => 3650,
+							'step' => 1,
+						],
 					],
 				],
 			],

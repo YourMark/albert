@@ -60,6 +60,7 @@ use Albert\Admin\ContextPage;
 use Albert\Admin\Menu;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
+use Albert\Cron\AllowedUserExpiry;
 use Albert\Database\Installer as DatabaseInstaller;
 use Albert\Logging\Logger;
 use Albert\Logging\Repository as LoggingRepository;
@@ -171,6 +172,9 @@ class Plugin {
 		// Relay WP 7.1's wp_ability_invoked onto albert/abilities/invoked. No
 		// consumers in Free; this is the seam Premium's activity log binds to.
 		( new InvocationRelay() )->register_hooks();
+
+		// Daily sweep of never-authorised allowed-user invitations.
+		( new AllowedUserExpiry() )->register_hooks();
 
 		// Register admin components.
 		if ( is_admin() ) {
@@ -468,6 +472,9 @@ class Plugin {
 		// Register OAuth discovery rewrite rules.
 		OAuthDiscovery::activate();
 
+		// Schedule the daily invitation-expiry sweep.
+		AllowedUserExpiry::schedule();
+
 		/**
 		 * Fires when the plugin is activated.
 		 *
@@ -487,6 +494,9 @@ class Plugin {
 	public static function deactivate(): void {
 		// Clean up OAuth discovery rewrite rules.
 		OAuthDiscovery::deactivate();
+
+		// Unschedule the daily invitation-expiry sweep.
+		AllowedUserExpiry::unschedule();
 
 		/**
 		 * Fires when the plugin is deactivated.

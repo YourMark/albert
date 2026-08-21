@@ -15,6 +15,7 @@ namespace Albert\Tests\Integration\Admin;
 use Albert\Admin\Connections;
 use Albert\Database\Installer;
 use Albert\Database\Tables;
+use Albert\OAuth\AllowedUsers;
 use Albert\OAuth\Repositories\ClientRepository;
 use Albert\Tests\TestCase;
 
@@ -93,6 +94,7 @@ class ConnectionsTest extends TestCase {
 	 * @throws \RuntimeException Always.
 	 */
 	public function catch_redirect( $location ): string {
+		// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Not HTML output; a test-only exception message.
 		throw new \RuntimeException( 'redirect:' . $location );
 	}
 
@@ -562,10 +564,7 @@ class ConnectionsTest extends TestCase {
 
 		$this->submit_picker( $one . ',' . $two );
 
-		$this->assertSame(
-			[ $one, $two ],
-			array_map( 'intval', (array) get_option( 'albert_allowed_users' ) )
-		);
+		$this->assertSame( [ $one, $two ], AllowedUsers::ids() );
 	}
 
 	/**
@@ -576,14 +575,11 @@ class ConnectionsTest extends TestCase {
 	public function test_the_picker_does_not_add_a_duplicate(): void {
 		$one = self::factory()->user->create( [ 'role' => 'editor' ] );
 
-		update_option( 'albert_allowed_users', [ $one ] );
+		AllowedUsers::add( $one );
 
 		$this->submit_picker( (string) $one );
 
-		$this->assertSame(
-			[ $one ],
-			array_map( 'intval', (array) get_option( 'albert_allowed_users' ) )
-		);
+		$this->assertSame( [ $one ], AllowedUsers::ids() );
 	}
 
 	/**
@@ -596,10 +592,7 @@ class ConnectionsTest extends TestCase {
 
 		$this->submit_picker( $one . ',999999' );
 
-		$this->assertSame(
-			[ $one ],
-			array_map( 'intval', (array) get_option( 'albert_allowed_users' ) )
-		);
+		$this->assertSame( [ $one ], AllowedUsers::ids() );
 	}
 
 	/**
@@ -610,14 +603,11 @@ class ConnectionsTest extends TestCase {
 	public function test_the_picker_with_an_empty_selection_changes_nothing(): void {
 		$one = self::factory()->user->create( [ 'role' => 'editor' ] );
 
-		update_option( 'albert_allowed_users', [ $one ] );
+		AllowedUsers::add( $one );
 
 		$this->submit_picker( '' );
 
-		$this->assertSame(
-			[ $one ],
-			array_map( 'intval', (array) get_option( 'albert_allowed_users' ) )
-		);
+		$this->assertSame( [ $one ], AllowedUsers::ids() );
 	}
 
 	/**

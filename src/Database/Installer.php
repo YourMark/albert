@@ -52,6 +52,7 @@ class Installer {
 		self::VERSION_OPTION,
 		'albert_installed_version',
 		'albert_allowed_users',
+		'albert_allowed_user_expiry_days',
 		'albert_disabled_abilities',
 		'albert_abilities_saved',
 		'albert_known_abilities',
@@ -138,7 +139,63 @@ class Installer {
 			if ( version_compare( $stored, '1.3.1', '<' ) ) {
 				self::purge_wildcard_clients();
 			}
+
+			// `albert_allowed_users` gained per-entry timestamps in 1.4.0.
+			if ( version_compare( $stored, '1.4.0', '<' ) ) {
+				self::migrate_allowed_users_shape();
+			}
 		}
+	}
+
+	/**
+	 * Rewrap `albert_allowed_users` from a flat array of user ids into a
+	 * structure carrying `added_at` (and `authorised_at`) per entry. Called
+	 * once from {@see self::maybe_upgrade()} when upgrading from below
+	 * 1.4.0. See {@see \Albert\OAuth\AllowedUsers} for the shape and how it
+	 * is read/written afterwards.
+	 *
+	 * Existing entries carry no record of when they were actually added, and
+	 * we have no way to reconstruct one, so `added_at` is backfilled to the
+	 * moment of *this* upgrade rather than a guessed historical date:
+	 * starting everyone's clock here is the only honest choice, and it
+	 * guarantees every existing site a full grace window before an
+	 * invitation-expiry sweep can remove anyone.
+	 *
+	 * Idempotent: an entry that is already an array (the new shape) is left
+	 * untouched, so re-running this is safe.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	private static function migrate_allowed_users_shape(): void {
+		$raw = get_option( 'albert_allowed_users', [] );
+
+		if ( ! is_array( $raw ) || empty( $raw ) ) {
+			return;
+		}
+
+		$now      = gmdate( 'Y-m-d H:i:s' );
+		$migrated = [];
+
+		foreach ( $raw as $key => $value ) {
+			if ( is_array( $value ) ) {
+				$id = (int) $key;
+				if ( $id > 0 ) {
+					$migrated[ $id ] = $value;
+				}
+				continue;
+			}
+
+			$id = (int) $value;
+			if ( $id > 0 && ! isset( $migrated[ $id ] ) ) {
+				$migrated[ $id ] = [
+					'added_at'      => $now,
+					'authorised_at' => null,
+				];
+			}
+		}
+
+		update_option( 'albert_allowed_users', $migrated );
 	}
 
 	/**

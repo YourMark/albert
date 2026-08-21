@@ -12,6 +12,7 @@ namespace Albert\Admin\Connections;
 defined( 'ABSPATH' ) || exit;
 
 use Albert\Admin\Assets;
+use Albert\OAuth\AllowedUsers;
 
 /**
  * One picker, two entry points.
@@ -235,7 +236,7 @@ final class UserPickerModal {
 	 * @since 1.4.0
 	 */
 	private static function allowed_user_ids(): array {
-		return array_values( array_map( 'intval', (array) get_option( 'albert_allowed_users', [] ) ) );
+		return AllowedUsers::ids();
 	}
 
 	/**

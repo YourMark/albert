@@ -18,6 +18,7 @@ use Albert\Core\Plugin;
 use Albert\Logging\Repository as LoggingRepository;
 use Albert\MCP\Server as McpServer;
 use Albert\Database\Tables;
+use Albert\OAuth\AllowedUsers;
 
 /**
  * Dashboard class
@@ -162,7 +163,7 @@ class Dashboard implements Hookable {
 		}
 
 		// Gather setup state.
-		$has_allowed_users  = ! empty( get_option( 'albert_allowed_users', [] ) );
+		$has_allowed_users  = AllowedUsers::has_any();
 		$active_connections = $this->get_active_connections_count();
 		$has_connections    = $active_connections > 0;
 		$setup_complete     = $has_allowed_users && $has_connections;

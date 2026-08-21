@@ -596,7 +596,8 @@
 }
 
 .albert-user-item__name,
-.albert-user-item__meta {
+.albert-user-item__meta,
+.albert-user-item__expiry {
 	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -609,7 +610,8 @@
 	color: var(--albert-color-text);
 }
 
-.albert-user-item__meta {
+.albert-user-item__meta,
+.albert-user-item__expiry {
 	font-size: var(--albert-font-size-sm);
 	color: var(--albert-color-text-muted);
 }

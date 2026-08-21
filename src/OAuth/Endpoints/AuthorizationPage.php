@@ -15,6 +15,7 @@ namespace Albert\OAuth\Endpoints;
 defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
+use Albert\OAuth\AllowedUsers;
 use Albert\OAuth\Entities\UserEntity;
 use Albert\OAuth\Repositories\ClientRepository;
 use Albert\OAuth\Server\AuthorizationServerFactory;
@@ -216,10 +217,9 @@ class AuthorizationPage implements Hookable {
 		}
 
 		// Check if user is allowed to access MCP.
-		$allowed_users = get_option( 'albert_allowed_users', [] );
-		$current_user  = wp_get_current_user();
+		$current_user = wp_get_current_user();
 
-		if ( ! in_array( $current_user->ID, $allowed_users, true ) ) {
+		if ( ! AllowedUsers::is_allowed( $current_user->ID ) ) {
 			$this->render_access_denied_page( $current_user );
 			return;
 		}
@@ -318,6 +318,11 @@ class AuthorizationPage implements Hookable {
 			// day the control ships, rather than every existing connection
 			// looking like a fresh unknown. See Albert\OAuth\Server\DomainGuard.
 			DomainGuard::record_connection( (string) $client->getIdentifier() );
+
+			// The invitation has now been exercised: exempt for good from the
+			// invitation-expiry sweep, however long this or any later connection
+			// of theirs lives for. First-time only; see AllowedUsers::mark_authorised().
+			AllowedUsers::mark_authorised( get_current_user_id() );
 
 			// Get redirect location from response.
 			$location = $psr_response->getHeader( 'Location' );
