@@ -231,7 +231,7 @@ Albert provides hooks for addon plugins or themes to register custom abilities, 
 
 #### Registering Custom Abilities (`albert/abilities/register`)
 
-**Action** — Fires after built-in abilities are registered on the `init` hook. Addons (or themes via `functions.php`) hook here to register their own abilities by extending `BaseAbility` directly — the same pattern built-in abilities use.
+**Action**: Fires after built-in abilities are registered on the `init` hook. Addons (or themes via `functions.php`) hook here to register their own abilities by extending `BaseAbility` directly, the same pattern built-in abilities use.
 
 ```php
 // In an addon plugin or theme functions.php:
@@ -243,15 +243,15 @@ add_action( 'albert/abilities/register', function ( $manager ) {
 The `$manager` parameter is the `AbilitiesManager` instance. Custom abilities extend `Albert\Abstracts\BaseAbility` and implement `execute()` and `check_permission()`. They flow through the same admin UI, enabled/disabled toggle, and `guarded_execute()` pipeline as built-in abilities.
 
 This works from any context that loads before `init`:
-- **Addon plugins** — The recommended approach for distributing abilities.
-- **Theme `functions.php`** — Works because themes load before the `init` hook fires.
-- **Must-use plugins** — Also supported.
+- **Addon plugins**: The recommended approach for distributing abilities.
+- **Theme `functions.php`**: Works because themes load before the `init` hook fires.
+- **Must-use plugins**: Also supported.
 
 #### Execution Hooks
 
-All execution hooks are wrapped in try/catch — observer errors never break ability execution.
+All execution hooks are wrapped in try/catch: observer errors never break ability execution.
 
-**`albert/abilities/before_execute`** (action) — Fires before any ability executes. Useful for logging, rate limiting, or audit trails.
+**`albert/abilities/before_execute`** (action): Fires before any ability executes. Useful for logging, rate limiting, or audit trails.
 
 ```php
 add_action( 'albert/abilities/before_execute', function ( string $ability_id, array $args, int $user_id ) {
@@ -259,7 +259,7 @@ add_action( 'albert/abilities/before_execute', function ( string $ability_id, ar
 }, 10, 3 );
 ```
 
-**`albert/abilities/before_execute/{ability_id}`** (action) — Fires before a specific ability executes. The ability ID is appended to the hook name (e.g. `albert/abilities/before_execute/albert/create-post`).
+**`albert/abilities/before_execute/{ability_id}`** (action): Fires before a specific ability executes. The ability ID is appended to the hook name (e.g. `albert/abilities/before_execute/albert/create-post`).
 
 ```php
 add_action( 'albert/abilities/before_execute/albert/create-post', function ( array $args, int $user_id ) {
@@ -267,7 +267,7 @@ add_action( 'albert/abilities/before_execute/albert/create-post', function ( arr
 }, 10, 2 );
 ```
 
-**`albert/abilities/after_execute`** (action) — Fires after any ability executes. Receives the result (array or WP_Error).
+**`albert/abilities/after_execute`** (action): Fires after any ability executes. Receives the result (array or WP_Error).
 
 ```php
 add_action( 'albert/abilities/after_execute', function ( string $ability_id, array $args, $result, int $user_id ) {
@@ -275,7 +275,7 @@ add_action( 'albert/abilities/after_execute', function ( string $ability_id, arr
 }, 10, 4 );
 ```
 
-**`albert/abilities/after_execute/{ability_id}`** (action) — Fires after a specific ability executes. The ability ID is appended to the hook name (e.g. `albert/abilities/after_execute/albert/woo-find-products`).
+**`albert/abilities/after_execute/{ability_id}`** (action): Fires after a specific ability executes. The ability ID is appended to the hook name (e.g. `albert/abilities/after_execute/albert/woo-find-products`).
 
 ```php
 add_action( 'albert/abilities/after_execute/albert/create-post', function ( array $args, $result, int $user_id ) {
@@ -285,7 +285,7 @@ add_action( 'albert/abilities/after_execute/albert/create-post', function ( arra
 
 #### Admin Submenu Pages (`albert/admin/submenu_pages`)
 
-**Filter** — Addon plugins can add pages to the Albert admin menu. Fires at `admin_menu` priority 15 (after abilities pages, before Settings at priority 20).
+**Filter**: Addon plugins can add pages to the Albert admin menu. Fires at `admin_menu` priority 15 (after abilities pages, before Settings at priority 20).
 
 ```php
 add_filter( 'albert/admin/submenu_pages', function ( array $pages ) {
@@ -305,11 +305,11 @@ add_filter( 'albert/admin/submenu_pages', function ( array $pages ) {
 
 Since 1.1, the Core / ACF / WooCommerce admin pages are merged into a single `Albert → Abilities` page. Every registered ability appears as a row in a flat, filterable list, and custom abilities registered via `albert/abilities/register` appear in the same list automatically.
 
-Since 1.3 the screen is a React app built on `@wordpress/dataviews` (source in `assets/src/abilities/`, compiled to `assets/build/` via `npm run build`). `src/Admin/AbilitiesPage.php` only renders the mount point (`#albert-abilities-root`) and enqueues the bundle; all data flows over REST (`src/Admin/Rest/AbilitiesController.php` — `GET /albert/v1/abilities`, per-ability and bulk `POST`s). Search/filter/sort/pagination are client-side via `filterSortAndPaginate`; per-row and bulk enable/disable save instantly (no Save Changes button), and clicking a row opens a detail fly-in with add-on seams (`albert.abilities.permissions_section` to replace the Permissions section, `albert.abilities.panel_sections` to append generic sections). The legacy server-rendered list and its `wp_ajax_albert_toggle_ability` / view-mode AJAX were removed in 1.3. If the build is missing (a dev checkout that hasn't run `npm install && npm run build`), the page shows an actionable notice instead of mounting.
+Since 1.3 the screen is a React app built on `@wordpress/dataviews` (source in `assets/src/abilities/`, compiled to `assets/build/` via `npm run build`). `src/Admin/AbilitiesPage.php` only renders the mount point (`#albert-abilities-root`) and enqueues the bundle; all data flows over REST (`src/Admin/Rest/AbilitiesController.php`: `GET /albert/v1/abilities`, per-ability and bulk `POST`s). Search/filter/sort/pagination are client-side via `filterSortAndPaginate`; per-row and bulk enable/disable save instantly (no Save Changes button), and clicking a row opens a detail fly-in with add-on seams (`albert.abilities.permissions_section` to replace the Permissions section, `albert.abilities.panel_sections` to append generic sections). The legacy server-rendered list and its `wp_ajax_albert_toggle_ability` / view-mode AJAX were removed in 1.3. If the build is missing (a dev checkout that hasn't run `npm install && npm run build`), the page shows an actionable notice instead of mounting.
 
 #### Row Augmentation (`albert/abilities/payload_row`)
 
-Each ability is normalized into a row by `Albert\Admin\AbilitiesPayload`. The `albert/abilities/payload_row` filter (`( array $row, \WP_Ability $ability )`, since 1.3) runs on every row, on both the bulk build path (`build()`) and the single-row path (`row()`). Add-ons **append** keys (notably `badges` — Free always sets `'badges' => []`) but must not remove or overwrite Core keys. A badge is `{ id, label, tone, title? }` where `tone` is `info`/`warning`/`neutral`; it renders as a pill in the overview cell and fly-in header, and the screen builds a "Filter by badge" dropdown from the deduped union. Core stays generic — it only ever references "badges", never "permissions". See `docs/extending-the-abilities-screen.md`.
+Each ability is normalized into a row by `Albert\Admin\AbilitiesPayload`. The `albert/abilities/payload_row` filter (`( array $row, \WP_Ability $ability )`, since 1.3) runs on every row, on both the bulk build path (`build()`) and the single-row path (`row()`). Add-ons **append** keys (notably `badges`, Free always sets `'badges' => []`) but must not remove or overwrite Core keys. A badge is `{ id, label, tone, title? }` where `tone` is `info`/`warning`/`neutral`; it renders as a pill in the overview cell and fly-in header, and the screen builds a "Filter by badge" dropdown from the deduped union. Core stays generic: it only ever references "badges", never "permissions". See `docs/extending-the-abilities-screen.md`.
 
 #### Agent context (1.4.0)
 
@@ -384,6 +384,138 @@ add_filter( 'albert/abilities/suppliers', function ( array $suppliers ): array {
 
 Unknown prefixes fall back to a prettified version of the prefix itself, so every ability always has a sensible supplier label.
 
+#### Connections screen (1.4.0)
+
+`Admin\Connections` is where an owner learns whether an assistant can reach this
+site, how to set one up, who may authorise one, and what is connected.
+
+**No reachability check, deliberately.** Albert does not classify whether the
+endpoint's host can be reached from the internet, warn about it, or hide any
+setup guide because of it. Few sites are run somewhere a cloud assistant cannot
+reach, a proper local-site story is coming separately (doc 60, `wp albert
+serve`, over stdio rather than a web address at all), and a guide that silently
+disappears is more confusing than one that simply fails to connect against a
+site the internet cannot reach. An earlier version of this screen did both
+(`Support\HostClassifier` classified the host, and `render_setup_card()` used
+it to drop guides); both were cut for the same reason.
+
+**Setup content is data, not markup.** `Admin\Connections\ClientSetupGuides`
+holds the curated list (Claude Desktop/claude.ai, Claude Code, Cursor, VS Code,
+ChatGPT, generic) with steps, config path, a copyable snippet built from the
+live endpoint, and a deeplink where the client publishes one. A future CLI docs
+page renders the same array. No credential-bundle export of any kind: a file
+holding a permanent plaintext credential is a step back from tokens that are
+scoped, expiring and revocable.
+
+**Connections group by client, not by token.** A client refreshes hourly, so a
+token-keyed list shows one assistant several times and calls each a connection.
+Revoke has two depths behind one confirm dialog: access token only (the client
+reconnects itself within the hour) or access + refresh (it must be approved
+again).
+
+**Labels, and why every one carries a byline.** A connection's name is
+self-reported by the connecting client, and in practice every Claude Desktop
+connection registers as literally "Claude". The owner's own label is the only
+thing that reliably tells two rows apart, so every row carries an always-visible
+"+ Name this connection" / "Edit" affordance, never hover-only. Because a label
+is a display name one administrator writes onto somebody else's connection, on
+the screen where an owner judges what looks trustworthy (CWE-451), three things
+are non-negotiable: the app-reported name and "authorised by" stay on the row
+beside any label, every label renders its own "Labelled by {user} on {date}"
+from the `label_set_by` / `label_set_at` columns, and the label is escaped at
+every render site, which is why one `render_connection_row()` produces all five
+of them (title, filter index, checkbox name, dialog attribute, edit field).
+
+**The screen renders identically at any row count.** Filter and Select are
+always present. Bulk power is a mode somebody enters, not a threshold the data
+crosses: an earlier pass revealed checkboxes past a row count, which reads as a
+bug. Row checkboxes join the bulk form through HTML's `form=` attribute rather
+than being wrapped in it, because each row also carries its own label-editing
+form and forms cannot nest.
+
+**Domain-change suspension is recorded, not enforced.** `OAuth\Server\DomainGuard`
+still records the `home_url()` host on the client when authorisation completes,
+so the history exists on the day the control ships. Nothing reads it to refuse a
+request: enforcement, the admin notice and the re-confirm flow are deferred
+(`docs/features/31-connections.md` §6). Half-shipping a control that can strand a
+live connection mid-migration is worse than not shipping it.
+
+**One picker, two entry points.** `Admin\Connections\UserPickerModal` renders
+the "who may approve an assistant" dialog and enqueues its script; the
+Connections card's "Add user" button and the Dashboard checklist's "Choose users"
+button both open that one dialog. It is multi-select (an agency onboarding a
+site adds three editors at once), with the chosen people shown as removable
+chips rather than a count, and somebody already on the list shown muted with an
+"Already allowed" tag instead of a checkbox.
+
+**Submitting the picker behaves differently depending on where it was opened
+from, on purpose.** From the Connections screen, the picker's own JS submits
+via `fetch()`: `Connections::handle_add_allowed_users()` runs the exact same
+validated write either way, but for this caller it renders
+`render_allowed_users_body()` (the same method a full page load uses, so
+there is only ever one place that markup is escaped) and returns it as JSON.
+The JS swaps it into `[data-albert-userlist-body]`, closes the dialog, and
+briefly highlights the new row (`.albert-user-item--new`, reduced-motion
+guarded) instead of reloading. From the Dashboard checklist there is no
+allowed-users list on that page to update, so the same form falls through to
+a native submit and the original redirect-with-notice behaviour, detected by
+`UserPicker.canInsertInline()` checking for that container rather than
+trusting which screen it thinks it's on. The two paths share one PHP method;
+only the last few lines (JSON vs. redirect) differ, gated by
+`is_ajax_request()` reading a header the JS sets explicitly (this is
+`admin-post.php`, not `admin-ajax.php`, so `wp_doing_ajax()` is never true
+here regardless of transport). One gotcha worth remembering if this pattern
+gets reused elsewhere: the form has `<input name="action">` (WordPress's own
+admin-post.php routing field), and `HTMLFormElement`'s `[OverrideBuiltins]`
+means that field silently shadows the built-in `.action` property, turning
+`form.action` into the input element rather than the submit URL.
+`form.getAttribute('action')` is unaffected and is what the JS actually uses.
+
+**Removing an allowed user updates both cards, not just the one the link
+lives on.** Unlike adding a user, removing one calls
+`Settings::revoke_user_tokens()`, which revokes every token that person
+holds on every client: a connection they were the sole authoriser of
+disappears from "Connected assistants," and one they co-authorised loses
+their name from its "Authorised by" line. `AllowedUserRemoval` in
+`admin-connections.js` intercepts the "Remove" link's click (same
+`is_ajax_request()` detection, same JSON-vs-redirect split in
+`handle_remove_allowed_user()` as adding a user), and the response carries
+three pieces rendered by the exact methods a full page load would use:
+`render_allowed_users_body()`, `render_connections_body()`, and
+`render_connections_count_badge()`. A narrower response, updating only the
+allowed-users list, would leave "Connected assistants" silently stale until
+the next reload. "Disconnect all" stays in the DOM always now (rendered with
+a bare `hidden` attribute rather than conditionally omitted) so the JS only
+ever has to toggle it, never create or remove it: the count can only fall
+through this action, never rise, so that is the only direction it needs to
+handle.
+
+**The allowed-users picker never enumerates the user table.** It searches core's
+`/wp/v2/users` with explicit `search_columns[]` (`name`, `username`, `email`,
+`id`; left alone `WP_User_Query` switches columns based on what the term
+*looks* like, so the same person is found or not found depending on how you typed
+it), plus `capabilities[]` from the
+`albert/connections/allowed_user_capability` filter (default `edit_posts`) and
+`per_page=20`. Removing an allowed user revokes their tokens immediately, because
+the allowed list is otherwise only checked when an authorisation *starts*.
+
+`search`/`roles`/`capabilities` on that route all require `list_users`. The screen
+is `manage_options`, so administrators are fine; if a narrower capability is ever
+allowed to manage connections, the picker degrades and needs revisiting.
+
+**The picker suggests people before anybody types.** An empty search box used
+to show a bare prompt; it now shows up to ten candidates, administrators first
+(the likeliest approvers), then alphabetically, with anyone already allowed
+filtered out rather than shown as a wall of "Already allowed" badges. Two
+bounded requests (`roles[]=administrator`, then a general page if the first
+did not fill the quota), never a full listing, so this is still the same
+search-shaped querying as above, just with an empty `search` term.
+
+**Test connection is a deferred seam.** The button is rendered and disabled, with
+a note saying checks arrive later. Wiring it to something that only looks like a
+check would be worse than an empty seam: a green tick nobody earned reads as
+proof.
+
 #### 3. OAuth 2.0 Server
 Full OAuth 2.0 implementation using `league/oauth2-server`.
 
@@ -417,7 +549,7 @@ Minimal ability execution logging for the Free tier. When Premium is active it t
 
 **Hook used:** `albert/abilities/after_execute` (Albert hook, fires on both success and failure, covers WP_Error results). `ObservabilityHandler` also captures MCP-level errors that never reach a BaseAbility.
 
-**Filter:** `albert/logging/enabled` (bool, default `true`) — means "Free's DB writers are active". Premium returns `false` from this filter to suppress Free's writes and take over logging itself. Returning `false` does **not** disable logging globally — Premium's own writers still run. The `albert/logging/ability_failed` notification action fires regardless of this value so Premium always receives failure signals.
+**Filter:** `albert/logging/enabled` (bool, default `true`) means "Free's DB writers are active". Premium returns `false` from this filter to suppress Free's writes and take over logging itself. Returning `false` does **not** disable logging globally: Premium's own writers still run. The `albert/logging/ability_failed` notification action fires regardless of this value so Premium always receives failure signals.
 
 **Schema (DB_VERSION 1.2.0, option `albert_logging_db_version`):**
 | Column | Type | Notes |
@@ -441,30 +573,30 @@ Minimal ability execution logging for the Free tier. When Premium is active it t
 
 **Indexes:** `ability_created (ability_name, created_at)`, `ability_status (ability_name, status, created_at)`
 
-**Retention:** Free hard-codes 2 records per `(ability_name, status)` partition, pruned on insert — only when `albert/logging/enabled` is true (i.e. Free is the writer). Premium uses time-based retention (default 90 days) via `Cron/LogCleanup`.
+**Retention:** Free hard-codes 2 records per `(ability_name, status)` partition, pruned on insert, only when `albert/logging/enabled` is true (i.e. Free is the writer). Premium uses time-based retention (default 90 days) via `Cron/LogCleanup`.
 
 **Components:**
-- `Installer.php` — Creates/upgrades `{$wpdb->prefix}albert_ability_log` table (dbDelta, idempotent)
-- `Repository.php` — CRUD operations, bulk fetch, auto-prune; `insert()` accepts optional `$context` array for the rich columns
-- `Logger.php` — Hooks `albert/abilities/after_execute`; gated by `albert/logging/enabled` filter; fires `albert/logging/ability_failed` before the gate
-- `ObservabilityHandler.php` — MCP-level error recorder; gated by same filter
-- `ExecutionLogMarker.php` — request-scoped dedup marker; set by the loggers when they write a row, checked by the observers so a single call never logs twice
+- `Installer.php`: Creates/upgrades `{$wpdb->prefix}albert_ability_log` table (dbDelta, idempotent)
+- `Repository.php`: CRUD operations, bulk fetch, auto-prune; `insert()` accepts optional `$context` array for the rich columns
+- `Logger.php`: Hooks `albert/abilities/after_execute`; gated by `albert/logging/enabled` filter; fires `albert/logging/ability_failed` before the gate
+- `ObservabilityHandler.php`: MCP-level error recorder; gated by same filter
+- `ExecutionLogMarker.php`: request-scoped dedup marker; set by the loggers when they write a row, checked by the observers so a single call never logs twice
 
 **Failure capture (1.2.0+):** Failures that happen *before* the ability runs are now logged too.
 Input rejected by the WordPress Abilities API (`WP_Ability::execute()` validates `input_schema`
 *before* the registered callback, so `guarded_execute`/`after_execute` never fire) is caught by
 `MCP/ToolCallObserver` on the adapter's `mcp_adapter_tool_call_result` filter. It (1) rewrites the
-verbose `ability_invalid_input` error into an actionable message for the LLM — e.g. *"Missing
-required parameter: `title`."* — and never returns a blank/"unknown error"; and (2) fires
+verbose `ability_invalid_input` error into an actionable message for the LLM (e.g. *"Missing
+required parameter: `title`."*) and never returns a blank/"unknown error"; and (2) fires
 `albert/abilities/after_execute` for the failure so it logs through the normal path (status `error`,
 `error_code`, `error_message`, `input`, connection identity). The `ExecutionLogMarker` keeps an
 ability that *did* execute from being logged twice. `ObservabilityHandler` (Free + Premium) now also
 captures the error message (from the adapter's `failure_reason` tag) and is dedup-guarded by the same
 marker, covering permission/transport/unknown failures the adapter surfaces via `record_event`.
 
-**Connection identity (1.2.0+):** `OAuth/Server/ConnectionContext` is a request-scoped holder set by `TokenValidator::validate_request()` when a Bearer token is validated. It records the OAuth `client_id` (and lazily resolves a snapshot `client_name`) so Premium's logger can attribute each row to the connection that made the call. Public accessors `ConnectionContext::client_id()` / `client_name()` are how add-ons read it — true end-user IPs are not obtainable for MCP calls (requests originate from the assistant's servers), so the OAuth connection is the meaningful "who" signal.
+**Connection identity (1.2.0+):** `OAuth/Server/ConnectionContext` is a request-scoped holder set by `TokenValidator::validate_request()` when a Bearer token is validated. It records the OAuth `client_id` (and lazily resolves a snapshot `client_name`) so Premium's logger can attribute each row to the connection that made the call. Public accessors `ConnectionContext::client_id()` / `client_name()` are how add-ons read it; true end-user IPs are not obtainable for MCP calls (requests originate from the assistant's servers), so the OAuth connection is the meaningful "who" signal.
 
-**Payload capture (Premium, 1.2.0+):** Premium captures `input` and `output` (success result only). Both are byte-capped by default (`Logger::DEFAULT_PAYLOAD_LIMIT`, 65535) with a `…[truncated, N more characters]` marker; truncated payloads render raw. Filters: `albert/premium/logging/full_capture` (bool, default false — store uncapped; the Activity Log page shows a warning when active) and `albert/premium/logging/payload_limit` (int bytes).
+**Payload capture (Premium, 1.2.0+):** Premium captures `input` and `output` (success result only). Both are byte-capped by default (`Logger::DEFAULT_PAYLOAD_LIMIT`, 65535) with a `…[truncated, N more characters]` marker; truncated payloads render raw. Filters: `albert/premium/logging/full_capture` (bool, default false: store uncapped; the Activity Log page shows a warning when active) and `albert/premium/logging/payload_limit` (int bytes).
 
 **Admin surfaces:**
 - Dashboard widget: "Recent Activity" showing most recent executions with status pills
@@ -541,13 +673,13 @@ wp plugin activate albert
 
 `wordpress/mcp-adapter` (and its dep `wordpress/php-mcp-schema`) ship the `WP\MCP\*`
 namespace. **WooCommerce bundles its own, older copy of the same package**, and whichever
-plugin's autoloader registers first wins — so when WC is active, Albert's code would silently
+plugin's autoloader registers first wins, so when WC is active, Albert's code would silently
 run WooCommerce's `0.1.0` instead of its own `0.6.1` (a hard-to-spot bug: "unknown error" to the
 LLM, failures not logged).
 
 The fix is **dependency scoping with Mozart** (`coenjacobs/mozart`), set up the standard way:
 
-- Both packages are in **`require-dev`** — they exist only as the *source* to be scoped, and are
+- Both packages are in **`require-dev`**: they exist only as the *source* to be scoped, and are
   never shipped unscoped.
 - Mozart copies them into **`vendor-prefixed/`** (the WP-ecosystem convention), rewritten under the
   **`Albert\Vendor\`** prefix (`Albert\Vendor\WP\MCP\…`), and deletes the originals from `vendor/`
@@ -555,14 +687,14 @@ The fix is **dependency scoping with Mozart** (`coenjacobs/mozart`), set up the 
 - **Generated, not committed.** `vendor-prefixed/` is **gitignored** and regenerated automatically by
   the `post-install-cmd` / `post-update-cmd` Composer hooks (which run `mozart compose` +
   `composer dump-autoload`, guarded so they no-op on `--no-dev`). `composer.lock` **is** committed, so
-  every environment resolves identical versions — which also pins what Mozart generates.
+  every environment resolves identical versions, which also pins what Mozart generates.
 - Autoloaded via the `Albert\\Vendor\\ => vendor-prefixed/` PSR-4 entry (Mozart 1.1.x has no
   `generate_autoloader`, so a Composer PSR-4 entry is the documented method).
 - Albert's own code references `Albert\Vendor\WP\MCP\…` (never bare `WP\MCP\…`), so it always runs its
   own copy regardless of WooCommerce. Verify:
   `wp eval 'echo Albert\Vendor\WP\MCP\Core\McpAdapter::VERSION;'` → `0.6.1`.
 - **Jetpack Autoloader (since adapter 0.6.0).** The adapter now `require`s
-  `automattic/jetpack-autoloader`, which is itself a Composer plugin — Composer blocks any
+  `automattic/jetpack-autoloader`, which is itself a Composer plugin: Composer blocks any
   unlisted Composer plugin, so `composer install` fails until it is declared. It is set to
   **`false`** in `composer.json`'s `config.allow-plugins`: we don't use Jetpack's autoloader
   (Mozart + our PSR-4 own scoping), so its Composer-plugin behaviour must not run. Mozart still
@@ -571,7 +703,7 @@ The fix is **dependency scoping with Mozart** (`coenjacobs/mozart`), set up the 
   future adapter bumps.
 - `vendor-prefixed/` is outside `src/` so the gates skip it naturally; it's also excluded in
   `phpcs.xml.dist` / `phpstan.neon` for the bare-invocation case.
-- **Bumping `wordpress/mcp-adapter`:** `composer update wordpress/mcp-adapter` — the post-update hook
+- **Bumping `wordpress/mcp-adapter`:** `composer update wordpress/mcp-adapter`: the post-update hook
   regenerates `vendor-prefixed/` and the lock pins it. Nothing to hand-commit (it's gitignored).
 - **Release/CI:** `release.yml` installs with dev (hook generates `vendor-prefixed/`), then
   `--no-dev` (strips dev + the unscoped packages), and ships `vendor-prefixed/`.
@@ -600,7 +732,7 @@ The fix is **dependency scoping with Mozart** (`coenjacobs/mozart`), set up the 
 ### Version Control
 - **Never commit without explicit request**
 - **Never bump version without approval**
-- **Version bumps only happen in release branches** — never on `development`, feature branches, or `main`
+- **Version bumps only happen in release branches**, never on `development`, feature branches, or `main`
 - Run `composer phpcs` before committing
 
 ## Known Compatibility Issues
@@ -611,9 +743,9 @@ The fix is **dependency scoping with Mozart** (`coenjacobs/mozart`), set up the 
 
 **Symptom:** `_doing_it_wrong` notices for `mcp-adapter/discover-abilities`, `mcp-adapter/get-ability-info`, and `mcp-adapter/execute-ability` on Albert admin pages when WooCommerce is active.
 
-**Root cause:** The mcp-adapter's `DefaultServerFactory` hooks `register_default_abilities()` on `wp_abilities_api_init` — a one-shot action. On Albert admin pages, `wp_get_abilities()` fires that action during page render (before `rest_api_init`). WooCommerce then preloads REST data via `Settings::add_component_settings()` → `rest_preload_api_request()`, which triggers `rest_api_init` → `McpAdapter::init()` → `mcp_adapter_init` → `DefaultServerFactory::create()`. The factory calls `wp_get_ability()` for its three tools, but they were never registered because `wp_abilities_api_init` already fired. The upstream fix would be for `maybe_create_default_server()` to check `did_action('wp_abilities_api_init')` and call `register_default_abilities()` directly if the action already fired.
+**Root cause:** The mcp-adapter's `DefaultServerFactory` hooks `register_default_abilities()` on `wp_abilities_api_init`, a one-shot action. On Albert admin pages, `wp_get_abilities()` fires that action during page render (before `rest_api_init`). WooCommerce then preloads REST data via `Settings::add_component_settings()` → `rest_preload_api_request()`, which triggers `rest_api_init` → `McpAdapter::init()` → `mcp_adapter_init` → `DefaultServerFactory::create()`. The factory calls `wp_get_ability()` for its three tools, but they were never registered because `wp_abilities_api_init` already fired. The upstream fix would be for `maybe_create_default_server()` to check `did_action('wp_abilities_api_init')` and call `register_default_abilities()` directly if the action already fired.
 
-**Our fix:** `Plugin::init()` only calls `McpAdapter::instance()` when `! is_admin()`. REST API requests (`/wp-json/...`) have `is_admin() === false`, so the adapter initializes normally. Admin pages skip initialization entirely, avoiding the timing conflict. The adapter is not needed on admin pages — Albert only needs it for serving MCP REST endpoints.
+**Our fix:** `Plugin::init()` only calls `McpAdapter::instance()` when `! is_admin()`. REST API requests (`/wp-json/...`) have `is_admin() === false`, so the adapter initializes normally. Admin pages skip initialization entirely, avoiding the timing conflict. The adapter is not needed on admin pages: Albert only needs it for serving MCP REST endpoints.
 
 **If this breaks in the future:** The fix relies on `is_admin()` being `false` for REST API requests. If WordPress changes this behavior, `McpAdapter::instance()` may need to be deferred differently. Check `wp-includes/load.php` for `is_admin()` definition.
 

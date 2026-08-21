@@ -30,11 +30,11 @@ src/
   Abstracts/       # BaseAbility (all abilities extend this)
   Abilities/       # Ability implementations (WordPress/, WooCommerce/)
   Admin/           # Admin pages (abilities toggles, settings, connections)
-                   #   Assets  — registers the shared token + primitive stylesheets
-                   #   Menu    — submenu ordering constants + the page navigation
+                   #   Assets  : registers the shared token + primitive stylesheets
+                   #   Menu    : submenu ordering constants + the page navigation
   Contracts/       # Interfaces (Ability, Hookable)
   Core/            # Plugin bootstrap, AbilitiesManager, AbilitiesRegistry
-                   #   InvocationRelay — WP 7.1 wp_ability_invoked -> albert/abilities/invoked
+                   #   InvocationRelay : WP 7.1 wp_ability_invoked -> albert/abilities/invoked
   Context/         # Agent context (doc 21): what a connected assistant is told
                    #   ContextSettings : the owner's choices, option + filters
                    #   SiteContext     : assembles the structured array (the API)
@@ -42,7 +42,7 @@ src/
                    #   Payload         : the two discovery fields + screen preview
                    #   TokenEstimator  : script-aware token estimate; see docs/context-token-budget.md
                    #   Readers/        : Environment, DesignTokens, ContentModel, Commerce
-  Support/         # WpCompat — WordPress version-capability detection (7.1 feature probes)
+  Support/         # WpCompat : WordPress version-capability detection (7.1 feature probes)
   MCP/             # MCP protocol server
   OAuth/           # Full OAuth 2.0 server (entities, repos, endpoints)
   Utilities/       # Standalone helpers (BlockConverter)
@@ -59,7 +59,7 @@ Free is the **core**. All add-ons depend on it. The core never depends on add-on
 ```
 Addons → Core    (allowed)
 Core   → Addons  (NEVER)
-Addon  → Addon   (NEVER — use Core hooks as mediator)
+Addon  → Addon   (NEVER, use Core hooks as mediator)
 ```
 
 ### Known add-ons
@@ -73,7 +73,7 @@ Addon  → Addon   (NEVER — use Core hooks as mediator)
 
 Free WooCommerce read-only abilities predate the naming convention and use
 `albert/woo-find-products` style IDs. All new abilities use `{namespace}/{resource}/{action}`.
-Never rename the legacy IDs — they are part of the public API.
+Never rename the legacy IDs: they are part of the public API.
 
 ## Critical Warnings
 
@@ -81,8 +81,8 @@ Never rename the legacy IDs — they are part of the public API.
 - **NEVER use jQuery.** Vanilla ES6+ only.
 - **NEVER commit without explicit request.** Run `composer phpcs` and `composer phpstan` first.
 - **NEVER bump version without approval.**
-- **Version bumps only happen in release branches** — never on `development`, feature branches, or `main`.
-- **PR titles are plain, human-readable sentences** — NEVER use conventional-commit prefixes like `chore(deps):`, `feat(logging):`, `fix:`. Those belong in commit messages, not PR titles. Example: "Upgrade MCP adapter to 0.5.0", not "chore(deps): upgrade...".
+- **Version bumps only happen in release branches**, never on `development`, feature branches, or `main`.
+- **PR titles are plain, human-readable sentences**: NEVER use conventional-commit prefixes like `chore(deps):`, `feat(logging):`, `fix:`. Those belong in commit messages, not PR titles. Example: "Upgrade MCP adapter to 0.5.0", not "chore(deps): upgrade...".
 - The root `CLAUDE.md` is the canonical project reference (checked into git). This file supplements it.
 
 ## WooCommerce mcp-adapter Timing Bug
@@ -108,16 +108,17 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | `albert/abilities/after_execute` | action | After any ability runs |
 | `albert/abilities/before_execute/{id}` | action | Before a specific ability |
 | `albert/abilities/after_execute/{id}` | action | After a specific ability |
-| `albert/abilities/invoked` | action | Relayed from WP 7.1's `wp_ability_invoked`. Fires for EVERY invocation whatever the outcome — denied, invalid, short-circuited — and for abilities Albert does not own, which is wider than `after_execute` can see. Inert below 7.1; ask `WpCompat::supports_execution_lifecycle()`. Observer Throwables are swallowed |
+| `albert/abilities/invoked` | action | Relayed from WP 7.1's `wp_ability_invoked`. Fires for EVERY invocation whatever the outcome (denied, invalid, short-circuited) and for abilities Albert does not own, which is wider than `after_execute` can see. Inert below 7.1; ask `WpCompat::supports_execution_lifecycle()`. Observer Throwables are swallowed |
 | `albert/admin/submenu_pages` | filter | Add addon admin pages |
 | `albert/abilities_icons` | filter | Customize category icons |
 | `albert/developer_mode` | filter | Toggle developer mode |
 | `albert/logging/enabled` | filter | Disable Free's ability log (Premium uses this) |
 | `albert/blocks/read_block_limit` | filter | Default top-level blocks per read window (default 200; 0 = unlimited) |
 | `albert/blocks/read_max_bytes` | filter | Per-field byte cap on read text representations (default 50000) |
+| `albert/connections/allowed_user_capability` | filter | The capability a user must hold to be *offered* in the Connections screen's allowed-users picker (default `edit_posts`; `''` offers everyone). Changes who is suggested, never who may authorise: that stays the stored `albert_allowed_users` list. See `Admin\Connections::allowed_user_capability()` |
 | `albert/mcp/hide_unauthorized_tools` | filter | Hide MCP tools the connected user can't execute from `tools/list`, so discovery matches what's callable (default true; false = list all, deny on call) |
 | `albert/privacy/mode` | filter | Override the active PII privacy mode (`strict`/`balanced`/`off`); return `null` to defer to the `albert_privacy_mode` option/default (`balanced`). See `PrivacyMode::resolve()` |
-| `albert/privacy/pii_fields` | filter | Extend the anonymiser's PII allow-list, grouped by rule (`email`/`phone`/`name`/`context_name`/`postcode`/`empty`/`strip`/`redact`). A returned category REPLACES that category — read the incoming value and append to extend. See `Anonymizer` |
+| `albert/privacy/pii_fields` | filter | Extend the anonymiser's PII allow-list, grouped by rule (`email`/`phone`/`name`/`context_name`/`postcode`/`empty`/`strip`/`redact`). A returned category REPLACES that category: read the incoming value and append to extend. See `Anonymizer` |
 | `albert/privacy/payment_keys` | filter | Register payment/card keys hard-removed from every result at any depth and in every mode. Shape `[ 'keys' => [], 'prefixes' => [] ]`; empty in Free (add-ons own gateway keys). See `Anonymizer` |
 | `albert/privacy/reveal_capability` | filter | Capability gating a `reveal_personal_data` request (default `manage_options`). Consulted only when an ability passes no explicit `reveal_capability` option. See `PiiPolicy` |
 | `albert/activated` | action | Plugin activated |
@@ -140,7 +141,7 @@ handles and one set of constants. All three are part of the public contract.
 wp_enqueue_style( 'my-screen', $url, [ 'albert-primitives' ], $version );
 ```
 
-Naming a handle that does not exist is not a soft failure — WordPress drops the
+Naming a handle that does not exist is not a soft failure: WordPress drops the
 dependent stylesheet from the queue entirely. That is the intended degradation
 for an add-on running against an Albert too old to have the tokens: the screen
 falls back to core admin styling rather than rendering half-painted. Do **not**
@@ -150,7 +151,7 @@ release branches), so a floor naming the upcoming version stops the add-on
 booting against the very branch it is developed against.
 
 Albert renders its page navigation on every screen under its menu, add-on pages
-included, and enqueues the primitives there itself — so an add-on page is
+included, and enqueues the primitives there itself, so an add-on page is
 styled whether or not it declares the dependency. Declare it anyway; that is
 what guarantees load order for the add-on's own stylesheet.
 
