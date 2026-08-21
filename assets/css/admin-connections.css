@@ -1,0 +1,829 @@
+/**
+ * Albert → Connections.
+ *
+ * Everything shared lives in albert-primitives.css: the page shell, the cards,
+ * the badges, the hints, the dialog shell, the search field, the chips and the
+ * user picker. This file holds only what is particular to this screen: the
+ * endpoint field, the connection list with its toolbar and selection mode,
+ * the allowed-user rows and the setup accordion.
+ *
+ * Consumes tokens only. No raw colour, no raw size.
+ *
+ * @package Albert
+ * @since 1.4.0
+ */
+
+/* ==========================================================================
+   Page composition
+   ========================================================================== */
+
+/**
+ * Connected assistants beside Who may connect, roughly 1.4 : 1: the
+ * connections list carries a name, a meta line and two controls per row and
+ * needs the extra room; the allowed-user list is a name and a pill.
+ *
+ * Stretched to equal height on purpose: a short allowed-users card next to a
+ * tall connections card otherwise leaves a column of raw canvas beside it,
+ * which reads as something failing to load.
+ *
+ * A single `minmax(0, …)` on each track: without it a long label or a long
+ * email address sets the column's minimum content size and pushes the grid
+ * wider than the page.
+ */
+.albert-connections__grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	align-items: stretch;
+	gap: var(--albert-space-400);
+}
+
+@media screen and (min-width: 1000px) {
+	.albert-connections__grid {
+		grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+	}
+}
+
+/**
+ * Both cards are columns so their footers sit on the floor of the card rather
+ * than directly under the last row, and so the row list is the part that
+ * absorbs the extra height.
+ */
+.albert-connections__grid > .albert-card {
+	display: flex;
+	flex-direction: column;
+	min-inline-size: 0;
+}
+
+.albert-connections__grid > .albert-card > .albert-connections__footer {
+	margin-block-start: auto;
+}
+
+.albert-connections__note {
+	margin: var(--albert-space-300) 0 0;
+	font-size: var(--albert-font-size-sm);
+	line-height: var(--albert-line-height-snug);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-connections__empty {
+	margin: 0;
+	font-size: var(--albert-font-size-body);
+	line-height: var(--albert-line-height-snug);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-connections__reach {
+	margin-block-start: var(--albert-space-300);
+}
+
+.albert-connections__footer {
+	border-block-start: 1px solid var(--albert-color-border);
+}
+
+.albert-connections__footnote {
+	margin: 0;
+	font-size: var(--albert-font-size-sm);
+	line-height: var(--albert-line-height-snug);
+	color: var(--albert-color-text-muted);
+}
+
+/* Card bodies that follow one another inside the same card. */
+.albert-card__body + .albert-card__body {
+	padding-block-start: 0;
+}
+
+.albert-card__body + .albert-card__body--flush {
+	padding-block-start: 0;
+}
+
+/* The footer's own border needs breathing room above it: without this, the
+   general "consecutive card bodies touch" rule above leaves its text glued
+   to whatever is above it. */
+.albert-card__body + .albert-card__body.albert-connections__footer {
+	padding-block-start: 18px;
+}
+
+/* ==========================================================================
+   Destructive actions
+   ========================================================================== */
+
+/**
+ * WordPress ships no destructive text link, and a `.button` would give Revoke
+ * the same weight as Copy. Colour is not the only signal: the word says what
+ * it does, and the action always goes through a confirm step.
+ */
+.albert-danger-link {
+	color: var(--albert-color-danger);
+	text-decoration: none;
+	font-size: var(--albert-font-size-base);
+}
+
+.albert-danger-link:hover,
+.albert-danger-link:focus {
+	color: var(--albert-color-danger-hover);
+	text-decoration: underline;
+}
+
+.albert-danger-link:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+/**
+ * The bordered form of the same idea, for a control that has to read as a
+ * button because it sits in a row of buttons. Outlined rather than filled: a
+ * solid red button on every row would shout, and these are the rows somebody
+ * scans rather than acts on.
+ */
+.albert-button-danger {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-block-size: 28px;
+	padding: 0 var(--albert-space-300);
+	border: 1px solid var(--albert-color-danger);
+	border-radius: var(--albert-radius-sm);
+	background: transparent;
+	font-size: var(--albert-font-size-sm);
+	font-weight: var(--albert-font-weight-medium);
+	line-height: 1;
+	text-decoration: none;
+	white-space: nowrap;
+	color: var(--albert-color-danger);
+	cursor: pointer;
+}
+
+.albert-button-danger:hover,
+.albert-button-danger:focus {
+	background: var(--albert-color-danger-surface);
+	border-color: var(--albert-color-danger-hover);
+	color: var(--albert-color-danger-hover);
+}
+
+.albert-button-danger:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+/**
+ * Disabled at zero selected. Every trace of the danger colour goes, because a
+ * red control that cannot be pressed reads as an error rather than as "pick
+ * something first".
+ */
+.albert-button-danger:disabled {
+	border-color: var(--albert-color-border-input);
+	background: transparent;
+	color: var(--albert-color-text-faint);
+	cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Quiet buttons
+   ========================================================================== */
+
+/**
+ * The Select toggle. An outline button in the link colour, filling with a
+ * tint while the mode is on: pressed state carried by background, weight and
+ * `aria-pressed`, never by colour alone.
+ */
+.albert-toggle-button {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: 32px;
+	padding: 0 var(--albert-space-300);
+	border: 1px solid var(--albert-color-accent);
+	border-radius: var(--albert-radius-sm);
+	background: transparent;
+	font-size: var(--albert-font-size-sm);
+	line-height: 1;
+	white-space: nowrap;
+	color: var(--albert-color-link);
+	cursor: pointer;
+}
+
+.albert-toggle-button:hover {
+	background: var(--albert-color-accent-tint-8);
+}
+
+.albert-toggle-button:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+.albert-toggle-button[aria-pressed="true"] {
+	background: var(--albert-color-accent-tint-10);
+	font-weight: var(--albert-font-weight-semibold);
+}
+
+/* A button that has to read as a text link, e.g. "Select all N…". */
+.albert-link-button {
+	padding: 0;
+	border: 0;
+	background: none;
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-link);
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.albert-link-button:hover {
+	color: var(--albert-color-accent-hover);
+}
+
+.albert-link-button:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+/* ==========================================================================
+   Endpoint field
+   ========================================================================== */
+
+.albert-endpoint {
+	display: flex;
+	gap: var(--albert-space-200);
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.albert-endpoint__field {
+	flex: 1 1 320px;
+	min-inline-size: 0;
+	padding: var(--albert-space-200) var(--albert-space-300);
+	border: 1px solid var(--albert-color-border-input);
+	border-radius: var(--albert-radius-md);
+	background: var(--albert-color-surface-sunken);
+	font-family: var(--albert-font-family-mono);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text);
+}
+
+.albert-endpoint__field:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+/* ==========================================================================
+   Connections toolbar and selection mode
+   ========================================================================== */
+
+/**
+ * The filter and Select. Always rendered, whatever the
+ * row count: an admin screen that grows controls past some hidden threshold
+ * reads as a bug, and a support screenshot stops matching what the person
+ * in front of it can see.
+ */
+.albert-connlist__toolbar {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--albert-space-200);
+}
+
+.albert-connlist__filter {
+	flex: 1 1 200px;
+}
+
+/* The bulk form is a shell the row checkboxes join through `form=`; it has no
+   box of its own. */
+.albert-connlist__form {
+	display: contents;
+}
+
+.albert-bulkbar {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--albert-space-300);
+	padding: var(--albert-space-200) 18px;
+	border-block: 1px solid var(--albert-color-accent-tint-20);
+	background: var(--albert-color-accent-surface);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text);
+}
+
+/* A class-based `display` always outranks the UA stylesheet's `[hidden]`
+   rule, so the attribute alone does not hide this element once .albert-bulkbar
+   sets display: flex. Restate it here at the same specificity, in the same
+   file, so hidden actually means hidden. */
+.albert-bulkbar[hidden] {
+	display: none;
+}
+
+.albert-bulkbar__check {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--albert-space-200);
+}
+
+.albert-bulkbar [data-albert-bulk-revoke] {
+	margin-inline-start: auto;
+}
+
+/* ==========================================================================
+   Connection rows
+   ========================================================================== */
+
+/**
+ * The list caps its height and scrolls inside the card rather than growing the
+ * page. A real site reaches thirty or fifty of these, and the screen has to
+ * hold up there and not only at two rows.
+ */
+.albert-connlist {
+	flex: 1 1 auto;
+	min-block-size: 0;
+	max-block-size: 30rem;
+	overflow-y: auto;
+}
+
+.albert-connlist__rows {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.albert-conn {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--albert-space-200);
+	padding: var(--albert-space-300) 18px;
+}
+
+/* Same reason as .albert-bulkbar[hidden] above: a class-based display beats
+   the UA stylesheet's [hidden] rule, and the filter relies on `hidden` to
+   actually remove a non-matching row from view. */
+.albert-conn[hidden] {
+	display: none;
+}
+
+.albert-conn + .albert-conn {
+	border-block-start: 1px solid var(--albert-color-border-subtle);
+}
+
+/**
+ * The checkbox exists on every row and is disabled until selection mode is
+ * entered, which is also what hides it: one state, one rule, and a keyboard
+ * user never tabs through fifty controls belonging to a mode they are not in.
+ */
+.albert-conn__check {
+	margin-block-start: 3px;
+}
+
+.albert-conn__check:disabled {
+	display: none;
+}
+
+.albert-conn__body {
+	flex: 1 1 auto;
+	min-inline-size: 0;
+}
+
+.albert-conn__head {
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: var(--albert-space-200);
+}
+
+/**
+ * A label can be a sentence: "Bookkeeping assistant for the webshop, invoices
+ * only" is a real thing somebody types. It truncates rather than wrapping, so
+ * one row stays one row and the controls stay where the eye expects them.
+ *
+ * Deliberately no `flex-grow` here. `.albert-conn__revoke` already claims the
+ * row's spare space with `margin-inline-start: auto`: giving the title its
+ * own flex-grow as well made it swallow that same space first, dragging the
+ * naming link away from the name it names and out to the row's far edge. The
+ * default `flex-shrink: 1` plus `min-inline-size: 0` is what makes truncation
+ * work; growth is not needed for it and actively breaks the layout here.
+ */
+.albert-conn__title {
+	min-inline-size: 0;
+	order: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: var(--albert-font-size-body);
+	font-weight: var(--albert-font-weight-semibold);
+	color: var(--albert-color-text);
+}
+
+/* The client's own name, kept beside any label rather than replaced by it: a
+   label can mislead a skim, it must not be able to mislead a reader. */
+.albert-conn__client {
+	order: 2;
+	flex-shrink: 0;
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-faint);
+}
+
+.albert-conn__title[hidden],
+.albert-conn__naming-trigger[hidden] {
+	display: none;
+}
+
+/**
+ * Link-coloured, but underlined only on interaction: `.albert-link-button`
+ * underlines unconditionally, which is right for "Select all N…" (a one-off
+ * action) but wrong for a trigger that sits on every row all the time,
+ * un-hovered, most of the day. This is the same quiet-until-touched look the
+ * old `<summary>` version had.
+ */
+.albert-conn__naming-trigger {
+	order: 3;
+	flex-shrink: 0;
+	font-size: var(--albert-font-size-sm);
+	text-decoration: none;
+}
+
+.albert-conn__naming-trigger:hover,
+.albert-conn__naming-trigger:focus-visible {
+	text-decoration: underline;
+}
+
+/**
+ * `display: contents` means the form's own box never exists: its fields
+ * become flex items of `.albert-conn__head` directly, so the input takes the
+ * title's place and Save/Cancel take the trigger's, in the same single line,
+ * rather than opening a block below it.
+ */
+.albert-conn__naming-form {
+	display: contents;
+}
+
+.albert-conn__naming-form[hidden] {
+	display: none;
+}
+
+/* Sized and bordered like every other text field on this screen
+   (`.albert-search__input`), not the taller, larger-print browser default
+   that a bare `<input>` falls back to. Scoped to two classes on purpose:
+   core's `input[type="text"]` rule (tag + attribute, specificity 0,1,1) beats
+   a single class (0,1,0) regardless of load order, the same fight
+   `.albert-search .albert-search__input` already had to win. */
+.albert-conn__head .albert-conn__naming-input {
+	order: 1;
+	min-inline-size: 0;
+	flex: 1 1 200px;
+	max-inline-size: 280px;
+	min-block-size: 32px;
+	padding: var(--albert-space-100) var(--albert-space-200);
+	border: 1px solid var(--albert-color-border-input);
+	border-radius: var(--albert-radius-md);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text);
+}
+
+.albert-conn__head .albert-conn__naming-input:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+.albert-conn__naming-form .button,
+.albert-conn__naming-form .albert-link-button {
+	order: 3;
+	flex-shrink: 0;
+}
+
+.albert-conn__revoke {
+	order: 4;
+	flex-shrink: 0;
+	margin-inline-start: auto;
+}
+
+.albert-conn__meta {
+	margin: var(--albert-space-100) 0 0;
+	font-size: var(--albert-font-size-sm);
+	line-height: var(--albert-line-height-snug);
+	color: var(--albert-color-text-muted);
+}
+
+/* Who wrote the label, and when. Quieter than the meta line: it is there to be
+   found, not to be read on every pass. */
+.albert-conn__attribution {
+	margin: 2px 0 0;
+	font-size: var(--albert-font-size-micro);
+	line-height: var(--albert-line-height-snug);
+	color: var(--albert-color-text-faint);
+}
+
+/**
+ * A connection that has never made a single call. Quieter, and the meta line
+ * says "never used" in words: most real sites carry several of these mixed in
+ * with the one or two that matter, and the row has to make that obvious at a
+ * glance without a badge or a separate section.
+ */
+.albert-conn--quiet .albert-conn__title {
+	color: var(--albert-color-text-muted);
+	font-weight: var(--albert-font-weight-medium);
+}
+
+.albert-conn--quiet .albert-conn__meta {
+	color: var(--albert-color-text-faint);
+}
+
+/* ==========================================================================
+   User rows (allowed users, and the per-user session drill-down)
+   ========================================================================== */
+
+.albert-userlist {
+	flex: 1 1 auto;
+	min-block-size: 0;
+	max-block-size: 30rem;
+	overflow-y: auto;
+}
+
+.albert-userlist__rows {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.albert-user-item {
+	display: flex;
+	align-items: center;
+	gap: var(--albert-space-300);
+	padding: var(--albert-space-300) 18px;
+}
+
+.albert-user-item + .albert-user-item {
+	border-block-start: 1px solid var(--albert-color-border-subtle);
+}
+
+/* The only visible confirmation a background add gets, since there is no
+   reload to show a top-of-page notice on. */
+.albert-user-item--new {
+	animation: albert-user-item-added 1.6s ease-out;
+}
+
+@keyframes albert-user-item-added {
+	from {
+		background: var(--albert-color-success-surface);
+	}
+
+	to {
+		background: transparent;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.albert-user-item--new {
+		animation: none;
+	}
+}
+
+.albert-user-item__avatar {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	inline-size: 34px;
+	block-size: 34px;
+	border-radius: 50%;
+	background: var(--albert-color-neutral-surface);
+	color: var(--albert-color-neutral);
+}
+
+.albert-user-item__avatar .dashicons {
+	inline-size: var(--albert-icon-size-sm);
+	block-size: var(--albert-icon-size-sm);
+	font-size: var(--albert-icon-size-sm);
+}
+
+.albert-user-item__text {
+	flex: 1 1 auto;
+	min-inline-size: 0;
+}
+
+.albert-user-item__name,
+.albert-user-item__meta {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.albert-user-item__name {
+	font-size: var(--albert-font-size-body);
+	font-weight: var(--albert-font-weight-semibold);
+	color: var(--albert-color-text);
+}
+
+.albert-user-item__meta {
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-user-item__sessions,
+.albert-user-item__actions {
+	flex-shrink: 0;
+}
+
+/* The session count is a link wearing a badge; keep the badge's own colours. */
+a.albert-badge {
+	text-decoration: none;
+}
+
+a.albert-badge:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+/* ==========================================================================
+   Setup guides
+   ========================================================================== */
+
+.albert-guide {
+	border-block-end: 1px solid var(--albert-color-border-subtle);
+}
+
+.albert-guide:last-child {
+	border-block-end: 0;
+}
+
+.albert-guide__summary {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--albert-space-200);
+	padding: var(--albert-space-300) 18px;
+	cursor: pointer;
+	list-style: none;
+}
+
+/* The dashicon chevron below is the disclosure indicator; the browser's own
+   triangle marker would just be a second, inconsistent one beside it. */
+.albert-guide__summary::-webkit-details-marker {
+	display: none;
+}
+
+.albert-guide__summary:hover {
+	background: var(--albert-color-surface-sunken);
+}
+
+.albert-guide__summary:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: calc(-1 * var(--albert-focus-width));
+}
+
+/* `<details>` is native, so its open state is CSS-only too: no JS toggles
+   this, `details[open]` already does. */
+.albert-guide__chevron {
+	flex-shrink: 0;
+	align-self: center;
+	color: var(--albert-color-text-faint);
+	transition: transform var(--albert-duration-fast) var(--albert-easing-fast);
+}
+
+.albert-guide[open] > .albert-guide__summary .albert-guide__chevron {
+	transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.albert-guide__chevron {
+		transition: none;
+	}
+}
+
+.albert-guide__label {
+	font-size: var(--albert-font-size-body);
+	font-weight: var(--albert-font-weight-semibold);
+	color: var(--albert-color-text);
+}
+
+.albert-guide__description {
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-guide__body {
+	padding: 0 18px var(--albert-space-400);
+}
+
+.albert-guide__path {
+	margin: 0 0 var(--albert-space-300);
+	font-size: var(--albert-font-size-sm);
+}
+
+.albert-guide__path-label {
+	margin-inline-end: var(--albert-space-200);
+	font-size: var(--albert-font-size-micro);
+	font-weight: var(--albert-font-weight-semibold);
+	letter-spacing: var(--albert-letter-spacing-micro);
+	text-transform: uppercase;
+	color: var(--albert-color-text-faint);
+}
+
+.albert-guide__steps {
+	margin: 0 0 var(--albert-space-300);
+	padding-inline-start: var(--albert-space-500);
+	font-size: var(--albert-font-size-body);
+	line-height: var(--albert-line-height-body);
+	color: var(--albert-color-text);
+}
+
+.albert-guide__snippet {
+	border: 1px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
+	overflow: hidden;
+}
+
+.albert-guide__snippet-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--albert-space-200);
+	padding: var(--albert-space-200) var(--albert-space-300);
+	border-block-end: 1px solid var(--albert-color-border);
+	background: var(--albert-color-surface-sunken);
+}
+
+.albert-guide__snippet-label {
+	font-size: var(--albert-font-size-micro);
+	font-weight: var(--albert-font-weight-semibold);
+	letter-spacing: var(--albert-letter-spacing-micro);
+	text-transform: uppercase;
+	color: var(--albert-color-text-faint);
+}
+
+/**
+ * A snippet is a config block or a command, and both break if they are
+ * rewrapped. It scrolls in its own box rather than widening the page.
+ */
+.albert-guide__code {
+	margin: 0;
+	padding: var(--albert-space-300);
+	overflow-x: auto;
+	background: var(--albert-color-surface);
+	font-family: var(--albert-font-family-mono);
+	font-size: var(--albert-font-size-mono-sm);
+	line-height: var(--albert-line-height-mono);
+	color: var(--albert-color-text);
+}
+
+.albert-guide__deeplink {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--albert-space-200);
+	margin: var(--albert-space-300) 0 0;
+}
+
+.albert-guide__deeplink-note {
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
+}
+
+/* ==========================================================================
+   Disconnect dialog options
+   ========================================================================== */
+
+.albert-dialog__options {
+	display: grid;
+	gap: var(--albert-space-200);
+}
+
+.albert-dialog__option {
+	display: block;
+	padding: var(--albert-space-300);
+	border: 1px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
+	background: var(--albert-color-surface);
+	text-decoration: none;
+	color: var(--albert-color-text);
+}
+
+.albert-dialog__option strong {
+	display: block;
+	font-size: var(--albert-font-size-body);
+	font-weight: var(--albert-font-weight-semibold);
+}
+
+.albert-dialog__option span {
+	display: block;
+	margin-block-start: var(--albert-space-100);
+	font-size: var(--albert-font-size-sm);
+	line-height: var(--albert-line-height-snug);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-dialog__option:hover,
+.albert-dialog__option:focus {
+	border-color: var(--albert-color-accent);
+	background: var(--albert-color-accent-tint-8);
+}
+
+.albert-dialog__option:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+.albert-dialog__option--destructive strong {
+	color: var(--albert-color-danger);
+}
+
+.albert-dialog__option--destructive:hover,
+.albert-dialog__option--destructive:focus {
+	border-color: var(--albert-color-danger);
+	background: var(--albert-color-danger-surface);
+}

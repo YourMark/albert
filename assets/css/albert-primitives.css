@@ -3,7 +3,7 @@
  *
  * The shared component vocabulary every Albert screen is built from, in this
  * plugin and in add-ons. Depends on the `albert-tokens` handle and declares no
- * raw colour, size or duration of its own — if a value is missing here, it
+ * raw colour, size or duration of its own: if a value is missing here, it
  * belongs in the token sheet, not inline.
  *
  * Deliberately absent: buttons. WordPress already ships `.button`,
@@ -15,7 +15,7 @@
  * Accessibility rules that apply throughout, so they are not repeated per
  * component:
  *   - Every interactive element gets the same visible :focus-visible ring.
- *   - State is never signalled by colour alone — weight, an icon, a border or
+ *   - State is never signalled by colour alone: weight, an icon, a border or
  *     text always changes with it.
  *   - All motion sits inside prefers-reduced-motion: no-preference.
  *
@@ -232,7 +232,7 @@
    ========================================================================== */
 
 /**
- * Scoped to the thing it explains. Never a full-width banner — that is what
+ * Scoped to the thing it explains. Never a full-width banner: that is what
  * WordPress notices are for, and Albert should not compete with them.
  */
 /**
@@ -264,6 +264,48 @@
 	border-color: var(--albert-color-info-tint-20);
 	background: var(--albert-color-info-surface);
 	color: var(--albert-color-text);
+}
+
+/**
+ * The warning tone. Same shape, different tint: `warning` on `warning-surface`
+ * measures 4.84:1 and the body text token on the same surface is far above it,
+ * so nothing here rests on colour alone: the icon and the wording carry the
+ * meaning and the tint only reinforces it.
+ */
+.albert-hint--warning {
+	border-color: var(--albert-color-warning-tint-20);
+	background: var(--albert-color-warning-surface);
+	color: var(--albert-color-text);
+}
+
+/**
+ * An optional leading icon. The hint is already a flex row, so an icon is just
+ * its first child; these rules stop a dashicon from stretching and give it the
+ * tone's colour.
+ */
+.albert-hint > .dashicons {
+	flex-shrink: 0;
+	inline-size: var(--albert-icon-size-sm);
+	block-size: var(--albert-icon-size-sm);
+	font-size: var(--albert-icon-size-sm);
+	color: var(--albert-color-text-faint);
+}
+
+.albert-hint--info > .dashicons {
+	color: var(--albert-color-info);
+}
+
+.albert-hint--warning > .dashicons {
+	color: var(--albert-color-warning);
+}
+
+/* A hint whose text half is more than one paragraph. */
+.albert-hint p {
+	margin: 0;
+}
+
+.albert-hint p + p {
+	margin-block-start: var(--albert-space-200);
 }
 
 /* ==========================================================================
@@ -510,7 +552,7 @@
 
 /**
  * One ring for everything interactive, including switches, rows that open a
- * panel, and accordion summaries — the elements most often missed.
+ * panel, and accordion summaries: the elements most often missed.
  */
 .albert-badge[tabindex]:focus-visible,
 .albert-toggle-row [tabindex]:focus-visible,
@@ -531,7 +573,7 @@
  * Rendered on `in_admin_header`, so it sits outside `.wrap` and runs edge to
  * edge without negative margins fighting core's gutters.
  *
- * Real links with `aria-current="page"` — never `role="tab"`. Each entry is a
+ * Real links with `aria-current="page"`, never `role="tab"`. Each entry is a
  * separate page load; tab semantics would promise in-page panels and arrow-key
  * navigation that do not exist.
  */
@@ -542,7 +584,7 @@
 	/* Cancel the gutter #wpcontent puts on its children so the strip reaches
 	   both edges. Logical, not physical: core sets padding-left in LTR and
 	   padding-right in RTL, so a hardcoded negative left margin drags the strip
-	   off the edge on an RTL admin. The width is not fixed either — core drops
+	   off the edge on an RTL admin. The width is not fixed either: core drops
 	   the gutter to 10px below 782px, and over-cancelling there pushes the page
 	   into horizontal scroll. */
 	margin-inline-start: -20px;
@@ -616,4 +658,335 @@
 	color: var(--albert-color-text);
 	font-weight: var(--albert-font-weight-semibold);
 	border-bottom-color: var(--albert-color-accent);
+}
+
+/* ==========================================================================
+   Dialog
+   ========================================================================== */
+
+/**
+ * The native `<dialog>`, shown with `showModal()`.
+ *
+ * Shared rather than screen-scoped because two screens now open one of these:
+ * the Connections screen's Revoke confirmation and the allowed-users picker
+ * that both Connections and the Dashboard checklist open. The browser gives
+ * the focus trap, the Escape handling and the `role="dialog"`; everything here
+ * is presentation.
+ */
+.albert-dialog {
+	inline-size: min(440px, calc(100vw - 2 * var(--albert-space-500)));
+	max-block-size: min(80vh, 720px);
+	padding: 0;
+	overflow: hidden;
+	border: 1px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
+	background: var(--albert-color-surface);
+	color: var(--albert-color-text);
+	box-shadow: var(--albert-shadow-md);
+}
+
+/* Enough room for a search field, a row of chips and a list of results. */
+.albert-dialog--wide {
+	inline-size: min(480px, calc(100vw - 2 * var(--albert-space-400)));
+}
+
+.albert-dialog::backdrop {
+	background: var(--albert-color-overlay);
+}
+
+/**
+ * A dialog whose body scrolls rather than the whole panel: the header stays
+ * put and the footer's confirm button never scrolls out of reach on a short
+ * viewport.
+ */
+.albert-dialog[open] {
+	display: flex;
+	flex-direction: column;
+}
+
+.albert-dialog > form {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	min-block-size: 0;
+}
+
+.albert-dialog__header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--albert-space-300);
+	padding: var(--albert-space-400) var(--albert-space-500);
+	border-block-end: 1px solid var(--albert-color-border);
+}
+
+.albert-dialog__heading {
+	min-inline-size: 0;
+}
+
+.albert-dialog__title {
+	margin: 0;
+	font-size: var(--albert-font-size-section-title);
+	font-weight: var(--albert-font-weight-semibold);
+	color: var(--albert-color-text);
+}
+
+.albert-dialog__description {
+	margin: var(--albert-space-100) 0 0;
+	font-size: var(--albert-font-size-sm);
+	line-height: var(--albert-line-height-snug);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-dialog__close {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	inline-size: 32px;
+	block-size: 32px;
+	padding: 0;
+	border: 0;
+	border-radius: var(--albert-radius-sm);
+	background: none;
+	color: var(--albert-color-text-muted);
+	cursor: pointer;
+}
+
+.albert-dialog__close:hover {
+	background: var(--albert-color-surface-hover);
+	color: var(--albert-color-text);
+}
+
+.albert-dialog__close:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+.albert-dialog__body {
+	flex: 1 1 auto;
+	min-block-size: 0;
+	overflow-y: auto;
+	padding: var(--albert-space-400) var(--albert-space-500);
+}
+
+.albert-dialog__footer {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--albert-space-200);
+	padding: var(--albert-space-300) var(--albert-space-500);
+	border-block-start: 1px solid var(--albert-color-border);
+	background: var(--albert-color-surface-sunken);
+}
+
+/* ==========================================================================
+   Search field
+   ========================================================================== */
+
+/**
+ * A text field with a leading icon. Used for every "narrow what is already on
+ * screen" control and for the picker's own search, so the two read alike: the
+ * difference between them is what they search, not how they look.
+ */
+.albert-search {
+	position: relative;
+	display: block;
+	min-inline-size: 0;
+}
+
+.albert-search__icon {
+	position: absolute;
+	inset-block-start: 50%;
+	inset-inline-start: var(--albert-space-200);
+	transform: translateY(-50%);
+	inline-size: var(--albert-icon-size-sm);
+	block-size: var(--albert-icon-size-sm);
+	font-size: var(--albert-icon-size-sm);
+	color: var(--albert-color-text-faint);
+	pointer-events: none;
+}
+
+/**
+ * Doubled as `.albert-search .albert-search__input` on purpose: WordPress core
+ * ships `input[type="search"] { padding: 0 12px; }` in wp-admin/css/common.css,
+ * and a tag-plus-attribute selector (0,1,1) outranks a single class (0,1,0) no
+ * matter the load order, so the padding this input needs to clear the icon
+ * never applied until this rule was made specific enough to actually win.
+ */
+.albert-search .albert-search__input {
+	inline-size: 100%;
+	min-block-size: 32px;
+	padding: var(--albert-space-100) var(--albert-space-300) var(--albert-space-100) calc(var(--albert-space-200) * 2 + var(--albert-icon-size-sm));
+	border: 1px solid var(--albert-color-border-input);
+	border-radius: var(--albert-radius-md);
+	background: var(--albert-color-surface);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text);
+}
+
+.albert-search__input::placeholder {
+	color: var(--albert-color-text-faint);
+}
+
+.albert-search__input:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+/* ==========================================================================
+   Chips
+   ========================================================================== */
+
+/**
+ * The people currently chosen in the picker. A wrapping row of removable
+ * pills rather than a count, because "3 selected" cannot be corrected: seeing
+ * who is in the selection is the whole point of showing it.
+ */
+.albert-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--albert-space-100);
+	margin: var(--albert-space-200) 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.albert-chips:empty {
+	margin: 0;
+}
+
+.albert-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--albert-space-100);
+	padding: 2px 2px 2px var(--albert-space-200);
+	border-radius: var(--albert-radius-pill);
+	background: var(--albert-color-accent-tint-10);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text);
+}
+
+.albert-chip__remove {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	inline-size: 20px;
+	block-size: 20px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: none;
+	color: var(--albert-color-text-muted);
+	cursor: pointer;
+}
+
+.albert-chip__remove .dashicons {
+	inline-size: 16px;
+	block-size: 16px;
+	font-size: 16px;
+}
+
+.albert-chip__remove:hover {
+	background: var(--albert-color-accent-tint-20);
+	color: var(--albert-color-text);
+}
+
+.albert-chip__remove:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+/* ==========================================================================
+   User picker
+   ========================================================================== */
+
+.albert-picker__status {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--albert-space-300);
+	margin: var(--albert-space-300) 0 var(--albert-space-200);
+}
+
+.albert-picker__count {
+	margin: 0;
+	font-size: var(--albert-font-size-sm);
+	line-height: var(--albert-line-height-snug);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-picker__selected-count {
+	flex-shrink: 0;
+	margin: 0;
+	font-size: var(--albert-font-size-sm);
+	font-weight: var(--albert-font-weight-semibold);
+	color: var(--albert-color-text);
+}
+
+.albert-picker__selected-count[hidden] {
+	display: none;
+}
+
+.albert-picker__results {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	max-block-size: 15rem;
+	overflow-y: auto;
+}
+
+/**
+ * The row itself, not just the divider between two of them, is what has to
+ * read as clickable: a lone match (an admin adding one named person, the
+ * single most common case) had no hover or selected state at all before
+ * this, just a checkbox with no visual feedback for touching it.
+ */
+.albert-picker__result {
+	display: flex;
+	align-items: center;
+	gap: var(--albert-space-200);
+	padding: var(--albert-space-200) var(--albert-space-200);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text);
+}
+
+/**
+ * Not `:focus-within` alongside `:hover`: a checkbox keeps focus after a
+ * click checks it, so a selected-and-no-longer-hovered row would otherwise
+ * stay pinned to the weaker hover tint below (higher specificity than the
+ * checked rule) instead of ever showing the stronger selected one. The
+ * native checkbox's own focus ring already covers keyboard feedback.
+ */
+.albert-picker__result:not(.albert-picker__result--allowed):hover {
+	background: var(--albert-color-accent-tint-8);
+}
+
+.albert-picker__result:has(input:checked) {
+	background: var(--albert-color-accent-tint-10);
+}
+
+.albert-picker__result label {
+	flex: 1 1 auto;
+	min-inline-size: 0;
+	cursor: pointer;
+}
+
+/**
+ * Somebody already on the allowed list. Muted, not hidden: hiding them would
+ * read as "not found" for a person who is plainly there.
+ */
+.albert-picker__result--allowed {
+	color: var(--albert-color-text-muted);
+}
+
+.albert-picker__result--allowed .albert-picker__name {
+	padding-inline-start: calc(var(--albert-space-300) + 2px);
+}
+
+.albert-picker__name {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
