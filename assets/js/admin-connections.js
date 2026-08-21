@@ -535,6 +535,14 @@
 				usersTarget.innerHTML = data.usersBodyHtml;
 			}
 
+			// Keep the picker's "already allowed" set in sync: without this, a
+			// user removed here still shows as already-allowed if the picker is
+			// reopened in the same page load, since that set is otherwise only
+			// ever added to (see UserPicker.applyAdd()).
+			if ( UserPicker.allowed && data.removedId !== undefined ) {
+				UserPicker.allowed.delete( Number( data.removedId ) );
+			}
+
 			AllowedUserFilter.refresh();
 
 			const connectionsTarget = document.querySelector(

@@ -475,6 +475,7 @@ class Connections implements Hookable {
 			wp_send_json_success(
 				[
 					'message'              => $message,
+					'removedId'            => $user_id,
 					'usersBodyHtml'        => $users_html,
 					'connectionsHtml'      => $connections_html,
 					'connectionsCountHtml' => $count_html,
