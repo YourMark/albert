@@ -1294,7 +1294,6 @@ class Connections implements Hookable {
 							<?php esc_html_e( 'Leave it empty to remove the label.', 'albert-ai-butler' ); ?>
 						</span>
 					</form>
-					</details>
 
 					<button
 						type="button"
