@@ -209,9 +209,9 @@ class Dashboard implements Hookable {
 										<?php esc_html_e( 'Allowed user added', 'albert-ai-butler' ); ?>
 									<?php } else { ?>
 										<?php esc_html_e( 'Choose who may approve an assistant', 'albert-ai-butler' ); ?>
-										<button type="button" class="button button-small" data-albert-open-userpicker>
+										<a href="<?php echo esc_url( admin_url( 'admin.php?page=albert-connections' ) ); ?>" class="button button-small" data-albert-open-userpicker>
 											<?php esc_html_e( 'Choose users', 'albert-ai-butler' ); ?>
-										</button>
+										</a>
 									<?php } ?>
 								</span>
 							</li>
