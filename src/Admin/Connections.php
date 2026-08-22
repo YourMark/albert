@@ -1950,8 +1950,7 @@ class Connections implements Hookable {
 					AND r.revoked = 0
 					AND r.expires_at > UTC_TIMESTAMP()
 				WHERE t.user_id = %d
-					AND t.revoked = 0
-					AND ( t.expires_at > UTC_TIMESTAMP() OR r.id IS NOT NULL )',
+					AND ( ( t.revoked = 0 AND t.expires_at > UTC_TIMESTAMP() ) OR r.id IS NOT NULL )',
 				$tables['access_tokens'],
 				$tables['refresh_tokens'],
 				$user_id

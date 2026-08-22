@@ -404,8 +404,8 @@ class ClientRepository implements ClientRepositoryInterface {
 					ON r.access_token_id = t.token_id
 					AND r.revoked = 0
 					AND r.expires_at > UTC_TIMESTAMP()
-				WHERE t.revoked = 0
-					AND ( t.expires_at > UTC_TIMESTAMP() OR r.id IS NOT NULL )
+				WHERE ( t.revoked = 0 AND t.expires_at > UTC_TIMESTAMP() )
+					OR r.id IS NOT NULL
 				GROUP BY t.client_id
 				ORDER BY first_token_ts DESC',
 				$tables['access_tokens'],
