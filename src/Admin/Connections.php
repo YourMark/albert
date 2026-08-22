@@ -580,7 +580,7 @@ class Connections implements Hookable {
 
 		if ( ! $saved ) {
 			$this->notify( 'label_save_failed', __( 'Could not save the label. Please try again.', 'albert-ai-butler' ), 'error' );
-			$this->redirect_to_page( false );
+			$this->redirect_to_page();
 			return;
 		}
 
