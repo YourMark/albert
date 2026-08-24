@@ -163,4 +163,85 @@ class SkillTest extends TestCase {
 
 		unlink( $file );
 	}
+
+	/**
+	 * A skill with no source declared falls back to a generic label, not
+	 * "Albert": an add-on that forgot to declare one should not be mislabelled
+	 * as something Albert shipped.
+	 *
+	 * @return void
+	 */
+	public function test_undeclared_source_falls_back_to_a_generic_label(): void {
+		$skill = new Skill( 'general', 'Applies everywhere.', '', 'Body.' );
+
+		$this->assertNotSame( '', $skill->source() );
+		$this->assertNotSame( 'Albert', $skill->source() );
+	}
+
+	/**
+	 * A declared source is returned verbatim.
+	 *
+	 * @return void
+	 */
+	public function test_declared_source_is_returned_verbatim(): void {
+		$skill = new Skill( 'woo', 'Shop work.', '', 'Body.', [], null, 'WooCommerce Add-on' );
+
+		$this->assertSame( 'WooCommerce Add-on', $skill->source() );
+	}
+
+	/**
+	 * A skill with no preconditions is always enabled, with no reason attached.
+	 *
+	 * @return void
+	 */
+	public function test_status_for_an_unconditional_skill(): void {
+		$skill  = new Skill( 'general', 'Applies everywhere.', '', 'Body.' );
+		$status = $skill->status();
+
+		$this->assertTrue( $status['available'] );
+		$this->assertSame( 'Always enabled.', $status['label'] );
+	}
+
+	/**
+	 * An unmet precondition names itself in the status label.
+	 *
+	 * @return void
+	 */
+	public function test_status_names_the_unmet_precondition(): void {
+		$skill  = new Skill( 'woo', 'Shop work.', '', 'Body.', [ 'woocommerce' ] );
+		$status = $skill->status();
+
+		$this->assertFalse( $status['available'] );
+		$this->assertStringContainsString( 'Requires', $status['label'] );
+		$this->assertStringContainsString( 'WooCommerce', $status['label'] );
+	}
+
+	/**
+	 * A `when` callable can make a skill unavailable even once every named
+	 * precondition holds, required for a skill declaring none at all, and the
+	 * status label falls back to a generic reason since there is no named
+	 * condition to describe.
+	 *
+	 * @return void
+	 */
+	public function test_status_reflects_a_failing_when_callable(): void {
+		$skill  = new Skill( 'no', 'No.', '', 'Body.', [], static fn (): bool => false );
+		$status = $skill->status();
+
+		$this->assertFalse( $status['available'] );
+		$this->assertStringContainsString( "isn't met", $status['label'] );
+	}
+
+	/**
+	 * The is_available() shorthand never disagrees with status()['available'];
+	 * the Skills screen and the model-facing index both have to be able to
+	 * trust either one.
+	 *
+	 * @return void
+	 */
+	public function test_is_available_matches_status(): void {
+		$skill = new Skill( 'woo', 'Shop work.', '', 'Body.', [ 'woocommerce' ] );
+
+		$this->assertSame( $skill->status()['available'], $skill->is_available() );
+	}
 }

@@ -31,6 +31,7 @@ module.exports = {
 	entry: {
 		abilities: path.resolve( __dirname, 'assets/src/abilities/index.js' ),
 		context: path.resolve( __dirname, 'assets/src/context/index.js' ),
+		skills: path.resolve( __dirname, 'assets/src/skills/index.js' ),
 	},
 	output: {
 		...defaultConfig.output,

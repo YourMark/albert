@@ -60,8 +60,10 @@ class SkillRegistry {
 		 * Each entry is an array with a `slug`, a one-sentence `summary`, and
 		 * either a `file` (absolute path to a Markdown body) or a literal
 		 * `body`. Optionally `requires`, a list of named preconditions from
-		 * {@see Skill::KNOWN_CONDITIONS}, and `when`, a callable for anything
-		 * that vocabulary cannot express.
+		 * {@see Skill::KNOWN_CONDITIONS}, `when`, a callable for anything
+		 * that vocabulary cannot express, and `source`, the name shown as the
+		 * Skills screen's badge (e.g. an add-on's own name); omitted, it falls
+		 * back to a generic "Add-on" label.
 		 *
 		 * Preconditions are declared, not evaluated here: this filter runs long
 		 * before discovery, and a condition answered at registration time would
@@ -177,6 +179,7 @@ class SkillRegistry {
 				'summary'  => (string) ( $parsed['description'] ?? '' ),
 				'file'     => $file,
 				'requires' => $parsed['requires'],
+				'source'   => __( 'Albert', 'albert-ai-butler' ),
 			];
 		}
 

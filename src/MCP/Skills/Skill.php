@@ -71,6 +71,9 @@ class Skill {
 	 * @param string        $body     Literal body, for skills not backed by a file.
 	 * @param list<string>  $requires Named preconditions from {@see self::KNOWN_CONDITIONS}.
 	 * @param callable|null $when     Extra precondition for anything the vocabulary cannot express.
+	 * @param string        $source   Who ships this skill, for the Skills screen's source badge.
+	 *                                Empty when the registration did not say, the Skills screen falls
+	 *                                back to a generic "Add-on" label rather than guessing a name.
 	 *
 	 * @since 1.4.0
 	 */
@@ -80,7 +83,8 @@ class Skill {
 		private readonly string $file = '',
 		private readonly string $body = '',
 		private readonly array $requires = [],
-		private readonly mixed $when = null
+		private readonly mixed $when = null,
+		private readonly string $source = ''
 	) {
 	}
 
@@ -124,7 +128,8 @@ class Skill {
 			$file,
 			$body,
 			$requires,
-			$when
+			$when,
+			isset( $definition['source'] ) ? (string) $definition['source'] : ''
 		);
 	}
 
@@ -159,28 +164,87 @@ class Skill {
 	}
 
 	/**
-	 * Whether this skill is worth listing on this site right now.
+	 * Who ships this skill, for the Skills screen's source badge.
 	 *
-	 * An unknown condition name fails closed. A skill that declares
-	 * `requires: shopify` is asking a question this vocabulary cannot answer,
-	 * and listing it anyway would be answering "yes" to a question nobody
-	 * understood.
+	 * Bundled skills declare `'Albert'` explicitly (see {@see
+	 * SkillRegistry::bundled()}); a skill added through the registry filter
+	 * without a `source` falls back to a generic label rather than being
+	 * mislabelled as one Albert did not ship.
+	 *
+	 * @return string The source label.
+	 * @since 1.4.0
+	 */
+	public function source(): string {
+		return $this->source !== '' ? $this->source : __( 'Add-on', 'albert-ai-butler' );
+	}
+
+	/**
+	 * Whether this skill is worth listing on this site right now.
 	 *
 	 * @return bool True when every declared precondition holds.
 	 * @since 1.4.0
 	 */
 	public function is_available(): bool {
+		return $this->status()['available'];
+	}
+
+	/**
+	 * The live precondition status, for the Skills screen.
+	 *
+	 * The single place that turns "does this apply here" into both the boolean
+	 * {@see self::is_available()} relies on and the reason a site owner reads
+	 * as the enabled toggle's help text ("WooCommerce is active" / "Requires
+	 * the block editor"), so the two can never drift apart.
+	 *
+	 * The label states only the reason, not the on/off state itself: the
+	 * toggle it sits under already shows enabled or disabled, so repeating
+	 * that in words would say the same thing twice, once visually and once as
+	 * text a screen reader would read right after the switch's own state.
+	 *
+	 * An unknown condition name fails closed. A skill that declares
+	 * `requires: shopify` is asking a question this vocabulary cannot answer,
+	 * and treating it as met anyway would be answering "yes" to a question
+	 * nobody understood.
+	 *
+	 * @return array{available: bool, label: string}
+	 * @since 1.4.0
+	 */
+	public function status(): array {
 		foreach ( $this->requires as $condition ) {
 			if ( ! $this->condition_holds( $condition ) ) {
-				return false;
+				return [
+					'available' => false,
+					'label'     => sprintf(
+						/* translators: %s: the unmet precondition, e.g. "the block editor". */
+						__( 'Requires %s.', 'albert-ai-butler' ),
+						self::requirement_label( $condition )
+					),
+				];
 			}
 		}
 
-		if ( is_callable( $this->when ) ) {
-			return (bool) call_user_func( $this->when );
+		if ( is_callable( $this->when ) && ! call_user_func( $this->when ) ) {
+			return [
+				'available' => false,
+				'label'     => __( "A site condition isn't met.", 'albert-ai-butler' ),
+			];
 		}
 
-		return true;
+		if ( $this->requires === [] ) {
+			return [
+				'available' => true,
+				'label'     => __( 'Always enabled.', 'albert-ai-butler' ),
+			];
+		}
+
+		return [
+			'available' => true,
+			'label'     => sprintf(
+				/* translators: %s: the met preconditions, e.g. "WooCommerce is active". */
+				__( '%s.', 'albert-ai-butler' ),
+				implode( ', ', array_map( [ self::class, 'active_label' ], $this->requires ) )
+			),
+		];
 	}
 
 	/**
@@ -245,6 +309,60 @@ class Skill {
 
 			default:
 				return false;
+		}
+	}
+
+	/**
+	 * A condition's name, phrased as a requirement ("Requires %s.").
+	 *
+	 * @param string $condition Condition name.
+	 *
+	 * @return string Human-readable phrase. The condition name itself for one this class does not know.
+	 * @since 1.4.0
+	 */
+	private static function requirement_label( string $condition ): string {
+		switch ( $condition ) {
+			case 'woocommerce':
+				return __( 'WooCommerce', 'albert-ai-butler' );
+
+			case 'block_editor':
+				return __( 'the block editor', 'albert-ai-butler' );
+
+			case 'classic_editor':
+				return __( 'the classic editor', 'albert-ai-butler' );
+
+			case 'multisite':
+				return __( 'a multisite network', 'albert-ai-butler' );
+
+			default:
+				return $condition;
+		}
+	}
+
+	/**
+	 * A condition's name, phrased as the reason it currently holds ("%s.").
+	 *
+	 * @param string $condition Condition name.
+	 *
+	 * @return string Human-readable phrase. The condition name itself for one this class does not know.
+	 * @since 1.4.0
+	 */
+	private static function active_label( string $condition ): string {
+		switch ( $condition ) {
+			case 'woocommerce':
+				return __( 'WooCommerce is active', 'albert-ai-butler' );
+
+			case 'block_editor':
+				return __( 'the block editor is active', 'albert-ai-butler' );
+
+			case 'classic_editor':
+				return __( 'the classic editor is active', 'albert-ai-butler' );
+
+			case 'multisite':
+				return __( 'this is a multisite network', 'albert-ai-butler' );
+
+			default:
+				return $condition;
 		}
 	}
 }

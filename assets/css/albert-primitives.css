@@ -990,3 +990,174 @@
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
+
+/* ==========================================================================
+   Detail fly-in (right-docked drawer)
+
+   The shell every screen that opens one shares: backdrop, frame, header
+   layout, close button, scrollable body, footer layout, the category
+   label/value pair, and the open/close motion. First shipped on Abilities;
+   moved here when Skills opened the same dialog rather than a second one, so
+   the two can never drift into two different "detail panel" experiences.
+   Screen-specific content (what goes in the heading, the body, the footer)
+   stays in that screen's own stylesheet.
+   ========================================================================== */
+
+.albert-flyin__backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	background: rgba(0, 0, 0, 0.28);
+}
+
+.albert-flyin {
+	position: fixed;
+	inset-block: 0;
+	inset-inline-end: 0;
+	z-index: 100001;
+	display: flex;
+	flex-direction: column;
+	width: 452px;
+	max-width: 92vw;
+	background: var(--albert-color-surface);
+	box-shadow: -8px 0 30px rgba(0, 0, 0, 0.16);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.albert-flyin__backdrop {
+		animation: albert-fade-in 0.15s ease;
+	}
+
+	.albert-flyin {
+		animation: albert-flyin-in 0.22s cubic-bezier(0.2, 0.7, 0.3, 1);
+	}
+}
+
+@keyframes albert-fade-in {
+	from {
+		opacity: 0;
+	}
+}
+
+@keyframes albert-flyin-in {
+	from {
+		transform: translateX(24px);
+		opacity: 0;
+	}
+}
+
+.albert-flyin__header {
+	flex: none;
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 18px 22px 16px;
+	border-bottom: 1px solid var(--albert-color-border);
+}
+
+.albert-flyin__title {
+	margin: 10px 0 2px;
+	padding: 0;
+	font-size: 19px;
+	font-weight: 600;
+	color: var(--albert-color-text);
+}
+
+/* Small category line in the header, on its own row under the title. The
+   label reads as a quiet tag; the value carries the emphasis. */
+.albert-flyin__category {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	margin-top: 6px;
+	font-size: 13px;
+}
+
+.albert-flyin__category-label {
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--albert-color-text-faint);
+}
+
+.albert-flyin__category-value {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 10px;
+	border-radius: 11px;
+	background: var(--albert-color-canvas);
+	color: var(--albert-color-text);
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.albert-flyin__close {
+	flex: none;
+}
+
+.albert-flyin__body {
+	flex: 1;
+	overflow-y: auto;
+	padding: 20px 22px;
+	display: flex;
+	flex-direction: column;
+	gap: 22px;
+}
+
+.albert-flyin__footer {
+	flex: none;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 14px 22px;
+	border-top: 1px solid var(--albert-color-border);
+}
+
+/* A sunken panel wrapping a toggle plus its label and help text. The fly-in's
+   first body section on Abilities; on Skills it comes second, after the
+   locked notice explaining why the toggle can't be used. */
+.albert-flyin__enabled {
+	padding: 13px 14px;
+	border: 1px solid var(--albert-color-border);
+	border-radius: 5px;
+	background: var(--albert-color-surface-sunken);
+}
+
+/* ==========================================================================
+   DataViews toolbar
+
+   One aligned row: search and filters left, view controls (density, layout
+   switcher) right. Shared because it composes DataViews' own sub-components
+   (Search, ViewConfig, LayoutSwitcher) the same way on every screen that
+   replaces DataViews' default toolbar; only which filters appear is
+   screen-specific.
+   ========================================================================== */
+
+.albert-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 12px;
+	border-bottom: 1px solid var(--albert-color-border);
+}
+
+.albert-toolbar__group {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.albert-toolbar__group--end {
+	margin-inline-start: auto;
+}
+
+/* Give the search a sensible fixed width instead of stretching. */
+.albert-toolbar .components-search-control {
+	width: 232px;
+}
