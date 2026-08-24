@@ -82,6 +82,12 @@ class SkillsPayloadTest extends TestCase {
 	 * A skill whose precondition does not hold is still listed on the screen,
 	 * marked unavailable, rather than dropped.
 	 *
+	 * Uses an unrecognised condition name, not `woocommerce`: this suite also
+	 * runs against a real WooCommerce install (the WooCommerce-flavoured CI
+	 * matrix), where that precondition would actually hold and the test would
+	 * assert the wrong thing depending on the environment. An unknown
+	 * condition fails closed deterministically everywhere.
+	 *
 	 * @return void
 	 */
 	public function test_unavailable_skills_are_listed_with_a_false_flag(): void {
@@ -89,9 +95,9 @@ class SkillsPayloadTest extends TestCase {
 			'albert/skills/registry',
 			static function ( array $definitions ): array {
 				$definitions['gated-test-skill'] = [
-					'body'     => 'Guidance for a shop that is not there.',
-					'summary'  => 'Only for shops.',
-					'requires' => [ 'woocommerce' ],
+					'body'     => 'Guidance gated on a condition nothing satisfies.',
+					'summary'  => 'Never applies.',
+					'requires' => [ 'a-condition-this-vocabulary-does-not-know' ],
 				];
 
 				return $definitions;
