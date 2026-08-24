@@ -11,12 +11,14 @@ namespace Albert\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Admin\Connections\UserPickerModal;
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Core\AbilitiesRegistry;
 use Albert\Core\Plugin;
 use Albert\Logging\Repository as LoggingRepository;
 use Albert\MCP\Server as McpServer;
 use Albert\Database\Tables;
+use Albert\OAuth\AllowedUsers;
 
 /**
  * Dashboard class
@@ -142,6 +144,11 @@ class Dashboard implements Hookable {
 			ALBERT_VERSION,
 			true
 		);
+
+		// The onboarding checklist's "Choose users" button opens the Connections
+		// screen's picker, so the dashboard loads the same script and the same
+		// localised data rather than a copy of either.
+		UserPickerModal::enqueue( 'dashboard' );
 	}
 
 	/**
@@ -156,7 +163,7 @@ class Dashboard implements Hookable {
 		}
 
 		// Gather setup state.
-		$has_allowed_users  = ! empty( get_option( 'albert_allowed_users', [] ) );
+		$has_allowed_users  = AllowedUsers::has_any();
 		$active_connections = $this->get_active_connections_count();
 		$has_connections    = $active_connections > 0;
 		$setup_complete     = $has_allowed_users && $has_connections;
@@ -201,8 +208,9 @@ class Dashboard implements Hookable {
 									<?php if ( $has_allowed_users ) { ?>
 										<?php esc_html_e( 'Allowed user added', 'albert-ai-butler' ); ?>
 									<?php } else { ?>
-										<a href="<?php echo esc_url( admin_url( 'admin.php?page=albert-connections' ) ); ?>">
-											<?php esc_html_e( 'Add an allowed user', 'albert-ai-butler' ); ?>
+										<?php esc_html_e( 'Choose who may approve an assistant', 'albert-ai-butler' ); ?>
+										<a href="<?php echo esc_url( admin_url( 'admin.php?page=albert-connections' ) ); ?>" class="button button-small" data-albert-open-userpicker>
+											<?php esc_html_e( 'Choose users', 'albert-ai-butler' ); ?>
 										</a>
 									<?php } ?>
 								</span>
@@ -356,6 +364,10 @@ class Dashboard implements Hookable {
 			</div>
 		</div>
 		<?php
+
+		// The same picker the Connections screen opens, from the same markup and
+		// the same script. Two pickers answering one question drift.
+		UserPickerModal::render( 'dashboard' );
 	}
 
 	/**
@@ -424,7 +436,7 @@ class Dashboard implements Hookable {
 		global $wpdb;
 		$tables = Tables::oauth();
 
-		// Get the most recent distinct connections — one row per client, not per
+		// Get the most recent distinct connections: one row per client, not per
 		// token. A new access-token row is created on every silent refresh (about
 		// hourly), so keying on the client and its registration time avoids
 		// surfacing a "new connection" each time the session merely refreshes.
@@ -457,7 +469,7 @@ class Dashboard implements Hookable {
 			if ( $client_name !== '' ) {
 				$event = sprintf(
 					/* translators: %s: Client name */
-					__( 'New connection — %s', 'albert-ai-butler' ),
+					__( 'New connection: %s', 'albert-ai-butler' ),
 					$client_name
 				);
 			}
@@ -514,7 +526,7 @@ class Dashboard implements Hookable {
 	 * Resolve a logged ability slug to its human-readable label.
 	 *
 	 * Prefers the in-memory abilities manager, whose label data is populated
-	 * during bootstrap and is therefore available even on this admin page —
+	 * during bootstrap and is therefore available even on this admin page,
 	 * where the WordPress Abilities API registry is not yet populated and
 	 * calling wp_get_ability() would emit PHP notices. Abilities the manager
 	 * does not hold (e.g. third-party abilities registered directly with
@@ -542,7 +554,7 @@ class Dashboard implements Hookable {
 	/**
 	 * Render a status cell: a glowing dot paired with a visible word.
 	 *
-	 * The visible word is required — status is never conveyed by colour alone
+	 * The visible word is required: status is never conveyed by colour alone
 	 * (WCAG 2.2 AA, 1.4.1).
 	 *
 	 * @param string $status One of `success`, `error`, or `connection`.

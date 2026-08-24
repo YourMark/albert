@@ -13,6 +13,7 @@ namespace Albert\Tests\Integration\Database;
 
 use Albert\Database\Installer;
 use Albert\Database\Tables;
+use Albert\OAuth\AllowedUsers;
 use Albert\Tests\TestCase;
 
 /**
@@ -113,7 +114,7 @@ class InstallerTest extends TestCase {
 	}
 
 	/**
-	 * maybe_upgrade() is a no-op once the stored version is current.
+	 * A no-op once the stored version is current.
 	 *
 	 * @return void
 	 */
@@ -147,8 +148,8 @@ class InstallerTest extends TestCase {
 	}
 
 	/**
-	 * maybe_upgrade() runs the schema build when the stored version is behind,
-	 * advancing the version while preserving existing rows (additive migration).
+	 * Runs the schema build when the stored version is behind, advancing the
+	 * version while preserving existing rows (additive migration).
 	 *
 	 * @return void
 	 */
@@ -186,6 +187,93 @@ class InstallerTest extends TestCase {
 
 		$this->assertNotNull( $row );
 		$this->assertSame( $id_before, (int) $row->id );
+	}
+
+	/**
+	 * Upgrading from below 1.4.0 rewraps a flat `albert_allowed_users` array
+	 * into the new per-entry shape, leaving every field `null` rather than
+	 * inventing a value for any of them.
+	 *
+	 * Nothing is guessed: there is no record of when a legacy entry was
+	 * actually added or whether it was ever exercised, and a fabricated
+	 * `added_at` would be displayed on the row as a factual claim ("Added 2
+	 * hours ago") about an account that may predate the feature by years.
+	 * `expires_at` staying `null` is what exempts these entries from the
+	 * sweep on its own, no fabricated `authorised_at` required: applying the
+	 * new, tight default retroactively risks locking out a real connection
+	 * within a day of an unrelated update, so only invitations granted after
+	 * this upgrade go through the real expire-if-unused lifecycle.
+	 *
+	 * @return void
+	 */
+	public function test_maybe_upgrade_leaves_legacy_allowed_users_unlabelled_and_exempt(): void {
+		$one = self::factory()->user->create();
+		$two = self::factory()->user->create();
+
+		// The pre-1.4.0 shape: a flat array of ints, no timestamps at all.
+		update_option( AllowedUsers::OPTION, [ $one, $two ] );
+		update_option( Installer::VERSION_OPTION, '0.0.0' );
+
+		Installer::maybe_upgrade();
+
+		$this->assertSame( [ $one, $two ], AllowedUsers::ids() );
+
+		foreach ( [ $one, $two ] as $user_id ) {
+			$this->assertNull( AllowedUsers::added_at( $user_id ) );
+			$this->assertNull( AllowedUsers::authorised_at( $user_id ) );
+			$this->assertFalse( AllowedUsers::has_authorised( $user_id ) );
+			$this->assertNull( AllowedUsers::expires_at( $user_id ) );
+
+			// Exempt for good via expires_at alone, still allowed regardless.
+			$this->assertTrue( AllowedUsers::is_allowed( $user_id ) );
+		}
+	}
+
+	/**
+	 * A partially-migrated entry (an interrupted upgrade, or one from an
+	 * earlier development build of this shape) has its missing fields
+	 * filled in without disturbing the ones already correct.
+	 *
+	 * @return void
+	 */
+	public function test_migration_fills_in_a_missing_field_on_a_partial_entry(): void {
+		$user_id      = self::factory()->user->create();
+		$added_moment = gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS );
+
+		// A partial entry: added_at present, authorised_at and expires_at missing.
+		update_option( AllowedUsers::OPTION, [ $user_id => [ 'added_at' => $added_moment ] ] );
+		update_option( Installer::VERSION_OPTION, '0.0.0' );
+
+		Installer::maybe_upgrade();
+
+		// The existing field survives untouched.
+		$this->assertEqualsWithDelta( time() - DAY_IN_SECONDS, AllowedUsers::added_at( $user_id ), 5 );
+		// The missing fields are filled in with safe defaults, not left to error.
+		$this->assertNull( AllowedUsers::authorised_at( $user_id ) );
+		$this->assertNull( AllowedUsers::expires_at( $user_id ) );
+	}
+
+	/**
+	 * Re-running the migration (e.g. against a site already on the new shape)
+	 * leaves existing entries untouched rather than resetting their clock.
+	 *
+	 * @return void
+	 */
+	public function test_allowed_users_migration_is_idempotent(): void {
+		$user_id = self::factory()->user->create();
+
+		update_option( Installer::VERSION_OPTION, '0.0.0' );
+		Installer::maybe_upgrade();
+
+		AllowedUsers::add( $user_id );
+		$added_at = AllowedUsers::added_at( $user_id );
+
+		// Pretend the site is behind again and re-run: the entry is already
+		// the new shape, so it must be carried through unchanged.
+		update_option( Installer::VERSION_OPTION, '0.0.0' );
+		Installer::maybe_upgrade();
+
+		$this->assertSame( $added_at, AllowedUsers::added_at( $user_id ) );
 	}
 
 	/**

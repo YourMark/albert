@@ -15,9 +15,11 @@ namespace Albert\OAuth\Endpoints;
 defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
+use Albert\OAuth\AllowedUsers;
 use Albert\OAuth\Entities\UserEntity;
 use Albert\OAuth\Repositories\ClientRepository;
 use Albert\OAuth\Server\AuthorizationServerFactory;
+use Albert\OAuth\Server\DomainGuard;
 use League\OAuth2\Server\Exception\OAuthServerException;
 
 /**
@@ -172,7 +174,7 @@ class AuthorizationPage implements Hookable {
 			return;
 		}
 
-		// Validate redirect URI — must exactly match a registered URI. There is no
+		// Validate redirect URI: must exactly match a registered URI. There is no
 		// wildcard: a client that did not register this exact URI is rejected.
 		$allowed_uris = $client->getRedirectUri();
 		if ( is_string( $allowed_uris ) ) {
@@ -188,7 +190,7 @@ class AuthorizationPage implements Hookable {
 		}
 
 		// PKCE policy: this server accepts only the S256 challenge method, and a
-		// public (native/loopback) client MUST use PKCE — a secret alone cannot
+		// public (native/loopback) client MUST use PKCE: a secret alone cannot
 		// protect it (RFC 8252). league enforces presence for public clients at
 		// token time; we reject a non-S256 method and a missing challenge up front.
 		if ( $code_challenge !== '' && $code_challenge_method !== 'S256' ) {
@@ -215,10 +217,9 @@ class AuthorizationPage implements Hookable {
 		}
 
 		// Check if user is allowed to access MCP.
-		$allowed_users = get_option( 'albert_allowed_users', [] );
-		$current_user  = wp_get_current_user();
+		$current_user = wp_get_current_user();
 
-		if ( ! in_array( $current_user->ID, $allowed_users, true ) ) {
+		if ( ! AllowedUsers::is_allowed( $current_user->ID ) ) {
 			$this->render_access_denied_page( $current_user );
 			return;
 		}
@@ -308,6 +309,31 @@ class AuthorizationPage implements Hookable {
 				$auth_request,
 				Psr7Bridge::create_response()
 			);
+
+			// Record the address this connection was authorised against.
+			// Recording only: suspending a connection when the site's address
+			// changes is designed but deliberately not enforced yet
+			// (docs/features/31-connections.md §6). Nothing reads this column to
+			// refuse a request. It is written now so the history exists on the
+			// day the control ships, rather than every existing connection
+			// looking like a fresh unknown. See Albert\OAuth\Server\DomainGuard.
+			DomainGuard::record_connection( (string) $client->getIdentifier() );
+
+			// The invitation has now been exercised: exempt for good from the
+			// invitation-expiry sweep, however long this or any later connection
+			// of theirs lives for. First-time only; see AllowedUsers::mark_authorised().
+			AllowedUsers::mark_authorised( get_current_user_id() );
+
+			// An optional label, offered here because this is the one moment the
+			// approving person has real context ("this is my laptop") that nobody
+			// reviewing the Connections screen later will have. Skippable: a blank
+			// field here is simply never saved, not cleared, so there is nothing to
+			// undo by leaving it empty.
+			$label = isset( $_POST['albert_connection_label'] ) ? sanitize_text_field( wp_unslash( $_POST['albert_connection_label'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in handle_authorization() before calling this method.
+
+			if ( $label !== '' ) {
+				( new ClientRepository() )->updateClientLabel( (string) $client->getIdentifier(), $label, get_current_user_id() );
+			}
 
 			// Get redirect location from response.
 			$location = $psr_response->getHeader( 'Location' );
@@ -414,6 +440,21 @@ class AuthorizationPage implements Hookable {
 			<input type="hidden" name="code_challenge_method" value="<?php echo esc_attr( $code_challenge_method ); ?>">
 			<?php wp_nonce_field( 'albert_oauth_authorize', '_albert_nonce' ); ?>
 
+			<div class="connection-label">
+				<label for="albert-connection-label"><?php esc_html_e( 'Name this connection (optional)', 'albert-ai-butler' ); ?></label>
+				<input
+					type="text"
+					id="albert-connection-label"
+					name="albert_connection_label"
+					maxlength="255"
+					placeholder="<?php esc_attr_e( 'e.g. My laptop', 'albert-ai-butler' ); ?>"
+					autocomplete="off"
+				>
+				<p class="connection-label__hint">
+					<?php esc_html_e( 'Helps you tell it apart later on the Connections screen. You can leave this blank and add or change it anytime.', 'albert-ai-butler' ); ?>
+				</p>
+			</div>
+
 			<div class="button-group">
 				<button type="submit" name="approve" value="no" class="button button-secondary">
 					<?php esc_html_e( 'Deny', 'albert-ai-butler' ); ?>
@@ -469,6 +510,13 @@ class AuthorizationPage implements Hookable {
 	/**
 	 * Render an access denied page for users not in the allowed list.
 	 *
+	 * Distinguishes two different denials: never invited at all, versus an
+	 * invitation that existed but expired unused. Someone who was told "you
+	 * can connect now" and then hits a plain "not authorized" wall a day
+	 * later has no way to know whether they were forgotten or timed out;
+	 * {@see \Albert\OAuth\AllowedUsers::has_expired_invitation()} already
+	 * knows which one it is.
+	 *
 	 * @param \WP_User $user The current user.
 	 *
 	 * @return void
@@ -480,6 +528,7 @@ class AuthorizationPage implements Hookable {
 		status_header( 403 );
 
 		$site_name = get_bloginfo( 'name' );
+		$expired   = AllowedUsers::has_expired_invitation( $user->ID );
 
 		$this->enqueue_oauth_styles();
 
@@ -497,7 +546,13 @@ class AuthorizationPage implements Hookable {
 		<div class="icon">🚫</div>
 		<h1><?php esc_html_e( 'Access Not Authorized', 'albert-ai-butler' ); ?></h1>
 		<p>
-			<?php esc_html_e( 'Your account has not been granted access to connect AI tools to this site.', 'albert-ai-butler' ); ?>
+			<?php
+			echo esc_html(
+				$expired
+					? __( 'Your invitation to connect an AI assistant has expired. It was not used in time.', 'albert-ai-butler' )
+					: __( 'Your account has not been granted access to connect AI tools to this site.', 'albert-ai-butler' )
+			);
+			?>
 		</p>
 		<div class="user-info">
 			<?php
@@ -589,7 +644,7 @@ class AuthorizationPage implements Hookable {
 	/**
 	 * Format the redirect destination shown on the consent screen.
 	 *
-	 * The destination is the primary trust signal — for an https/http URI show
+	 * The destination is the primary trust signal: for an https/http URI show
 	 * the host; for a private-use scheme show the (short) URI itself.
 	 *
 	 * @param string $redirect_uri The validated redirect URI.
@@ -636,8 +691,8 @@ class AuthorizationPage implements Hookable {
 		return sprintf(
 			/* translators: %d: number of minutes since the application registered */
 			_n(
-				'This application registered %d minute ago — only continue if you are expecting it.',
-				'This application registered %d minutes ago — only continue if you are expecting it.',
+				'This application registered %d minute ago. Only continue if you are expecting it.',
+				'This application registered %d minutes ago. Only continue if you are expecting it.',
 				$minutes,
 				'albert-ai-butler'
 			),
