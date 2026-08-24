@@ -26,6 +26,7 @@ use Albert\Vendor\WP\MCP\Infrastructure\Observability\Contracts\McpObservability
 use Albert\Vendor\WP\MCP\Transport\HttpTransport;
 use WP_Error;
 use WP_REST_Request;
+use WP_REST_Response;
 
 /**
  * Server class
@@ -76,8 +77,13 @@ class Server implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function register_hooks(): void {
+		$this->detect_conflicting_adapter();
+
 		add_action( 'mcp_adapter_init', [ $this, 'create_server' ] );
-		add_filter( 'rest_request_before_callbacks', [ $this, 'add_oauth_discovery_headers' ], 10, 3 );
+		// Bound to *_after_ callbacks, not before: the header depends on whether
+		// authentication actually failed (and how), which is only known once the
+		// permission callback has run.
+		add_filter( 'rest_request_after_callbacks', [ $this, 'add_oauth_discovery_headers' ], 10, 3 );
 
 		// Hide tools the connected user can't execute from tools/list, so
 		// discovery matches what's actually callable (the adapter only enforces
@@ -178,7 +184,12 @@ class Server implements Hookable {
 	 * Add OAuth discovery headers for unauthorized MCP requests.
 	 *
 	 * When a request to our MCP endpoint fails authentication, we need to tell
-	 * the client where to find OAuth authorization server metadata.
+	 * the client where to find OAuth authorization server metadata — on every
+	 * 401, not only when no token was sent. An expired or otherwise invalid
+	 * token (access tokens are 1 hour) previously skipped this entirely, so a
+	 * client mid-session got a bare 401 indistinguishable from "never
+	 * authorised", with no signal that refreshing would fix it. Per RFC 6750
+	 * §3, a token that was supplied but rejected also carries `error="invalid_token"`.
 	 *
 	 * @param mixed                                 $response The response.
 	 * @param array<string, mixed>                  $handler  The handler.
@@ -194,16 +205,142 @@ class Server implements Hookable {
 			return $response;
 		}
 
-		// Check if there's no Bearer token - add discovery headers.
-		$token = TokenValidator::get_bearer_token( $request );
-		if ( empty( $token ) ) {
-			// Send headers for OAuth discovery per MCP spec (RFC 6750).
-			// Point to REST API resource endpoint for OAuth discovery.
-			$resource_url = self::get_base_url() . '/wp-json/' . Plugin::rest_namespace() . '/oauth/resource';
-			header( 'WWW-Authenticate: Bearer realm="MCP", resource="' . $resource_url . '"' );
+		if ( $this->response_status( $response ) !== 401 ) {
+			return $response;
 		}
 
+		$resource_url = self::get_base_url() . '/wp-json/' . Plugin::rest_namespace() . '/oauth/resource';
+		$token_sent   = ! empty( TokenValidator::get_bearer_token( $request ) );
+
+		header( 'WWW-Authenticate: ' . $this->build_challenge( $resource_url, $token_sent ) );
+
 		return $response;
+	}
+
+	/**
+	 * Build the RFC 6750 §3 WWW-Authenticate challenge value.
+	 *
+	 * A token that was supplied but rejected carries `error="invalid_token"`;
+	 * one that was never supplied does not (that case isn't a rejection, just
+	 * missing credentials).
+	 *
+	 * @param string $resource_url The protected-resource metadata URL.
+	 * @param bool   $token_sent   Whether the request carried a Bearer token.
+	 *
+	 * @return string The header value (without the `WWW-Authenticate: ` prefix).
+	 * @since 1.5.0
+	 */
+	private function build_challenge( string $resource_url, bool $token_sent ): string {
+		$challenge = 'Bearer realm="MCP", resource="' . $resource_url . '"';
+
+		if ( $token_sent ) {
+			$challenge .= ', error="invalid_token"';
+		}
+
+		return $challenge;
+	}
+
+	/**
+	 * Resolve the HTTP status a REST response (success or error) carries.
+	 *
+	 * @param mixed $response The value `rest_request_after_callbacks` passed.
+	 *
+	 * @return int The HTTP status, or 200 when none can be determined.
+	 * @since 1.5.0
+	 */
+	private function response_status( $response ): int {
+		if ( is_wp_error( $response ) ) {
+			$data = $response->get_error_data();
+			return is_array( $data ) && isset( $data['status'] ) ? (int) $data['status'] : 500;
+		}
+
+		if ( $response instanceof WP_REST_Response ) {
+			return $response->get_status();
+		}
+
+		return 200;
+	}
+
+	/**
+	 * Detect a foreign, unscoped copy of the MCP adapter and warn about it.
+	 *
+	 * WooCommerce bundles the same package unscoped too, and that combination is
+	 * already handled (Mozart scoping keeps Albert on its own copy regardless).
+	 * This guards against a different failure: a THIRD, unrelated plugin (e.g. a
+	 * standalone "MCP Adapter" plugin) also loading the raw `WP\MCP\*` namespace.
+	 * The adapter's own `DefaultServerFactory::create()` then throws
+	 * `duplicate_server_id`, no MCP server ever registers, and every request to
+	 * our MCP endpoint returns a generic 401 that looks exactly like an auth
+	 * failure — the only clue is an `x-wp-doingitwrong` response header. A 401 is
+	 * the worst possible symptom for a plugin conflict, so this surfaces the real
+	 * cause directly instead of leaving it to be diagnosed from the outside.
+	 *
+	 * @return void
+	 * @since 1.5.0
+	 */
+	private function detect_conflicting_adapter(): void {
+		$source = self::declaring_file( 'WP\MCP\Core\McpAdapter' );
+
+		if ( ! is_string( $source ) ) {
+			return;
+		}
+
+		$source = wp_normalize_path( $source );
+
+		// The known-safe case: WooCommerce's own bundled (unscoped) copy.
+		if ( strpos( $source, '/woocommerce/' ) !== false ) {
+			return;
+		}
+
+		$relative = str_replace( trailingslashit( wp_normalize_path( WP_PLUGIN_DIR ) ), '', $source );
+		$slug     = strtok( $relative, '/' );
+
+		if ( ! is_string( $slug ) ) {
+			return;
+		}
+
+		add_action(
+			'admin_notices',
+			static function () use ( $slug ): void {
+				printf(
+					'<div class="notice notice-error"><p>%s</p></div>',
+					wp_kses_post(
+						sprintf(
+							/* translators: %s: the conflicting plugin's folder name */
+							__( '<strong>Albert:</strong> another active plugin (folder: <code>%s</code>) bundles its own copy of the MCP adapter library outside of Albert\'s. This stops Albert\'s MCP server from registering, and every request to it fails with an unrelated-looking authentication error. Deactivate the other plugin, or ask its author to namespace-scope its bundled dependency.', 'albert-ai-butler' ),
+							esc_html( $slug )
+						)
+					)
+				);
+			}
+		);
+	}
+
+	/**
+	 * The file a class was declared in, if that class is currently loaded.
+	 *
+	 * A plain `string` parameter, deliberately not `class-string`: the whole
+	 * point is inspecting a class Albert has no static knowledge of (a
+	 * potentially foreign, unscoped copy of `WP\MCP\Core\McpAdapter`) without
+	 * ever asserting it is *our* `WP\MCP\Core\McpAdapter`.
+	 *
+	 * @param string $class_name Fully-qualified class name.
+	 *
+	 * @return string|null The declaring file, or null when the class isn't loaded.
+	 * @since 1.5.0
+	 */
+	private static function declaring_file( string $class_name ): ?string {
+		if ( ! class_exists( $class_name ) ) {
+			return null;
+		}
+
+		try {
+			$file = ( new \ReflectionClass( $class_name ) )->getFileName();
+		} catch ( \ReflectionException $e ) {
+			return null;
+		}
+
+		return is_string( $file ) ? $file : null;
 	}
 
 	/**

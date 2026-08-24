@@ -13,6 +13,7 @@ use Albert\Database\Tables;
 use Albert\OAuth\Entities\AccessTokenEntity;
 use League\OAuth2\Server\Entities\AccessTokenEntityInterface;
 use League\OAuth2\Server\Entities\ClientEntityInterface;
+use League\OAuth2\Server\Exception\OAuthServerException;
 use League\OAuth2\Server\Repositories\AccessTokenRepositoryInterface;
 
 /**
@@ -59,6 +60,7 @@ class AccessTokenRepository implements AccessTokenRepositoryInterface {
 	 * @param AccessTokenEntityInterface $access_token_entity The access token entity.
 	 *
 	 * @return void
+	 * @throws OAuthServerException When the row cannot be written.
 	 * @since 1.0.0
 	 */
 	public function persistNewAccessToken( AccessTokenEntityInterface $access_token_entity ): void {
@@ -72,7 +74,7 @@ class AccessTokenRepository implements AccessTokenRepositoryInterface {
 		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table, no caching needed.
-		$wpdb->insert(
+		$inserted = $wpdb->insert(
 			$tables['access_tokens'],
 			[
 				'token_id'   => $access_token_entity->getIdentifier(),
@@ -85,6 +87,10 @@ class AccessTokenRepository implements AccessTokenRepositoryInterface {
 			],
 			[ '%s', '%s', '%d', '%s', '%d', '%s', '%s' ]
 		);
+
+		if ( $inserted === false ) {
+			throw OAuthServerException::serverError( 'Failed to persist the access token.' );
+		}
 	}
 
 	/**

@@ -12,6 +12,7 @@ namespace Albert\OAuth\Repositories;
 use Albert\Database\Tables;
 use Albert\OAuth\Entities\RefreshTokenEntity;
 use League\OAuth2\Server\Entities\RefreshTokenEntityInterface;
+use League\OAuth2\Server\Exception\OAuthServerException;
 use League\OAuth2\Server\Repositories\RefreshTokenRepositoryInterface;
 
 /**
@@ -39,6 +40,7 @@ class RefreshTokenRepository implements RefreshTokenRepositoryInterface {
 	 * @param RefreshTokenEntityInterface $refresh_token_entity The refresh token entity.
 	 *
 	 * @return void
+	 * @throws OAuthServerException When the row cannot be written.
 	 * @since 1.0.0
 	 */
 	public function persistNewRefreshToken( RefreshTokenEntityInterface $refresh_token_entity ): void {
@@ -47,7 +49,7 @@ class RefreshTokenRepository implements RefreshTokenRepositoryInterface {
 		$tables = Tables::oauth();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table, no caching needed.
-		$wpdb->insert(
+		$inserted = $wpdb->insert(
 			$tables['refresh_tokens'],
 			[
 				'token_id'        => $refresh_token_entity->getIdentifier(),
@@ -57,6 +59,10 @@ class RefreshTokenRepository implements RefreshTokenRepositoryInterface {
 			],
 			[ '%s', '%s', '%d', '%s' ]
 		);
+
+		if ( $inserted === false ) {
+			throw OAuthServerException::serverError( 'Failed to persist the refresh token.' );
+		}
 	}
 
 	/**

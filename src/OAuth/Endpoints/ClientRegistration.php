@@ -205,14 +205,22 @@ class ClientRegistration implements Hookable {
 		// Return client credentials per RFC 7591.
 		$response_data = [
 			'client_id'                  => $result['client_id'],
+			'client_id_issued_at'        => time(),
 			'client_name'                => $client_name,
 			'redirect_uris'              => $redirect_uris,
 			'token_endpoint_auth_method' => $is_confidential ? 'client_secret_post' : 'none',
+			'grant_types'                => [ 'authorization_code', 'refresh_token' ],
+			'response_types'             => [ 'code' ],
+			'scope'                      => 'default',
 		];
 
 		// Public clients receive no secret — they authenticate with PKCE only.
 		if ( $is_confidential && ! empty( $result['client_secret'] ) ) {
 			$response_data['client_secret'] = $result['client_secret'];
+
+			// REQUIRED by RFC 7591 §3.2.1 whenever a client_secret is issued; 0
+			// means it does not expire.
+			$response_data['client_secret_expires_at'] = 0;
 		}
 
 		// Return 201 Created with client credentials.

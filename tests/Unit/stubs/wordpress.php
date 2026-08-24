@@ -435,6 +435,58 @@ if ( ! function_exists( 'esc_html_e' ) ) {
 	}
 }
 
+if ( ! function_exists( 'sanitize_text_field' ) ) {
+	/**
+	 * Stub sanitize_text_field: strips tags and collapses whitespace.
+	 *
+	 * @param string $value Value to sanitize.
+	 *
+	 * @return string
+	 */
+	function sanitize_text_field( string $value ): string {
+		$value = wp_strip_all_tags( $value );
+		$value = (string) preg_replace( '/[\r\n\t ]+/', ' ', $value );
+
+		return trim( $value );
+	}
+}
+
+if ( ! function_exists( 'wp_strip_all_tags' ) ) {
+	/**
+	 * Stub wp_strip_all_tags, mirroring core: <script>/<style> tags are removed
+	 * along with their content (not just the tags), unlike plain strip_tags().
+	 *
+	 * @param string $value         Value to strip tags from.
+	 * @param bool   $remove_breaks Whether to also collapse line breaks/whitespace.
+	 *
+	 * @return string
+	 */
+	function wp_strip_all_tags( string $value, bool $remove_breaks = false ): string {
+		$value = (string) preg_replace( '@<(script|style)[^>]*?>.*?</\1>@si', '', $value );
+		$value = strip_tags( $value );
+
+		if ( $remove_breaks ) {
+			$value = (string) preg_replace( '/[\r\n\t ]+/', ' ', $value );
+		}
+
+		return trim( $value );
+	}
+}
+
+if ( ! function_exists( 'esc_url_raw' ) ) {
+	/**
+	 * Stub esc_url_raw: unlike esc_url() this is meant for storage, not
+	 * display, but for stub purposes the same filtering is close enough.
+	 *
+	 * @param string $url URL to sanitize.
+	 *
+	 * @return string
+	 */
+	function esc_url_raw( string $url ): string {
+		return (string) filter_var( $url, FILTER_SANITIZE_URL );
+	}
+}
+
 if ( ! function_exists( 'esc_url' ) ) {
 	/**
 	 * Stub esc_url.
@@ -473,6 +525,22 @@ if ( ! function_exists( 'menu_page_url' ) ) {
 	 */
 	function menu_page_url( string $slug, bool $display = true ): string {
 		return 'http://example.test/wp-admin/admin.php?page=' . $slug;
+	}
+}
+
+if ( ! function_exists( 'home_url' ) ) {
+	/**
+	 * Stub home_url reading $GLOBALS['albert_test_home_url'], defaulting to a
+	 * fixed test domain.
+	 *
+	 * @param string $path Path relative to the home URL.
+	 *
+	 * @return string
+	 */
+	function home_url( string $path = '' ): string {
+		$base = $GLOBALS['albert_test_home_url'] ?? 'https://example.test';
+
+		return $path !== '' ? rtrim( $base, '/' ) . '/' . ltrim( $path, '/' ) : $base;
 	}
 }
 
