@@ -11,6 +11,7 @@ namespace Albert\OAuth\Server;
 
 use Exception;
 use Albert\OAuth\Endpoints\Psr7Bridge;
+use Albert\OAuth\Repositories\ClientRepository;
 use League\OAuth2\Server\Exception\OAuthServerException;
 use WP_Error;
 use WP_REST_Request;
@@ -63,9 +64,24 @@ class TokenValidator {
 				);
 			}
 
+			$client_id = (string) $validated_request->getAttribute( 'oauth_client_id' );
+
+			// Suspending a connection when the site's address changes is
+			// designed (docs/features/31-connections.md §6) and deliberately
+			// not enforced yet: the host is recorded at authorisation time so
+			// the data is there when the feature ships, but nothing here refuses
+			// a request over it. Half-shipping a security control that can strand
+			// a live connection mid-migration is worse than not shipping it.
+			//
 			// Record the authenticating connection so it can be attributed at
 			// logging time. Best-effort: never let it affect authentication.
-			ConnectionContext::set( (string) $validated_request->getAttribute( 'oauth_client_id' ) );
+			ConnectionContext::set( $client_id );
+
+			// And when it was last seen, which is what an owner scans the
+			// Connections screen for. Throttled inside the repository.
+			if ( $client_id !== '' ) {
+				( new ClientRepository() )->touchLastUsed( $client_id );
+			}
 
 			return $user;
 		} catch ( OAuthServerException $e ) {

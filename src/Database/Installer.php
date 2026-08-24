@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
  * OAuth tables). Migrations are keyed on the plugin version, not a separate
  * schema number:
  *
- *  - {@see self::install()} runs on activation — creates the tables and stamps
+ *  - {@see self::install()} runs on activation: creates the tables and stamps
  *    the current plugin version.
  *  - {@see self::maybe_upgrade()} runs on every load (`plugins_loaded`) and is a
  *    cheap no-op until the plugin version advances, at which point it re-runs
@@ -27,7 +27,7 @@ defined( 'ABSPATH' ) || exit;
  * Keying on the plugin version means there is no separate db-version to forget
  * to bump: every release advances the gate, and `dbDelta` only adds what is
  * missing, so the schema always converges. The cost is one harmless `dbDelta`
- * on releases that did not touch the schema — negligible at Albert's cadence.
+ * on releases that did not touch the schema, negligible at Albert's cadence.
  *
  * @since 1.2.0
  */
@@ -43,7 +43,7 @@ class Installer {
 
 	/**
 	 * Every option the plugin owns. Cleared wholesale on uninstall so deleting
-	 * the plugin leaves no state behind — including OAuth key material.
+	 * the plugin leaves no state behind, including OAuth key material.
 	 *
 	 * @since 1.2.0
 	 * @var array<int, string>
@@ -52,6 +52,10 @@ class Installer {
 		self::VERSION_OPTION,
 		'albert_installed_version',
 		'albert_allowed_users',
+		'albert_allowed_user_expiry_days',
+		'albert_allowed_user_apply_expiry_to_existing',
+		'albert_connection_never_used_days',
+		'albert_connection_idle_days',
 		'albert_disabled_abilities',
 		'albert_abilities_saved',
 		'albert_known_abilities',
@@ -60,16 +64,27 @@ class Installer {
 		'albert_oauth_encryption_key',
 		'albert_oauth_private_key',
 		'albert_oauth_public_key',
-		// Legacy options retired in earlier releases — cleared here for completeness.
+		// Legacy options retired in earlier releases, cleared here for completeness.
 		'albert_logging_db_version',
 		'albert_oauth_db_version',
 		'albert_external_url',
 	];
 
 	/**
+	 * Every user meta key the plugin owns, cleared on uninstall alongside the
+	 * options so no per-user state outlives the plugin.
+	 *
+	 * @since 1.4.0
+	 * @var array<int, string>
+	 */
+	const USER_META = [
+		'albert_dismissed_domain_host',
+	];
+
+	/**
 	 * Create or update all tables and record the schema version.
 	 *
-	 * Idempotent — safe to call on every activation. `dbDelta` only issues the
+	 * Idempotent: safe to call on every activation. `dbDelta` only issues the
 	 * ALTER/CREATE statements needed to reach the declared schema.
 	 *
 	 * @return void
@@ -81,11 +96,11 @@ class Installer {
 	}
 
 	/**
-	 * Remove OAuth clients stored with the legacy `'*'` wildcard redirect URI — a
+	 * Remove OAuth clients stored with the legacy `'*'` wildcard redirect URI, a
 	 * pre-1.3.1 hole that let any redirect be accepted. Called once from
 	 * {@see self::maybe_upgrade()} when upgrading from below 1.3.1; the version
 	 * gate makes it a true one-time migration (no persistent flag needed), and the
-	 * DELETE is idempotent besides. Only `'*'` rows are touched — properly
+	 * DELETE is idempotent besides. Only `'*'` rows are touched; properly
 	 * registered clients are never affected. Runs silently: such a row is
 	 * near-impossible in practice, and an affected connection simply reconnects.
 	 *
@@ -127,7 +142,85 @@ class Installer {
 			if ( version_compare( $stored, '1.3.1', '<' ) ) {
 				self::purge_wildcard_clients();
 			}
+
+			// `albert_allowed_users` gained per-entry timestamps in 1.4.0.
+			if ( version_compare( $stored, '1.4.0', '<' ) ) {
+				self::migrate_allowed_users_shape();
+			}
 		}
+	}
+
+	/**
+	 * Rewrap `albert_allowed_users` from a flat array of user ids into a
+	 * structure carrying `added_at`, `authorised_at` and `expires_at` per
+	 * entry. Called once from {@see self::maybe_upgrade()} when upgrading
+	 * from below 1.4.0. This is the one, definitive migration off the
+	 * pre-1.4.0 flat-array shape: every field the new shape needs is
+	 * backfilled here in a single pass, not spread across several
+	 * version-gated steps. See {@see \Albert\OAuth\AllowedUsers} for the
+	 * shape and how it is read/written afterwards.
+	 *
+	 * Existing entries carry no record of when they were actually added, who
+	 * they are, or whether they have ever connected anything, and there is
+	 * no way to reconstruct any of that. So none of it is invented: every
+	 * field is left `null`. A flat pre-1.4.0 entry could be someone who
+	 * connected the day it was added, or someone who never got around to
+	 * it; the option alone cannot tell those apart, and guessing either
+	 * `added_at` (displayed verbatim as "Added X ago", a factual claim
+	 * about a person actually reading it) or `authorised_at` (a real
+	 * OAuth event that never happened) would be stating something as fact
+	 * that is simply not known. `expires_at` staying `null` is what
+	 * actually exempts these entries from the sweep on its own
+	 * ({@see \Albert\OAuth\AllowedUsers::is_allowed()}: no `expires_at`
+	 * means no expiry, independent of `authorised_at`), which is why leaving
+	 * `authorised_at` null too costs nothing: nothing currently reads it
+	 * for a migrated entry except that same already-satisfied check.
+	 * Applying the new, tight default retroactively would risk locking out
+	 * an already-working connection within a day of an unrelated plugin
+	 * update, a far worse surprise than leaving a handful of legacy
+	 * entries permanently unlabelled. Only invitations granted *after*
+	 * this upgrade go through the real expire-if-unused lifecycle, with
+	 * real timestamps to show for it.
+	 *
+	 * Idempotent, and safe to re-run from any intermediate state: an entry
+	 * that is already an array (the new shape, or a partial one from an
+	 * interrupted upgrade) is merged onto complete defaults rather than
+	 * assumed whole, so a missing field is filled in without disturbing
+	 * fields that are already correct.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	private static function migrate_allowed_users_shape(): void {
+		$raw = get_option( 'albert_allowed_users', [] );
+
+		if ( ! is_array( $raw ) || empty( $raw ) ) {
+			return;
+		}
+
+		$defaults = [
+			'added_at'      => null,
+			'authorised_at' => null,
+			'expires_at'    => null,
+		];
+		$migrated = [];
+
+		foreach ( $raw as $key => $value ) {
+			if ( is_array( $value ) ) {
+				$id = (int) $key;
+				if ( $id > 0 ) {
+					$migrated[ $id ] = array_merge( $defaults, $value );
+				}
+				continue;
+			}
+
+			$id = (int) $value;
+			if ( $id > 0 && ! isset( $migrated[ $id ] ) ) {
+				$migrated[ $id ] = $defaults;
+			}
+		}
+
+		update_option( 'albert_allowed_users', $migrated );
 	}
 
 	/**
@@ -170,6 +263,10 @@ class Installer {
 
 		foreach ( self::OPTIONS as $option ) {
 			delete_option( $option );
+		}
+
+		foreach ( self::USER_META as $meta_key ) {
+			delete_metadata( 'user', 0, $meta_key, '', true );
 		}
 	}
 
@@ -248,6 +345,10 @@ class Installer {
 			user_id bigint(20) unsigned DEFAULT NULL,
 			is_confidential tinyint(1) NOT NULL DEFAULT 1,
 			origin varchar(20) DEFAULT NULL,
+			label varchar(255) DEFAULT NULL,
+			label_set_by bigint(20) unsigned DEFAULT NULL,
+			label_set_at datetime DEFAULT NULL,
+			connect_host varchar(255) DEFAULT NULL,
 			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			last_used_at datetime DEFAULT NULL,

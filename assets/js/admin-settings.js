@@ -51,7 +51,7 @@ const ClipboardModule = {
 };
 
 /**
- * Disconnect dialog — populates and shows a native dialog for disconnect actions.
+ * Disconnect dialog: populates and shows a native dialog for disconnect actions.
  */
 const DisconnectModule = {
 	init() {
@@ -72,11 +72,27 @@ const DisconnectModule = {
 
 			e.preventDefault();
 
-			this.title.textContent = 'Disconnect ' + ( trigger.dataset.clientName || '' ) + '?';
+			// Remember who opened it: a native dialog traps focus while it is
+			// open but does not put focus back when it closes.
+			this.opener = trigger;
+
+			const template =
+				window.albertAdmin?.i18n?.disconnectTitle || 'Disconnect %s?';
+			this.title.textContent = template.replace(
+				'%s',
+				trigger.dataset.clientName || ''
+			);
 			this.connLink.href = trigger.dataset.revokeUrl;
 			this.sessLink.href = trigger.dataset.revokeFullUrl;
 
 			this.dialog.showModal();
+		} );
+
+		this.dialog.addEventListener( 'close', () => {
+			if ( this.opener && document.contains( this.opener ) ) {
+				this.opener.focus();
+			}
+			this.opener = null;
 		} );
 
 		this.dialog.addEventListener( 'click', ( e ) => {

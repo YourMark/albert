@@ -108,6 +108,39 @@ body {
 	border-radius: 4px;
 }
 
+.connection-label {
+	margin-bottom: 20px;
+}
+
+.connection-label label {
+	display: block;
+	font-size: 13px;
+	font-weight: 500;
+	color: #1d2327;
+	margin-bottom: 6px;
+}
+
+.connection-label input[type="text"] {
+	width: 100%;
+	padding: 10px 12px;
+	border: 1px solid #8c8f94;
+	border-radius: 4px;
+	font-size: 14px;
+	color: #1d2327;
+}
+
+.connection-label input[type="text"]:focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: -1px;
+	border-color: #2271b1;
+}
+
+.connection-label__hint {
+	margin-top: 6px;
+	font-size: 12px;
+	color: #646970;
+}
+
 .button-group {
 	display: flex;
 	gap: 10px;
