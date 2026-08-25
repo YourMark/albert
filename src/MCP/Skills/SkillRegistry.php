@@ -60,8 +60,10 @@ class SkillRegistry {
 		 * Each entry is an array with a `slug`, a one-sentence `summary`, and
 		 * either a `file` (absolute path to a Markdown body) or a literal
 		 * `body`. Optionally `requires`, a list of named preconditions from
-		 * {@see Skill::KNOWN_CONDITIONS}, and `when`, a callable for anything
-		 * that vocabulary cannot express.
+		 * {@see Skill::KNOWN_CONDITIONS}, `when`, a callable for anything
+		 * that vocabulary cannot express, and `source`, the name shown in the
+		 * Skills screen's Source column (e.g. an add-on's own name); omitted,
+		 * it falls back to a generic "Add-on" label.
 		 *
 		 * Preconditions are declared, not evaluated here: this filter runs long
 		 * before discovery, and a condition answered at registration time would
@@ -135,7 +137,11 @@ class SkillRegistry {
 	 * Read the plugin's own `skills/` directory into definitions.
 	 *
 	 * The frontmatter's `name` is the slug, its `description` is the summary,
-	 * and an optional `requires` line carries the preconditions.
+	 * and an optional `requires` line carries the preconditions. The body is
+	 * passed along as the literal `body` this parse already produced, rather
+	 * than a `file` path {@see Skill::body()} would have to read and parse a
+	 * second time: this method has already paid that cost once, for every
+	 * bundled skill, on every request that builds the registry at all.
 	 *
 	 * @return array<string, array<string, mixed>>
 	 * @since 1.4.0
@@ -159,6 +165,15 @@ class SkillRegistry {
 				continue;
 			}
 
+			// Guard against an implausibly large file before reading it: since
+			// bundled() now hands the body straight to Skill (see the docblock
+			// above), Skill::body()'s own MAX_BODY_BYTES check never runs for
+			// these, this is the only place that still can.
+			$size = filesize( $file );
+			if ( $size === false || $size > Skill::MAX_BODY_BYTES ) {
+				continue;
+			}
+
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reading a bundled plugin file, not a remote resource.
 			$contents = file_get_contents( $file );
 
@@ -172,11 +187,22 @@ class SkillRegistry {
 				continue;
 			}
 
+			// A named skill with an empty body would register a useless entry
+			// that Skill::from_array() rejects anyway (it requires a non-empty
+			// file or body); say so, the same way SkillLoader does for the
+			// same file when building it as an MCP prompt, so a site owner (or
+			// their error log) has a trace of why the skill never appeared.
+			if ( trim( (string) $parsed['body'] ) === '' ) {
+				error_log( sprintf( 'Albert: skipping skill "%s" — empty body in %s', $parsed['name'], $file ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Concise admin-facing warning for a misconfigured skill file.
+				continue;
+			}
+
 			$definitions[ (string) $parsed['name'] ] = [
 				'slug'     => (string) $parsed['name'],
 				'summary'  => (string) ( $parsed['description'] ?? '' ),
-				'file'     => $file,
+				'body'     => (string) $parsed['body'],
 				'requires' => $parsed['requires'],
+				'source'   => __( 'Albert', 'albert-ai-butler' ),
 			];
 		}
 

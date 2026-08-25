@@ -1,36 +1,28 @@
 /**
  * Ability detail fly-in (right-docked drawer).
  *
- * @wordpress/components has no drawer, so this is a custom dialog: a backdrop +
- * a right-docked panel with slide/fade animation (gated behind
- * prefers-reduced-motion in CSS). Accessibility uses @wordpress/compose:
- * constrained tabbing (focus trap), focus-on-mount, and focus-return; Escape
- * closes. The enabled toggle saves instantly (same handler as the row toggle).
+ * The dialog itself (backdrop, frame, focus trap, focus-on-mount and
+ * focus-return, Escape and backdrop-click to close) is the shared
+ * `FlyInShell`, the same one Skills opens. This file owns only what is
+ * specific to an ability: the enabled toggle (saves instantly, same handler
+ * as the row toggle), the description, the parameters accordion, the
+ * permissions section, and the close-confirmation prompt an add-on's guard
+ * can trigger.
  *
  * Add-ons (e.g. Albert Premium) inject sections via the
- * `albert.abilities.panel_sections` filter — see the [Premium seam] below.
+ * `albert.abilities.panel_sections` filter, see the [Premium seam] below.
  */
-import {
-	Button,
-	Icon,
-	Modal,
-	ToggleControl,
-} from '@wordpress/components';
-import {
-	useConstrainedTabbing,
-	useFocusReturn,
-	useMergeRefs,
-} from '@wordpress/compose';
+import { Button, Icon, Modal, ToggleControl } from '@wordpress/components';
 import {
 	Component,
 	useCallback,
-	useEffect,
 	useRef,
 	useState,
 } from '@wordpress/element';
 import { applyFilters } from '@wordpress/hooks';
 import { __, _n, sprintf } from '@wordpress/i18n';
-import { chevronRight, close } from '@wordpress/icons';
+import { chevronRight } from '@wordpress/icons';
+import FlyInShell, { Section } from '../shared/FlyInShell';
 import InfoPopover from '../shared/InfoPopover';
 import { OPERATION_LABELS } from './constants';
 import { Badges } from './fields';
@@ -94,27 +86,6 @@ class SectionBoundary extends Component {
 		}
 		return this.props.children;
 	}
-}
-
-/**
- * A labelled section with an uppercase heading and optional info popover.
- *
- * @param {Object}  props          Props.
- * @param {string}  props.title    Section heading.
- * @param {Element} props.info     Optional info control shown next to the title.
- * @param {Element} props.children Section body.
- * @return {Element} The section.
- */
-function Section( { title, info: infoControl, children } ) {
-	return (
-		<section className="albert-flyin__section">
-			<div className="albert-flyin__section-head">
-				<h3 className="albert-flyin__section-title">{ title }</h3>
-				{ infoControl }
-			</div>
-			{ children }
-		</section>
-	);
 }
 
 /**
@@ -185,19 +156,6 @@ function CollapsibleSection( {
  * @return {Element} The fly-in.
  */
 export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
-	const panelRef = useRef( null );
-	const dialogRef = useMergeRefs( [
-		useConstrainedTabbing(),
-		useFocusReturn(),
-		panelRef,
-	] );
-
-	// Focus the dialog container on open so its accessible name (aria-labelledby)
-	// is announced first, rather than landing on the top-right Close button.
-	useEffect( () => {
-		panelRef.current?.focus();
-	}, [] );
-
 	// An add-on (e.g. Premium) can register a close guard via the seam api. On a
 	// close attempt the guard may return a confirmation descriptor; if so we show
 	// a styled dialog instead of closing immediately.
@@ -228,16 +186,6 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 		}
 		onClose();
 	}, [ onClose ] );
-
-	const onKeyDown = useCallback(
-		( event ) => {
-			if ( event.key === 'Escape' ) {
-				event.stopPropagation();
-				requestClose();
-			}
-		},
-		[ requestClose ]
-	);
 
 	/**
 	 * [Premium seam] Sections injected by add-ons (e.g. the advanced permission
@@ -365,166 +313,140 @@ export default function FlyInPanel( { ability, roles, onClose, onToggle } ) {
 			  )
 			: inputCountLabel;
 
+	const heading = (
+		<>
+			<span
+				className={ `albert-op-badge albert-op-badge--${ ability.operation }` }
+			>
+				<span className="albert-op-badge__dot" aria-hidden="true" />
+				{ OPERATION_LABELS[ ability.operation ] || ability.operation }
+			</span>
+			<Badges badges={ ability.badges } />
+			<h2 id="albert-flyin-title" className="albert-flyin__title">
+				{ ability.label }
+			</h2>
+			<code className="albert-flyin__id">{ ability.id }</code>
+			{ ability.categoryLabel && (
+				<span className="albert-flyin__category">
+					<span className="albert-flyin__category-label">
+						{ __( 'Category', 'albert-ai-butler' ) }
+					</span>
+					<span className="albert-flyin__category-value">
+						{ ability.categoryLabel }
+					</span>
+				</span>
+			) }
+		</>
+	);
+
+	const footer = (
+		<>
+			<span
+				className="albert-flyin__status"
+				role="status"
+				aria-live="polite"
+			>
+				{ saveStatus === 'saving' && __( 'Saving…', 'albert-ai-butler' ) }
+				{ saveStatus === 'saved' && __( 'Saved', 'albert-ai-butler' ) }
+			</span>
+			<Button variant="tertiary" onClick={ requestClose }>
+				{ __( 'Close', 'albert-ai-butler' ) }
+			</Button>
+		</>
+	);
+
 	return (
 		<>
-			{ /* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */ }
-			<div
-				className="albert-flyin__backdrop"
-				role="presentation"
-				onClick={ requestClose }
-			/>
-			<div
-				className="albert-flyin"
-				role="dialog"
-				aria-modal="true"
-				aria-labelledby="albert-flyin-title"
-				tabIndex={ -1 }
-				ref={ dialogRef }
-				onKeyDown={ onKeyDown }
+			<FlyInShell
+				titleId="albert-flyin-title"
+				heading={ heading }
+				onRequestClose={ requestClose }
+				footer={ footer }
 			>
-				<header className="albert-flyin__header">
-					<div className="albert-flyin__heading">
-						<span
-							className={ `albert-op-badge albert-op-badge--${ ability.operation }` }
-						>
-							<span
-								className="albert-op-badge__dot"
-								aria-hidden="true"
-							/>
-							{ OPERATION_LABELS[ ability.operation ] ||
-								ability.operation }
-						</span>
-						<Badges badges={ ability.badges } />
-						<h2
-							id="albert-flyin-title"
-							className="albert-flyin__title"
-						>
-							{ ability.label }
-						</h2>
-						<code className="albert-flyin__id">{ ability.id }</code>
-						{ ability.categoryLabel && (
-							<span className="albert-flyin__category">
-								<span className="albert-flyin__category-label">
-									{ __( 'Category', 'albert-ai-butler' ) }
-								</span>
-								<span className="albert-flyin__category-value">
-									{ ability.categoryLabel }
-								</span>
-							</span>
+				<div className="albert-flyin__enabled">
+					<ToggleControl
+						__nextHasNoMarginBottom
+						label={ __( 'Enabled', 'albert-ai-butler' ) }
+						help={ __(
+							'Allow apps and agents to invoke this ability.',
+							'albert-ai-butler'
 						) }
-					</div>
-					<Button
-						icon={ close }
-						label={ __( 'Close', 'albert-ai-butler' ) }
-						onClick={ requestClose }
-						className="albert-flyin__close"
+						checked={ ability.enabled }
+						onChange={ ( value ) => onToggle( ability, value ) }
 					/>
-				</header>
-
-				<div className="albert-flyin__body">
-					<div className="albert-flyin__enabled">
-						<ToggleControl
-							__nextHasNoMarginBottom
-							label={ __( 'Enabled', 'albert-ai-butler' ) }
-							help={ __(
-								'Allow apps and agents to invoke this ability.',
-								'albert-ai-butler'
-							) }
-							checked={ ability.enabled }
-							onChange={ ( value ) => onToggle( ability, value ) }
-						/>
-					</div>
-
-					<Section title={ __( 'Description', 'albert-ai-butler' ) }>
-						<p className="albert-flyin__description">
-							{ ability.description }
-						</p>
-					</Section>
-
-					{ ability.inputs.length > 0 && (
-						<CollapsibleSection
-							id="albert-flyin-parameters"
-							title={ __( 'Inputs', 'albert-ai-butler' ) }
-							summary={ inputSummary }
-						>
-							<ul className="albert-flyin__params">
-								{ ability.inputs.map( ( field ) => (
-									<li
-										key={ field.name }
-										className={
-											'albert-flyin__param' +
-											( field.required
-												? ' is-required'
-												: '' )
-										}
-									>
-										<div className="albert-flyin__param-head">
-											<code className="albert-flyin__param-name">
-												{ field.name }
-											</code>
-											<span className="albert-flyin__param-type">
-												{ field.type }
-											</span>
-											<span className="albert-flyin__param-flag">
-												{ field.required
-													? __(
-															'Required',
-															'albert-ai-butler'
-													  )
-													: __(
-															'Optional',
-															'albert-ai-butler'
-													  ) }
-											</span>
-										</div>
-										{ field.description && (
-											<p className="albert-flyin__param-desc">
-												{ field.description }
-											</p>
-										) }
-									</li>
-								) ) }
-							</ul>
-						</CollapsibleSection>
-					) }
-
-					<SectionBoundary>{ permissionsSection }</SectionBoundary>
-
-					{ sections.map( ( section ) => (
-						<SectionBoundary key={ section.id }>
-							<SectionRenderer
-								section={ section }
-								ability={ ability }
-								api={ api }
-							/>
-						</SectionBoundary>
-					) ) }
-
-					{ ability.output && (
-						<Section title={ __( 'Returns', 'albert-ai-butler' ) }>
-							<p className="albert-flyin__returns">
-								{ ability.output }
-							</p>
-						</Section>
-					) }
 				</div>
 
-				<footer className="albert-flyin__footer">
-					<span
-						className="albert-flyin__status"
-						role="status"
-						aria-live="polite"
+				<Section title={ __( 'Description', 'albert-ai-butler' ) }>
+					<p className="albert-flyin__description">
+						{ ability.description }
+					</p>
+				</Section>
+
+				{ ability.inputs.length > 0 && (
+					<CollapsibleSection
+						id="albert-flyin-parameters"
+						title={ __( 'Inputs', 'albert-ai-butler' ) }
+						summary={ inputSummary }
 					>
-						{ saveStatus === 'saving' &&
-							__( 'Saving…', 'albert-ai-butler' ) }
-						{ saveStatus === 'saved' &&
-							__( 'Saved', 'albert-ai-butler' ) }
-					</span>
-					<Button variant="tertiary" onClick={ requestClose }>
-						{ __( 'Close', 'albert-ai-butler' ) }
-					</Button>
-				</footer>
-			</div>
+						<ul className="albert-flyin__params">
+							{ ability.inputs.map( ( field ) => (
+								<li
+									key={ field.name }
+									className={
+										'albert-flyin__param' +
+										( field.required ? ' is-required' : '' )
+									}
+								>
+									<div className="albert-flyin__param-head">
+										<code className="albert-flyin__param-name">
+											{ field.name }
+										</code>
+										<span className="albert-flyin__param-type">
+											{ field.type }
+										</span>
+										<span className="albert-flyin__param-flag">
+											{ field.required
+												? __(
+														'Required',
+														'albert-ai-butler'
+												  )
+												: __(
+														'Optional',
+														'albert-ai-butler'
+												  ) }
+										</span>
+									</div>
+									{ field.description && (
+										<p className="albert-flyin__param-desc">
+											{ field.description }
+										</p>
+									) }
+								</li>
+							) ) }
+						</ul>
+					</CollapsibleSection>
+				) }
+
+				<SectionBoundary>{ permissionsSection }</SectionBoundary>
+
+				{ sections.map( ( section ) => (
+					<SectionBoundary key={ section.id }>
+						<SectionRenderer
+							section={ section }
+							ability={ ability }
+							api={ api }
+						/>
+					</SectionBoundary>
+				) ) }
+
+				{ ability.output && (
+					<Section title={ __( 'Returns', 'albert-ai-butler' ) }>
+						<p className="albert-flyin__returns">
+							{ ability.output }
+						</p>
+					</Section>
+				) }
+			</FlyInShell>
 
 			{ closePrompt && (
 				<Modal

@@ -115,7 +115,7 @@ When WooCommerce is active, additional abilities are available for products, ord
 
 = Can I control what my AI assistant is allowed to do? =
 
-Yes. The abilities page lists every action your AI assistant can perform on your site, clearly labelled as Read, Write, or Delete. You toggle each one on or off individually — changes save instantly, no form to submit. Filter the list by text, category, or supplier to find what you're looking for. Write and delete abilities are off by default — you choose exactly what to enable. All actions also respect WordPress user capabilities, so your AI assistant can never do more than the authorized user could do manually.
+Yes. The abilities page lists every action your AI assistant can perform on your site, clearly labelled as Read, Write, or Delete. You toggle each one on or off individually — changes save instantly, no form to submit. Filter the list by text, category, or source to find what you're looking for. Write and delete abilities are off by default — you choose exactly what to enable. All actions also respect WordPress user capabilities, so your AI assistant can never do more than the authorized user could do manually.
 
 = Do I need WooCommerce? =
 

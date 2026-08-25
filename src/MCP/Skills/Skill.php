@@ -24,10 +24,15 @@ defined( 'ABSPATH' ) || exit;
  * a registration that ran on `plugins_loaded` would be asking questions before
  * the answers exist.
  *
- * **Lazy body.** The index costs one line per skill; the body costs hundreds of
- * tokens and is read only when the assistant asks for it through
- * `albert/get-skill`. So the body is a path resolved on demand, never a string
- * held in memory for every request that only ever lists the names.
+ * **Lazy body, mostly.** The index costs one line per skill; the body costs
+ * hundreds of tokens and matters only when the assistant asks for it through
+ * `albert/get-skill`. A skill registered with a `file` reads and parses it
+ * only then. Bundled skills are the one exception: {@see
+ * SkillRegistry::bundled()} already has to read and parse every bundled
+ * file's frontmatter to build the registry at all, so it hands the body it
+ * already parsed straight to the constructor rather than discarding it and
+ * paying that cost again later — a few kilobytes held in memory for every
+ * request is a fair trade against reading and parsing the same file twice.
  *
  * @since 1.4.0
  */
@@ -52,6 +57,14 @@ class Skill {
 	 * without writing a closure, and what lets a bundled skill declare its
 	 * condition in its own frontmatter.
 	 *
+	 * Must list exactly the keys {@see self::condition_definitions()} defines.
+	 * A literal array, not derived from that method, because PHP class
+	 * constants cannot be initialised from a method call; nothing in this
+	 * codebase reads this constant to validate a condition name (that
+	 * happens in {@see self::condition_holds()} against the method instead),
+	 * so it exists purely as the documented vocabulary and must be kept in
+	 * sync by hand when a condition is added or removed.
+	 *
 	 * @since 1.4.0
 	 * @var list<string>
 	 */
@@ -71,6 +84,9 @@ class Skill {
 	 * @param string        $body     Literal body, for skills not backed by a file.
 	 * @param list<string>  $requires Named preconditions from {@see self::KNOWN_CONDITIONS}.
 	 * @param callable|null $when     Extra precondition for anything the vocabulary cannot express.
+	 * @param string        $source   Who ships this skill, shown in the Skills screen's Source column.
+	 *                                Empty when the registration did not say, the Skills screen falls
+	 *                                back to a generic "Add-on" label rather than guessing a name.
 	 *
 	 * @since 1.4.0
 	 */
@@ -80,7 +96,8 @@ class Skill {
 		private readonly string $file = '',
 		private readonly string $body = '',
 		private readonly array $requires = [],
-		private readonly mixed $when = null
+		private readonly mixed $when = null,
+		private readonly string $source = ''
 	) {
 	}
 
@@ -124,7 +141,8 @@ class Skill {
 			$file,
 			$body,
 			$requires,
-			$when
+			$when,
+			isset( $definition['source'] ) ? (string) $definition['source'] : ''
 		);
 	}
 
@@ -159,36 +177,121 @@ class Skill {
 	}
 
 	/**
-	 * Whether this skill is worth listing on this site right now.
+	 * Who ships this skill, shown in the Skills screen's Source column.
 	 *
-	 * An unknown condition name fails closed. A skill that declares
-	 * `requires: shopify` is asking a question this vocabulary cannot answer,
-	 * and listing it anyway would be answering "yes" to a question nobody
-	 * understood.
+	 * Bundled skills declare `'Albert'` explicitly (see {@see
+	 * SkillRegistry::bundled()}); a skill added through the registry filter
+	 * without a `source` falls back to a generic label rather than being
+	 * mislabelled as one Albert did not ship.
+	 *
+	 * @return string The source label.
+	 * @since 1.4.0
+	 */
+	public function source(): string {
+		return $this->source !== '' ? $this->source : __( 'Add-on', 'albert-ai-butler' );
+	}
+
+	/**
+	 * Whether this skill is worth listing on this site right now.
 	 *
 	 * @return bool True when every declared precondition holds.
 	 * @since 1.4.0
 	 */
 	public function is_available(): bool {
+		return $this->status()['available'];
+	}
+
+	/**
+	 * The live precondition status.
+	 *
+	 * The single place that turns "does this apply here" into both the boolean
+	 * {@see self::is_available()} relies on — which is what gates a skill out
+	 * of the discovery index — and a human-readable reason ("WooCommerce is
+	 * active" / "Requires the block editor"), so the two can never drift
+	 * apart. `Admin\SkillsPayload` carries the reason in the Skills screen's
+	 * REST payload; 1.4.0's screen doesn't render it (every skill it lists
+	 * ships from Albert itself, so there's nothing yet to distinguish), but
+	 * the data is there for whenever a future version needs to show it —
+	 * doc 24's non-Albert sources are the case that will actually need it.
+	 *
+	 * An unknown condition name fails closed. A skill that declares
+	 * `requires: shopify` is asking a question this vocabulary cannot answer,
+	 * and treating it as met anyway would be answering "yes" to a question
+	 * nobody understood.
+	 *
+	 * Every unmet reason is reported at once, `requires` entries and a failing
+	 * `when` alike: a skill declaring two preconditions, or one named
+	 * precondition plus a `when`, that all fail should not need a second look
+	 * after the site owner fixes only the first one named.
+	 *
+	 * "Always enabled." is reserved for a skill with no `requires` and no
+	 * `when` at all. One gated only by a currently-passing `when` callable can
+	 * still flip to disabled on the next request, so it gets a label that
+	 * says so rather than a promise the class cannot keep.
+	 *
+	 * @return array{available: bool, label: string}
+	 * @since 1.4.0
+	 */
+	public function status(): array {
+		$unmet = [];
+
 		foreach ( $this->requires as $condition ) {
 			if ( ! $this->condition_holds( $condition ) ) {
-				return false;
+				$unmet[] = self::requirement_label( $condition );
 			}
 		}
 
-		if ( is_callable( $this->when ) ) {
-			return (bool) call_user_func( $this->when );
+		$when_unmet = is_callable( $this->when ) && ! call_user_func( $this->when );
+
+		if ( $unmet !== [] || $when_unmet ) {
+			$label = $unmet !== []
+				? sprintf(
+					/* translators: %s: the unmet preconditions, comma-separated, e.g. "WooCommerce, the block editor". */
+					__( 'Requires %s.', 'albert-ai-butler' ),
+					implode( ', ', $unmet )
+				)
+				: '';
+
+			if ( $when_unmet ) {
+				$label = $label !== ''
+					? $label . ' ' . __( "A site condition isn't met.", 'albert-ai-butler' )
+					: __( "A site condition isn't met.", 'albert-ai-butler' );
+			}
+
+			return [
+				'available' => false,
+				'label'     => $label,
+			];
 		}
 
-		return true;
+		if ( $this->requires === [] ) {
+			return [
+				'available' => true,
+				'label'     => is_callable( $this->when )
+					? __( 'A site condition is currently met.', 'albert-ai-butler' )
+					: __( 'Always enabled.', 'albert-ai-butler' ),
+			];
+		}
+
+		return [
+			'available' => true,
+			'label'     => sprintf(
+				/* translators: %s: the met preconditions, e.g. "WooCommerce is active". */
+				__( '%s.', 'albert-ai-butler' ),
+				implode( ', ', array_map( [ self::class, 'active_label' ], $this->requires ) )
+			),
+		];
 	}
 
 	/**
 	 * The full Markdown body.
 	 *
-	 * Read from disk on demand. Returns an empty string when the file is
-	 * missing, unreadable or implausibly large, the caller turns that into an
-	 * error the assistant can act on, rather than a blank success.
+	 * Returns the literal body when the skill was constructed with one
+	 * (bundled skills, and any add-on that registered a literal `body`).
+	 * Otherwise reads `$file` from disk on demand, returning an empty string
+	 * when it is missing, unreadable or implausibly large, the caller turns
+	 * that into an error the assistant can act on, rather than a blank
+	 * success.
 	 *
 	 * @return string The Markdown body, or an empty string when it cannot be read.
 	 * @since 1.4.0
@@ -218,6 +321,65 @@ class Skill {
 	}
 
 	/**
+	 * Per-request memo of {@see self::condition_definitions()}.
+	 *
+	 * @since 1.4.0
+	 * @var array<string, array{check: callable(): bool, requirement: string, active: string}>|null
+	 */
+	private static ?array $condition_definitions = null;
+
+	/**
+	 * Everything this class knows about each named precondition: how to check
+	 * it, and its two phrasings (a requirement, "Requires %s.", and the
+	 * reason it currently holds, "%s.").
+	 *
+	 * One map instead of three parallel switches over the same vocabulary, so
+	 * a fifth condition (the vocabulary is expected to grow, see {@see
+	 * self::KNOWN_CONDITIONS}) is one array entry to add, not three switch
+	 * statements to keep in sync by hand. Built once per request: `status()`
+	 * calls into this map up to three times per skill, once per requires
+	 * entry evaluated, and every skill's status is computed on every Skills
+	 * screen load and every MCP discovery call.
+	 *
+	 * @return array<string, array{check: callable(): bool, requirement: string, active: string}>
+	 * @since 1.4.0
+	 */
+	private static function condition_definitions(): array {
+		if ( self::$condition_definitions !== null ) {
+			return self::$condition_definitions;
+		}
+
+		self::$condition_definitions = [
+			'woocommerce'    => [
+				'check'       => static fn (): bool => class_exists( 'WooCommerce' ),
+				'requirement' => __( 'WooCommerce', 'albert-ai-butler' ),
+				'active'      => __( 'WooCommerce is active', 'albert-ai-butler' ),
+			],
+			// Site-wide rather than per-post: the index is assembled once at
+			// discovery, before any target is known.
+			'block_editor'   => [
+				'check'       => static fn (): bool => \Albert\Blocks\EditorMode::editor( 'post' ) === 'block'
+					|| \Albert\Blocks\EditorMode::editor( 'page' ) === 'block',
+				'requirement' => __( 'the block editor', 'albert-ai-butler' ),
+				'active'      => __( 'the block editor is active', 'albert-ai-butler' ),
+			],
+			'classic_editor' => [
+				'check'       => static fn (): bool => \Albert\Blocks\EditorMode::editor( 'post' ) === 'classic'
+					|| \Albert\Blocks\EditorMode::editor( 'page' ) === 'classic',
+				'requirement' => __( 'the classic editor', 'albert-ai-butler' ),
+				'active'      => __( 'the classic editor is active', 'albert-ai-butler' ),
+			],
+			'multisite'      => [
+				'check'       => static fn (): bool => function_exists( 'is_multisite' ) && is_multisite(),
+				'requirement' => __( 'a multisite network', 'albert-ai-butler' ),
+				'active'      => __( 'this is a multisite network', 'albert-ai-butler' ),
+			],
+		];
+
+		return self::$condition_definitions;
+	}
+
+	/**
 	 * Answer one named precondition.
 	 *
 	 * @param string $condition Condition name.
@@ -226,25 +388,32 @@ class Skill {
 	 * @since 1.4.0
 	 */
 	private function condition_holds( string $condition ): bool {
-		switch ( $condition ) {
-			case 'woocommerce':
-				return class_exists( 'WooCommerce' );
+		$definition = self::condition_definitions()[ $condition ] ?? null;
 
-			case 'block_editor':
-				// Site-wide rather than per-post: the index is assembled once at
-				// discovery, before any target is known.
-				return \Albert\Blocks\EditorMode::editor( 'post' ) === 'block'
-					|| \Albert\Blocks\EditorMode::editor( 'page' ) === 'block';
+		return $definition !== null && ( $definition['check'] )();
+	}
 
-			case 'classic_editor':
-				return \Albert\Blocks\EditorMode::editor( 'post' ) === 'classic'
-					|| \Albert\Blocks\EditorMode::editor( 'page' ) === 'classic';
+	/**
+	 * A condition's name, phrased as a requirement ("Requires %s.").
+	 *
+	 * @param string $condition Condition name.
+	 *
+	 * @return string Human-readable phrase. The condition name itself for one this class does not know.
+	 * @since 1.4.0
+	 */
+	private static function requirement_label( string $condition ): string {
+		return self::condition_definitions()[ $condition ]['requirement'] ?? $condition;
+	}
 
-			case 'multisite':
-				return function_exists( 'is_multisite' ) && is_multisite();
-
-			default:
-				return false;
-		}
+	/**
+	 * A condition's name, phrased as the reason it currently holds ("%s.").
+	 *
+	 * @param string $condition Condition name.
+	 *
+	 * @return string Human-readable phrase. The condition name itself for one this class does not know.
+	 * @since 1.4.0
+	 */
+	private static function active_label( string $condition ): string {
+		return self::condition_definitions()[ $condition ]['active'] ?? $condition;
 	}
 }

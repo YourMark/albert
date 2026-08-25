@@ -156,9 +156,11 @@ add_filter(
 );
 ```
 
-- **`$row`** — `{ id, label, description, category, categoryLabel, supplier, supplierLabel,
+- **`$row`** — `{ id, label, description, category, categoryLabel, source, sourceLabel,
   operation, enabled, capability, capabilityRoles, lastUsed, badges, inputs, output, annotations }`.
-  Free always sets `badges` to `[]`.
+  Free always sets `badges` to `[]`. `supplier`/`supplierLabel` are still present too, holding the
+  same values as `source`/`sourceLabel` — deprecated since 1.4.0 in favour of the latter, kept for
+  any add-on already reading them, and scheduled for removal in a future major version.
 - **Badge shape** — `{ id, label, tone, title? }`; `tone` maps to the `albert-badge--{tone}` pill.
   Since 1.4.0 that pill is the shared `.albert-badge` primitive in
   `assets/css/albert-primitives.css` — there is one definition, not one per screen. Its size,

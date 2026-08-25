@@ -13,18 +13,19 @@
 import { DataViews } from '@wordpress/dataviews/wp';
 import { SelectControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
+import {
+	FilterSelect,
+	filterValue,
+	setSort,
+	withAll,
+	STATUS_OPTIONS,
+} from '../shared/ToolbarControls';
 
 const OPERATION_OPTIONS = [
 	{ value: '', label: __( 'All operations', 'albert-ai-butler' ) },
 	{ value: 'read', label: __( 'Read', 'albert-ai-butler' ) },
 	{ value: 'write', label: __( 'Write', 'albert-ai-butler' ) },
 	{ value: 'delete', label: __( 'Delete', 'albert-ai-butler' ) },
-];
-
-const STATUS_OPTIONS = [
-	{ value: '', label: __( 'Any status', 'albert-ai-butler' ) },
-	{ value: 'enabled', label: __( 'Enabled', 'albert-ai-butler' ) },
-	{ value: 'disabled', label: __( 'Disabled', 'albert-ai-butler' ) },
 ];
 
 const SORT_OPTIONS = [
@@ -35,24 +36,13 @@ const SORT_OPTIONS = [
 ];
 
 /**
- * Build SelectControl options with an "all" sentinel first.
- *
- * @param {Array}  elements    Filter elements ({ value, label }).
- * @param {string} allLabel    Label for the "no filter" option.
- * @return {Array} Options for SelectControl.
- */
-function withAll( elements, allLabel ) {
-	return [ { value: '', label: allLabel }, ...elements ];
-}
-
-/**
  * The custom toolbar.
  *
  * @param {Object}   props              Props.
  * @param {Object}   props.view         The current DataViews view.
  * @param {Function} props.onChangeView View setter.
  * @param {Array}    props.categories   Category filter elements.
- * @param {Array}    props.suppliers    Supplier filter elements.
+ * @param {Array}    props.sources      Source filter elements.
  * @param {Array}    props.badges       Badge filter elements.
  * @return {Element} The toolbar.
  */
@@ -60,28 +50,15 @@ export default function Toolbar( {
 	view,
 	onChangeView,
 	categories,
-	suppliers,
+	sources,
 	badges,
 } ) {
-	const filterValue = ( field ) =>
-		view.filters?.find( ( filter ) => filter.field === field )?.value ?? '';
-
-	const setFilter = ( field, value ) => {
-		const others = ( view.filters || [] ).filter(
-			( filter ) => filter.field !== field
-		);
-		const filters =
-			value === ''
-				? others
-				: [ ...others, { field, operator: 'is', value } ];
-		onChangeView( { ...view, filters, page: 1 } );
-	};
-
 	// Badges live in an array on each row, so they use DataViews' `isAny`
-	// operator (array filter value). Read back the single selected id and write
+	// operator (array filter value), unlike the single-value ("is") filters
+	// {@see FilterSelect} handles. Read back the single selected id and write
 	// it as a one-element array.
 	const badgeValue = () => {
-		const value = filterValue( 'badges' );
+		const value = filterValue( view, 'badges' );
 		return Array.isArray( value ) ? value[ 0 ] ?? '' : '';
 	};
 
@@ -96,48 +73,44 @@ export default function Toolbar( {
 		onChangeView( { ...view, filters, page: 1 } );
 	};
 
-	const setSort = ( field ) =>
-		onChangeView( {
-			...view,
-			sort: { field, direction: view.sort?.direction || 'asc' },
-			page: 1,
-		} );
-
-	const select = ( label, field, options ) => (
-		<SelectControl
-			__nextHasNoMarginBottom
-			hideLabelFromVision
-			label={ label }
-			value={ filterValue( field ) }
-			options={ options }
-			onChange={ ( value ) => setFilter( field, value ) }
-		/>
-	);
-
 	return (
 		<div className="albert-toolbar">
 			<div className="albert-toolbar__group">
 				<DataViews.Search />
-				{ select(
-					__( 'Filter by category', 'albert-ai-butler' ),
-					'category',
-					withAll( categories, __( 'All categories', 'albert-ai-butler' ) )
-				) }
-				{ select(
-					__( 'Filter by operation', 'albert-ai-butler' ),
-					'operation',
-					OPERATION_OPTIONS
-				) }
-				{ select(
-					__( 'Filter by status', 'albert-ai-butler' ),
-					'status',
-					STATUS_OPTIONS
-				) }
-				{ select(
-					__( 'Filter by supplier', 'albert-ai-butler' ),
-					'supplier',
-					withAll( suppliers, __( 'All suppliers', 'albert-ai-butler' ) )
-				) }
+				<FilterSelect
+					view={ view }
+					onChangeView={ onChangeView }
+					label={ __( 'Filter by category', 'albert-ai-butler' ) }
+					field="category"
+					options={ withAll(
+						categories,
+						__( 'All categories', 'albert-ai-butler' )
+					) }
+				/>
+				<FilterSelect
+					view={ view }
+					onChangeView={ onChangeView }
+					label={ __( 'Filter by operation', 'albert-ai-butler' ) }
+					field="operation"
+					options={ OPERATION_OPTIONS }
+				/>
+				<FilterSelect
+					view={ view }
+					onChangeView={ onChangeView }
+					label={ __( 'Filter by status', 'albert-ai-butler' ) }
+					field="status"
+					options={ STATUS_OPTIONS }
+				/>
+				<FilterSelect
+					view={ view }
+					onChangeView={ onChangeView }
+					label={ __( 'Filter by source', 'albert-ai-butler' ) }
+					field="source"
+					options={ withAll(
+						sources,
+						__( 'All sources', 'albert-ai-butler' )
+					) }
+				/>
 				{ badges?.length > 0 && (
 					<SelectControl
 						__nextHasNoMarginBottom
@@ -159,7 +132,7 @@ export default function Toolbar( {
 					label={ __( 'Sort abilities', 'albert-ai-butler' ) }
 					value={ view.sort?.field || 'label' }
 					options={ SORT_OPTIONS }
-					onChange={ setSort }
+					onChange={ ( field ) => setSort( view, onChangeView, field ) }
 				/>
 				<DataViews.ViewConfig />
 				<DataViews.LayoutSwitcher />

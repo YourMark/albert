@@ -1,6 +1,6 @@
 <?php
 /**
- * Unit tests for AbilitiesRegistry — supplier map, source lookup.
+ * Unit tests for AbilitiesRegistry — source map, per-ability source lookup.
  *
  * The get_default_disabled_abilities() method interacts with the
  * wp_get_abilities() stub, so its fresh-install effect is asserted via
@@ -28,7 +28,7 @@ class AbilitiesRegistryTest extends TestCase {
 	/**
 	 * Reset the static cache and hook recorder before each test.
 	 *
-	 * Because get_suppliers() memoises into a private static, we reach in
+	 * Because get_sources() memoises into a private static, we reach in
 	 * through reflection to reset it between tests. This is strictly a test
 	 * concern — production code never needs to reset this cache.
 	 *
@@ -37,45 +37,48 @@ class AbilitiesRegistryTest extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		$GLOBALS['albert_test_hooks']   = [];
-		$GLOBALS['albert_test_options'] = [];
+		$GLOBALS['albert_test_hooks']            = [];
+		$GLOBALS['albert_test_options']          = [];
+		$GLOBALS['albert_test_deprecated_calls'] = [];
+		$GLOBALS['albert_test_deprecated_hooks'] = [];
+		unset( $GLOBALS['albert_test_filter_returns'], $GLOBALS['albert_test_filter_callbacks'] );
 
 		$reflection = new ReflectionClass( AbilitiesRegistry::class );
-		$cache      = $reflection->getProperty( 'suppliers_cache' );
+		$cache      = $reflection->getProperty( 'sources_cache' );
 		$cache->setAccessible( true );
 		$cache->setValue( null, null );
 	}
 
-	// ─── get_suppliers() ────────────────────────────────────────────
+	// ─── get_sources() ──────────────────────────────────────────────
 
 	/**
-	 * The built-in supplier map covers the prefixes Albert ships with.
+	 * The built-in source map covers the prefixes Albert ships with.
 	 *
 	 * @return void
 	 */
-	public function test_get_suppliers_contains_built_in_prefixes(): void {
-		$suppliers = AbilitiesRegistry::get_suppliers();
+	public function test_get_sources_contains_built_in_prefixes(): void {
+		$sources = AbilitiesRegistry::get_sources();
 
-		$this->assertArrayHasKey( 'core', $suppliers );
-		$this->assertArrayHasKey( 'albert', $suppliers );
-		$this->assertArrayHasKey( 'woo', $suppliers );
-		$this->assertArrayHasKey( 'acf', $suppliers );
+		$this->assertArrayHasKey( 'core', $sources );
+		$this->assertArrayHasKey( 'albert', $sources );
+		$this->assertArrayHasKey( 'woo', $sources );
+		$this->assertArrayHasKey( 'acf', $sources );
 	}
 
 	/**
-	 * The output goes through the albert/abilities/suppliers filter.
+	 * The output goes through the albert/abilities/sources filter.
 	 *
 	 * The unit-test apply_filters stub is a pass-through, so we verify by
 	 * checking the recorded hook call rather than the mutated return.
 	 *
 	 * @return void
 	 */
-	public function test_get_suppliers_applies_filter(): void {
-		AbilitiesRegistry::get_suppliers();
+	public function test_get_sources_applies_filter(): void {
+		AbilitiesRegistry::get_sources();
 
 		$filter_calls = array_filter(
 			$GLOBALS['albert_test_hooks'],
-			static fn( array $h ): bool => $h['hook'] === 'albert/abilities/suppliers'
+			static fn( array $h ): bool => $h['hook'] === 'albert/abilities/sources'
 		);
 
 		$this->assertCount( 1, $filter_calls );
@@ -86,23 +89,99 @@ class AbilitiesRegistryTest extends TestCase {
 	 *
 	 * @return void
 	 */
-	public function test_get_suppliers_caches_result(): void {
-		AbilitiesRegistry::get_suppliers();
-		AbilitiesRegistry::get_suppliers();
-		AbilitiesRegistry::get_suppliers();
+	public function test_get_sources_caches_result(): void {
+		AbilitiesRegistry::get_sources();
+		AbilitiesRegistry::get_sources();
+		AbilitiesRegistry::get_sources();
 
 		$filter_calls = array_filter(
 			$GLOBALS['albert_test_hooks'],
-			static fn( array $h ): bool => $h['hook'] === 'albert/abilities/suppliers'
+			static fn( array $h ): bool => $h['hook'] === 'albert/abilities/sources'
 		);
 
 		$this->assertCount( 1, $filter_calls );
 	}
 
+	/**
+	 * The deprecated `albert/abilities/suppliers` filter still applies, so an
+	 * addon that only ever hooked the old name keeps working unchanged.
+	 *
+	 * @return void
+	 */
+	public function test_get_sources_still_applies_the_deprecated_supplier_filter(): void {
+		$GLOBALS['albert_test_filter_callbacks']['albert/abilities/suppliers'] =
+			static function ( array $sources ): array {
+				$sources['mycompany'] = 'My Company';
+				return $sources;
+			};
+
+		$sources = AbilitiesRegistry::get_sources();
+
+		$this->assertArrayHasKey( 'mycompany', $sources );
+		$this->assertSame( 'My Company', $sources['mycompany'] );
+	}
+
+	/**
+	 * Hooking the deprecated filter triggers a deprecation notice naming the
+	 * replacement, the same way core's apply_filters_deprecated() would.
+	 *
+	 * @return void
+	 */
+	public function test_hooking_the_deprecated_supplier_filter_triggers_a_notice(): void {
+		$GLOBALS['albert_test_filter_callbacks']['albert/abilities/suppliers'] =
+			static fn( array $sources ): array => $sources;
+
+		AbilitiesRegistry::get_sources();
+
+		$this->assertCount( 1, $GLOBALS['albert_test_deprecated_hooks'] );
+		$this->assertSame( 'albert/abilities/suppliers', $GLOBALS['albert_test_deprecated_hooks'][0]['hook_name'] );
+		$this->assertSame( 'albert/abilities/sources', $GLOBALS['albert_test_deprecated_hooks'][0]['replacement'] );
+	}
+
+	/**
+	 * Nothing hooking either filter produces no deprecation notice — the
+	 * common case, on every request that has no addon involved at all.
+	 *
+	 * @return void
+	 */
+	public function test_get_sources_triggers_no_notice_when_nothing_is_hooked(): void {
+		AbilitiesRegistry::get_sources();
+
+		$this->assertSame( [], $GLOBALS['albert_test_deprecated_hooks'] );
+	}
+
+	// ─── get_suppliers() (deprecated) ───────────────────────────────
+
+	/**
+	 * The deprecated get_suppliers() still returns the same map get_sources()
+	 * does, so existing callers keep working unchanged.
+	 *
+	 * @return void
+	 */
+	public function test_get_suppliers_still_returns_the_source_map(): void {
+		$this->assertSame( AbilitiesRegistry::get_sources(), AbilitiesRegistry::get_suppliers() );
+	}
+
+	/**
+	 * Calling the deprecated get_suppliers() triggers _deprecated_function
+	 * naming get_sources() as the replacement.
+	 *
+	 * @return void
+	 */
+	public function test_get_suppliers_triggers_a_deprecation_notice(): void {
+		AbilitiesRegistry::get_suppliers();
+
+		$this->assertCount( 1, $GLOBALS['albert_test_deprecated_calls'] );
+		$call = $GLOBALS['albert_test_deprecated_calls'][0];
+		$this->assertSame( '1.4.0', $call['version'] );
+		$this->assertStringEndsWith( '::get_sources', $call['replacement'] );
+		$this->assertStringEndsWith( '::get_suppliers', $call['function_name'] );
+	}
+
 	// ─── get_ability_source() ───────────────────────────────────────
 
 	/**
-	 * A known albert-prefixed id resolves to the albert supplier.
+	 * A known albert-prefixed id resolves to the albert source.
 	 *
 	 * @return void
 	 */

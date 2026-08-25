@@ -24,7 +24,8 @@ import {
 	useRef,
 	useState,
 } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
+import { speak } from '@wordpress/a11y';
 import {
 	fetchAbilities,
 	setAbilityEnabled,
@@ -42,7 +43,7 @@ const DEFAULT_VIEW = {
 	perPage: 20,
 	titleField: 'label',
 	showMedia: false,
-	fields: [ 'category', 'operation', 'supplier', 'lastUsed', 'status' ],
+	fields: [ 'category', 'operation', 'source', 'lastUsed', 'status' ],
 	sort: { field: 'label', direction: 'asc' },
 	filters: [],
 	layout: {
@@ -52,7 +53,7 @@ const DEFAULT_VIEW = {
 			label: { minWidth: 200 },
 			category: { minWidth: 96, maxWidth: 150 },
 			operation: { width: 116 },
-			supplier: { minWidth: 100, maxWidth: 160 },
+			source: { minWidth: 100, maxWidth: 160 },
 			lastUsed: { minWidth: 110, maxWidth: 160 },
 			status: { width: 84 },
 		},
@@ -67,7 +68,7 @@ const DEFAULT_LAYOUTS = {
 export default function AbilitiesApp() {
 	const [ items, setItems ] = useState( [] );
 	const [ categories, setCategories ] = useState( [] );
-	const [ suppliers, setSuppliers ] = useState( [] );
+	const [ sources, setSources ] = useState( [] );
 	const [ roles, setRoles ] = useState( [] );
 	// Initialise from the URL so a shared/bookmarked link opens pre-filtered.
 	const [ view, setView ] = useState( () => viewFromUrl( DEFAULT_VIEW ) );
@@ -101,7 +102,7 @@ export default function AbilitiesApp() {
 				}
 				setItems( payload.abilities );
 				setCategories( payload.categories );
-				setSuppliers( payload.suppliers );
+				setSources( payload.sources );
 				setRoles( payload.roles || [] );
 			} )
 			.catch(
@@ -227,14 +228,41 @@ export default function AbilitiesApp() {
 	}, [ items ] );
 
 	const fields = useMemo(
-		() => getFields( { categories, suppliers, badges, onToggle } ),
-		[ categories, suppliers, badges, onToggle ]
+		() => getFields( { categories, sources, badges, onToggle } ),
+		[ categories, sources, badges, onToggle ]
 	);
 
 	const { data, paginationInfo } = useMemo(
 		() => filterSortAndPaginate( items, view, fields ),
 		[ items, view, fields ]
 	);
+
+	// Search/filter/sort change the table's content without a page reload or
+	// a focus change, so nothing tells a screen-reader user the result count
+	// changed unless something announces it. Skipped on the initial load
+	// (isFirstResult) since that isn't a filter changing.
+	const isFirstResult = useRef( true );
+	useEffect( () => {
+		if ( isLoading ) {
+			return;
+		}
+		if ( isFirstResult.current ) {
+			isFirstResult.current = false;
+			return;
+		}
+		speak(
+			sprintf(
+				/* translators: %d: number of matching abilities. */
+				_n(
+					'%d ability found.',
+					'%d abilities found.',
+					paginationInfo.totalItems,
+					'albert-ai-butler'
+				),
+				paginationInfo.totalItems
+			)
+		);
+	}, [ paginationInfo.totalItems, isLoading ] );
 
 	const getItemId = useCallback( ( item ) => item.id, [] );
 
@@ -342,7 +370,7 @@ export default function AbilitiesApp() {
 							view={ view }
 							onChangeView={ setView }
 							categories={ categories }
-							suppliers={ suppliers }
+							sources={ sources }
 							badges={ badges }
 						/>
 						{ selection.length > 0 && (

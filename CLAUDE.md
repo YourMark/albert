@@ -41,7 +41,7 @@ albert-ai-butler/
 │   ├── Core/
 │   │   ├── Plugin.php                  # Main singleton, bootstraps everything
 │   │   ├── AbilitiesManager.php        # Registers abilities with WordPress
-│   │   ├── AbilitiesRegistry.php       # Supplier map, category grouping, source lookup
+│   │   ├── AbilitiesRegistry.php       # Source map, category grouping, per-ability source lookup
 │   │   └── AnnotationPresenter.php     # Annotation → chip DTO mapping for the admin UI
 │   │
 │   ├── Admin/
@@ -371,18 +371,32 @@ Preconditions are *declared*, never evaluated at registration time, this filter
 runs long before discovery. A skill lists in the index only when its
 preconditions hold, and an unrecognised condition fails closed.
 
-#### Supplier Registry (`albert/abilities/suppliers`)
+#### Source Registry (`albert/abilities/sources`)
 
-The filter dropdown's supplier labels come from a curated prefix→label map in `AbilitiesRegistry::get_suppliers()`. Built-in entries cover `core` → "WordPress core", `albert` → "Albert", `woo` → "WooCommerce", and `acf` → "ACF". Addons can register their own prefix under a branded name via the `albert/abilities/suppliers` filter:
+The filter dropdown's source labels — where an ability comes from: Albert, a third-party plugin,
+WordPress core, a theme, or custom code — come from a curated prefix→label map in
+`AbilitiesRegistry::get_sources()`. Built-in entries cover `core` → "WordPress core", `albert` →
+"Albert", `woo` → "WooCommerce", and `acf` → "ACF". Addons can register their own prefix under a
+branded name via the `albert/abilities/sources` filter:
 
 ```php
-add_filter( 'albert/abilities/suppliers', function ( array $suppliers ): array {
-    $suppliers['mycompany'] = 'My Company';
-    return $suppliers;
+add_filter( 'albert/abilities/sources', function ( array $sources ): array {
+    $sources['mycompany'] = 'My Company';
+    return $sources;
 } );
 ```
 
-Unknown prefixes fall back to a prettified version of the prefix itself, so every ability always has a sensible supplier label.
+Unknown prefixes fall back to a prettified version of the prefix itself, so every ability always has
+a sensible source label.
+
+**Renamed from "Supplier" in 1.4.0**, to match Skills' own `source` concept and to read sensibly for
+every kind of origin, including a theme or a person's own custom code — "supplier" reads oddly for
+those. `get_suppliers()` and the `albert/abilities/suppliers` filter still work: `get_suppliers()` is
+a deprecated wrapper around `get_sources()` (`_deprecated_function`), and `get_sources()` still
+applies `albert/abilities/suppliers` first via `apply_filters_deprecated()` before applying
+`albert/abilities/sources`, so an addon hooked only to the old filter name keeps working unchanged.
+The abilities-screen payload row likewise still carries `supplier`/`supplierLabel` alongside the new
+`source`/`sourceLabel` — see `docs/extending-the-abilities-screen.md`.
 
 #### Connections screen (1.4.0)
 

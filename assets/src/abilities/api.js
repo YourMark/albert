@@ -12,7 +12,7 @@ import apiFetch from '@wordpress/api-fetch';
 const BASE = `/${ window.albertAbilities?.restBase || 'albert/v1/abilities' }`;
 
 /**
- * Fetch the full abilities dataset (abilities, categories, suppliers, counts).
+ * Fetch the full abilities dataset (abilities, categories, sources, counts).
  *
  * @return {Promise<Object>} The payload.
  */

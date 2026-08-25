@@ -60,6 +60,7 @@ use Albert\Admin\ContextPage;
 use Albert\Admin\Menu;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
+use Albert\Admin\SkillsPage;
 use Albert\Cron\AllowedUserExpiry;
 use Albert\Cron\ConnectionRetentionSweep;
 use Albert\Cron\TokenCleanup;
@@ -72,6 +73,7 @@ use Albert\OAuth\Endpoints\ClientRegistration;
 use Albert\OAuth\Endpoints\OAuthController;
 use Albert\Admin\Rest\AbilitiesController;
 use Albert\Admin\Rest\ContextController;
+use Albert\Admin\Rest\SkillsController;
 use Albert\OAuth\Endpoints\OAuthDiscovery;
 use Albert\Vendor\WP\MCP\Core\McpAdapter;
 
@@ -207,6 +209,9 @@ class Plugin {
 			// Unified abilities page (toggle abilities on/off).
 			( new AbilitiesPage() )->register_hooks();
 
+			// Skills page (read-only library of the skills Albert and add-ons ship).
+			( new SkillsPage() )->register_hooks();
+
 			// Context page (what connected assistants are told about this site).
 			( new ContextPage() )->register_hooks();
 
@@ -225,6 +230,9 @@ class Plugin {
 
 		// Register the context REST controller (data + instant save for the Context screen).
 		( new ContextController() )->register_hooks();
+
+		// Register the skills REST controller (read-only data for the Skills screen).
+		( new SkillsController() )->register_hooks();
 
 		// Register OAuth controller (REST API endpoints for token exchange).
 		( new OAuthController() )->register_hooks();
