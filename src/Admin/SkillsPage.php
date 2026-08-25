@@ -2,10 +2,9 @@
 /**
  * Skills Admin Page
  *
- * Mounts the Albert → Skills screen: a read-only React library of every skill in
- * the doc-21 registry, so a site owner can see the task guides a connected
- * assistant follows and when each one applies. The PHP side renders the mount
- * point and enqueues the bundle; the data flows over REST (see
+ * Mounts the Albert → Skills screen: a read-only React overview of the task
+ * guides Albert currently ships, on the doc-21 registry. The PHP side renders
+ * the mount point and enqueues the bundle; the data flows over REST (see
  * Admin\Rest\SkillsController).
  *
  * @package Albert

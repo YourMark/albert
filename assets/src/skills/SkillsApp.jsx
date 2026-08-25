@@ -145,7 +145,7 @@ export default function SkillsApp() {
 				</h1>
 				<p className="albert-skills__subtitle">
 					{ __(
-						'The task guides a connected assistant can read on its own, and when each one applies to this site. Open one to review what it says.',
+						'An overview of the task guides Albert currently ships. Open one to read the exact guidance a connected assistant follows.',
 						'albert-ai-butler'
 					) }
 				</p>

@@ -23,8 +23,10 @@ defined( 'ABSPATH' ) || exit;
  * Serves the Skills screen's data.
  *
  * One route, one method: the screen is read-only, so there is nothing to write.
- * `GET` returns every registered skill with its live precondition status and its
- * full body, the screen renders both without a second round trip.
+ * `GET` returns every registered skill with its full body, so the fly-in
+ * renders it without a second round trip. The live precondition status
+ * (`available`/`status`) rides along too but isn't rendered by 1.4.0's
+ * screen — see {@see SkillsPayload::build()}.
  *
  * @since 1.4.0
  */

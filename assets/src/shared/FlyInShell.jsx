@@ -11,7 +11,9 @@
  * This owns only the chrome: backdrop, dialog frame, header layout, close
  * button, scrollable body, footer. A screen's own content (what's in the
  * heading, what's in the body, what's in the footer) is composed by the
- * caller, so this file carries nothing specific to any one screen.
+ * caller, so this file carries nothing specific to any one screen. Also
+ * exports `Section`, the labelled-content pattern both screens' fly-ins use
+ * inside that body.
  */
 import { Button } from '@wordpress/components';
 import {

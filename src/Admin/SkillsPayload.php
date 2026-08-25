@@ -31,9 +31,12 @@ class SkillsPayload {
 	 * Build the screen payload: every registered skill, regardless of whether
 	 * its preconditions currently hold.
 	 *
-	 * Unavailable skills are included, not filtered out, so a site owner can see
-	 * a disabled toggle with "Requires WooCommerce" as its reason, rather than
-	 * wondering why a skill they know exists is missing.
+	 * Unavailable skills are included, not filtered out: a skill a site owner
+	 * knows exists should never silently disappear from the list
+	 * (`test_unavailable_skills_are_listed_with_a_false_flag`). 1.4.0's
+	 * screen doesn't render `available`/`status` (every skill it lists ships
+	 * from Albert itself, so there's nothing to distinguish yet), but the
+	 * reason string is ready for whenever a future version shows it.
 	 *
 	 * @return array{skills: list<array<string, mixed>>} The screen payload.
 	 * @since 1.4.0

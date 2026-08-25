@@ -61,9 +61,9 @@ class SkillRegistry {
 		 * either a `file` (absolute path to a Markdown body) or a literal
 		 * `body`. Optionally `requires`, a list of named preconditions from
 		 * {@see Skill::KNOWN_CONDITIONS}, `when`, a callable for anything
-		 * that vocabulary cannot express, and `source`, the name shown as the
-		 * Skills screen's badge (e.g. an add-on's own name); omitted, it falls
-		 * back to a generic "Add-on" label.
+		 * that vocabulary cannot express, and `source`, the name shown in the
+		 * Skills screen's Source column (e.g. an add-on's own name); omitted,
+		 * it falls back to a generic "Add-on" label.
 		 *
 		 * Preconditions are declared, not evaluated here: this filter runs long
 		 * before discovery, and a condition answered at registration time would

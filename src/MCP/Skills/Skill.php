@@ -24,10 +24,15 @@ defined( 'ABSPATH' ) || exit;
  * a registration that ran on `plugins_loaded` would be asking questions before
  * the answers exist.
  *
- * **Lazy body.** The index costs one line per skill; the body costs hundreds of
- * tokens and is read only when the assistant asks for it through
- * `albert/get-skill`. So the body is a path resolved on demand, never a string
- * held in memory for every request that only ever lists the names.
+ * **Lazy body, mostly.** The index costs one line per skill; the body costs
+ * hundreds of tokens and matters only when the assistant asks for it through
+ * `albert/get-skill`. A skill registered with a `file` reads and parses it
+ * only then. Bundled skills are the one exception: {@see
+ * SkillRegistry::bundled()} already has to read and parse every bundled
+ * file's frontmatter to build the registry at all, so it hands the body it
+ * already parsed straight to the constructor rather than discarding it and
+ * paying that cost again later — a few kilobytes held in memory for every
+ * request is a fair trade against reading and parsing the same file twice.
  *
  * @since 1.4.0
  */
@@ -79,7 +84,7 @@ class Skill {
 	 * @param string        $body     Literal body, for skills not backed by a file.
 	 * @param list<string>  $requires Named preconditions from {@see self::KNOWN_CONDITIONS}.
 	 * @param callable|null $when     Extra precondition for anything the vocabulary cannot express.
-	 * @param string        $source   Who ships this skill, for the Skills screen's source badge.
+	 * @param string        $source   Who ships this skill, shown in the Skills screen's Source column.
 	 *                                Empty when the registration did not say, the Skills screen falls
 	 *                                back to a generic "Add-on" label rather than guessing a name.
 	 *
@@ -172,7 +177,7 @@ class Skill {
 	}
 
 	/**
-	 * Who ships this skill, for the Skills screen's source badge.
+	 * Who ships this skill, shown in the Skills screen's Source column.
 	 *
 	 * Bundled skills declare `'Albert'` explicitly (see {@see
 	 * SkillRegistry::bundled()}); a skill added through the registry filter
@@ -197,17 +202,17 @@ class Skill {
 	}
 
 	/**
-	 * The live precondition status, for the Skills screen.
+	 * The live precondition status.
 	 *
 	 * The single place that turns "does this apply here" into both the boolean
-	 * {@see self::is_available()} relies on and the reason a site owner reads
-	 * as the enabled toggle's help text ("WooCommerce is active" / "Requires
-	 * the block editor"), so the two can never drift apart.
-	 *
-	 * The label states only the reason, not the on/off state itself: the
-	 * toggle it sits under already shows enabled or disabled, so repeating
-	 * that in words would say the same thing twice, once visually and once as
-	 * text a screen reader would read right after the switch's own state.
+	 * {@see self::is_available()} relies on — which is what gates a skill out
+	 * of the discovery index — and a human-readable reason ("WooCommerce is
+	 * active" / "Requires the block editor"), so the two can never drift
+	 * apart. `Admin\SkillsPayload` carries the reason in the Skills screen's
+	 * REST payload; 1.4.0's screen doesn't render it (every skill it lists
+	 * ships from Albert itself, so there's nothing yet to distinguish), but
+	 * the data is there for whenever a future version needs to show it —
+	 * doc 24's non-Albert sources are the case that will actually need it.
 	 *
 	 * An unknown condition name fails closed. A skill that declares
 	 * `requires: shopify` is asking a question this vocabulary cannot answer,
@@ -281,9 +286,12 @@ class Skill {
 	/**
 	 * The full Markdown body.
 	 *
-	 * Read from disk on demand. Returns an empty string when the file is
-	 * missing, unreadable or implausibly large, the caller turns that into an
-	 * error the assistant can act on, rather than a blank success.
+	 * Returns the literal body when the skill was constructed with one
+	 * (bundled skills, and any add-on that registered a literal `body`).
+	 * Otherwise reads `$file` from disk on demand, returning an empty string
+	 * when it is missing, unreadable or implausibly large, the caller turns
+	 * that into an error the assistant can act on, rather than a blank
+	 * success.
 	 *
 	 * @return string The Markdown body, or an empty string when it cannot be read.
 	 * @since 1.4.0

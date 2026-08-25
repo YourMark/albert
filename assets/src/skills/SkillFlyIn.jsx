@@ -7,10 +7,11 @@
  * shown as-is rather than rendered, the acceptance criterion is that this
  * text is byte-identical to what `albert/get-skill` returns.
  *
- * No enabled/disabled control here yet: whether a skill's precondition
+ * No status display here yet either: whether a skill's precondition
  * currently holds is real, computed data (skill.available/skill.status), but
- * this screen doesn't show it as a toggle until there's a real, enforceable
- * on/off behind it.
+ * 1.4.0 only lists skills Albert itself ships, so there's nothing yet to
+ * distinguish one from another. That changes once doc 24's non-Albert
+ * sources exist.
  */
 import { Button } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';

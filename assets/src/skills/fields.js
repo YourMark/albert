@@ -2,11 +2,11 @@
  * DataViews field definitions for the Skills screen.
  *
  * Source is filterable (single-select); Skill/summary feed global search
- * only. No enable/disable control yet: whether a skill's precondition
- * currently holds is computed (see Skill::status()) and still rides along in
- * the REST payload for a later version to build on, but this screen doesn't
- * surface it as a toggle, column, or filter until there's a real, enforceable
- * on/off to show.
+ * only. No status column or filter yet either: whether a skill's
+ * precondition currently holds is computed (see Skill::status()) and rides
+ * along in the REST payload, but 1.4.0 only lists skills Albert itself
+ * ships, so there's nothing yet worth distinguishing on this screen. That
+ * changes once doc 24's non-Albert sources exist.
  */
 import { __ } from '@wordpress/i18n';
 import { SINGLE_SELECT } from '../shared/ToolbarControls';

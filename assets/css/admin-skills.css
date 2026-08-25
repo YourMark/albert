@@ -4,11 +4,11 @@
  * DataViews + wp-components supply the table/grid/toolbar chrome (see
  * assets/src/skills/), themed to the site's WordPress admin color scheme.
  * The fly-in dialog shell (backdrop, frame, header, close, body scroll,
- * footer) lives in albert-primitives.css, shared with Abilities. This file
- * holds only what's particular to Skills: page chrome (header, summary),
- * the table's Skill cell, the fly-in's own content (the raw guide-text
- * block; the locked notice reuses the shared .albert-hint primitive), and
- * a restyle of the enabled toggle's disabled+checked state (see below).
+ * footer, the section/section-head/section-title pattern) lives in
+ * albert-primitives.css, shared with Abilities. This file holds only what's
+ * particular to Skills: page chrome (header, summary), the table's Skill
+ * cell, and the fly-in's own content (the raw guide-text block; the locked
+ * notice reuses the shared .albert-hint primitive).
  *
  * Consumes tokens only. No raw colour, no raw size.
  *
