@@ -61,6 +61,7 @@ jobs:
   integration:
     name: Integration Tests (PHP ${{ matrix.php }}, WP ${{ matrix.wordpress }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     strategy:
       fail-fast: false
@@ -140,6 +141,7 @@ jobs:
   integration-woocommerce:
     name: Integration Tests (WooCommerce ${{ matrix.woocommerce }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     strategy:
       fail-fast: false
