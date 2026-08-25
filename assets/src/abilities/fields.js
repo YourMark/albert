@@ -8,6 +8,7 @@
 import { FormToggle } from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
 import { OPERATION_LABELS } from './constants';
+import { SINGLE_SELECT } from '../shared/ToolbarControls';
 
 const OPERATION_ELEMENTS = [
 	{ value: 'read', label: OPERATION_LABELS.read },
@@ -19,8 +20,6 @@ const STATUS_ELEMENTS = [
 	{ value: 'enabled', label: __( 'Enabled', 'albert-ai-butler' ) },
 	{ value: 'disabled', label: __( 'Disabled', 'albert-ai-butler' ) },
 ];
-
-const SINGLE_SELECT = { operators: [ 'is' ], isPrimary: true };
 
 /**
  * Render an ability's badges as small pills.

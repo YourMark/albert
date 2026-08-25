@@ -30,6 +30,8 @@ defined( 'ABSPATH' ) || exit;
  */
 class SkillsController implements Hookable {
 
+	use RequiresManageOptions;
+
 	/**
 	 * Register WordPress hooks.
 	 *
@@ -56,16 +58,6 @@ class SkillsController implements Hookable {
 				'permission_callback' => [ $this, 'check_permission' ],
 			]
 		);
-	}
-
-	/**
-	 * Permission check for this route.
-	 *
-	 * @return bool True for users who may manage options.
-	 * @since 1.4.0
-	 */
-	public function check_permission(): bool {
-		return current_user_can( 'manage_options' );
 	}
 
 	/**

@@ -22,7 +22,7 @@ import {
 import { applyFilters } from '@wordpress/hooks';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { chevronRight } from '@wordpress/icons';
-import FlyInShell from '../shared/FlyInShell';
+import FlyInShell, { Section } from '../shared/FlyInShell';
 import InfoPopover from '../shared/InfoPopover';
 import { OPERATION_LABELS } from './constants';
 import { Badges } from './fields';
@@ -86,27 +86,6 @@ class SectionBoundary extends Component {
 		}
 		return this.props.children;
 	}
-}
-
-/**
- * A labelled section with an uppercase heading and optional info popover.
- *
- * @param {Object}  props          Props.
- * @param {string}  props.title    Section heading.
- * @param {Element} props.info     Optional info control shown next to the title.
- * @param {Element} props.children Section body.
- * @return {Element} The section.
- */
-function Section( { title, info: infoControl, children } ) {
-	return (
-		<section className="albert-flyin__section">
-			<div className="albert-flyin__section-head">
-				<h3 className="albert-flyin__section-title">{ title }</h3>
-				{ infoControl }
-			</div>
-			{ children }
-		</section>
-	);
 }
 
 /**

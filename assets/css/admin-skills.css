@@ -47,7 +47,6 @@
 
 .albert-skills__summary {
 	display: flex;
-	/* 18px to match .albert-abilities__summary exactly; not a token step. */
 	gap: 18px;
 	margin: 0;
 	font-size: var(--albert-font-size-sm);
@@ -142,26 +141,4 @@
 .albert-skill-flyin__hint {
 	font-size: var(--albert-font-size-sm);
 	color: var(--albert-color-text-faint);
-}
-
-/**
- * The enabled toggle is always `disabled` on this screen (nothing here is a
- * setting yet), and wp-components' own disabled state strips all colour from
- * a toggle regardless of checked/unchecked, leaving only a small knob-position
- * shift to tell the two apart. That reads as "broken", not "on". Restyle the
- * checked+disabled combination back to a faded accent, so it still reads as
- * on, just not something you can click. The unchecked+disabled state is left
- * alone: a plain muted track is the right look for "off".
- */
-.components-form-toggle.is-checked.is-disabled .components-form-toggle__track {
-	background: color-mix(in oklab, var(--albert-color-accent) 45%, white);
-	border-color: color-mix(in oklab, var(--albert-color-accent) 45%, white);
-}
-
-.components-form-toggle.is-checked.is-disabled .components-form-toggle__thumb {
-	background: var(--albert-color-surface);
-}
-
-.components-form-toggle.is-disabled {
-	cursor: default;
 }

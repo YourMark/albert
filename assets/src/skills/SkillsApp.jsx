@@ -12,8 +12,15 @@
  */
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews/wp';
 import { Spinner } from '@wordpress/components';
-import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from '@wordpress/element';
+import { __, _n, sprintf } from '@wordpress/i18n';
+import { speak } from '@wordpress/a11y';
 import { fetchSkills } from './api';
 import { getFields } from './fields';
 import { viewFromUrl, syncViewToUrl } from './url';
@@ -90,6 +97,33 @@ export default function SkillsApp() {
 		() => filterSortAndPaginate( items, view, fields ),
 		[ items, view, fields ]
 	);
+
+	// Search/filter/sort change the table's content without a page reload or
+	// a focus change, so nothing tells a screen-reader user the result count
+	// changed unless something announces it. Skipped on the initial load
+	// (isFirstResult) since that isn't a filter changing.
+	const isFirstResult = useRef( true );
+	useEffect( () => {
+		if ( isLoading ) {
+			return;
+		}
+		if ( isFirstResult.current ) {
+			isFirstResult.current = false;
+			return;
+		}
+		speak(
+			sprintf(
+				/* translators: %d: number of matching skills. */
+				_n(
+					'%d skill found.',
+					'%d skills found.',
+					paginationInfo.totalItems,
+					'albert-ai-butler'
+				),
+				paginationInfo.totalItems
+			)
+		);
+	}, [ paginationInfo.totalItems, isLoading ] );
 
 	const getItemId = useCallback( ( item ) => item.slug, [] );
 	const onClickItem = useCallback( ( item ) => setOpenSlug( item.slug ), [] );

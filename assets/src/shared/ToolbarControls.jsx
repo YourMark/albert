@@ -23,6 +23,15 @@ export const STATUS_OPTIONS = [
 ];
 
 /**
+ * DataViews `filterBy` config for a single-value ("is") filter field, the
+ * shape every field this screen's toolbar drives through {@see FilterSelect}
+ * needs. Byte-identical across every field definition file today.
+ *
+ * @type {Object}
+ */
+export const SINGLE_SELECT = { operators: [ 'is' ], isPrimary: true };
+
+/**
  * Build SelectControl options with an "all" sentinel first.
  *
  * @param {Array}  elements Filter elements ({ value, label }).

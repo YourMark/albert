@@ -1146,6 +1146,13 @@
 	color: var(--albert-color-text-faint);
 }
 
+/* Row wrapping a section's title and its optional info popover trigger. */
+.albert-flyin__section-head {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
 /* ==========================================================================
    DataViews toolbar
 

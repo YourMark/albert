@@ -37,6 +37,8 @@ defined( 'ABSPATH' ) || exit;
  */
 class AbilitiesController implements Hookable {
 
+	use RequiresManageOptions;
+
 	/**
 	 * Register WordPress hooks.
 	 *
@@ -103,16 +105,6 @@ class AbilitiesController implements Hookable {
 				],
 			]
 		);
-	}
-
-	/**
-	 * Permission check for every route on this controller.
-	 *
-	 * @return bool
-	 * @since 1.3.0
-	 */
-	public function check_permission(): bool {
-		return current_user_can( 'manage_options' );
 	}
 
 	/**

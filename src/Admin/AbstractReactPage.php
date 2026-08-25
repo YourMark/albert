@@ -10,7 +10,7 @@
  *
  * @package Albert
  * @subpackage Admin
- * @since      1.4.1
+ * @since      1.4.0
  */
 
 namespace Albert\Admin;
@@ -23,7 +23,7 @@ use Albert\Core\Plugin;
 /**
  * AbstractReactPage class
  *
- * @since 1.4.1
+ * @since 1.4.0
  */
 abstract class AbstractReactPage implements Hookable {
 
@@ -32,7 +32,7 @@ abstract class AbstractReactPage implements Hookable {
 	 * redeclare this with its own value, this placeholder exists only so
 	 * `static::PAGE_SLUG` resolves for static analysis.
 	 *
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 * @var string
 	 */
 	protected const PAGE_SLUG = '';
@@ -42,7 +42,7 @@ abstract class AbstractReactPage implements Hookable {
 	 * and assets/build/js/skills.asset.php.
 	 *
 	 * @return string
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 */
 	abstract protected function asset_key(): string;
 
@@ -50,7 +50,7 @@ abstract class AbstractReactPage implements Hookable {
 	 * `admin_menu` priority this screen registers its submenu at.
 	 *
 	 * @return int
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 */
 	abstract protected function menu_position(): int;
 
@@ -58,7 +58,7 @@ abstract class AbstractReactPage implements Hookable {
 	 * Translated screen title, used for the submenu label and in notices.
 	 *
 	 * @return string
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 */
 	abstract protected function screen_title(): string;
 
@@ -66,7 +66,7 @@ abstract class AbstractReactPage implements Hookable {
 	 * `id` attribute of the React mount point.
 	 *
 	 * @return string
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 */
 	abstract protected function root_id(): string;
 
@@ -75,7 +75,7 @@ abstract class AbstractReactPage implements Hookable {
 	 * from, e.g. 'albertSkills' for `window.albertSkills.restBase`.
 	 *
 	 * @return string
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 */
 	abstract protected function js_global(): string;
 
@@ -84,7 +84,7 @@ abstract class AbstractReactPage implements Hookable {
 	 * `{namespace}/skills`.
 	 *
 	 * @return string
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 */
 	abstract protected function rest_suffix(): string;
 
@@ -93,7 +93,7 @@ abstract class AbstractReactPage implements Hookable {
 	 * stylesheet.
 	 *
 	 * @return array{handle: string, path: string}
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 */
 	abstract protected function stylesheet(): array;
 
@@ -102,7 +102,7 @@ abstract class AbstractReactPage implements Hookable {
 	 * stylesheet as a dependency.
 	 *
 	 * @return bool
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 */
 	protected function needs_dataviews_css(): bool {
 		return false;
@@ -113,7 +113,7 @@ abstract class AbstractReactPage implements Hookable {
 	 * build/mount-point flow, or null when there is none.
 	 *
 	 * @return array{title: string, message: string}|null
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 */
 	protected function unmet_requirement(): ?array {
 		return null;
@@ -131,7 +131,7 @@ abstract class AbstractReactPage implements Hookable {
 	 * Register the submenu page under Albert.
 	 *
 	 * @return void
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 */
 	public function add_menu_page(): void {
 		add_submenu_page(
@@ -152,7 +152,7 @@ abstract class AbstractReactPage implements Hookable {
 	 * dev checkout that hasn't run the build).
 	 *
 	 * @return void
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 */
 	public function render_page(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -195,7 +195,7 @@ abstract class AbstractReactPage implements Hookable {
 	 *                        contain safe inline HTML (e.g. `<code>`).
 	 *
 	 * @return void
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 */
 	private function render_notice( string $title, string $message ): void {
 		printf( '<h1>%s</h1>', esc_html( get_admin_page_title() ) );
@@ -209,7 +209,7 @@ abstract class AbstractReactPage implements Hookable {
 	 * Whether the compiled bundle is present.
 	 *
 	 * @return bool True when the compiled bundle is on disk.
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 */
 	protected function build_exists(): bool {
 		return file_exists( ALBERT_PLUGIN_DIR . 'assets/build/js/' . $this->asset_key() . '.asset.php' );
@@ -228,7 +228,7 @@ abstract class AbstractReactPage implements Hookable {
 	 * @param string $hook Current admin page hook.
 	 *
 	 * @return void
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 */
 	public function enqueue_assets( string $hook ): void {
 		if ( Menu::PARENT_SLUG . '_page_' . static::PAGE_SLUG !== $hook ) {

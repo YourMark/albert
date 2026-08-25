@@ -14,7 +14,7 @@
  */
 import { Button } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
-import FlyInShell from '../shared/FlyInShell';
+import FlyInShell, { Section } from '../shared/FlyInShell';
 
 /**
  * Render the fly-in.
@@ -83,20 +83,14 @@ export default function SkillFlyIn( { skill, onClose } ) {
 			</div>
 
 			{ skill.summary && (
-				<section className="albert-flyin__section">
-					<h3 className="albert-flyin__section-title">
-						{ __( 'Description', 'albert-ai-butler' ) }
-					</h3>
+				<Section title={ __( 'Description', 'albert-ai-butler' ) }>
 					<p className="albert-skill-flyin__summary">
 						{ skill.summary }
 					</p>
-				</section>
+				</Section>
 			) }
 
-			<section className="albert-flyin__section">
-				<h3 className="albert-flyin__section-title">
-					{ __( 'Guide text', 'albert-ai-butler' ) }
-				</h3>
+			<Section title={ __( 'Guide text', 'albert-ai-butler' ) }>
 				{ skill.body ? (
 					<pre className="albert-skill-flyin__body">
 						{ skill.body }
@@ -109,7 +103,7 @@ export default function SkillFlyIn( { skill, onClose } ) {
 						) }
 					</p>
 				) }
-			</section>
+			</Section>
 		</FlyInShell>
 	);
 }

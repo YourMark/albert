@@ -9,8 +9,7 @@
  * on/off to show.
  */
 import { __ } from '@wordpress/i18n';
-
-const SINGLE_SELECT = { operators: [ 'is' ], isPrimary: true };
+import { SINGLE_SELECT } from '../shared/ToolbarControls';
 
 /**
  * The "Skill" cell: name and a one-line summary.
@@ -29,25 +28,6 @@ function SkillCell( { item } ) {
 				</span>
 			) }
 		</div>
-	);
-}
-
-/**
- * The source badge: who ships this skill (Albert, or an add-on's own name).
- * Doc 23a calls for this explicitly, as a badge, not plain text: source is a
- * trust signal (built-in vs. third-party), not incidental metadata, so it
- * gets the same badge treatment as other source/category labels in this
- * design system, not a plain-text column.
- *
- * @param {Object} props      Render props.
- * @param {Object} props.item The skill row.
- * @return {Element} The badge.
- */
-function SourceBadge( { item } ) {
-	return (
-		<span className="albert-badge albert-badge--outline">
-			{ item.source }
-		</span>
 	);
 }
 
@@ -87,7 +67,7 @@ export function getFields( { sources } ) {
 			elements: sources,
 			filterBy: SINGLE_SELECT,
 			getValue: ( { item } ) => item.source,
-			render: SourceBadge,
+			render: ( { item } ) => item.source,
 		},
 	];
 }

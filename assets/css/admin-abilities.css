@@ -23,16 +23,16 @@
 .albert-abilities__title {
 	margin: 0;
 	padding: 0;
-	font-size: 23px;
-	font-weight: 600;
-	line-height: 1.2;
+	font-size: var(--albert-font-size-page-title);
+	font-weight: var(--albert-font-weight-semibold);
+	line-height: var(--albert-line-height-tight);
 	color: var(--albert-color-text);
 }
 
 .albert-abilities__subtitle {
 	margin: 7px 0 0;
 	max-width: 640px;
-	font-size: 13.5px;
+	font-size: var(--albert-font-size-body);
 	color: var(--albert-color-text-muted);
 }
 
@@ -49,12 +49,12 @@
 	display: flex;
 	gap: 18px;
 	margin: 0;
-	font-size: 12.5px;
+	font-size: var(--albert-font-size-sm);
 	color: var(--albert-color-text-muted);
 }
 
 .albert-abilities__summary strong {
-	font-weight: 600;
+	font-weight: var(--albert-font-weight-semibold);
 	color: var(--albert-color-text);
 }
 
@@ -191,10 +191,11 @@
 
    The shell (backdrop, frame, header layout, close button, scrollable body,
    footer layout, category label/value, enabled toggle wrapper, section/
-   section-title, motion) moved to albert-primitives.css. Skills opens the
-   same dialog now. What's left here is Abilities-specific: the mono id, the
-   confirm-on-close dialog, and everything inside the body that isn't a
-   generic section.
+   section-title/section-head, motion) moved to albert-primitives.css. Skills
+   opens the same dialog now, via the shared Section component in
+   ../../assets/src/shared/FlyInShell.jsx. What's left here is
+   Abilities-specific: the mono id, the confirm-on-close dialog, and
+   everything inside the body that isn't a generic section.
    --------------------------------------------------------------------------- */
 
 .albert-flyin__id {
@@ -437,13 +438,6 @@ code.albert-flyin__card-value {
 
 .albert-flyin__status:empty {
 	display: none;
-}
-
-/* Info "(i)" popover trigger + content (used in the fly-in). */
-.albert-flyin__section-head {
-	display: flex;
-	align-items: center;
-	gap: 4px;
 }
 
 .albert-flyin__card-head {

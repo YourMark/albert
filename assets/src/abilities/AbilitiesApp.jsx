@@ -24,7 +24,8 @@ import {
 	useRef,
 	useState,
 } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
+import { speak } from '@wordpress/a11y';
 import {
 	fetchAbilities,
 	setAbilityEnabled,
@@ -235,6 +236,33 @@ export default function AbilitiesApp() {
 		() => filterSortAndPaginate( items, view, fields ),
 		[ items, view, fields ]
 	);
+
+	// Search/filter/sort change the table's content without a page reload or
+	// a focus change, so nothing tells a screen-reader user the result count
+	// changed unless something announces it. Skipped on the initial load
+	// (isFirstResult) since that isn't a filter changing.
+	const isFirstResult = useRef( true );
+	useEffect( () => {
+		if ( isLoading ) {
+			return;
+		}
+		if ( isFirstResult.current ) {
+			isFirstResult.current = false;
+			return;
+		}
+		speak(
+			sprintf(
+				/* translators: %d: number of matching abilities. */
+				_n(
+					'%d ability found.',
+					'%d abilities found.',
+					paginationInfo.totalItems,
+					'albert-ai-butler'
+				),
+				paginationInfo.totalItems
+			)
+		);
+	}, [ paginationInfo.totalItems, isLoading ] );
 
 	const getItemId = useCallback( ( item ) => item.id, [] );
 

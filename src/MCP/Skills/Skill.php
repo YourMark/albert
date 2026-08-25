@@ -315,7 +315,7 @@ class Skill {
 	/**
 	 * Per-request memo of {@see self::condition_definitions()}.
 	 *
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 * @var array<string, array{check: callable(): bool, requirement: string, active: string}>|null
 	 */
 	private static ?array $condition_definitions = null;
@@ -334,7 +334,7 @@ class Skill {
 	 * screen load and every MCP discovery call.
 	 *
 	 * @return array<string, array{check: callable(): bool, requirement: string, active: string}>
-	 * @since 1.4.1
+	 * @since 1.4.0
 	 */
 	private static function condition_definitions(): array {
 		if ( self::$condition_definitions !== null ) {

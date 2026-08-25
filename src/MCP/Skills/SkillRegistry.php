@@ -165,6 +165,15 @@ class SkillRegistry {
 				continue;
 			}
 
+			// Guard against an implausibly large file before reading it: since
+			// bundled() now hands the body straight to Skill (see the docblock
+			// above), Skill::body()'s own MAX_BODY_BYTES check never runs for
+			// these, this is the only place that still can.
+			$size = filesize( $file );
+			if ( $size === false || $size > Skill::MAX_BODY_BYTES ) {
+				continue;
+			}
+
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reading a bundled plugin file, not a remote resource.
 			$contents = file_get_contents( $file );
 

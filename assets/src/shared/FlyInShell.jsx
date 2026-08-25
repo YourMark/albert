@@ -105,3 +105,27 @@ export default function FlyInShell( {
 		</>
 	);
 }
+
+/**
+ * A labelled section within a fly-in's body — an uppercase heading and
+ * optional info popover, followed by the section's content. Generic to any
+ * fly-in's content, not tied to what fills it (Abilities' description and
+ * parameter cards, Skills' description and guide text all use this).
+ *
+ * @param {Object}  props          Props.
+ * @param {string}  props.title    Section heading.
+ * @param {Element} [props.info]   Optional info control shown next to the title.
+ * @param {Element} props.children Section body.
+ * @return {Element} The section.
+ */
+export function Section( { title, info: infoControl, children } ) {
+	return (
+		<section className="albert-flyin__section">
+			<div className="albert-flyin__section-head">
+				<h3 className="albert-flyin__section-title">{ title }</h3>
+				{ infoControl }
+			</div>
+			{ children }
+		</section>
+	);
+}

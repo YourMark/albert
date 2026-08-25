@@ -40,6 +40,8 @@ defined( 'ABSPATH' ) || exit;
  */
 class ContextController implements Hookable {
 
+	use RequiresManageOptions;
+
 	/**
 	 * Register WordPress hooks.
 	 *
@@ -90,16 +92,6 @@ class ContextController implements Hookable {
 				],
 			]
 		);
-	}
-
-	/**
-	 * Permission check for every route on this controller.
-	 *
-	 * @return bool True for users who may manage options.
-	 * @since 1.4.0
-	 */
-	public function check_permission(): bool {
-		return current_user_can( 'manage_options' );
 	}
 
 	/**
