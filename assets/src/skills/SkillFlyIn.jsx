@@ -14,9 +14,8 @@
  * not warning: nothing is at risk and there is no decision to make, it is a
  * fact about how the product works right now, not a caution.
  */
-import { Icon, Button, ToggleControl } from '@wordpress/components';
+import { Button, ToggleControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
-import { lock } from '@wordpress/icons';
 import FlyInShell from '../shared/FlyInShell';
 
 /**
@@ -66,7 +65,7 @@ export default function SkillFlyIn( { skill, onClose } ) {
 			footer={ footer }
 		>
 			<div className="albert-hint albert-hint--info">
-				<Icon icon={ lock } size={ 18 } />
+				<span className="dashicons dashicons-lock" aria-hidden="true" />
 				<div>
 					<p>
 						<strong>

@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { fetchSkills } from './api';
 import { getFields } from './fields';
+import { viewFromUrl, syncViewToUrl } from './url';
 import Toolbar from './Toolbar';
 import SkillFlyIn from './SkillFlyIn';
 
@@ -45,10 +46,17 @@ const DEFAULT_LAYOUTS = {
 
 export default function SkillsApp() {
 	const [ items, setItems ] = useState( [] );
-	const [ view, setView ] = useState( DEFAULT_VIEW );
+	// Initialise from the URL so a shared/bookmarked link opens pre-filtered.
+	const [ view, setView ] = useState( () => viewFromUrl( DEFAULT_VIEW ) );
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ error, setError ] = useState( null );
 	const [ openSlug, setOpenSlug ] = useState( null );
+
+	// Mirror the view (search, filters, sort, layout, page) into the URL so it
+	// can be shared and bookmarked. replaceState keeps history clean.
+	useEffect( () => {
+		syncViewToUrl( view );
+	}, [ view ] );
 
 	useEffect( () => {
 		let active = true;

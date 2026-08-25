@@ -137,7 +137,11 @@ class SkillRegistry {
 	 * Read the plugin's own `skills/` directory into definitions.
 	 *
 	 * The frontmatter's `name` is the slug, its `description` is the summary,
-	 * and an optional `requires` line carries the preconditions.
+	 * and an optional `requires` line carries the preconditions. The body is
+	 * passed along as the literal `body` this parse already produced, rather
+	 * than a `file` path {@see Skill::body()} would have to read and parse a
+	 * second time: this method has already paid that cost once, for every
+	 * bundled skill, on every request that builds the registry at all.
 	 *
 	 * @return array<string, array<string, mixed>>
 	 * @since 1.4.0
@@ -177,7 +181,7 @@ class SkillRegistry {
 			$definitions[ (string) $parsed['name'] ] = [
 				'slug'     => (string) $parsed['name'],
 				'summary'  => (string) ( $parsed['description'] ?? '' ),
-				'file'     => $file,
+				'body'     => (string) $parsed['body'],
 				'requires' => $parsed['requires'],
 				'source'   => __( 'Albert', 'albert-ai-butler' ),
 			];

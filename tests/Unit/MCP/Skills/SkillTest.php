@@ -233,6 +233,37 @@ class SkillTest extends TestCase {
 	}
 
 	/**
+	 * A skill gated only by a currently-passing `when` callable is not
+	 * "Always enabled.": it can still flip to unavailable on the next request,
+	 * so the label must not promise something the class cannot guarantee.
+	 *
+	 * @return void
+	 */
+	public function test_status_does_not_claim_always_enabled_for_a_when_only_skill(): void {
+		$skill  = new Skill( 'yes', 'Yes.', '', 'Body.', [], static fn (): bool => true );
+		$status = $skill->status();
+
+		$this->assertTrue( $status['available'] );
+		$this->assertNotSame( 'Always enabled.', $status['label'] );
+	}
+
+	/**
+	 * When more than one declared precondition is unmet, the status label
+	 * names all of them, not just the first, so fixing one does not leave the
+	 * site owner thinking the skill should now be available.
+	 *
+	 * @return void
+	 */
+	public function test_status_names_every_unmet_precondition(): void {
+		$skill  = new Skill( 'both', 'Two conditions.', '', 'Body.', [ 'woocommerce', 'multisite' ] );
+		$status = $skill->status();
+
+		$this->assertFalse( $status['available'] );
+		$this->assertStringContainsString( 'WooCommerce', $status['label'] );
+		$this->assertStringContainsString( 'multisite network', $status['label'] );
+	}
+
+	/**
 	 * The is_available() shorthand never disagrees with status()['available'];
 	 * the Skills screen and the model-facing index both have to be able to
 	 * trust either one.

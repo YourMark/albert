@@ -206,21 +206,36 @@ class Skill {
 	 * and treating it as met anyway would be answering "yes" to a question
 	 * nobody understood.
 	 *
+	 * Every unmet `requires` entry is reported at once: a skill declaring two
+	 * preconditions that both fail should not need a second look after the
+	 * site owner fixes only the first one named.
+	 *
+	 * "Always enabled." is reserved for a skill with no `requires` and no
+	 * `when` at all. One gated only by a currently-passing `when` callable can
+	 * still flip to disabled on the next request, so it gets a label that
+	 * says so rather than a promise the class cannot keep.
+	 *
 	 * @return array{available: bool, label: string}
 	 * @since 1.4.0
 	 */
 	public function status(): array {
+		$unmet = [];
+
 		foreach ( $this->requires as $condition ) {
 			if ( ! $this->condition_holds( $condition ) ) {
-				return [
-					'available' => false,
-					'label'     => sprintf(
-						/* translators: %s: the unmet precondition, e.g. "the block editor". */
-						__( 'Requires %s.', 'albert-ai-butler' ),
-						self::requirement_label( $condition )
-					),
-				];
+				$unmet[] = self::requirement_label( $condition );
 			}
+		}
+
+		if ( $unmet !== [] ) {
+			return [
+				'available' => false,
+				'label'     => sprintf(
+					/* translators: %s: the unmet preconditions, comma-separated, e.g. "WooCommerce, the block editor". */
+					__( 'Requires %s.', 'albert-ai-butler' ),
+					implode( ', ', $unmet )
+				),
+			];
 		}
 
 		if ( is_callable( $this->when ) && ! call_user_func( $this->when ) ) {
@@ -233,7 +248,9 @@ class Skill {
 		if ( $this->requires === [] ) {
 			return [
 				'available' => true,
-				'label'     => __( 'Always enabled.', 'albert-ai-butler' ),
+				'label'     => is_callable( $this->when )
+					? __( 'A site condition is currently met.', 'albert-ai-butler' )
+					: __( 'Always enabled.', 'albert-ai-butler' ),
 			];
 		}
 
@@ -282,6 +299,48 @@ class Skill {
 	}
 
 	/**
+	 * Everything this class knows about each named precondition: how to check
+	 * it, and its two phrasings (a requirement, "Requires %s.", and the
+	 * reason it currently holds, "%s.").
+	 *
+	 * One map instead of three parallel switches over the same vocabulary, so
+	 * a fifth condition (the vocabulary is expected to grow, see {@see
+	 * self::KNOWN_CONDITIONS}) is one array entry to add, not three switch
+	 * statements to keep in sync by hand.
+	 *
+	 * @return array<string, array{check: callable(): bool, requirement: string, active: string}>
+	 * @since 1.4.1
+	 */
+	private static function condition_definitions(): array {
+		return [
+			'woocommerce'    => [
+				'check'       => static fn (): bool => class_exists( 'WooCommerce' ),
+				'requirement' => __( 'WooCommerce', 'albert-ai-butler' ),
+				'active'      => __( 'WooCommerce is active', 'albert-ai-butler' ),
+			],
+			// Site-wide rather than per-post: the index is assembled once at
+			// discovery, before any target is known.
+			'block_editor'   => [
+				'check'       => static fn (): bool => \Albert\Blocks\EditorMode::editor( 'post' ) === 'block'
+					|| \Albert\Blocks\EditorMode::editor( 'page' ) === 'block',
+				'requirement' => __( 'the block editor', 'albert-ai-butler' ),
+				'active'      => __( 'the block editor is active', 'albert-ai-butler' ),
+			],
+			'classic_editor' => [
+				'check'       => static fn (): bool => \Albert\Blocks\EditorMode::editor( 'post' ) === 'classic'
+					|| \Albert\Blocks\EditorMode::editor( 'page' ) === 'classic',
+				'requirement' => __( 'the classic editor', 'albert-ai-butler' ),
+				'active'      => __( 'the classic editor is active', 'albert-ai-butler' ),
+			],
+			'multisite'      => [
+				'check'       => static fn (): bool => function_exists( 'is_multisite' ) && is_multisite(),
+				'requirement' => __( 'a multisite network', 'albert-ai-butler' ),
+				'active'      => __( 'this is a multisite network', 'albert-ai-butler' ),
+			],
+		];
+	}
+
+	/**
 	 * Answer one named precondition.
 	 *
 	 * @param string $condition Condition name.
@@ -290,26 +349,9 @@ class Skill {
 	 * @since 1.4.0
 	 */
 	private function condition_holds( string $condition ): bool {
-		switch ( $condition ) {
-			case 'woocommerce':
-				return class_exists( 'WooCommerce' );
+		$definition = self::condition_definitions()[ $condition ] ?? null;
 
-			case 'block_editor':
-				// Site-wide rather than per-post: the index is assembled once at
-				// discovery, before any target is known.
-				return \Albert\Blocks\EditorMode::editor( 'post' ) === 'block'
-					|| \Albert\Blocks\EditorMode::editor( 'page' ) === 'block';
-
-			case 'classic_editor':
-				return \Albert\Blocks\EditorMode::editor( 'post' ) === 'classic'
-					|| \Albert\Blocks\EditorMode::editor( 'page' ) === 'classic';
-
-			case 'multisite':
-				return function_exists( 'is_multisite' ) && is_multisite();
-
-			default:
-				return false;
-		}
+		return $definition !== null && ( $definition['check'] )();
 	}
 
 	/**
@@ -321,22 +363,7 @@ class Skill {
 	 * @since 1.4.0
 	 */
 	private static function requirement_label( string $condition ): string {
-		switch ( $condition ) {
-			case 'woocommerce':
-				return __( 'WooCommerce', 'albert-ai-butler' );
-
-			case 'block_editor':
-				return __( 'the block editor', 'albert-ai-butler' );
-
-			case 'classic_editor':
-				return __( 'the classic editor', 'albert-ai-butler' );
-
-			case 'multisite':
-				return __( 'a multisite network', 'albert-ai-butler' );
-
-			default:
-				return $condition;
-		}
+		return self::condition_definitions()[ $condition ]['requirement'] ?? $condition;
 	}
 
 	/**
@@ -348,21 +375,6 @@ class Skill {
 	 * @since 1.4.0
 	 */
 	private static function active_label( string $condition ): string {
-		switch ( $condition ) {
-			case 'woocommerce':
-				return __( 'WooCommerce is active', 'albert-ai-butler' );
-
-			case 'block_editor':
-				return __( 'the block editor is active', 'albert-ai-butler' );
-
-			case 'classic_editor':
-				return __( 'the classic editor is active', 'albert-ai-butler' );
-
-			case 'multisite':
-				return __( 'this is a multisite network', 'albert-ai-butler' );
-
-			default:
-				return $condition;
-		}
+		return self::condition_definitions()[ $condition ]['active'] ?? $condition;
 	}
 }

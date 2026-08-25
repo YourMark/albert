@@ -8,6 +8,7 @@
 import { DataViews } from '@wordpress/dataviews/wp';
 import { SelectControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
+import { FilterSelect, setSort, withAll } from '../shared/ToolbarControls';
 
 const STATUS_OPTIONS = [
 	{ value: '', label: __( 'Any status', 'albert-ai-butler' ) },
@@ -21,17 +22,6 @@ const SORT_OPTIONS = [
 ];
 
 /**
- * Build SelectControl options with an "all" sentinel first.
- *
- * @param {Array}  elements Filter elements ({ value, label }).
- * @param {string} allLabel Label for the "no filter" option.
- * @return {Array} Options for SelectControl.
- */
-function withAll( elements, allLabel ) {
-	return [ { value: '', label: allLabel }, ...elements ];
-}
-
-/**
  * The custom toolbar.
  *
  * @param {Object}   props              Props.
@@ -41,53 +31,27 @@ function withAll( elements, allLabel ) {
  * @return {Element} The toolbar.
  */
 export default function Toolbar( { view, onChangeView, sources } ) {
-	const filterValue = ( field ) =>
-		view.filters?.find( ( filter ) => filter.field === field )?.value ??
-		'';
-
-	const setFilter = ( field, value ) => {
-		const others = ( view.filters || [] ).filter(
-			( filter ) => filter.field !== field
-		);
-		const filters =
-			value === ''
-				? others
-				: [ ...others, { field, operator: 'is', value } ];
-		onChangeView( { ...view, filters, page: 1 } );
-	};
-
-	const setSort = ( field ) =>
-		onChangeView( {
-			...view,
-			sort: { field, direction: view.sort?.direction || 'asc' },
-			page: 1,
-		} );
-
-	const select = ( label, field, options ) => (
-		<SelectControl
-			__nextHasNoMarginBottom
-			hideLabelFromVision
-			label={ label }
-			value={ filterValue( field ) }
-			options={ options }
-			onChange={ ( value ) => setFilter( field, value ) }
-		/>
-	);
-
 	return (
 		<div className="albert-toolbar">
 			<div className="albert-toolbar__group">
 				<DataViews.Search />
-				{ select(
-					__( 'Filter by source', 'albert-ai-butler' ),
-					'source',
-					withAll( sources, __( 'All sources', 'albert-ai-butler' ) )
-				) }
-				{ select(
-					__( 'Filter by status', 'albert-ai-butler' ),
-					'status',
-					STATUS_OPTIONS
-				) }
+				<FilterSelect
+					view={ view }
+					onChangeView={ onChangeView }
+					label={ __( 'Filter by source', 'albert-ai-butler' ) }
+					field="source"
+					options={ withAll(
+						sources,
+						__( 'All sources', 'albert-ai-butler' )
+					) }
+				/>
+				<FilterSelect
+					view={ view }
+					onChangeView={ onChangeView }
+					label={ __( 'Filter by status', 'albert-ai-butler' ) }
+					field="status"
+					options={ STATUS_OPTIONS }
+				/>
 			</div>
 			<div className="albert-toolbar__group albert-toolbar__group--end">
 				<SelectControl
@@ -96,7 +60,7 @@ export default function Toolbar( { view, onChangeView, sources } ) {
 					label={ __( 'Sort skills', 'albert-ai-butler' ) }
 					value={ view.sort?.field || 'slug' }
 					options={ SORT_OPTIONS }
-					onChange={ setSort }
+					onChange={ ( field ) => setSort( view, onChangeView, field ) }
 				/>
 				<DataViews.ViewConfig />
 				<DataViews.LayoutSwitcher />
