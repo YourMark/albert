@@ -13,19 +13,19 @@
 import { DataViews } from '@wordpress/dataviews/wp';
 import { SelectControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
-import { FilterSelect, filterValue, setFilter, setSort, withAll } from '../shared/ToolbarControls';
+import {
+	FilterSelect,
+	filterValue,
+	setSort,
+	withAll,
+	STATUS_OPTIONS,
+} from '../shared/ToolbarControls';
 
 const OPERATION_OPTIONS = [
 	{ value: '', label: __( 'All operations', 'albert-ai-butler' ) },
 	{ value: 'read', label: __( 'Read', 'albert-ai-butler' ) },
 	{ value: 'write', label: __( 'Write', 'albert-ai-butler' ) },
 	{ value: 'delete', label: __( 'Delete', 'albert-ai-butler' ) },
-];
-
-const STATUS_OPTIONS = [
-	{ value: '', label: __( 'Any status', 'albert-ai-butler' ) },
-	{ value: 'enabled', label: __( 'Enabled', 'albert-ai-butler' ) },
-	{ value: 'disabled', label: __( 'Disabled', 'albert-ai-butler' ) },
 ];
 
 const SORT_OPTIONS = [
@@ -42,7 +42,7 @@ const SORT_OPTIONS = [
  * @param {Object}   props.view         The current DataViews view.
  * @param {Function} props.onChangeView View setter.
  * @param {Array}    props.categories   Category filter elements.
- * @param {Array}    props.suppliers    Supplier filter elements.
+ * @param {Array}    props.sources      Source filter elements.
  * @param {Array}    props.badges       Badge filter elements.
  * @return {Element} The toolbar.
  */
@@ -50,7 +50,7 @@ export default function Toolbar( {
 	view,
 	onChangeView,
 	categories,
-	suppliers,
+	sources,
 	badges,
 } ) {
 	// Badges live in an array on each row, so they use DataViews' `isAny`
@@ -104,11 +104,11 @@ export default function Toolbar( {
 				<FilterSelect
 					view={ view }
 					onChangeView={ onChangeView }
-					label={ __( 'Filter by supplier', 'albert-ai-butler' ) }
-					field="supplier"
+					label={ __( 'Filter by source', 'albert-ai-butler' ) }
+					field="source"
 					options={ withAll(
-						suppliers,
-						__( 'All suppliers', 'albert-ai-butler' )
+						sources,
+						__( 'All sources', 'albert-ai-butler' )
 					) }
 				/>
 				{ badges?.length > 0 && (

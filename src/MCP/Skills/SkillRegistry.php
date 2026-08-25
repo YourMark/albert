@@ -178,6 +178,16 @@ class SkillRegistry {
 				continue;
 			}
 
+			// A named skill with an empty body would register a useless entry
+			// that Skill::from_array() rejects anyway (it requires a non-empty
+			// file or body); say so, the same way SkillLoader does for the
+			// same file when building it as an MCP prompt, so a site owner (or
+			// their error log) has a trace of why the skill never appeared.
+			if ( trim( (string) $parsed['body'] ) === '' ) {
+				error_log( sprintf( 'Albert: skipping skill "%s" — empty body in %s', $parsed['name'], $file ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Concise admin-facing warning for a misconfigured skill file.
+				continue;
+			}
+
 			$definitions[ (string) $parsed['name'] ] = [
 				'slug'     => (string) $parsed['name'],
 				'summary'  => (string) ( $parsed['description'] ?? '' ),

@@ -3,18 +3,16 @@
  *
  * Read-only, on purpose. See docs/features/23-skills.md. Built on the shared
  * FlyInShell (the same dialog Abilities opens), with content specific to a
- * skill: a locked notice, the enabled toggle, the summary, and the guide's
- * full Markdown body, shown as-is rather than rendered, the acceptance
- * criterion is that this text is byte-identical to what `albert/get-skill`
- * returns.
+ * skill: a locked notice, the summary, and the guide's full Markdown body,
+ * shown as-is rather than rendered, the acceptance criterion is that this
+ * text is byte-identical to what `albert/get-skill` returns.
  *
- * The locked notice comes first, before the toggle: it answers "can I edit
- * this" (no), the question a reader actually has, before they meet a control
- * that answers a different one ("does this currently apply here"). Info tone,
- * not warning: nothing is at risk and there is no decision to make, it is a
- * fact about how the product works right now, not a caution.
+ * No enabled/disabled control here yet: whether a skill's precondition
+ * currently holds is real, computed data (skill.available/skill.status), but
+ * this screen doesn't show it as a toggle until there's a real, enforceable
+ * on/off behind it.
  */
-import { Button, ToggleControl } from '@wordpress/components';
+import { Button } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import FlyInShell from '../shared/FlyInShell';
 
@@ -82,16 +80,6 @@ export default function SkillFlyIn( { skill, onClose } ) {
 						) }
 					</p>
 				</div>
-			</div>
-
-			<div className="albert-flyin__enabled">
-				<ToggleControl
-					__nextHasNoMarginBottom
-					label={ __( 'Enabled', 'albert-ai-butler' ) }
-					help={ skill.status }
-					checked={ skill.available }
-					disabled
-				/>
 			</div>
 
 			{ skill.summary && (

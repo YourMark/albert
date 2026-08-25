@@ -6,6 +6,21 @@
  * caller; this file carries nothing specific to any one screen.
  */
 import { SelectControl } from '@wordpress/components';
+import { __ } from '@wordpress/i18n';
+
+/**
+ * Shared "enabled / disabled" status filter options. Byte-identical between
+ * Abilities (an ability's own enabled toggle) and Skills (a skill's live
+ * precondition status) today; screens whose status filter ever needs a third
+ * value should define their own instead of reusing this.
+ *
+ * @type {Array}
+ */
+export const STATUS_OPTIONS = [
+	{ value: '', label: __( 'Any status', 'albert-ai-butler' ) },
+	{ value: 'enabled', label: __( 'Enabled', 'albert-ai-butler' ) },
+	{ value: 'disabled', label: __( 'Disabled', 'albert-ai-butler' ) },
+];
 
 /**
  * Build SelectControl options with an "all" sentinel first.

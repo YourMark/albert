@@ -121,15 +121,6 @@ class AbilitiesPage extends AbstractReactPage {
 	/**
 	 * {@inheritDoc}
 	 */
-	protected function needs_translations(): bool {
-		// Preserves existing behavior: this bundle isn't wired for script
-		// translations yet, unlike Skills and Context.
-		return false;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
 	protected function unmet_requirement(): ?array {
 		if ( function_exists( 'wp_get_abilities' ) ) {
 			return null;

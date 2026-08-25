@@ -15,7 +15,7 @@ import {
 const FILTERS = {
 	category: { multiple: false, operator: 'is' },
 	operation: { multiple: false, operator: 'is' },
-	supplier: { multiple: false, operator: 'is' },
+	source: { multiple: false, operator: 'is' },
 	status: { multiple: false, operator: 'is' },
 	badges: { multiple: true, operator: 'isAny' },
 };

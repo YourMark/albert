@@ -264,6 +264,23 @@ class SkillTest extends TestCase {
 	}
 
 	/**
+	 * A skill with both an unmet named precondition and a failing `when`
+	 * reports both reasons at once, not just the named one: fixing the named
+	 * precondition alone should not leave the site owner surprised to find
+	 * the skill is still unavailable for an unrelated reason never mentioned.
+	 *
+	 * @return void
+	 */
+	public function test_status_combines_an_unmet_precondition_and_a_failing_when(): void {
+		$skill  = new Skill( 'both', 'Named plus when.', '', 'Body.', [ 'woocommerce' ], static fn (): bool => false );
+		$status = $skill->status();
+
+		$this->assertFalse( $status['available'] );
+		$this->assertStringContainsString( 'WooCommerce', $status['label'] );
+		$this->assertStringContainsString( "isn't met", $status['label'] );
+	}
+
+	/**
 	 * The is_available() shorthand never disagrees with status()['available'];
 	 * the Skills screen and the model-facing index both have to be able to
 	 * trust either one.

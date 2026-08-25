@@ -109,17 +109,6 @@ abstract class AbstractReactPage implements Hookable {
 	}
 
 	/**
-	 * Whether to wire `wp_set_script_translations()` for this screen's
-	 * script.
-	 *
-	 * @return bool
-	 * @since 1.4.1
-	 */
-	protected function needs_translations(): bool {
-		return true;
-	}
-
-	/**
 	 * An unmet environment requirement to show instead of the normal
 	 * build/mount-point flow, or null when there is none.
 	 *
@@ -309,8 +298,6 @@ abstract class AbstractReactPage implements Hookable {
 			'before'
 		);
 
-		if ( $this->needs_translations() ) {
-			wp_set_script_translations( $script_handle, 'albert-ai-butler' );
-		}
+		wp_set_script_translations( $script_handle, 'albert-ai-butler' );
 	}
 }

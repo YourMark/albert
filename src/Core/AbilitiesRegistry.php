@@ -2,7 +2,8 @@
 /**
  * Abilities Registry
  *
- * Supplier map, source lookup, and default-state logic for registered abilities.
+ * Source map, category grouping, and default-state logic for registered
+ * abilities.
  *
  * @package Albert
  * @subpackage Core
@@ -17,76 +18,97 @@ use Albert\Vendor\WP\MCP\Abilities\McpAbilityExposure;
 /**
  * Abilities Registry class
  *
- * Supplier map, category grouping, and source lookup for registered abilities.
+ * Source map, category grouping, and per-ability source lookup for
+ * registered abilities.
  *
  * @since 1.0.0
  */
 class AbilitiesRegistry {
 
 	/**
-	 * Cached supplier map, populated on first call to get_suppliers().
+	 * Cached source map, populated on first call to get_sources().
 	 *
 	 * @since 1.1.0
 	 * @var array<string, string>|null
 	 */
-	private static ?array $suppliers_cache = null;
+	private static ?array $sources_cache = null;
 
 	/**
-	 * Get the curated supplier map.
+	 * Get the curated source map.
 	 *
 	 * Maps an ability-id prefix (the namespace before the first `/`) to a
-	 * human-readable supplier label. Addons can register their own suppliers
-	 * via the `albert/abilities/suppliers` filter so that a custom prefix like
-	 * `mycompany/` shows up with a branded label in the admin filter dropdown.
+	 * human-readable source label: Albert, a third-party plugin, WordPress
+	 * core, a theme, or custom code, whatever registered abilities under that
+	 * prefix. Addons can register their own via the `albert/abilities/sources`
+	 * filter so that a custom prefix like `mycompany/` shows up with a
+	 * branded label in the admin filter dropdown.
 	 *
 	 * Built-in entries cover the prefixes Albert knows about today. Anything
 	 * not listed falls through to a prettified version of the prefix in
 	 * {@see self::get_ability_source()}.
 	 *
-	 * @return array<string, string> Prefix => supplier label.
+	 * @return array<string, string> Prefix => source label.
 	 * @since 1.1.0
 	 */
-	public static function get_suppliers(): array {
-		if ( self::$suppliers_cache !== null ) {
-			return self::$suppliers_cache;
+	public static function get_sources(): array {
+		if ( self::$sources_cache !== null ) {
+			return self::$sources_cache;
 		}
 
-		$suppliers = [
+		$sources = [
 			'core'   => __( 'WordPress core', 'albert-ai-butler' ),
 			'albert' => __( 'Albert', 'albert-ai-butler' ),
 			'woo'    => __( 'WooCommerce', 'albert-ai-butler' ),
 			'acf'    => __( 'ACF', 'albert-ai-butler' ),
 		];
 
+		// Deprecated: superseded by `albert/abilities/sources` below. Still
+		// applied first so an addon that only ever hooked the old filter name
+		// keeps working exactly as before, unchanged.
+		$sources = apply_filters_deprecated( 'albert/abilities/suppliers', [ $sources ], '1.4.0', 'albert/abilities/sources' );
+
 		/**
-		 * Filters the curated supplier map.
+		 * Filters the curated source map.
 		 *
 		 * Allows addons and site code to register their own ability-id prefix
-		 * under a branded supplier label. The array is keyed by prefix (the
+		 * under a branded source label. The array is keyed by prefix (the
 		 * namespace before the first `/` in an ability id) and maps to the
 		 * human-readable label shown in the admin filter dropdown and the
 		 * expanded row details.
 		 *
-		 * @since 1.1.0
+		 * @since 1.4.0
 		 *
-		 * @param array<string, string> $suppliers Prefix => supplier label.
+		 * @param array<string, string> $sources Prefix => source label.
 		 */
-		self::$suppliers_cache = apply_filters( 'albert/abilities/suppliers', $suppliers );
+		self::$sources_cache = apply_filters( 'albert/abilities/sources', $sources );
 
-		return self::$suppliers_cache;
+		return self::$sources_cache;
 	}
 
 	/**
-	 * Get the supplier information for an ability.
+	 * Get the curated source map.
 	 *
-	 * Looks the ability's prefix up in the curated supplier map
-	 * ({@see self::get_suppliers()}). Unknown prefixes fall back to a
+	 * @return array<string, string> Prefix => source label.
+	 * @since      1.1.0
+	 * @deprecated 1.4.0 Use {@see self::get_sources()} instead.
+	 */
+	public static function get_suppliers(): array {
+		_deprecated_function( __METHOD__, '1.4.0', self::class . '::get_sources' );
+
+		return self::get_sources();
+	}
+
+	/**
+	 * Get the source information for an ability.
+	 *
+	 * Looks the ability's prefix up in the curated source map
+	 * ({@see self::get_sources()}). Unknown prefixes fall back to a
 	 * prettified version of the prefix itself so every ability always
-	 * has a supplier label in the UI.
+	 * has a source label in the UI.
 	 *
 	 * @param string $ability_name Ability name/slug, e.g. `albert/create-post`.
 	 *
-	 * @return array{slug: string, label: string} Supplier slug + human label.
+	 * @return array{slug: string, label: string} Source slug + human label.
 	 * @since 1.0.0
 	 */
 	public static function get_ability_source( string $ability_name ): array {
@@ -100,12 +122,12 @@ class AbilitiesRegistry {
 			];
 		}
 
-		$suppliers = self::get_suppliers();
+		$sources = self::get_sources();
 
-		if ( isset( $suppliers[ $prefix ] ) ) {
+		if ( isset( $sources[ $prefix ] ) ) {
 			return [
 				'slug'  => $prefix,
-				'label' => $suppliers[ $prefix ],
+				'label' => $sources[ $prefix ],
 			];
 		}
 
@@ -311,7 +333,7 @@ class AbilitiesRegistry {
 	 * Abilities expose only a `permission_callback` (often delegating to a core
 	 * REST route), not a declared capability string, so this is a best-effort
 	 * value for display. An ability can declare an exact capability in its
-	 * `meta['capability']`; otherwise we infer one from its supplier and
+	 * `meta['capability']`; otherwise we infer one from its source and
 	 * operation. Either way the `albert/abilities/required_capability` filter
 	 * gets the final say, so abilities or add-ons can correct it precisely.
 	 *
@@ -343,7 +365,7 @@ class AbilitiesRegistry {
 	}
 
 	/**
-	 * Infer a likely capability from an ability's id, supplier and operation.
+	 * Infer a likely capability from an ability's id, source and operation.
 	 *
 	 * Heuristic only — see {@see self::resolve_required_capability()}.
 	 *

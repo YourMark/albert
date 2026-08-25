@@ -17,14 +17,14 @@ use ReflectionClass;
 use WP_Ability;
 
 /**
- * resolve_required_capability() tests.
+ * Tests for resolve_required_capability().
  *
  * @covers \Albert\Core\AbilitiesRegistry::resolve_required_capability
  */
 class RequiredCapabilityTest extends TestCase {
 
 	/**
-	 * Reset the memoised supplier cache and hook recorder before each test.
+	 * Reset the memoised source cache and hook recorder before each test.
 	 *
 	 * @return void
 	 */
@@ -35,7 +35,7 @@ class RequiredCapabilityTest extends TestCase {
 		$GLOBALS['albert_test_options'] = [];
 
 		$reflection = new ReflectionClass( AbilitiesRegistry::class );
-		$cache      = $reflection->getProperty( 'suppliers_cache' );
+		$cache      = $reflection->getProperty( 'sources_cache' );
 		$cache->setAccessible( true );
 		$cache->setValue( null, null );
 	}
@@ -102,11 +102,11 @@ class RequiredCapabilityTest extends TestCase {
 	}
 
 	/**
-	 * WooCommerce-supplied abilities map to manage_woocommerce.
+	 * WooCommerce-sourced abilities map to manage_woocommerce.
 	 *
 	 * @return void
 	 */
-	public function test_woo_supplier_requires_manage_woocommerce(): void {
+	public function test_woo_source_requires_manage_woocommerce(): void {
 		$ability = new WP_Ability(
 			'woo/find-products',
 			[ 'annotations' => [ 'readonly' => true ] ]

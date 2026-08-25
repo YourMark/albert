@@ -27,14 +27,13 @@ const DEFAULT_VIEW = {
 	perPage: 20,
 	titleField: 'slug',
 	showMedia: false,
-	fields: [ 'source', 'status' ],
+	fields: [ 'source' ],
 	sort: { field: 'slug', direction: 'asc' },
 	filters: [],
 	layout: {
 		styles: {
 			slug: { minWidth: 240 },
 			source: { minWidth: 120, maxWidth: 200 },
-			status: { width: 84 },
 		},
 	},
 };

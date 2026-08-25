@@ -14,7 +14,6 @@ import {
 // filterBy config in fields.js — keep the two in sync if a filter is added.
 const FILTERS = {
 	source: { multiple: false, operator: 'is' },
-	status: { multiple: false, operator: 'is' },
 };
 
 const DEFAULT_SORT = { field: 'slug', direction: 'asc' };

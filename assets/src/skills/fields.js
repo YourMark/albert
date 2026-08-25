@@ -1,24 +1,14 @@
 /**
  * DataViews field definitions for the Skills screen.
  *
- * Source and Enabled are filterable (single-select); Skill/summary feed
- * global search only. The Enabled column reuses Abilities' own toggle
- * (FormToggle, same component, same position, same word), always disabled
- * here: nothing on this screen is a setting yet, this is a live, site-computed
- * fact (does WooCommerce being active, or the block editor being in use,
- * currently hold), not something a person switches. A disabled toggle plus a
- * labelled reason is the established pattern for a control gated on a
- * condition elsewhere, clearer than a pill because it matches the real
- * Enabled toggle on Abilities pixel for pixel rather than inventing a second
- * visual language for the same kind of fact.
+ * Source is filterable (single-select); Skill/summary feed global search
+ * only. No enable/disable control yet: whether a skill's precondition
+ * currently holds is computed (see Skill::status()) and still rides along in
+ * the REST payload for a later version to build on, but this screen doesn't
+ * surface it as a toggle, column, or filter until there's a real, enforceable
+ * on/off to show.
  */
-import { FormToggle } from '@wordpress/components';
-import { __, sprintf } from '@wordpress/i18n';
-
-const STATUS_ELEMENTS = [
-	{ value: 'enabled', label: __( 'Enabled', 'albert-ai-butler' ) },
-	{ value: 'disabled', label: __( 'Disabled', 'albert-ai-butler' ) },
-];
+import { __ } from '@wordpress/i18n';
 
 const SINGLE_SELECT = { operators: [ 'is' ], isPrimary: true };
 
@@ -62,30 +52,6 @@ function SourceBadge( { item } ) {
 }
 
 /**
- * The enabled toggle: on when the skill's precondition currently holds, off
- * when it doesn't. Always disabled, there is no click handler, it reports a
- * live fact rather than taking an action.
- *
- * One label template regardless of state, same as Abilities' own
- * EnabledToggle: the switch's checked state already says on or off, so the
- * label only has to name what it controls, not repeat the state in words.
- *
- * @param {Object} props      Render props.
- * @param {Object} props.item The skill row.
- * @return {Element} The toggle.
- */
-function EnabledToggle( { item } ) {
-	const label = sprintf(
-		// translators: %s: skill slug.
-		__( '%s enabled', 'albert-ai-butler' ),
-		item.slug
-	);
-	return (
-		<FormToggle checked={ item.available } disabled aria-label={ label } />
-	);
-}
-
-/**
  * Build the DataViews fields array.
  *
  * @param {Object} options          Options.
@@ -122,16 +88,6 @@ export function getFields( { sources } ) {
 			filterBy: SINGLE_SELECT,
 			getValue: ( { item } ) => item.source,
 			render: SourceBadge,
-		},
-		{
-			id: 'status',
-			label: __( 'Enabled', 'albert-ai-butler' ),
-			enableHiding: false,
-			elements: STATUS_ELEMENTS,
-			filterBy: SINGLE_SELECT,
-			getValue: ( { item } ) =>
-				item.available ? 'enabled' : 'disabled',
-			render: EnabledToggle,
 		},
 	];
 }

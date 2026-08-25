@@ -2,7 +2,7 @@
  * DataViews field definitions for the Abilities screen.
  *
  * Operation is the read/write/delete value derived server-side from the
- * ability's annotations. Category, Operation, Supplier and Status are filterable
+ * ability's annotations. Category, Operation, Source and Status are filterable
  * (single-select); Ability/ID/Description feed global search only.
  */
 import { FormToggle } from '@wordpress/components';
@@ -157,12 +157,12 @@ const BADGE_FILTER = { operators: [ 'isAny' ], isPrimary: true };
  *
  * @param {Object}   options            Options.
  * @param {Array}    options.categories Category filter elements ({ value, label }).
- * @param {Array}    options.suppliers  Supplier filter elements ({ value, label }).
+ * @param {Array}    options.sources    Source filter elements ({ value, label }).
  * @param {Array}    options.badges     Badge filter elements ({ value, label }).
  * @param {Function} options.onToggle   Toggle handler (item, nextEnabled).
  * @return {Array} DataViews fields.
  */
-export function getFields( { categories, suppliers, badges, onToggle } ) {
+export function getFields( { categories, sources, badges, onToggle } ) {
 	return [
 		{
 			id: 'label',
@@ -214,12 +214,12 @@ export function getFields( { categories, suppliers, badges, onToggle } ) {
 			render: OperationBadge,
 		},
 		{
-			id: 'supplier',
-			label: __( 'Supplier', 'albert-ai-butler' ),
-			elements: suppliers,
+			id: 'source',
+			label: __( 'Source', 'albert-ai-butler' ),
+			elements: sources,
 			filterBy: SINGLE_SELECT,
-			getValue: ( { item } ) => item.supplier,
-			render: ( { item } ) => item.supplierLabel,
+			getValue: ( { item } ) => item.source,
+			render: ( { item } ) => item.sourceLabel,
 		},
 		// Generic add-on indicator dimension. getValue returns the row's badge
 		// ids so the `contains` operator can match rows carrying a given badge.

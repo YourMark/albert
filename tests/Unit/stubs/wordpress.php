@@ -131,6 +131,56 @@ if ( ! function_exists( 'apply_filters' ) ) {
 	}
 }
 
+if ( ! function_exists( '_deprecated_hook' ) ) {
+	/**
+	 * Stub _deprecated_hook that records calls to $GLOBALS['albert_test_deprecated_hooks'].
+	 *
+	 * @param string $hook_name   Hook name being deprecated.
+	 * @param string $version     Version the hook was deprecated in.
+	 * @param string $replacement Replacement hook name.
+	 * @param string $message     Optional extra message.
+	 */
+	function _deprecated_hook( string $hook_name, string $version, string $replacement = '', string $message = '' ): void {
+		if ( ! isset( $GLOBALS['albert_test_deprecated_hooks'] ) ) {
+			$GLOBALS['albert_test_deprecated_hooks'] = [];
+		}
+
+		$GLOBALS['albert_test_deprecated_hooks'][] = [
+			'hook_name'   => $hook_name,
+			'version'     => $version,
+			'replacement' => $replacement,
+		];
+	}
+}
+
+if ( ! function_exists( 'apply_filters_deprecated' ) ) {
+	/**
+	 * Stub apply_filters_deprecated. Mirrors core closely enough for tests:
+	 * only records the deprecation (via _deprecated_hook) when the test has
+	 * actually configured something to hook the deprecated name — the same
+	 * has_filter() guard core applies before warning — then applies the value
+	 * through the same apply_filters() stub above, so hook-call recording and
+	 * override behaviour stay identical between the deprecated and the plain
+	 * path.
+	 *
+	 * @param string             $hook_name   Deprecated hook name.
+	 * @param array<int, mixed>  $args        Args passed to the hook; the first element is the value being filtered.
+	 * @param string             $version     Version the hook was deprecated in.
+	 * @param string             $replacement Replacement hook name.
+	 * @param string             $message     Optional extra message.
+	 *
+	 * @return mixed
+	 */
+	function apply_filters_deprecated( string $hook_name, array $args, string $version, string $replacement = '', string $message = '' ): mixed {
+		if ( isset( $GLOBALS['albert_test_filter_returns'][ $hook_name ] ) || isset( $GLOBALS['albert_test_filter_callbacks'][ $hook_name ] ) ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Test stub recording to an array, not real output; the sniff matches on the real function's name.
+			_deprecated_hook( $hook_name, $version, $replacement, $message );
+		}
+
+		return apply_filters( $hook_name, ...$args );
+	}
+}
+
 if ( ! function_exists( 'get_option' ) ) {
 	/**
 	 * Stub get_option that reads from $GLOBALS['albert_test_options'].

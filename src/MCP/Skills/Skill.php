@@ -52,6 +52,14 @@ class Skill {
 	 * without writing a closure, and what lets a bundled skill declare its
 	 * condition in its own frontmatter.
 	 *
+	 * Must list exactly the keys {@see self::condition_definitions()} defines.
+	 * A literal array, not derived from that method, because PHP class
+	 * constants cannot be initialised from a method call; nothing in this
+	 * codebase reads this constant to validate a condition name (that
+	 * happens in {@see self::condition_holds()} against the method instead),
+	 * so it exists purely as the documented vocabulary and must be kept in
+	 * sync by hand when a condition is added or removed.
+	 *
 	 * @since 1.4.0
 	 * @var list<string>
 	 */
@@ -206,9 +214,10 @@ class Skill {
 	 * and treating it as met anyway would be answering "yes" to a question
 	 * nobody understood.
 	 *
-	 * Every unmet `requires` entry is reported at once: a skill declaring two
-	 * preconditions that both fail should not need a second look after the
-	 * site owner fixes only the first one named.
+	 * Every unmet reason is reported at once, `requires` entries and a failing
+	 * `when` alike: a skill declaring two preconditions, or one named
+	 * precondition plus a `when`, that all fail should not need a second look
+	 * after the site owner fixes only the first one named.
 	 *
 	 * "Always enabled." is reserved for a skill with no `requires` and no
 	 * `when` at all. One gated only by a currently-passing `when` callable can
@@ -227,21 +236,26 @@ class Skill {
 			}
 		}
 
-		if ( $unmet !== [] ) {
-			return [
-				'available' => false,
-				'label'     => sprintf(
+		$when_unmet = is_callable( $this->when ) && ! call_user_func( $this->when );
+
+		if ( $unmet !== [] || $when_unmet ) {
+			$label = $unmet !== []
+				? sprintf(
 					/* translators: %s: the unmet preconditions, comma-separated, e.g. "WooCommerce, the block editor". */
 					__( 'Requires %s.', 'albert-ai-butler' ),
 					implode( ', ', $unmet )
-				),
-			];
-		}
+				)
+				: '';
 
-		if ( is_callable( $this->when ) && ! call_user_func( $this->when ) ) {
+			if ( $when_unmet ) {
+				$label = $label !== ''
+					? $label . ' ' . __( "A site condition isn't met.", 'albert-ai-butler' )
+					: __( "A site condition isn't met.", 'albert-ai-butler' );
+			}
+
 			return [
 				'available' => false,
-				'label'     => __( "A site condition isn't met.", 'albert-ai-butler' ),
+				'label'     => $label,
 			];
 		}
 
@@ -299,6 +313,14 @@ class Skill {
 	}
 
 	/**
+	 * Per-request memo of {@see self::condition_definitions()}.
+	 *
+	 * @since 1.4.1
+	 * @var array<string, array{check: callable(): bool, requirement: string, active: string}>|null
+	 */
+	private static ?array $condition_definitions = null;
+
+	/**
 	 * Everything this class knows about each named precondition: how to check
 	 * it, and its two phrasings (a requirement, "Requires %s.", and the
 	 * reason it currently holds, "%s.").
@@ -306,13 +328,20 @@ class Skill {
 	 * One map instead of three parallel switches over the same vocabulary, so
 	 * a fifth condition (the vocabulary is expected to grow, see {@see
 	 * self::KNOWN_CONDITIONS}) is one array entry to add, not three switch
-	 * statements to keep in sync by hand.
+	 * statements to keep in sync by hand. Built once per request: `status()`
+	 * calls into this map up to three times per skill, once per requires
+	 * entry evaluated, and every skill's status is computed on every Skills
+	 * screen load and every MCP discovery call.
 	 *
 	 * @return array<string, array{check: callable(): bool, requirement: string, active: string}>
 	 * @since 1.4.1
 	 */
 	private static function condition_definitions(): array {
-		return [
+		if ( self::$condition_definitions !== null ) {
+			return self::$condition_definitions;
+		}
+
+		self::$condition_definitions = [
 			'woocommerce'    => [
 				'check'       => static fn (): bool => class_exists( 'WooCommerce' ),
 				'requirement' => __( 'WooCommerce', 'albert-ai-butler' ),
@@ -338,6 +367,8 @@ class Skill {
 				'active'      => __( 'this is a multisite network', 'albert-ai-butler' ),
 			],
 		];
+
+		return self::$condition_definitions;
 	}
 
 	/**

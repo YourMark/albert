@@ -3,18 +3,12 @@
  *
  * Same composition as the Abilities toolbar (search + aligned <select>
  * filters left, density/layout right), scaled down to what Skills actually
- * has to filter by: source and whether a skill is currently enabled.
+ * has to filter by: source.
  */
 import { DataViews } from '@wordpress/dataviews/wp';
 import { SelectControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { FilterSelect, setSort, withAll } from '../shared/ToolbarControls';
-
-const STATUS_OPTIONS = [
-	{ value: '', label: __( 'Any status', 'albert-ai-butler' ) },
-	{ value: 'enabled', label: __( 'Enabled', 'albert-ai-butler' ) },
-	{ value: 'disabled', label: __( 'Disabled', 'albert-ai-butler' ) },
-];
 
 const SORT_OPTIONS = [
 	{ value: 'slug', label: __( 'Sort: Name', 'albert-ai-butler' ) },
@@ -44,13 +38,6 @@ export default function Toolbar( { view, onChangeView, sources } ) {
 						sources,
 						__( 'All sources', 'albert-ai-butler' )
 					) }
-				/>
-				<FilterSelect
-					view={ view }
-					onChangeView={ onChangeView }
-					label={ __( 'Filter by status', 'albert-ai-butler' ) }
-					field="status"
-					options={ STATUS_OPTIONS }
 				/>
 			</div>
 			<div className="albert-toolbar__group albert-toolbar__group--end">
