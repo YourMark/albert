@@ -120,7 +120,7 @@ class TokenService {
 		if ( $row->redeemed_at !== null ) {
 			return new WP_Error(
 				'token_already_used',
-				__( 'This token has already been used.', 'albert-ai-butler' ),
+				__( 'This token is invalid or has already been used.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -138,7 +138,7 @@ class TokenService {
 		if ( ! $this->repository->mark_redeemed( (int) $row->id ) ) {
 			return new WP_Error(
 				'token_already_used',
-				__( 'This token has already been used.', 'albert-ai-butler' ),
+				__( 'This token is invalid or has already been used.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
