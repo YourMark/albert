@@ -65,7 +65,7 @@ class SingleUseTokenRepositoryTest extends TestCase {
 	}
 
 	/**
-	 * find() is scoped by purpose — a hash minted under one purpose is invisible to another.
+	 * Find() is scoped by purpose — a hash minted under one purpose is invisible to another.
 	 *
 	 * @return void
 	 */
@@ -106,7 +106,7 @@ class SingleUseTokenRepositoryTest extends TestCase {
 	}
 
 	/**
-	 * cleanup_expired() removes rows expired more than a day ago, and keeps
+	 * Cleanup_expired() removes rows expired more than a day ago, and keeps
 	 * both unexpired rows and rows only recently expired.
 	 *
 	 * @return void

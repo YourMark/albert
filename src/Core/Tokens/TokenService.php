@@ -14,21 +14,10 @@ defined( 'ABSPATH' ) || exit;
 use WP_Error;
 
 /**
- * TokenService class
- *
- * The reusable single-use hashed token primitive: mint an opaque token,
- * hash it before it ever touches storage, and redeem it exactly once. Media
- * upload tickets (doc 32) are the first consumer, keyed under the
- * 'media_upload' purpose; doc 40's pending-action confirmations (1.5.0) are
- * expected to reuse this same service under a purpose of their own rather
- * than growing a parallel mechanism.
- *
- * Deliberately generic: nothing here knows what a "ticket" or a "pending
- * action" is. A consumer supplies a `purpose` string to partition its tokens
- * from every other consumer's, and an arbitrary `payload` array carrying
- * whatever it needs back at redemption time. Error codes are equally
- * generic ('token_expired', 'token_already_used') — translating those into
- * a consumer's own vocabulary (e.g. 'ticket_expired') is the consumer's job.
+ * Reusable single-use hashed token primitive: mint an opaque token, hash it
+ * before storage, redeem it exactly once. Deliberately generic — a consumer
+ * supplies a `purpose` to partition its tokens and translates the generic
+ * error codes into its own vocabulary.
  *
  * @since 1.4.0
  */

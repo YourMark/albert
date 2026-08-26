@@ -115,10 +115,7 @@ class SingleUseTokenRepository {
 	/**
 	 * Delete rows that expired more than a day ago, redeemed or not.
 	 *
-	 * A short grace period keeps recently-expired rows around briefly for
-	 * troubleshooting; nothing relies on their presence for correctness —
-	 * redemption is already guarded by {@see self::mark_redeemed()} and the
-	 * expiry check in {@see TokenService::redeem()}.
+	 * The grace period is just for troubleshooting; nothing relies on it for correctness.
 	 *
 	 * @return int Number of rows deleted.
 	 * @since 1.4.0

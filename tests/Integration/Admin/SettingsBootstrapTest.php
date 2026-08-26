@@ -12,7 +12,7 @@
 namespace Albert\Tests\Integration\Admin;
 
 use Albert\Admin\SettingsBootstrap;
-use Albert\Media\UploadTickets\UploadTicketService;
+use Albert\Media\UploadLinks\UploadLinkService;
 use Albert\Tests\TestCase;
 
 /**
@@ -39,7 +39,7 @@ class SettingsBootstrapTest extends TestCase {
 
 	/**
 	 * The Uploads section is registered with the expected single field,
-	 * wired to UploadTicketService's option and sanitizer.
+	 * wired to UploadLinkService's option and sanitizer.
 	 *
 	 * @return void
 	 */
@@ -50,10 +50,10 @@ class SettingsBootstrapTest extends TestCase {
 
 		$field = $section['fields'][0];
 		$this->assertSame( 'custom', $field['type'] );
-		$this->assertSame( UploadTicketService::MAX_BYTES_OPTION, $field['option_name'] );
-		$this->assertSame( UploadTicketService::DEFAULT_MAX_MB, $field['default'] );
-		$this->assertSame( [ UploadTicketService::class, 'render_max_mb_field' ], $field['render_callback'] );
-		$this->assertSame( [ UploadTicketService::class, 'sanitize_max_mb' ], $field['sanitize_callback'] );
+		$this->assertSame( UploadLinkService::MAX_BYTES_OPTION, $field['option_name'] );
+		$this->assertSame( UploadLinkService::DEFAULT_MAX_MB, $field['default'] );
+		$this->assertSame( [ UploadLinkService::class, 'render_max_mb_field' ], $field['render_callback'] );
+		$this->assertSame( [ UploadLinkService::class, 'sanitize_max_mb' ], $field['sanitize_callback'] );
 	}
 
 	/**

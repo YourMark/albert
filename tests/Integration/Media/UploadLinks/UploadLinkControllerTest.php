@@ -1,8 +1,8 @@
 <?php
 /**
- * Integration tests for the UploadTicketController REST endpoint.
+ * Integration tests for the UploadLinkController REST endpoint.
  *
- * UploadTicketServiceTest already covers the domain logic in isolation;
+ * UploadLinkServiceTest already covers the domain logic in isolation;
  * this file covers the REST wiring itself — route registration, header
  * extraction, multipart file receipt, the byte-cap streaming path, and
  * that a redemption attempt is logged through Albert's execution log.
@@ -10,40 +10,40 @@
  * @package Albert
  */
 
-namespace Albert\Tests\Integration\Media\UploadTickets;
+namespace Albert\Tests\Integration\Media\UploadLinks;
 
 use Albert\Core\Plugin;
 use Albert\Database\Installer;
 use Albert\Database\Tables;
-use Albert\Media\UploadTickets\UploadTicketController;
-use Albert\Media\UploadTickets\UploadTicketService;
+use Albert\Media\UploadLinks\UploadLinkController;
+use Albert\Media\UploadLinks\UploadLinkService;
 use Albert\Tests\TestCase;
 use WP_Error;
 use WP_REST_Request;
 
 /**
- * UploadTicketController integration tests.
+ * UploadLinkController integration tests.
  *
- * @covers \Albert\Media\UploadTickets\UploadTicketController
+ * @covers \Albert\Media\UploadLinks\UploadLinkController
  */
-class UploadTicketControllerTest extends TestCase {
+class UploadLinkControllerTest extends TestCase {
 
 	/**
-	 * The ticket service, shared with the controller under test.
+	 * The link service, shared with the controller under test.
 	 *
-	 * @var UploadTicketService
+	 * @var UploadLinkService
 	 */
-	private UploadTicketService $tickets;
+	private UploadLinkService $links;
 
 	/**
 	 * The controller under test.
 	 *
-	 * @var UploadTicketController
+	 * @var UploadLinkController
 	 */
-	private UploadTicketController $controller;
+	private UploadLinkController $controller;
 
 	/**
-	 * An administrator to mint tickets for.
+	 * An administrator to mint links for.
 	 *
 	 * @var int
 	 */
@@ -65,8 +65,8 @@ class UploadTicketControllerTest extends TestCase {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Test reset.
 		$wpdb->query( $wpdb->prepare( 'TRUNCATE TABLE %i', Tables::ability_log() ) );
 
-		$this->tickets    = new UploadTicketService();
-		$this->controller = new UploadTicketController( $this->tickets );
+		$this->links    = new UploadLinkService();
+		$this->controller = new UploadLinkController( $this->links );
 		$this->controller->register_hooks();
 
 		do_action( 'rest_api_init' );
@@ -107,7 +107,7 @@ class UploadTicketControllerTest extends TestCase {
 		copy( $path, $tmp_copy );
 
 		$request = new WP_REST_Request( 'POST', '/' . Plugin::rest_namespace() . '/media/uploads' );
-		$request->set_header( UploadTicketService::TOKEN_HEADER, $token );
+		$request->set_header( UploadLinkService::TOKEN_HEADER, $token );
 		$request->set_file_params(
 			[
 				'file' => [
@@ -137,7 +137,7 @@ class UploadTicketControllerTest extends TestCase {
 	}
 
 	/**
-	 * A request with no token header is rejected without touching the ticket service.
+	 * A request with no token header is rejected without touching the link service.
 	 *
 	 * @return void
 	 */
@@ -146,20 +146,20 @@ class UploadTicketControllerTest extends TestCase {
 		$response = rest_get_server()->dispatch( $request );
 
 		$this->assertSame( 401, $response->get_status() );
-		$this->assertSame( 'ticket_already_used', $response->get_data()['code'] );
+		$this->assertSame( 'link_already_used', $response->get_data()['code'] );
 	}
 
 	// ─── Happy path ─────────────────────────────────────────────────
 
 	/**
-	 * A valid multipart upload redeems the ticket and creates an attachment.
+	 * A valid multipart upload redeems the link and creates an attachment.
 	 *
 	 * @return void
 	 */
 	public function test_multipart_upload_creates_attachment(): void {
-		$ticket = $this->tickets->mint( $this->admin_id, [] );
+		$link = $this->links->mint( $this->admin_id, [] );
 
-		$request  = $this->multipart_request( $ticket['upload_token'], $this->jpg_fixture(), 'photo.jpg' );
+		$request  = $this->multipart_request( $link['upload_token'], $this->jpg_fixture(), 'photo.jpg' );
 		$response = rest_get_server()->dispatch( $request );
 
 		$this->assertSame( 201, $response->get_status() );
@@ -175,9 +175,9 @@ class UploadTicketControllerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_put_is_also_accepted(): void {
-		$ticket = $this->tickets->mint( $this->admin_id, [] );
+		$link = $this->links->mint( $this->admin_id, [] );
 
-		$request = $this->multipart_request( $ticket['upload_token'], $this->jpg_fixture(), 'photo.jpg' );
+		$request = $this->multipart_request( $link['upload_token'], $this->jpg_fixture(), 'photo.jpg' );
 		$request->set_method( 'PUT' );
 
 		$response = rest_get_server()->dispatch( $request );
@@ -187,15 +187,15 @@ class UploadTicketControllerTest extends TestCase {
 	}
 
 	/**
-	 * mint() reports which methods the endpoint accepts, matching what's
+	 * Mint() reports which methods the endpoint accepts, matching what's
 	 * actually registered.
 	 *
 	 * @return void
 	 */
 	public function test_mint_reports_accepted_methods(): void {
-		$ticket = $this->tickets->mint( $this->admin_id, [] );
+		$link = $this->links->mint( $this->admin_id, [] );
 
-		$this->assertSame( UploadTicketService::HTTP_METHODS, $ticket['method'] );
+		$this->assertSame( UploadLinkService::HTTP_METHODS, $link['method'] );
 
 		$routes = rest_get_server()->get_routes()[ '/' . Plugin::rest_namespace() . '/media/uploads' ];
 		foreach ( [ 'POST', 'PUT' ] as $method ) {
@@ -204,31 +204,31 @@ class UploadTicketControllerTest extends TestCase {
 	}
 
 	/**
-	 * Redeeming the same ticket twice fails the second time end to end.
+	 * Redeeming the same link twice fails the second time end to end.
 	 *
 	 * @return void
 	 */
 	public function test_second_redemption_via_rest_fails(): void {
-		$ticket = $this->tickets->mint( $this->admin_id, [] );
+		$link = $this->links->mint( $this->admin_id, [] );
 
-		$first  = rest_get_server()->dispatch( $this->multipart_request( $ticket['upload_token'], $this->jpg_fixture(), 'photo.jpg' ) );
-		$second = rest_get_server()->dispatch( $this->multipart_request( $ticket['upload_token'], $this->jpg_fixture(), 'photo.jpg' ) );
+		$first  = rest_get_server()->dispatch( $this->multipart_request( $link['upload_token'], $this->jpg_fixture(), 'photo.jpg' ) );
+		$second = rest_get_server()->dispatch( $this->multipart_request( $link['upload_token'], $this->jpg_fixture(), 'photo.jpg' ) );
 
 		$this->assertSame( 201, $first->get_status() );
 		$this->assertSame( 400, $second->get_status() );
-		$this->assertSame( 'ticket_already_used', $second->get_data()['code'] );
+		$this->assertSame( 'link_already_used', $second->get_data()['code'] );
 	}
 
 	/**
-	 * A multipart file larger than the ticket's cap is rejected without
+	 * A multipart file larger than the link's cap is rejected without
 	 * ever reaching content sniffing or sideload.
 	 *
 	 * @return void
 	 */
 	public function test_oversized_multipart_upload_is_rejected(): void {
-		$ticket = $this->tickets->mint( $this->admin_id, [ 'max_bytes' => 10 ] );
+		$link = $this->links->mint( $this->admin_id, [ 'max_bytes' => 10 ] );
 
-		$request  = $this->multipart_request( $ticket['upload_token'], $this->jpg_fixture(), 'photo.jpg' );
+		$request  = $this->multipart_request( $link['upload_token'], $this->jpg_fixture(), 'photo.jpg' );
 		$response = rest_get_server()->dispatch( $request );
 
 		$this->assertSame( 413, $response->get_status() );
@@ -238,7 +238,40 @@ class UploadTicketControllerTest extends TestCase {
 	}
 
 	/**
-	 * A ticket is spent even when the upload it was redeemed for then fails —
+	 * A zero-byte multipart file is rejected, matching the raw-body path's
+	 * existing `$total === 0` check in stream_to_temp_file() — the two
+	 * receive paths must enforce the same minimum, not silently accept an
+	 * empty file through multipart while rejecting it over raw body.
+	 *
+	 * @return void
+	 */
+	public function test_empty_multipart_upload_is_rejected(): void {
+		$link = $this->links->mint( $this->admin_id, [] );
+
+		$empty_file = wp_tempnam();
+
+		$request = new WP_REST_Request( 'POST', '/' . Plugin::rest_namespace() . '/media/uploads' );
+		$request->set_header( UploadLinkService::TOKEN_HEADER, $link['upload_token'] );
+		$request->set_file_params(
+			[
+				'file' => [
+					'name'     => 'empty.jpg',
+					'type'     => 'image/jpeg',
+					'tmp_name' => $empty_file,
+					'error'    => 0,
+					'size'     => 0,
+				],
+			]
+		);
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 400, $response->get_status() );
+		$this->assertSame( 'upload_error', $response->get_data()['code'] );
+	}
+
+	/**
+	 * A link is spent even when the upload it was redeemed for then fails —
 	 * a retry with a valid, correctly-sized file on the same token is refused,
 	 * not treated as another chance. Otherwise a failed large upload becomes
 	 * a retry oracle.
@@ -246,17 +279,17 @@ class UploadTicketControllerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_a_failed_upload_does_not_leave_the_ticket_retryable(): void {
-		$ticket = $this->tickets->mint( $this->admin_id, [ 'max_bytes' => 10 ] );
+		$link = $this->links->mint( $this->admin_id, [ 'max_bytes' => 10 ] );
 
-		$failed = rest_get_server()->dispatch( $this->multipart_request( $ticket['upload_token'], $this->jpg_fixture(), 'photo.jpg' ) );
+		$failed = rest_get_server()->dispatch( $this->multipart_request( $link['upload_token'], $this->jpg_fixture(), 'photo.jpg' ) );
 		$this->assertSame( 413, $failed->get_status() );
 
 		// Retry with the same (already-spent) token. Even a small enough file
 		// that would otherwise fit the cap must still be refused.
-		$retry = rest_get_server()->dispatch( $this->multipart_request( $ticket['upload_token'], $this->jpg_fixture(), 'photo.jpg' ) );
+		$retry = rest_get_server()->dispatch( $this->multipart_request( $link['upload_token'], $this->jpg_fixture(), 'photo.jpg' ) );
 
 		$this->assertSame( 400, $retry->get_status() );
-		$this->assertSame( 'ticket_already_used', $retry->get_data()['code'] );
+		$this->assertSame( 'link_already_used', $retry->get_data()['code'] );
 	}
 
 	// ─── Logging ────────────────────────────────────────────────────
@@ -269,15 +302,15 @@ class UploadTicketControllerTest extends TestCase {
 	public function test_successful_redemption_is_logged(): void {
 		global $wpdb;
 
-		$ticket = $this->tickets->mint( $this->admin_id, [] );
-		rest_get_server()->dispatch( $this->multipart_request( $ticket['upload_token'], $this->jpg_fixture(), 'photo.jpg' ) );
+		$link = $this->links->mint( $this->admin_id, [] );
+		rest_get_server()->dispatch( $this->multipart_request( $link['upload_token'], $this->jpg_fixture(), 'photo.jpg' ) );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test verification.
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
 				'SELECT * FROM %i WHERE ability_name = %s',
 				Tables::ability_log(),
-				UploadTicketController::LOG_ABILITY_ID
+				UploadLinkController::LOG_ABILITY_ID
 			)
 		);
 
@@ -295,7 +328,7 @@ class UploadTicketControllerTest extends TestCase {
 		global $wpdb;
 
 		$request = new WP_REST_Request( 'POST', '/' . Plugin::rest_namespace() . '/media/uploads' );
-		$request->set_header( UploadTicketService::TOKEN_HEADER, 'not-a-real-token' );
+		$request->set_header( UploadLinkService::TOKEN_HEADER, 'not-a-real-token' );
 		rest_get_server()->dispatch( $request );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test verification.
@@ -303,13 +336,71 @@ class UploadTicketControllerTest extends TestCase {
 			$wpdb->prepare(
 				'SELECT * FROM %i WHERE ability_name = %s',
 				Tables::ability_log(),
-				UploadTicketController::LOG_ABILITY_ID
+				UploadLinkController::LOG_ABILITY_ID
 			)
 		);
 
 		$this->assertNotNull( $row );
 		$this->assertSame( 'error', $row->status );
-		$this->assertSame( 'ticket_already_used', $row->error_code );
+		$this->assertSame( 'link_already_used', $row->error_code );
+	}
+
+	/**
+	 * A 'capability_revoked' rejection (the issuing user's upload_files was
+	 * revoked between mint and redemption) is logged against that real user,
+	 * not user_id 0 — the one failure mode where the issuing user IS known,
+	 * and the one an audit trail most needs attributed correctly.
+	 *
+	 * @return void
+	 */
+	public function test_capability_revoked_rejection_is_logged_with_the_real_user(): void {
+		global $wpdb;
+
+		$editor_id = self::factory()->user->create( [ 'role' => 'editor' ] );
+		$link    = $this->links->mint( $editor_id, [] );
+
+		get_userdata( $editor_id )->set_role( 'subscriber' );
+
+		$request = new WP_REST_Request( 'POST', '/' . Plugin::rest_namespace() . '/media/uploads' );
+		$request->set_header( UploadLinkService::TOKEN_HEADER, $link['upload_token'] );
+		rest_get_server()->dispatch( $request );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test verification.
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				'SELECT * FROM %i WHERE ability_name = %s AND error_code = %s',
+				Tables::ability_log(),
+				UploadLinkController::LOG_ABILITY_ID,
+				'capability_revoked'
+			)
+		);
+
+		$this->assertNotNull( $row );
+		$this->assertSame( $editor_id, (int) $row->user_id );
+	}
+
+	/**
+	 * The per-ability after_execute/{id} variant fires alongside the generic
+	 * hook, matching what BaseAbility::guarded_execute() fires for every
+	 * real ability — a listener bound to this specific (synthetic) id must
+	 * not be a silent dead end.
+	 *
+	 * @return void
+	 */
+	public function test_per_ability_after_execute_hook_fires(): void {
+		$fired = false;
+		add_action(
+			'albert/abilities/after_execute/' . UploadLinkController::LOG_ABILITY_ID,
+			static function () use ( &$fired ) {
+				$fired = true;
+			}
+		);
+
+		$request = new WP_REST_Request( 'POST', '/' . Plugin::rest_namespace() . '/media/uploads' );
+		$request->set_header( UploadLinkService::TOKEN_HEADER, 'not-a-real-token' );
+		rest_get_server()->dispatch( $request );
+
+		$this->assertTrue( $fired );
 	}
 
 	// ─── Byte-cap streaming (raw body path) ────────────────────────
@@ -362,7 +453,7 @@ class UploadTicketControllerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_stream_to_temp_file_assembles_multiple_chunks(): void {
-		$size    = UploadTicketController::STREAM_CHUNK_BYTES * 2 + 12345;
+		$size    = UploadLinkController::STREAM_CHUNK_BYTES * 2 + 12345;
 		$content = str_repeat( 'x', $size );
 		$stream  = fopen( 'php://memory', 'r+' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fopen -- In-memory test fixture, not a filesystem file.
 		fwrite( $stream, $content ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fwrite
@@ -385,13 +476,13 @@ class UploadTicketControllerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_stream_to_temp_file_enforces_cap_mid_chunk(): void {
-		$size    = UploadTicketController::STREAM_CHUNK_BYTES + 500;
+		$size    = UploadLinkController::STREAM_CHUNK_BYTES + 500;
 		$content = str_repeat( 'x', $size );
 		$stream  = fopen( 'php://memory', 'r+' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fopen -- In-memory test fixture, not a filesystem file.
 		fwrite( $stream, $content ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fwrite
 		rewind( $stream );
 
-		$result = $this->controller->stream_to_temp_file( $stream, UploadTicketController::STREAM_CHUNK_BYTES + 100 );
+		$result = $this->controller->stream_to_temp_file( $stream, UploadLinkController::STREAM_CHUNK_BYTES + 100 );
 		fclose( $stream ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fclose
 
 		$this->assertInstanceOf( WP_Error::class, $result );

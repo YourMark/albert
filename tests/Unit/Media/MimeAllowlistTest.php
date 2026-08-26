@@ -33,7 +33,7 @@ class MimeAllowlistTest extends TestCase {
 	}
 
 	/**
-	 * intersect() keeps only entries whose MIME type was requested.
+	 * Intersect() keeps only entries whose MIME type was requested.
 	 *
 	 * @return void
 	 */
@@ -50,7 +50,7 @@ class MimeAllowlistTest extends TestCase {
 	}
 
 	/**
-	 * intersect() is case-insensitive on the MIME type string.
+	 * Intersect() is case-insensitive on the MIME type string.
 	 *
 	 * @return void
 	 */
@@ -84,7 +84,7 @@ class MimeAllowlistTest extends TestCase {
 	}
 
 	/**
-	 * mime_list() flattens to unique MIME type strings.
+	 * Mime_list() flattens to unique MIME type strings.
 	 *
 	 * @return void
 	 */
@@ -101,7 +101,7 @@ class MimeAllowlistTest extends TestCase {
 	}
 
 	/**
-	 * mime_list() on an empty allowlist returns an empty list.
+	 * Mime_list() on an empty allowlist returns an empty list.
 	 *
 	 * @return void
 	 */

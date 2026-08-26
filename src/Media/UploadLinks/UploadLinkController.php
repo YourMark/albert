@@ -1,13 +1,13 @@
 <?php
 /**
- * Upload Ticket Redemption Controller
+ * Upload Link Redemption Controller
  *
  * @package Albert
- * @subpackage Media\UploadTickets
+ * @subpackage Media\UploadLinks
  * @since      1.4.0
  */
 
-namespace Albert\Media\UploadTickets;
+namespace Albert\Media\UploadLinks;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -18,56 +18,30 @@ use WP_REST_Request;
 use WP_REST_Response;
 
 /**
- * UploadTicketController class
- *
  * The redemption endpoint an assistant PUTs/POSTs bytes to after minting a
- * ticket via `albert/create-upload-link`. Deliberately public
- * (`permission_callback` is `__return_true`) — the ticket token, sent only
- * in a header, is the credential; there is no WordPress-authenticated user
- * on this request otherwise. Everything past reading the token is delegated
- * to {@see UploadTicketService}, which re-checks the issuing user's
- * capabilities before touching the filesystem.
- *
- * This is a raw HTTP endpoint the assistant curls directly, not an MCP
- * ability call — bytes never pass through the MCP transport.
+ * link via `albert/create-upload-link`. Deliberately public — the link
+ * token, sent only in a header, is the credential.
  *
  * @since 1.4.0
  */
-class UploadTicketController implements Hookable {
+class UploadLinkController implements Hookable {
 
 	/**
-	 * Synthetic ability id this endpoint logs under.
-	 *
-	 * Not a registered WP_Ability — the execution log's `ability_name` column
-	 * only needs a stable string, and {@see \Albert\Logging\Logger} listens
-	 * to `albert/abilities/after_execute` generically. Named to sort next to
-	 * `albert/create-upload-link` in the log.
+	 * Synthetic ability id this endpoint logs under. Not a registered WP_Ability.
 	 *
 	 * @since 1.4.0
 	 * @var string
 	 */
-	const LOG_ABILITY_ID = 'albert/redeem-upload-ticket';
+	const LOG_ABILITY_ID = 'albert/redeem-upload-link';
 
 	/**
 	 * Bytes read per chunk while streaming a raw request body to disk.
 	 *
-	 * Deliberately a small, fixed, server-owned constant — never derived
-	 * from `max_bytes`, which is caller-influenced (up to
-	 * `wp_max_upload_size()`, easily hundreds of MB on a real host). Sizing
-	 * the chunk to the cap would mean a single fread() has to pull the
-	 * entire allowed size into memory before the cap can even be checked,
-	 * which is exactly the "buffer the whole body to measure it"
-	 * anti-pattern doc 32 rules out, and it ties peak per-request memory to
-	 * whatever a caller happened to request.
-	 *
-	 * 128 KiB: at the old 8 KiB, a 100 MB body cost ~12,800 fread()/fwrite()
-	 * iterations; here it's ~800 — most of the win for a fraction of 1 MiB's
-	 * footprint. 1 MiB was matched to Novamira's number without re-deriving
-	 * it for our scale: their 512 MB cap and multipart-network sizing (à la
-	 * S3's 5 MiB minimum part size) don't apply to local disk streaming
-	 * bounded at a realistic tens-of-MB media upload. 1 MiB also costs more
-	 * under concurrency — 100 simultaneous uploads hold ~100 MB of buffers
-	 * across the PHP-FPM pool at once at 1 MiB, vs. ~13 MB at 128 KiB.
+	 * Fixed, not derived from `max_bytes` — sizing to the cap would force
+	 * buffering the whole allowed size before it could even be checked.
+	 * 128 KiB, not the 1 MiB some competitors use: at this scale (local
+	 * disk, tens-of-MB media files) it keeps iteration count low without
+	 * costing much per-request memory under concurrent uploads.
 	 *
 	 * @since 1.4.0
 	 * @var int
@@ -75,22 +49,22 @@ class UploadTicketController implements Hookable {
 	const STREAM_CHUNK_BYTES = 131072;
 
 	/**
-	 * The upload ticket service.
+	 * The upload link service.
 	 *
 	 * @since 1.4.0
-	 * @var UploadTicketService
+	 * @var UploadLinkService
 	 */
-	private UploadTicketService $tickets;
+	private UploadLinkService $links;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param UploadTicketService|null $tickets Optional service override (tests).
+	 * @param UploadLinkService|null $links Optional service override (tests).
 	 *
 	 * @since 1.4.0
 	 */
-	public function __construct( ?UploadTicketService $tickets = null ) {
-		$this->tickets = $tickets ?? new UploadTicketService();
+	public function __construct( ?UploadLinkService $links = null ) {
+		$this->links = $links ?? new UploadLinkService();
 	}
 
 	/**
@@ -114,7 +88,7 @@ class UploadTicketController implements Hookable {
 			Plugin::rest_namespace(),
 			'/media/uploads',
 			[
-				'methods'             => UploadTicketService::HTTP_METHODS,
+				'methods'             => UploadLinkService::HTTP_METHODS,
 				'callback'            => [ $this, 'handle_upload' ],
 				'permission_callback' => '__return_true',
 			]
@@ -122,13 +96,10 @@ class UploadTicketController implements Hookable {
 	}
 
 	/**
-	 * Handle a ticket redemption.
+	 * Handle a link redemption.
 	 *
-	 * Order matters and mirrors docs/features/32-media-uploads.md exactly:
-	 * look up + mark redeemed BEFORE any processing (inside
-	 * {@see UploadTicketService::redeem_ticket()}), re-check the issuing
-	 * user, receive the file under the byte cap, sniff real content against
-	 * the effective allowlist, then hand off to core.
+	 * Order matters: redeem (mark used) before any processing, then receive
+	 * the file under the byte cap, then hand off to core.
 	 *
 	 * @param WP_REST_Request<array<string, mixed>> $request The REST request.
 	 *
@@ -136,22 +107,25 @@ class UploadTicketController implements Hookable {
 	 * @since 1.4.0
 	 */
 	public function handle_upload( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$token = trim( (string) $request->get_header( UploadTicketService::TOKEN_HEADER ) );
+		$token = trim( (string) $request->get_header( UploadLinkService::TOKEN_HEADER ) );
 
 		if ( $token === '' ) {
 			return new WP_Error(
-				'ticket_already_used',
+				'link_already_used',
 				__( 'No upload token was provided.', 'albert-ai-butler' ),
 				[ 'status' => 401 ]
 			);
 		}
 
-		// Burns the token — single-use holds from this point on, whatever
-		// happens next.
-		$context = $this->tickets->redeem_ticket( $token );
+		// Burns the token — single-use holds from this point on.
+		$context = $this->links->redeem_link( $token );
 
 		if ( is_wp_error( $context ) ) {
-			$this->log( 0, [], $context );
+			// Only 'capability_revoked' carries a resolved user_id; other rejections never got that far.
+			$error_data = $context->get_error_data();
+			$user_id    = is_array( $error_data ) && isset( $error_data['user_id'] ) ? (int) $error_data['user_id'] : 0;
+
+			$this->log( $user_id, [], $context );
 
 			return $context;
 		}
@@ -164,7 +138,7 @@ class UploadTicketController implements Hookable {
 			return $received;
 		}
 
-		$result = $this->tickets->finalize_upload( $received['tmp_path'], $received['filename'], $context );
+		$result = $this->links->finalize_upload( $received['tmp_path'], $received['filename'], $context );
 
 		$this->log(
 			$context['user_id'],
@@ -183,16 +157,13 @@ class UploadTicketController implements Hookable {
 	}
 
 	/**
-	 * Receive the uploaded bytes onto disk, enforcing the ticket's byte cap.
+	 * Receive the uploaded bytes onto disk, enforcing the link's byte cap.
 	 *
-	 * Supports a multipart `file` field (PHP/the webserver already streamed
-	 * it to a temp file; we only need to check its size before doing
-	 * anything else with it) or a raw request body, streamed to disk in
-	 * chunks so an oversized body is never buffered in memory and never
-	 * fully written to disk before being rejected.
+	 * Supports a multipart `file` field, or a raw body streamed to disk in
+	 * chunks so an oversized body is never buffered in memory.
 	 *
 	 * @param WP_REST_Request<array<string, mixed>> $request   The REST request.
-	 * @param int                                   $max_bytes The ticket's byte cap.
+	 * @param int                                   $max_bytes The link's byte cap.
 	 *
 	 * @return array{tmp_path: string, filename: string}|WP_Error
 	 * @since 1.4.0
@@ -212,6 +183,18 @@ class UploadTicketController implements Hookable {
 			}
 
 			$size = isset( $file['size'] ) ? (int) $file['size'] : (int) @filesize( $file['tmp_name'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Best-effort fallback when the client omitted size.
+
+			if ( $size === 0 ) {
+				if ( file_exists( $file['tmp_name'] ) ) {
+					wp_delete_file( $file['tmp_name'] );
+				}
+
+				return new WP_Error(
+					'upload_error',
+					__( 'No file data was received.', 'albert-ai-butler' ),
+					[ 'status' => 400 ]
+				);
+			}
 
 			if ( $size > $max_bytes ) {
 				if ( file_exists( $file['tmp_name'] ) ) {
@@ -271,12 +254,7 @@ class UploadTicketController implements Hookable {
 
 	/**
 	 * Stream a readable resource to a new temp file, enforcing a byte cap
-	 * while writing. The chunk that would push the total over the cap is
-	 * never written, so the file on disk never exceeds `$max_bytes`, and the
-	 * full body is never held in memory at once.
-	 *
-	 * Public so the streaming/cap logic is directly testable against an
-	 * in-memory stream, independent of a real HTTP request.
+	 * while writing. Public so it's testable against an in-memory stream.
 	 *
 	 * @param resource $stream    A readable stream (e.g. `php://input`).
 	 * @param int      $max_bytes The byte cap to enforce.
@@ -298,8 +276,9 @@ class UploadTicketController implements Hookable {
 			);
 		}
 
-		$total     = 0;
-		$too_large = false;
+		$total        = 0;
+		$too_large    = false;
+		$write_failed = false;
 
 		while ( ! feof( $stream ) ) {
 			$chunk = fread( $stream, self::STREAM_CHUNK_BYTES ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread -- Reading a stream resource in chunks, not a filesystem file by path.
@@ -315,10 +294,24 @@ class UploadTicketController implements Hookable {
 				break;
 			}
 
-			fwrite( $out, $chunk ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- Streaming to a controlled temp file.
+			// A short/failed write must not be mistaken for success — $total tracks bytes read, not bytes landed.
+			if ( fwrite( $out, $chunk ) !== strlen( $chunk ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- Streaming to a controlled temp file.
+				$write_failed = true;
+				break;
+			}
 		}
 
 		fclose( $out ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Paired with the fopen() above.
+
+		if ( $write_failed ) {
+			wp_delete_file( $tmp_path );
+
+			return new WP_Error(
+				'upload_error',
+				__( 'Could not write the uploaded file to disk.', 'albert-ai-butler' ),
+				[ 'status' => 500 ]
+			);
+		}
 
 		if ( $too_large ) {
 			wp_delete_file( $tmp_path );
@@ -349,11 +342,7 @@ class UploadTicketController implements Hookable {
 	/**
 	 * Log a redemption attempt through Albert's normal execution-log path.
 	 *
-	 * This endpoint is not a WP_Ability, so `guarded_execute()` never fires
-	 * `albert/abilities/after_execute` for it — the same gap
-	 * `MCP\ToolCallObserver` fills for pre-execute ability failures. Firing
-	 * it here directly is what makes a ticket redemption show up in the
-	 * execution log at all.
+	 * Not a WP_Ability, so `guarded_execute()` never fires this hook for it — fired here directly instead.
 	 *
 	 * @param int                           $user_id The issuing user (0 when the token itself was rejected).
 	 * @param array<string, mixed>          $args    Non-sensitive context: post_id, filename. Never the token.
@@ -365,6 +354,8 @@ class UploadTicketController implements Hookable {
 	private function log( int $user_id, array $args, array|WP_Error $result ): void {
 		try {
 			do_action( 'albert/abilities/after_execute', self::LOG_ABILITY_ID, $args, $result, $user_id );
+			// Same pair BaseAbility::guarded_execute() fires for every real ability.
+			do_action( 'albert/abilities/after_execute/' . self::LOG_ABILITY_ID, $args, $result, $user_id );
 		} catch ( \Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
 			// Never let a logging failure surface as an upload failure.
 		}

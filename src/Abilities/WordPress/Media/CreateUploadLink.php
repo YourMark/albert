@@ -11,47 +11,35 @@ namespace Albert\Abilities\WordPress\Media;
 
 use Albert\Abstracts\BaseAbility;
 use Albert\Core\Annotations;
-use Albert\Media\UploadTickets\UploadTicketService;
+use Albert\Media\UploadLinks\UploadLinkService;
 use WP_Error;
 
 /**
- * Create Upload Link Ability class
- *
  * Mints a short-lived, single-use HTTP endpoint an assistant can PUT/POST
- * bytes to directly, for the case URL sideload can't cover: the assistant
- * has the file itself (a generated image, a user-supplied file) rather than
- * a URL to fetch. Pushing those bytes through MCP tool arguments would mean
- * base64, a 33% size penalty on a payload that already counts against the
- * conversation's context window — this ability hands back a plain HTTP
- * endpoint instead and gets out of the way.
- *
- * Named "link", not "ticket": the ability is the external surface an LLM or
- * a site owner reads from a tool list, and "ticket" reads as a support/issue
- * ticket in that context. The single-use, hashed, expiring credential this
- * mints is still a "ticket" as domain vocabulary internally — see
- * {@see UploadTicketService} — that word just doesn't belong on the public name.
+ * bytes to directly, for when it has the file itself rather than a URL to
+ * fetch — avoiding the base64 size penalty of pushing bytes through MCP.
  *
  * @since 1.4.0
  */
 class CreateUploadLink extends BaseAbility {
 
 	/**
-	 * The upload ticket service.
+	 * The upload link service.
 	 *
 	 * @since 1.4.0
-	 * @var UploadTicketService
+	 * @var UploadLinkService
 	 */
-	private UploadTicketService $tickets;
+	private UploadLinkService $links;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param UploadTicketService|null $tickets Optional service override (tests).
+	 * @param UploadLinkService|null $links Optional service override (tests).
 	 *
 	 * @since 1.4.0
 	 */
-	public function __construct( ?UploadTicketService $tickets = null ) {
-		$this->tickets = $tickets ?? new UploadTicketService();
+	public function __construct( ?UploadLinkService $links = null ) {
+		$this->links = $links ?? new UploadLinkService();
 
 		$this->id          = 'albert/create-upload-link';
 		$this->label       = __( 'Create Upload Link', 'albert-ai-butler' );
@@ -165,7 +153,7 @@ class CreateUploadLink extends BaseAbility {
 	 * @since 1.4.0
 	 */
 	public function check_permission(): bool|WP_Error {
-		return $this->require_capability( 'upload_files' );
+		return $this->require_capability( UploadLinkService::REQUIRED_CAPABILITY );
 	}
 
 	/**
@@ -177,6 +165,6 @@ class CreateUploadLink extends BaseAbility {
 	 * @since 1.4.0
 	 */
 	public function execute( array $args ): array|WP_Error {
-		return $this->tickets->mint( get_current_user_id(), $args );
+		return $this->links->mint( get_current_user_id(), $args );
 	}
 }

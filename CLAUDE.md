@@ -100,11 +100,11 @@ albert-ai-butler/
 │   │   ├── Symbols.php                 # Third-party plugin detection by symbol
 │   │   └── Readers/                    # Environment, DesignTokens, ContentModel, Commerce
 │   │
-│   ├── Media/                           # Media upload tickets (doc 32, Path B)
+│   ├── Media/                           # Media upload links (doc 32, Path B)
 │   │   ├── MimeAllowlist.php           # Shared MIME allowlist, used by Path A + Path B
-│   │   └── UploadTickets/
-│   │       ├── UploadTicketService.php     # Mint/redeem/finalize domain logic
-│   │       └── UploadTicketController.php  # POST /media/uploads redemption endpoint
+│   │   └── UploadLinks/
+│   │       ├── UploadLinkService.php     # Mint/redeem/finalize domain logic
+│   │       └── UploadLinkController.php  # POST /media/uploads redemption endpoint
 │   │
 │   ├── MCP/
 │   │   └── Server.php                  # MCP protocol handler

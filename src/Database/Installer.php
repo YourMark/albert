@@ -328,12 +328,7 @@ class Installer {
 	}
 
 	/**
-	 * Generic single-use hashed token table DDL.
-	 *
-	 * Backs {@see \Albert\Core\Tokens\TokenService}. `purpose` partitions the
-	 * table between consumers (media upload tickets today; doc 40's pending
-	 * actions expected to add a second purpose); `token_hash` never stores the
-	 * raw token, only its hash. `payload` is consumer-defined JSON.
+	 * Generic single-use hashed token table DDL, backing {@see \Albert\Core\Tokens\TokenService}.
 	 *
 	 * @param string $charset_collate Charset/collation clause.
 	 *

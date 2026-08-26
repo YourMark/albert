@@ -10,13 +10,11 @@
  * @since      1.1.0
  */
 
-declare(strict_types=1);
-
 namespace Albert\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
-use Albert\Media\UploadTickets\UploadTicketService;
+use Albert\Media\UploadLinks\UploadLinkService;
 use Albert\OAuth\AllowedUsers;
 use Albert\OAuth\ConnectionRetention;
 use Albert\Privacy\PrivacyMode;
@@ -127,11 +125,7 @@ class SettingsBootstrap {
 				'description' => __( 'Controls the single-use links an assistant mints to upload a file it has the bytes for (rather than a URL to sideload from).', 'albert-ai-butler' ),
 				'fields'      => [
 					[
-						// 'custom', not 'number': this field needs to show a filter's
-						// value (disabled) instead of the stored option whenever
-						// albert/media/upload_link_max_bytes is overriding it — behaviour
-						// specific to this one field, not a generic renderer capability.
-						// Same escape hatch the licenses table below already uses.
+						// 'custom', not 'number': shows the filter's value, disabled, when it's overriding.
 						'id'                => 'default_max_mb',
 						'type'              => 'custom',
 						'label'             => __( 'Default upload size limit (MB)', 'albert-ai-butler' ),
@@ -140,10 +134,10 @@ class SettingsBootstrap {
 							__( 'Used when an assistant mints an upload link without asking for a specific size limit. An assistant can still request a smaller or larger limit for a specific upload; either way, this server itself won\'t accept more than %s regardless of what\'s set here.', 'albert-ai-butler' ),
 							self::server_upload_ceiling()
 						),
-						'option_name'       => UploadTicketService::MAX_BYTES_OPTION,
-						'default'           => UploadTicketService::DEFAULT_MAX_MB,
-						'render_callback'   => [ UploadTicketService::class, 'render_max_mb_field' ],
-						'sanitize_callback' => [ UploadTicketService::class, 'sanitize_max_mb' ],
+						'option_name'       => UploadLinkService::MAX_BYTES_OPTION,
+						'default'           => UploadLinkService::DEFAULT_MAX_MB,
+						'render_callback'   => [ UploadLinkService::class, 'render_max_mb_field' ],
+						'sanitize_callback' => [ UploadLinkService::class, 'sanitize_max_mb' ],
 					],
 				],
 			],
@@ -167,9 +161,7 @@ class SettingsBootstrap {
 	}
 
 	/**
-	 * This server's own upload ceiling, human-readable, for the Uploads
-	 * field description. Purely informational — the field's actual bound is
-	 * enforced at redemption time by {@see UploadTicketService}, not here.
+	 * This server's own upload ceiling, human-readable, for the Uploads field description.
 	 *
 	 * @since 1.4.0
 	 *
@@ -180,9 +172,7 @@ class SettingsBootstrap {
 			require_once ABSPATH . 'wp-admin/includes/media.php';
 		}
 
-		// size_format() returns false for a non-numeric/negative input, which
-		// wp_max_upload_size() cannot actually produce — the fallback exists
-		// only to satisfy the return type, not because it's expected to fire.
+		// size_format() can return false; wp_max_upload_size() can't actually trigger that.
 		$formatted = size_format( wp_max_upload_size() );
 
 		return is_string( $formatted ) ? $formatted : '';

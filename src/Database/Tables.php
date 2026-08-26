@@ -53,12 +53,7 @@ class Tables {
 	}
 
 	/**
-	 * The generic single-use hashed token table.
-	 *
-	 * Backs {@see \Albert\Core\Tokens\TokenService} — media upload tickets are
-	 * its first consumer (`purpose` = 'media_upload'); doc 40's pending-action
-	 * confirmations are expected to reuse the same table under a different
-	 * `purpose` rather than growing a table of their own.
+	 * The generic single-use hashed token table, backing {@see \Albert\Core\Tokens\TokenService}.
 	 *
 	 * @return string Prefixed table name.
 	 * @since 1.4.0

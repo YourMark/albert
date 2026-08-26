@@ -1,43 +1,45 @@
 <?php
 /**
- * Upload Ticket Service
+ * Upload Link Service
  *
  * @package Albert
- * @subpackage Media\UploadTickets
+ * @subpackage Media\UploadLinks
  * @since      1.4.0
  */
 
-namespace Albert\Media\UploadTickets;
+namespace Albert\Media\UploadLinks;
 
 defined( 'ABSPATH' ) || exit;
 
 use Albert\Core\Plugin;
 use Albert\Core\Tokens\TokenService;
+use Albert\Media\AttachmentResponse;
 use Albert\Media\MimeAllowlist;
 use WP_Error;
 
 /**
- * UploadTicketService class
- *
- * Media upload tickets (doc 32, Path B): mints a short-lived, single-use
- * redemption for an assistant that has bytes to upload directly, rather than
- * a URL to sideload. Builds on the generic {@see TokenService} primitive —
- * this class owns everything specific to "a ticket is a media upload
- * authorisation": the MIME allowlist binding, the byte cap, the error
- * vocabulary (`ticket_expired`, `ticket_already_used`, ...), and turning a
- * redeemed ticket plus a received file into a media library attachment.
+ * Mints and redeems media upload links (doc 32, Path B), built on the
+ * generic {@see TokenService} primitive.
  *
  * @since 1.4.0
  */
-class UploadTicketService {
+class UploadLinkService {
 
 	/**
-	 * The token purpose partitioning upload tickets from any other token consumer.
+	 * The token purpose partitioning upload links from any other token consumer.
 	 *
 	 * @since 1.4.0
 	 * @var string
 	 */
 	const PURPOSE = 'media_upload';
+
+	/**
+	 * The capability required to mint a link and to still hold one at redemption time.
+	 *
+	 * @since 1.4.0
+	 * @var string
+	 */
+	const REQUIRED_CAPABILITY = 'upload_files';
 
 	/**
 	 * The header the redemption endpoint expects the token in — never the URL.
@@ -50,12 +52,7 @@ class UploadTicketService {
 	/**
 	 * HTTP methods the redemption endpoint accepts.
 	 *
-	 * Both, deliberately: {@see UploadTicketController::handle_upload()} reads
-	 * the same headers and body regardless of which verb got it there. PUT is
-	 * arguably the more correct verb for "put these exact bytes at this URL"
-	 * and is what some raw-body HTTP tooling defaults to; POST is what the
-	 * multipart curl example uses. Accepting only one would reject a client
-	 * that reasonably assumed the other worked, for no benefit.
+	 * Both, deliberately: PUT suits raw-body clients, POST suits multipart ones.
 	 *
 	 * @since 1.4.0
 	 * @var string
@@ -63,7 +60,7 @@ class UploadTicketService {
 	const HTTP_METHODS = 'POST, PUT';
 
 	/**
-	 * How long a minted ticket stays valid.
+	 * How long a minted link stays valid.
 	 *
 	 * @since 1.4.0
 	 * @var int
@@ -137,7 +134,7 @@ class UploadTicketService {
 	}
 
 	/**
-	 * Mint a new upload ticket.
+	 * Mint a new upload link.
 	 *
 	 * @param int                  $user_id The issuing user — re-checked at redemption.
 	 * @param array<string, mixed> $args    {
@@ -152,7 +149,7 @@ class UploadTicketService {
 	 * @since 1.4.0
 	 */
 	public function mint( int $user_id, array $args ): array|WP_Error {
-		if ( ! user_can( $user_id, 'upload_files' ) ) {
+		if ( ! user_can( $user_id, self::REQUIRED_CAPABILITY ) ) {
 			return new WP_Error(
 				'ability_permission_denied',
 				__( 'This user does not have permission to upload media.', 'albert-ai-butler' ),
@@ -173,7 +170,9 @@ class UploadTicketService {
 			);
 		}
 
-		$post_id = absint( $args['post_id'] ?? 0 );
+		// (int) cast, not absint(): absint(-12) returns 12, which would
+		// silently parent against a post the caller never asked for.
+		$post_id = max( 0, (int) ( $args['post_id'] ?? 0 ) );
 		if ( $post_id > 0 && ! get_post( $post_id ) ) {
 			return new WP_Error(
 				'invalid_post',
@@ -215,20 +214,18 @@ class UploadTicketService {
 	}
 
 	/**
-	 * Redeem a ticket token, re-checking the issuing user's capabilities.
+	 * Redeem a link token, re-checking the issuing user's capabilities.
 	 *
-	 * Marks the token spent (via {@see TokenService::redeem()}) before this
-	 * method returns — single-use holds even if the caller never manages to
-	 * finish the upload. The MIME allowlist is re-narrowed against the
-	 * user's *current* `get_allowed_mime_types()`, so a role downgrade
-	 * between mint and redemption can only shrink what is accepted.
+	 * The MIME allowlist is re-narrowed against the user's *current*
+	 * `get_allowed_mime_types()`, so a role downgrade since mint can only
+	 * shrink what's accepted, never widen it.
 	 *
-	 * @param string $token The raw ticket token.
+	 * @param string $token The raw link token.
 	 *
 	 * @return array{user_id: int, mime_allowlist: array<string, string>, max_bytes: int, post_id: int}|WP_Error
 	 * @since 1.4.0
 	 */
-	public function redeem_ticket( string $token ): array|WP_Error {
+	public function redeem_link( string $token ): array|WP_Error {
 		$redeemed = $this->tokens->redeem( $token, self::PURPOSE );
 
 		if ( is_wp_error( $redeemed ) ) {
@@ -238,11 +235,15 @@ class UploadTicketService {
 		$user_id = $redeemed['user_id'];
 		$payload = $redeemed['payload'];
 
-		if ( ! user_can( $user_id, 'upload_files' ) ) {
+		if ( ! user_can( $user_id, self::REQUIRED_CAPABILITY ) ) {
 			return new WP_Error(
 				'capability_revoked',
 				__( 'The user who created this upload link no longer has permission to upload media.', 'albert-ai-butler' ),
-				[ 'status' => 403 ]
+				// user_id rides in the error data so the controller can still log the real actor.
+				[
+					'status'  => 403,
+					'user_id' => $user_id,
+				]
 			);
 		}
 
@@ -254,7 +255,10 @@ class UploadTicketService {
 			return new WP_Error(
 				'capability_revoked',
 				__( 'The user who created this upload link no longer has permission to upload any of the accepted file types.', 'albert-ai-butler' ),
-				[ 'status' => 403 ]
+				[
+					'status'  => 403,
+					'user_id' => $user_id,
+				]
 			);
 		}
 
@@ -269,18 +273,13 @@ class UploadTicketService {
 	/**
 	 * Turn a received, on-disk file into a media library attachment.
 	 *
-	 * Real content sniffing against the redeemed ticket's effective allowlist
-	 * — never the site's blanket default — decides acceptance; a capability
-	 * such as `unfiltered_upload` is never consulted here, so it cannot widen
-	 * what this endpoint accepts regardless of who is uploading. Core
-	 * (`media_handle_sideload()`) owns filename sanitisation, uniqueness, the
-	 * uploads directory, and attachment creation from that point on.
-	 *
-	 * The temp file is always deleted before this method returns, on every path.
+	 * Content sniffing runs against the link's own allowlist, never
+	 * `unfiltered_upload` — that capability can't widen what this endpoint
+	 * accepts. The temp file is always deleted before returning.
 	 *
 	 * @param string                                                     $tmp_path          Path to the already-received file.
 	 * @param string                                                     $original_filename Client-supplied filename (untrusted).
-	 * @param array{mime_allowlist: array<string, string>, post_id: int} $context           From {@see self::redeem_ticket()}.
+	 * @param array{mime_allowlist: array<string, string>, post_id: int} $context           From {@see self::redeem_link()}.
 	 *
 	 * @return array<string, mixed>|WP_Error
 	 * @since 1.4.0
@@ -306,11 +305,6 @@ class UploadTicketService {
 		require_once ABSPATH . 'wp-admin/includes/image.php';
 		require_once ABSPATH . 'wp-admin/includes/media.php';
 
-		// Real content sniffing against ONLY this ticket's effective allowlist.
-		// Deliberately independent of the uploading user's capabilities —
-		// unfiltered_upload is never consulted here, by any code path, for
-		// any user. A mismatch (including a renamed-extension spoof) fails
-		// here, before core's own, capability-aware check ever runs.
 		$file_type = wp_check_filetype_and_ext( $tmp_path, $filename, $mime_allowlist );
 
 		if ( empty( $file_type['ext'] ) || empty( $file_type['type'] ) ) {
@@ -343,7 +337,7 @@ class UploadTicketService {
 			return $attachment_id;
 		}
 
-		return $this->format_attachment_response( $attachment_id );
+		return AttachmentResponse::format( $attachment_id );
 	}
 
 	/**
@@ -363,15 +357,9 @@ class UploadTicketService {
 	}
 
 	/**
-	 * Resolve the default byte cap applied when a caller doesn't request one.
-	 *
-	 * Precedence, same shape as {@see \Albert\Privacy\PrivacyMode::resolve()}:
-	 * the filter can override outright (return an int; `null` defers), then
-	 * the site owner's own Settings-screen value, then the built-in
-	 * conservative default. Whatever this returns is still ceilinged by
-	 * {@see self::resolve_max_bytes()} against `wp_max_upload_size()` — this
-	 * only ever adjusts the *default*, it can't make the endpoint accept more
-	 * than the server itself will.
+	 * Resolve the default byte cap: filter overrides, else the Settings
+	 * value, else the built-in default. Still ceilinged by
+	 * {@see self::resolve_max_bytes()} against `wp_max_upload_size()`.
 	 *
 	 * @return int
 	 * @since 1.4.0
@@ -390,16 +378,9 @@ class UploadTicketService {
 	/**
 	 * Get the current state of the `albert/media/upload_link_max_bytes` filter.
 	 *
-	 * Same shape and purpose as {@see \Albert\MCP\Server::get_external_url_state()},
-	 * used by both the resolver above and the Settings screen so the screen can
-	 * show what's actually in effect (see {@see self::render_max_mb_field()})
-	 * instead of a stored value the filter is silently overriding. Deliberately
-	 * NOT memoized, unlike that precedent: this is called at most a couple of
-	 * times per request (a mint() call, a Settings-screen render), never in a
-	 * hot loop, so there's no real cost to calling apply_filters() fresh each
-	 * time — and a request-lifetime static cache would mean a hook that starts
-	 * or stops overriding mid-request (e.g. a test flipping it, or a callback
-	 * whose own condition changes) reads stale.
+	 * Used by both the resolver above and the Settings screen. Deliberately
+	 * not memoized (unlike {@see \Albert\MCP\Server::get_external_url_state()})
+	 * so a filter that starts or stops applying mid-test doesn't read stale.
 	 *
 	 * @since 1.4.0
 	 *
@@ -410,23 +391,14 @@ class UploadTicketService {
 		 * Filters the default byte cap for a media upload link.
 		 *
 		 * Applies only when a caller doesn't request `max_bytes` explicitly.
-		 * Return an int (bytes), or a php.ini-style shorthand string such as
-		 * `"10M"`, `"512K"`, or `"2G"` — anything {@see wp_convert_hr_to_bytes()}
-		 * understands, the same parser WordPress itself uses for
-		 * `memory_limit`/`upload_max_filesize` — to override the site's own
-		 * setting outright. Return null (the default) to defer to it.
-		 *
-		 * Clamped to {@see self::MAX_SETTABLE_MB} regardless of what's
-		 * returned — the same ceiling the Settings screen's own field is
-		 * bound to, so a filter can't set something the UI itself would
-		 * refuse (e.g. a stray extra zero producing "10G" instead of "10M").
-		 * `wp_max_upload_size()` still applies on top of that at redemption
-		 * time regardless, as it does for every other source of this value.
+		 * Accepts an int (bytes) or a php.ini-style shorthand string
+		 * (`"10M"`, `"2G"`) via {@see wp_convert_hr_to_bytes()}; null defers
+		 * to the site's own setting. Clamped to {@see self::MAX_SETTABLE_MB};
+		 * `wp_max_upload_size()` still applies on top at redemption time.
 		 *
 		 * @since 1.4.0
 		 *
-		 * @param int|string|null $max_bytes The overriding default (bytes, or a shorthand
-		 *                                   size string), or null to defer.
+		 * @param int|string|null $max_bytes The overriding default, or null to defer.
 		 */
 		$filtered = apply_filters( 'albert/media/upload_link_max_bytes', null );
 
@@ -436,11 +408,7 @@ class UploadTicketService {
 			return [
 				'state'     => 'active',
 				'value'     => min( $bytes, self::MAX_SETTABLE_MB * self::BYTES_PER_MB ),
-				// The unclamped value the filter actually asked for — lets a
-				// caller (render_max_mb_field()) tell "filter set 15 MB,
-				// using 15 MB" apart from "filter asked for 10240 MB, using
-				// 2048 MB instead" and warn accordingly, rather than showing
-				// the same plain notice either way.
+				// Unclamped, so render_max_mb_field() can tell "clamped" from "not".
 				'requested' => $bytes,
 			];
 		}
@@ -480,16 +448,9 @@ class UploadTicketService {
 	/**
 	 * Render the Uploads section's default_max_mb field.
 	 *
-	 * The Settings screen's field types (see {@see \Albert\Admin\SettingsRenderer})
-	 * are plain inputs with no concept of "disabled because a filter is
-	 * overriding it" — that's specific to this one field, not something
-	 * every settings field needs, so rather than teach the generic renderer
-	 * a cross-cutting mechanism for a single consumer, this field is
-	 * `'type' => 'custom'` (see {@see \Albert\Admin\SettingsBootstrap}) and
-	 * owns its own markup, the same escape hatch the licenses table already
-	 * uses. When the filter is active the field shows *that* value, disabled,
-	 * with an explanatory notice — never the stored option's value, which
-	 * would invite editing something that can't currently take effect.
+	 * `'type' => 'custom'` (see {@see \Albert\Admin\SettingsBootstrap}), the
+	 * same escape hatch the licenses table uses, since the generic renderer
+	 * has no concept of "disabled because a filter overrides it".
 	 *
 	 * @since 1.4.0
 	 *
@@ -540,15 +501,9 @@ class UploadTicketService {
 	}
 
 	/**
-	 * Render a `.albert-hint` block — the same component the Connections
-	 * screen uses for its own filter-override and invalid-value cases
-	 * (`albert/mcp/external_url`), reused here rather than inventing new
-	 * markup for the same shape of message.
+	 * Render a `.albert-hint` block, matching the Connections screen's own hints.
 	 *
-	 * @param string $notice May contain `<code>` tags — the codebase's
-	 *                       convention for wrapping a filter/hook name —
-	 *                       and nothing else; built via sprintf(), not raw
-	 *                       user input.
+	 * @param string $notice May contain `<code>` tags; built via sprintf(), not raw user input.
 	 * @param string $tone   'info' or 'warning'.
 	 *
 	 * @return void
@@ -566,17 +521,8 @@ class UploadTicketService {
 	/**
 	 * Sanitize the Settings-screen field for {@see self::MAX_BYTES_OPTION}.
 	 *
-	 * Clamped to [1, MAX_SETTABLE_MB] rather than validated against the
-	 * server's real upload ceiling — {@see wp_max_upload_size()} already
-	 * enforces that at redemption time regardless of what's stored here, so
-	 * this is only guarding against garbage input (0, negative, non-numeric).
-	 *
-	 * While the filter is active the field renders disabled ({@see
-	 * self::render_max_mb_field()}), so a browser never submits it — $_POST
-	 * simply won't carry this key, and a plain "missing means invalid, fall
-	 * back to the default" rule would silently reset the stored value on
-	 * every unrelated settings save. Returning the value already stored
-	 * makes that submission a harmless no-op instead.
+	 * While the filter is active the field renders disabled, so it's never
+	 * submitted; return the stored value as a no-op rather than resetting it.
 	 *
 	 * @param mixed $value Raw value from the settings form.
 	 *
@@ -588,9 +534,7 @@ class UploadTicketService {
 			return (int) get_option( self::MAX_BYTES_OPTION, self::DEFAULT_MAX_MB );
 		}
 
-		// (int) casts preserve sign, unlike absint() — a negative input must
-		// fall through to the default below, not have its sign silently
-		// flipped into a different, "valid-looking" positive value.
+		// (int) cast, not absint(): a negative input must fall through to the default below.
 		$mb = is_scalar( $value ) ? (int) $value : 0;
 
 		if ( $mb < 1 ) {
@@ -598,14 +542,7 @@ class UploadTicketService {
 		}
 
 		if ( $mb > self::MAX_SETTABLE_MB ) {
-			// A one-time, save-triggered notice — reuses the same
-			// add_settings_error()/settings_errors() mechanism the page
-			// already displays its "Settings saved" message through, rather
-			// than inventing a separate way to surface this. Unlike the
-			// filter-override hint in render_max_mb_field() (which has to
-			// hold on every page load while the condition persists), this
-			// only needs to fire once, at the moment someone actually tries
-			// to save an over-the-cap value.
+			// Reuses the page's own "Settings saved" notice mechanism.
 			add_settings_error(
 				'albert_settings',
 				'upload_link_max_mb_clamped',
@@ -633,14 +570,14 @@ class UploadTicketService {
 	private function translate_token_error( WP_Error $error ): WP_Error {
 		if ( $error->get_error_code() === 'token_expired' ) {
 			return new WP_Error(
-				'ticket_expired',
+				'link_expired',
 				__( 'This upload link has expired.', 'albert-ai-butler' ),
 				[ 'status' => 400 ]
 			);
 		}
 
 		return new WP_Error(
-			'ticket_already_used',
+			'link_already_used',
 			__( 'This upload link is invalid or has already been used.', 'albert-ai-butler' ),
 			[ 'status' => 400 ]
 		);
@@ -650,7 +587,7 @@ class UploadTicketService {
 	 * Build a ready-to-run curl example for the assistant to act on.
 	 *
 	 * @param string $upload_url The redemption endpoint.
-	 * @param string $token      The raw ticket token.
+	 * @param string $token      The raw link token.
 	 *
 	 * @return string
 	 * @since 1.4.0
@@ -676,32 +613,5 @@ class UploadTicketService {
 		if ( $tmp_path !== '' && file_exists( $tmp_path ) ) {
 			wp_delete_file( $tmp_path );
 		}
-	}
-
-	/**
-	 * Format attachment data for response. Mirrors UploadMedia's shape.
-	 *
-	 * @param int $attachment_id The attachment ID.
-	 *
-	 * @return array<string, mixed>
-	 * @since 1.4.0
-	 */
-	private function format_attachment_response( int $attachment_id ): array {
-		$metadata  = wp_get_attachment_metadata( $attachment_id );
-		$file_size = $metadata['filesize'] ?? 0;
-
-		if ( empty( $file_size ) ) {
-			$attached_file = get_attached_file( $attachment_id );
-			$file_size     = $attached_file ? filesize( $attached_file ) : 0;
-		}
-
-		return [
-			'attachment_id' => $attachment_id,
-			'url'           => wp_get_attachment_url( $attachment_id ),
-			'width'         => $metadata['width'] ?? 0,
-			'height'        => $metadata['height'] ?? 0,
-			'mime_type'     => get_post_mime_type( $attachment_id ),
-			'file_size'     => $file_size ? $file_size : 0,
-		];
 	}
 }

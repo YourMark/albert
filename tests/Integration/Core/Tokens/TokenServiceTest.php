@@ -51,7 +51,7 @@ class TokenServiceTest extends TestCase {
 	}
 
 	/**
-	 * issue() returns a usable raw token and an expiry.
+	 * Issue() returns a usable raw token and an expiry.
 	 *
 	 * @return void
 	 */
@@ -89,7 +89,7 @@ class TokenServiceTest extends TestCase {
 	}
 
 	/**
-	 * redeem() returns the issuing user and payload for a fresh token.
+	 * Redeem() returns the issuing user and payload for a fresh token.
 	 *
 	 * @return void
 	 */

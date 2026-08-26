@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for UploadTicketService.
+ * Integration tests for UploadLinkService.
  *
  * Covers every acceptance criterion in docs/features/32-media-uploads.md:
  * mint -> redeem once -> second redemption fails; expiry; content-sniffed
@@ -12,27 +12,27 @@
  * @package Albert
  */
 
-namespace Albert\Tests\Integration\Media\UploadTickets;
+namespace Albert\Tests\Integration\Media\UploadLinks;
 
 use Albert\Database\Installer;
 use Albert\Database\Tables;
-use Albert\Media\UploadTickets\UploadTicketService;
+use Albert\Media\UploadLinks\UploadLinkService;
 use Albert\Tests\TestCase;
 use WP_Error;
 
 /**
- * UploadTicketService integration tests.
+ * UploadLinkService integration tests.
  *
- * @covers \Albert\Media\UploadTickets\UploadTicketService
+ * @covers \Albert\Media\UploadLinks\UploadLinkService
  */
-class UploadTicketServiceTest extends TestCase {
+class UploadLinkServiceTest extends TestCase {
 
 	/**
 	 * Service under test.
 	 *
-	 * @var UploadTicketService
+	 * @var UploadLinkService
 	 */
-	private UploadTicketService $service;
+	private UploadLinkService $service;
 
 	/**
 	 * An administrator, current user for most tests.
@@ -55,14 +55,14 @@ class UploadTicketServiceTest extends TestCase {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Test reset.
 		$wpdb->query( $wpdb->prepare( 'TRUNCATE TABLE %i', Tables::single_use_tokens() ) );
 
-		$this->service  = new UploadTicketService();
+		$this->service  = new UploadLinkService();
 		$this->admin_id = self::factory()->user->create( [ 'role' => 'administrator' ] );
 
 		// $wp_settings_errors is a plain global, not reset between tests by
 		// WP's own hook-backup mechanism — reset it explicitly so a warning
 		// added in one test can't leak into another's assertions.
 		global $wp_settings_errors;
-		$wp_settings_errors = [];
+		$wp_settings_errors = []; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Test isolation, not production code overriding a WP internal.
 	}
 
 	/**
@@ -98,57 +98,57 @@ class UploadTicketServiceTest extends TestCase {
 	// ─── mint() ─────────────────────────────────────────────────────
 
 	/**
-	 * mint() returns a complete, usable ticket.
+	 * Mint() returns a complete, usable link.
 	 *
 	 * @return void
 	 */
 	public function test_mint_returns_ticket_fields(): void {
-		$ticket = $this->service->mint( $this->admin_id, [] );
+		$link = $this->service->mint( $this->admin_id, [] );
 
-		$this->assertIsArray( $ticket );
-		$this->assertNotEmpty( $ticket['upload_token'] );
-		$this->assertSame( UploadTicketService::TOKEN_HEADER, $ticket['token_header'] );
-		$this->assertGreaterThan( 0, $ticket['max_bytes'] );
-		$this->assertNotEmpty( $ticket['accepted_types'] );
-		$this->assertStringContainsString( $ticket['upload_token'], $ticket['curl_example'] );
-		$this->assertStringContainsString( UploadTicketService::TOKEN_HEADER, $ticket['curl_example'] );
+		$this->assertIsArray( $link );
+		$this->assertNotEmpty( $link['upload_token'] );
+		$this->assertSame( UploadLinkService::TOKEN_HEADER, $link['token_header'] );
+		$this->assertGreaterThan( 0, $link['max_bytes'] );
+		$this->assertNotEmpty( $link['accepted_types'] );
+		$this->assertStringContainsString( $link['upload_token'], $link['curl_example'] );
+		$this->assertStringContainsString( UploadLinkService::TOKEN_HEADER, $link['curl_example'] );
 	}
 
 	/**
-	 * accepted_types narrows to a caller's request.
+	 * Narrows accepted_types to a caller's request.
 	 *
 	 * @return void
 	 */
 	public function test_mint_narrows_accepted_types_to_request(): void {
-		$ticket = $this->service->mint( $this->admin_id, [ 'accepted_types' => [ 'image/jpeg' ] ] );
+		$link = $this->service->mint( $this->admin_id, [ 'accepted_types' => [ 'image/jpeg' ] ] );
 
-		$this->assertSame( [ 'image/jpeg' ], $ticket['accepted_types'] );
+		$this->assertSame( [ 'image/jpeg' ], $link['accepted_types'] );
 	}
 
 	/**
 	 * Requesting only disallowed types fails outright rather than silently
-	 * minting a ticket nothing can ever be uploaded through.
+	 * minting a link nothing can ever be uploaded through.
 	 *
 	 * @return void
 	 */
 	public function test_mint_rejects_a_request_matching_nothing_allowed(): void {
-		$ticket = $this->service->mint( $this->admin_id, [ 'accepted_types' => [ 'application/x-totally-not-real' ] ] );
+		$link = $this->service->mint( $this->admin_id, [ 'accepted_types' => [ 'application/x-totally-not-real' ] ] );
 
-		$this->assertInstanceOf( WP_Error::class, $ticket );
-		$this->assertSame( 'no_accepted_types', $ticket->get_error_code() );
+		$this->assertInstanceOf( WP_Error::class, $link );
+		$this->assertSame( 'no_accepted_types', $link->get_error_code() );
 	}
 
 	/**
-	 * A user without upload_files cannot mint a ticket.
+	 * A user without upload_files cannot mint a link.
 	 *
 	 * @return void
 	 */
 	public function test_mint_requires_upload_files_capability(): void {
 		$subscriber = self::factory()->user->create( [ 'role' => 'subscriber' ] );
 
-		$ticket = $this->service->mint( $subscriber, [] );
+		$link = $this->service->mint( $subscriber, [] );
 
-		$this->assertInstanceOf( WP_Error::class, $ticket );
+		$this->assertInstanceOf( WP_Error::class, $link );
 	}
 
 	/**
@@ -157,9 +157,9 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_mint_honours_requested_max_bytes(): void {
-		$ticket = $this->service->mint( $this->admin_id, [ 'max_bytes' => 500 ] );
+		$link = $this->service->mint( $this->admin_id, [ 'max_bytes' => 500 ] );
 
-		$this->assertSame( 500, $ticket['max_bytes'] );
+		$this->assertSame( 500, $link['max_bytes'] );
 	}
 
 	/**
@@ -168,9 +168,9 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_mint_caps_max_bytes_to_server_ceiling(): void {
-		$ticket = $this->service->mint( $this->admin_id, [ 'max_bytes' => PHP_INT_MAX ] );
+		$link = $this->service->mint( $this->admin_id, [ 'max_bytes' => PHP_INT_MAX ] );
 
-		$this->assertLessThanOrEqual( (int) wp_max_upload_size(), $ticket['max_bytes'] );
+		$this->assertLessThanOrEqual( (int) wp_max_upload_size(), $link['max_bytes'] );
 	}
 
 	// ─── Default max_bytes: option + filter precedence ───────────────
@@ -182,11 +182,11 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_default_max_bytes_falls_back_to_constant(): void {
-		delete_option( UploadTicketService::MAX_BYTES_OPTION );
+		delete_option( UploadLinkService::MAX_BYTES_OPTION );
 
-		$ticket = $this->service->mint( $this->admin_id, [] );
+		$link = $this->service->mint( $this->admin_id, [] );
 
-		$this->assertSame( UploadTicketService::DEFAULT_MAX_BYTES, $ticket['max_bytes'] );
+		$this->assertSame( UploadLinkService::DEFAULT_MAX_BYTES, $link['max_bytes'] );
 	}
 
 	/**
@@ -196,13 +196,13 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_default_max_bytes_honours_the_stored_option(): void {
-		update_option( UploadTicketService::MAX_BYTES_OPTION, 5 );
+		update_option( UploadLinkService::MAX_BYTES_OPTION, 5 );
 
-		$ticket = $this->service->mint( $this->admin_id, [] );
+		$link = $this->service->mint( $this->admin_id, [] );
 
-		$this->assertSame( 5 * UploadTicketService::BYTES_PER_MB, $ticket['max_bytes'] );
+		$this->assertSame( 5 * UploadLinkService::BYTES_PER_MB, $link['max_bytes'] );
 
-		delete_option( UploadTicketService::MAX_BYTES_OPTION );
+		delete_option( UploadLinkService::MAX_BYTES_OPTION );
 	}
 
 	/**
@@ -211,14 +211,14 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_default_max_bytes_filter_overrides_the_option(): void {
-		update_option( UploadTicketService::MAX_BYTES_OPTION, 5 );
-		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 3 * UploadTicketService::BYTES_PER_MB );
+		update_option( UploadLinkService::MAX_BYTES_OPTION, 5 );
+		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 3 * UploadLinkService::BYTES_PER_MB );
 
-		$ticket = $this->service->mint( $this->admin_id, [] );
+		$link = $this->service->mint( $this->admin_id, [] );
 
-		$this->assertSame( 3 * UploadTicketService::BYTES_PER_MB, $ticket['max_bytes'] );
+		$this->assertSame( 3 * UploadLinkService::BYTES_PER_MB, $link['max_bytes'] );
 
-		delete_option( UploadTicketService::MAX_BYTES_OPTION );
+		delete_option( UploadLinkService::MAX_BYTES_OPTION );
 	}
 
 	/**
@@ -229,14 +229,14 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_default_max_bytes_filter_returning_null_defers_to_the_option(): void {
-		update_option( UploadTicketService::MAX_BYTES_OPTION, 5 );
+		update_option( UploadLinkService::MAX_BYTES_OPTION, 5 );
 		add_filter( 'albert/media/upload_link_max_bytes', static fn () => null );
 
-		$ticket = $this->service->mint( $this->admin_id, [] );
+		$link = $this->service->mint( $this->admin_id, [] );
 
-		$this->assertSame( 5 * UploadTicketService::BYTES_PER_MB, $ticket['max_bytes'] );
+		$this->assertSame( 5 * UploadLinkService::BYTES_PER_MB, $link['max_bytes'] );
 
-		delete_option( UploadTicketService::MAX_BYTES_OPTION );
+		delete_option( UploadLinkService::MAX_BYTES_OPTION );
 	}
 
 	/**
@@ -246,13 +246,13 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_explicit_request_overrides_the_default_entirely(): void {
-		update_option( UploadTicketService::MAX_BYTES_OPTION, 5 );
+		update_option( UploadLinkService::MAX_BYTES_OPTION, 5 );
 
-		$ticket = $this->service->mint( $this->admin_id, [ 'max_bytes' => 777 ] );
+		$link = $this->service->mint( $this->admin_id, [ 'max_bytes' => 777 ] );
 
-		$this->assertSame( 777, $ticket['max_bytes'] );
+		$this->assertSame( 777, $link['max_bytes'] );
 
-		delete_option( UploadTicketService::MAX_BYTES_OPTION );
+		delete_option( UploadLinkService::MAX_BYTES_OPTION );
 	}
 
 	/**
@@ -262,13 +262,13 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_default_max_bytes_is_still_capped_by_server_ceiling(): void {
-		update_option( UploadTicketService::MAX_BYTES_OPTION, UploadTicketService::MAX_SETTABLE_MB );
+		update_option( UploadLinkService::MAX_BYTES_OPTION, UploadLinkService::MAX_SETTABLE_MB );
 
-		$ticket = $this->service->mint( $this->admin_id, [] );
+		$link = $this->service->mint( $this->admin_id, [] );
 
-		$this->assertLessThanOrEqual( (int) wp_max_upload_size(), $ticket['max_bytes'] );
+		$this->assertLessThanOrEqual( (int) wp_max_upload_size(), $link['max_bytes'] );
 
-		delete_option( UploadTicketService::MAX_BYTES_OPTION );
+		delete_option( UploadLinkService::MAX_BYTES_OPTION );
 	}
 
 	// ─── Settings-screen filter-override surface ───────────────────────
@@ -279,7 +279,7 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_filter_state_is_inactive_by_default(): void {
-		$state = UploadTicketService::get_default_max_bytes_filter_state();
+		$state = UploadLinkService::get_default_max_bytes_filter_state();
 
 		$this->assertSame( 'inactive', $state['state'] );
 	}
@@ -290,12 +290,12 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_filter_state_is_active_when_the_filter_overrides(): void {
-		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 4 * UploadTicketService::BYTES_PER_MB );
+		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 4 * UploadLinkService::BYTES_PER_MB );
 
-		$state = UploadTicketService::get_default_max_bytes_filter_state();
+		$state = UploadLinkService::get_default_max_bytes_filter_state();
 
 		$this->assertSame( 'active', $state['state'] );
-		$this->assertSame( 4 * UploadTicketService::BYTES_PER_MB, $state['value'] );
+		$this->assertSame( 4 * UploadLinkService::BYTES_PER_MB, $state['value'] );
 	}
 
 	/**
@@ -307,7 +307,7 @@ class UploadTicketServiceTest extends TestCase {
 	 */
 	public function test_filter_accepts_shorthand_size_strings(): void {
 		add_filter( 'albert/media/upload_link_max_bytes', static fn () => '10M' );
-		$this->assertSame( 10 * UploadTicketService::BYTES_PER_MB, UploadTicketService::get_default_max_bytes_filter_state()['value'] );
+		$this->assertSame( 10 * UploadLinkService::BYTES_PER_MB, UploadLinkService::get_default_max_bytes_filter_state()['value'] );
 	}
 
 	/**
@@ -318,7 +318,7 @@ class UploadTicketServiceTest extends TestCase {
 	 */
 	public function test_filter_accepts_mb_suffix_identically_to_m(): void {
 		add_filter( 'albert/media/upload_link_max_bytes', static fn () => '10MB' );
-		$this->assertSame( 10 * UploadTicketService::BYTES_PER_MB, UploadTicketService::get_default_max_bytes_filter_state()['value'] );
+		$this->assertSame( 10 * UploadLinkService::BYTES_PER_MB, UploadLinkService::get_default_max_bytes_filter_state()['value'] );
 	}
 
 	/**
@@ -328,7 +328,7 @@ class UploadTicketServiceTest extends TestCase {
 	 */
 	public function test_filter_accepts_gigabyte_shorthand(): void {
 		add_filter( 'albert/media/upload_link_max_bytes', static fn () => '1G' );
-		$this->assertSame( 1024 * UploadTicketService::BYTES_PER_MB, UploadTicketService::get_default_max_bytes_filter_state()['value'] );
+		$this->assertSame( 1024 * UploadLinkService::BYTES_PER_MB, UploadLinkService::get_default_max_bytes_filter_state()['value'] );
 	}
 
 	/**
@@ -339,7 +339,7 @@ class UploadTicketServiceTest extends TestCase {
 	 */
 	public function test_filter_ignores_an_unparseable_string(): void {
 		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 'not-a-size' );
-		$this->assertSame( 'inactive', UploadTicketService::get_default_max_bytes_filter_state()['state'] );
+		$this->assertSame( 'inactive', UploadLinkService::get_default_max_bytes_filter_state()['state'] );
 	}
 
 	/**
@@ -353,10 +353,10 @@ class UploadTicketServiceTest extends TestCase {
 	public function test_filter_value_is_clamped_to_the_settable_ceiling(): void {
 		add_filter( 'albert/media/upload_link_max_bytes', static fn () => '10G' ); // 10240 MB, well past the 2048 MB ceiling.
 
-		$state = UploadTicketService::get_default_max_bytes_filter_state();
+		$state = UploadLinkService::get_default_max_bytes_filter_state();
 
 		$this->assertSame( 'active', $state['state'] );
-		$this->assertSame( UploadTicketService::MAX_SETTABLE_MB * UploadTicketService::BYTES_PER_MB, $state['value'] );
+		$this->assertSame( UploadLinkService::MAX_SETTABLE_MB * UploadLinkService::BYTES_PER_MB, $state['value'] );
 	}
 
 	/**
@@ -367,7 +367,7 @@ class UploadTicketServiceTest extends TestCase {
 	 */
 	public function test_render_max_mb_field_is_editable_without_a_filter(): void {
 		ob_start();
-		UploadTicketService::render_max_mb_field( [], 9 );
+		UploadLinkService::render_max_mb_field( [], 9 );
 		$html = ob_get_clean();
 
 		$this->assertStringContainsString( 'value="9"', $html );
@@ -383,10 +383,10 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_render_max_mb_field_shows_filtered_value_when_overridden(): void {
-		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 12 * UploadTicketService::BYTES_PER_MB );
+		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 12 * UploadLinkService::BYTES_PER_MB );
 
 		ob_start();
-		UploadTicketService::render_max_mb_field( [], 9 );
+		UploadLinkService::render_max_mb_field( [], 9 );
 		$html = ob_get_clean();
 
 		$this->assertStringContainsString( 'value="12"', $html );
@@ -409,15 +409,15 @@ class UploadTicketServiceTest extends TestCase {
 		add_filter( 'albert/media/upload_link_max_bytes', static fn () => '10G' ); // 10240 MB, clamped to 2048.
 
 		ob_start();
-		UploadTicketService::render_max_mb_field( [], 9 );
+		UploadLinkService::render_max_mb_field( [], 9 );
 		$html = ob_get_clean();
 
-		$this->assertStringContainsString( 'value="' . UploadTicketService::MAX_SETTABLE_MB . '"', $html );
+		$this->assertStringContainsString( 'value="' . UploadLinkService::MAX_SETTABLE_MB . '"', $html );
 		$this->assertStringContainsString( 'disabled', $html );
 		$this->assertStringContainsString( 'albert-hint--warning', $html );
 		$this->assertStringNotContainsString( 'albert-hint--info', $html );
 		$this->assertStringContainsString( '10240', $html ); // The requested value, for context.
-		$this->assertStringContainsString( (string) UploadTicketService::MAX_SETTABLE_MB, $html );
+		$this->assertStringContainsString( (string) UploadLinkService::MAX_SETTABLE_MB, $html );
 	}
 
 	// ─── sanitize_max_mb() ────────────────────────────────────────────
@@ -428,7 +428,7 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_sanitize_max_mb_passes_through_a_valid_value(): void {
-		$this->assertSame( 42, UploadTicketService::sanitize_max_mb( '42' ) );
+		$this->assertSame( 42, UploadLinkService::sanitize_max_mb( '42' ) );
 	}
 
 	/**
@@ -438,9 +438,9 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_sanitize_max_mb_rejects_invalid_input(): void {
-		$this->assertSame( UploadTicketService::DEFAULT_MAX_MB, UploadTicketService::sanitize_max_mb( '0' ) );
-		$this->assertSame( UploadTicketService::DEFAULT_MAX_MB, UploadTicketService::sanitize_max_mb( '-5' ) );
-		$this->assertSame( UploadTicketService::DEFAULT_MAX_MB, UploadTicketService::sanitize_max_mb( 'not-a-number' ) );
+		$this->assertSame( UploadLinkService::DEFAULT_MAX_MB, UploadLinkService::sanitize_max_mb( '0' ) );
+		$this->assertSame( UploadLinkService::DEFAULT_MAX_MB, UploadLinkService::sanitize_max_mb( '-5' ) );
+		$this->assertSame( UploadLinkService::DEFAULT_MAX_MB, UploadLinkService::sanitize_max_mb( 'not-a-number' ) );
 	}
 
 	/**
@@ -450,8 +450,8 @@ class UploadTicketServiceTest extends TestCase {
 	 */
 	public function test_sanitize_max_mb_clamps_to_the_settable_ceiling(): void {
 		$this->assertSame(
-			UploadTicketService::MAX_SETTABLE_MB,
-			UploadTicketService::sanitize_max_mb( UploadTicketService::MAX_SETTABLE_MB + 1000 )
+			UploadLinkService::MAX_SETTABLE_MB,
+			UploadLinkService::sanitize_max_mb( UploadLinkService::MAX_SETTABLE_MB + 1000 )
 		);
 	}
 
@@ -464,7 +464,7 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_sanitize_max_mb_warns_when_clamping(): void {
-		UploadTicketService::sanitize_max_mb( UploadTicketService::MAX_SETTABLE_MB + 1000 );
+		UploadLinkService::sanitize_max_mb( UploadLinkService::MAX_SETTABLE_MB + 1000 );
 
 		$this->assertTrue( $this->has_settings_error( 'upload_link_max_mb_clamped' ) );
 	}
@@ -475,7 +475,7 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_sanitize_max_mb_does_not_warn_within_bounds(): void {
-		UploadTicketService::sanitize_max_mb( 42 );
+		UploadLinkService::sanitize_max_mb( 42 );
 
 		$this->assertFalse( $this->has_settings_error( 'upload_link_max_mb_clamped' ) );
 	}
@@ -491,16 +491,16 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_sanitize_max_mb_is_a_noop_while_the_filter_overrides(): void {
-		update_option( UploadTicketService::MAX_BYTES_OPTION, 33 );
-		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 12 * UploadTicketService::BYTES_PER_MB );
+		update_option( UploadLinkService::MAX_BYTES_OPTION, 33 );
+		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 12 * UploadLinkService::BYTES_PER_MB );
 
 		// A real browser submission never happens while disabled, but even
 		// if something did POST a value (or the field is simply absent),
 		// the stored option must survive unchanged either way.
-		$this->assertSame( 33, UploadTicketService::sanitize_max_mb( null ) );
-		$this->assertSame( 33, UploadTicketService::sanitize_max_mb( '999' ) );
+		$this->assertSame( 33, UploadLinkService::sanitize_max_mb( null ) );
+		$this->assertSame( 33, UploadLinkService::sanitize_max_mb( '999' ) );
 
-		delete_option( UploadTicketService::MAX_BYTES_OPTION );
+		delete_option( UploadLinkService::MAX_BYTES_OPTION );
 	}
 
 	/**
@@ -509,23 +509,42 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_mint_rejects_nonexistent_post(): void {
-		$ticket = $this->service->mint( $this->admin_id, [ 'post_id' => 999999 ] );
+		$link = $this->service->mint( $this->admin_id, [ 'post_id' => 999999 ] );
 
-		$this->assertInstanceOf( WP_Error::class, $ticket );
-		$this->assertSame( 'invalid_post', $ticket->get_error_code() );
+		$this->assertInstanceOf( WP_Error::class, $link );
+		$this->assertSame( 'invalid_post', $link->get_error_code() );
 	}
 
-	// ─── redeem_ticket() ────────────────────────────────────────────
-
 	/**
-	 * A fresh ticket redeems to the issuing user's context.
+	 * A negative post_id is treated as "not requested" (post_id: 0), not
+	 * flipped to its positive magnitude — absint(-12) would return 12 and
+	 * silently validate/attach against a real post the caller never asked
+	 * for, the exact bug already fixed once for max_bytes in this method.
 	 *
 	 * @return void
 	 */
-	public function test_redeem_ticket_returns_context(): void {
-		$ticket = $this->service->mint( $this->admin_id, [] );
+	public function test_mint_treats_negative_post_id_as_not_requested(): void {
+		// Guarantee a post with a small positive ID exists, so a sign-flip
+		// bug (-3 -> 3) would have something real to wrongly validate against.
+		self::factory()->post->create_many( 5 );
 
-		$context = $this->service->redeem_ticket( $ticket['upload_token'] );
+		$link = $this->service->mint( $this->admin_id, [ 'post_id' => -3 ] );
+
+		$this->assertIsArray( $link );
+		$this->assertSame( 0, $link['post_id'] );
+	}
+
+	// ─── redeem_link() ────────────────────────────────────────────
+
+	/**
+	 * A fresh link redeems to the issuing user's context.
+	 *
+	 * @return void
+	 */
+	public function test_redeem_link_returns_context(): void {
+		$link = $this->service->mint( $this->admin_id, [] );
+
+		$context = $this->service->redeem_link( $link['upload_token'] );
 
 		$this->assertIsArray( $context );
 		$this->assertSame( $this->admin_id, $context['user_id'] );
@@ -538,56 +557,61 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_second_redemption_fails(): void {
-		$ticket = $this->service->mint( $this->admin_id, [] );
+		$link = $this->service->mint( $this->admin_id, [] );
 
-		$first  = $this->service->redeem_ticket( $ticket['upload_token'] );
-		$second = $this->service->redeem_ticket( $ticket['upload_token'] );
+		$first  = $this->service->redeem_link( $link['upload_token'] );
+		$second = $this->service->redeem_link( $link['upload_token'] );
 
 		$this->assertIsArray( $first );
 		$this->assertInstanceOf( WP_Error::class, $second );
-		$this->assertSame( 'ticket_already_used', $second->get_error_code() );
+		$this->assertSame( 'link_already_used', $second->get_error_code() );
 	}
 
 	/**
-	 * An expired ticket fails cleanly with a distinct error code.
+	 * An expired link fails cleanly with a distinct error code.
 	 *
 	 * @return void
 	 */
 	public function test_expired_ticket_fails_cleanly(): void {
 		global $wpdb;
 
-		$ticket = $this->service->mint( $this->admin_id, [] );
+		$link = $this->service->mint( $this->admin_id, [] );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test setup: force expiry.
 		$wpdb->update(
 			Tables::single_use_tokens(),
 			[ 'expires_at' => gmdate( 'Y-m-d H:i:s', time() - 60 ) ],
-			[ 'token_hash' => hash( 'sha256', $ticket['upload_token'] ) ]
+			[ 'token_hash' => hash( 'sha256', $link['upload_token'] ) ]
 		);
 
-		$result = $this->service->redeem_ticket( $ticket['upload_token'] );
+		$result = $this->service->redeem_link( $link['upload_token'] );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'ticket_expired', $result->get_error_code() );
+		$this->assertSame( 'link_expired', $result->get_error_code() );
 	}
 
 	/**
-	 * A role downgrade between mint and redemption revokes the ticket, even
+	 * A role downgrade between mint and redemption revokes the link, even
 	 * though it hasn't expired and was never used.
 	 *
 	 * @return void
 	 */
 	public function test_role_downgrade_between_mint_and_redemption_revokes_ticket(): void {
 		$editor_id = self::factory()->user->create( [ 'role' => 'editor' ] );
-		$ticket    = $this->service->mint( $editor_id, [] );
+		$link    = $this->service->mint( $editor_id, [] );
 
 		$editor = get_userdata( $editor_id );
 		$editor->set_role( 'subscriber' );
 
-		$result = $this->service->redeem_ticket( $ticket['upload_token'] );
+		$result = $this->service->redeem_link( $link['upload_token'] );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertSame( 'capability_revoked', $result->get_error_code() );
+
+		// The resolved user_id rides in the error data so a caller (the REST
+		// controller's execution-log call) can still attribute this failure
+		// to the real, identifiable user rather than logging it as user 0.
+		$this->assertSame( $editor_id, $result->get_error_data()['user_id'] );
 	}
 
 	/**
@@ -599,9 +623,9 @@ class UploadTicketServiceTest extends TestCase {
 	 */
 	public function test_narrowed_capability_shrinks_effective_allowlist(): void {
 		$admin  = get_userdata( $this->admin_id );
-		$ticket = $this->service->mint( $this->admin_id, [] );
+		$link = $this->service->mint( $this->admin_id, [] );
 
-		$this->assertContains( 'text/plain', $ticket['accepted_types'] );
+		$this->assertContains( 'text/plain', $link['accepted_types'] );
 
 		// Narrow what this user is allowed to upload via the same filter
 		// get_allowed_mime_types() itself consults.
@@ -612,7 +636,7 @@ class UploadTicketServiceTest extends TestCase {
 			}
 		);
 
-		$context = $this->service->redeem_ticket( $ticket['upload_token'] );
+		$context = $this->service->redeem_link( $link['upload_token'] );
 
 		$this->assertIsArray( $context );
 		$this->assertSame( [ 'image/jpeg' ], array_values( $context['mime_allowlist'] ) );
@@ -627,8 +651,8 @@ class UploadTicketServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_finalize_upload_creates_attachment_with_thumbnails(): void {
-		$ticket  = $this->service->mint( $this->admin_id, [] );
-		$context = $this->service->redeem_ticket( $ticket['upload_token'] );
+		$link  = $this->service->mint( $this->admin_id, [] );
+		$context = $this->service->redeem_link( $link['upload_token'] );
 
 		$tmp = wp_tempnam();
 		copy( $this->jpg_fixture(), $tmp );
@@ -655,8 +679,8 @@ class UploadTicketServiceTest extends TestCase {
 		$admin = get_userdata( $this->admin_id );
 		$admin->add_cap( 'unfiltered_upload' );
 
-		$ticket  = $this->service->mint( $this->admin_id, [] );
-		$context = $this->service->redeem_ticket( $ticket['upload_token'] );
+		$link  = $this->service->mint( $this->admin_id, [] );
+		$context = $this->service->redeem_link( $link['upload_token'] );
 
 		$tmp = wp_tempnam();
 		file_put_contents( $tmp, "<?php echo 'pwned'; " ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents -- Test fixture, not user input.
@@ -669,14 +693,14 @@ class UploadTicketServiceTest extends TestCase {
 	}
 
 	/**
-	 * A real file whose type simply isn't in the ticket's (narrowed)
+	 * A real file whose type simply isn't in the link's (narrowed)
 	 * allowlist is rejected, and the response carries the accepted list.
 	 *
 	 * @return void
 	 */
 	public function test_finalize_upload_rejects_type_outside_narrowed_allowlist(): void {
-		$ticket  = $this->service->mint( $this->admin_id, [ 'accepted_types' => [ 'application/pdf' ] ] );
-		$context = $this->service->redeem_ticket( $ticket['upload_token'] );
+		$link  = $this->service->mint( $this->admin_id, [ 'accepted_types' => [ 'application/pdf' ] ] );
+		$context = $this->service->redeem_link( $link['upload_token'] );
 
 		$tmp = wp_tempnam();
 		copy( $this->jpg_fixture(), $tmp );

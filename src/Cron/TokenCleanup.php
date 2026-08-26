@@ -17,22 +17,10 @@ use Albert\OAuth\Repositories\AccessTokenRepository;
 use Albert\OAuth\Repositories\RefreshTokenRepository;
 
 /**
- * TokenCleanup class
- *
- * Daily WP-Cron job that deletes expired OAuth access/refresh token rows and
- * expired single-use tokens (media upload tickets and, from 1.5.0, doc 40's
- * pending-action confirmations). The OAuth repositories already implement
- * `cleanupExpiredTokens()` (docs/features/31-connections.md §4), but nothing
- * has ever called them outside tests, so dead rows accumulate forever.
- *
- * Pure hygiene, not a security boundary in either case: an expired OAuth
- * token already cannot authenticate anything whether or not this has run —
- * access tokens are signed JWTs verified cryptographically against the `exp`
- * claim, and refresh tokens are checked against their own encrypted expiry
- * before the `revoked` column is even read. A single-use token is likewise
- * already rejected by {@see \Albert\Core\Tokens\TokenService::redeem()} once
- * past its `expires_at`. This job exists only so the tables do not grow
- * without bound.
+ * Daily WP-Cron job that deletes expired OAuth token rows and expired
+ * single-use tokens. Pure hygiene, not a security boundary — an expired
+ * token already can't authenticate or redeem regardless of whether this
+ * has run; it just keeps the tables from growing without bound.
  *
  * @since 1.4.0
  */

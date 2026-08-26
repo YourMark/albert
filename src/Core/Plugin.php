@@ -69,7 +69,7 @@ use Albert\Database\Installer as DatabaseInstaller;
 use Albert\Logging\Logger;
 use Albert\Logging\Repository as LoggingRepository;
 use Albert\MCP\Server as McpServer;
-use Albert\Media\UploadTickets\UploadTicketController;
+use Albert\Media\UploadLinks\UploadLinkController;
 use Albert\OAuth\Endpoints\AuthorizationPage;
 use Albert\OAuth\Endpoints\ClientRegistration;
 use Albert\OAuth\Endpoints\OAuthController;
@@ -236,8 +236,8 @@ class Plugin {
 		// Register the skills REST controller (read-only data for the Skills screen).
 		( new SkillsController() )->register_hooks();
 
-		// Register the media upload ticket redemption endpoint (doc 32, Path B).
-		( new UploadTicketController() )->register_hooks();
+		// Register the media upload link redemption endpoint (doc 32, Path B).
+		( new UploadLinkController() )->register_hooks();
 
 		// Register OAuth controller (REST API endpoints for token exchange).
 		( new OAuthController() )->register_hooks();

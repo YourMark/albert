@@ -5,8 +5,8 @@
  * The generic ability-contract, execute/schema, input-validation, and
  * permission-failure suites already cover this ability via
  * ProvidesAbilities auto-discovery — this file covers the parts specific
- * to it: that execute() actually delegates to UploadTicketService and a
- * minted ticket is genuinely redeemable end to end.
+ * to it: that execute() actually delegates to UploadLinkService and a
+ * minted link is genuinely redeemable end to end.
  *
  * @package Albert
  */
@@ -16,7 +16,7 @@ namespace Albert\Tests\Integration\Abilities;
 use Albert\Abilities\WordPress\Media\CreateUploadLink;
 use Albert\Database\Installer;
 use Albert\Database\Tables;
-use Albert\Media\UploadTickets\UploadTicketService;
+use Albert\Media\UploadLinks\UploadLinkService;
 use Albert\Tests\TestCase;
 use WP_Error;
 
@@ -47,7 +47,7 @@ class CreateUploadLinkAbilityTest extends TestCase {
 	}
 
 	/**
-	 * A minted ticket is genuinely redeemable through the same service the
+	 * A minted link is genuinely redeemable through the same service the
 	 * REST controller uses — proves the ability isn't just shaping a schema.
 	 *
 	 * @return void
@@ -57,8 +57,8 @@ class CreateUploadLinkAbilityTest extends TestCase {
 
 		$this->assertIsArray( $result );
 
-		$service = new UploadTicketService();
-		$context = $service->redeem_ticket( $result['upload_token'] );
+		$service = new UploadLinkService();
+		$context = $service->redeem_link( $result['upload_token'] );
 
 		$this->assertIsArray( $context );
 		$this->assertSame( get_current_user_id(), $context['user_id'] );

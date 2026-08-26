@@ -2,15 +2,15 @@
 /**
  * Integration tests for the Settings screen's filter-override UX, rendered
  * through the real page (Settings::render_settings_page() -> the generic
- * 'custom' field dispatch in SettingsRenderer -> UploadTicketService's own
+ * 'custom' field dispatch in SettingsRenderer -> UploadLinkService's own
  * render_callback) rather than calling the field's render method directly —
- * that part is covered in isolation by UploadTicketServiceTest. This file
+ * that part is covered in isolation by UploadLinkServiceTest. This file
  * proves the field is actually wired into the real Settings page and
  * dispatches correctly, not just that the callback works standalone.
  *
- * The save-path no-op (UploadTicketService::sanitize_max_mb() returning the
+ * The save-path no-op (UploadLinkService::sanitize_max_mb() returning the
  * stored value unchanged while the filter overrides) is unit-tested
- * directly in UploadTicketServiceTest, not here: exercising it through
+ * directly in UploadLinkServiceTest, not here: exercising it through
  * Settings::handle_save_settings() would require invoking a method that
  * ends in wp_safe_redirect() + exit, which would terminate the test runner.
  *
@@ -20,7 +20,7 @@
 namespace Albert\Tests\Integration\Admin;
 
 use Albert\Admin\Settings;
-use Albert\Media\UploadTickets\UploadTicketService;
+use Albert\Media\UploadLinks\UploadLinkService;
 use Albert\Tests\TestCase;
 
 /**
@@ -28,7 +28,7 @@ use Albert\Tests\TestCase;
  *
  * @covers \Albert\Admin\Settings
  * @covers \Albert\Admin\SettingsRenderer
- * @covers \Albert\Media\UploadTickets\UploadTicketService::render_max_mb_field
+ * @covers \Albert\Media\UploadLinks\UploadLinkService::render_max_mb_field
  */
 class SettingsFilterOverrideTest extends TestCase {
 
@@ -65,7 +65,7 @@ class SettingsFilterOverrideTest extends TestCase {
 	 */
 	private function extract_field( string $html ): string {
 		preg_match(
-			'/<input[^>]*name="' . preg_quote( UploadTicketService::MAX_BYTES_OPTION, '/' ) . '"[^>]*>/',
+			'/<input[^>]*name="' . preg_quote( UploadLinkService::MAX_BYTES_OPTION, '/' ) . '"[^>]*>/',
 			$html,
 			$matches
 		);
@@ -95,7 +95,7 @@ class SettingsFilterOverrideTest extends TestCase {
 	 * @return void
 	 */
 	public function test_field_is_disabled_and_shows_the_filtered_value_when_overridden(): void {
-		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 7 * UploadTicketService::BYTES_PER_MB );
+		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 7 * UploadLinkService::BYTES_PER_MB );
 
 		$html  = $this->render();
 		$field = $this->extract_field( $html );
@@ -113,14 +113,14 @@ class SettingsFilterOverrideTest extends TestCase {
 	 * @return void
 	 */
 	public function test_stored_option_value_is_not_shown_while_overridden(): void {
-		update_option( UploadTicketService::MAX_BYTES_OPTION, 42 );
-		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 7 * UploadTicketService::BYTES_PER_MB );
+		update_option( UploadLinkService::MAX_BYTES_OPTION, 42 );
+		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 7 * UploadLinkService::BYTES_PER_MB );
 
 		$field = $this->extract_field( $this->render() );
 
 		$this->assertStringContainsString( 'value="7"', $field );
 		$this->assertStringNotContainsString( 'value="42"', $field );
 
-		delete_option( UploadTicketService::MAX_BYTES_OPTION );
+		delete_option( UploadLinkService::MAX_BYTES_OPTION );
 	}
 }

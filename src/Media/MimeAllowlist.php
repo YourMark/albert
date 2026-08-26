@@ -12,14 +12,8 @@ namespace Albert\Media;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * MimeAllowlist class
- *
- * The MIME allowlist an upload is checked against is always the issuing
- * user's own `get_allowed_mime_types()` — never a blanket default — narrowed
- * further by whatever a caller explicitly asked for. Shared between the URL
- * sideload ability ({@see \Albert\Abilities\WordPress\Media\UploadMedia}) and
- * the upload-ticket path ({@see \Albert\Media\UploadTickets\UploadTicketService})
- * so both enforce the same rule.
+ * Resolves the MIME allowlist an upload is checked against: always the
+ * issuing user's own `get_allowed_mime_types()`, never a blanket default.
  *
  * @since 1.4.0
  */
@@ -46,10 +40,6 @@ class MimeAllowlist {
 
 	/**
 	 * Narrow an allowlist to only the entries matching a set of MIME types.
-	 *
-	 * Pure set intersection — used both to narrow a freshly resolved allowlist
-	 * to a caller's request, and to re-narrow a stored allowlist against a
-	 * freshly resolved one (e.g. re-checking a role downgrade at redemption).
 	 *
 	 * @param array<string, string> $allowlist       Extension-regex => MIME type.
 	 * @param array<int, string>    $requested_mimes MIME types to keep.
