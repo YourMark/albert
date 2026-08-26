@@ -83,6 +83,28 @@ class UploadLinkServiceTest extends TestCase {
 	}
 
 	/**
+	 * Lift `wp_max_upload_size()` out of the way for a test that is about
+	 * default/option/filter precedence rather than the server ceiling.
+	 *
+	 * A stock PHP ships `upload_max_filesize = 2M`, which is below every
+	 * value the precedence tests deal in, so without this they assert the
+	 * ceiling instead of the precedence they name — passing on a dev machine
+	 * with a generous php.ini and failing on CI. `wp_max_upload_size()` runs
+	 * its result through `upload_size_limit`, so raising it needs no ini
+	 * change. The ceiling itself is covered separately by
+	 * {@see self::test_default_max_bytes_is_still_capped_by_server_ceiling()}.
+	 *
+	 * @return void
+	 */
+	private function lift_server_upload_ceiling(): void {
+		// Above MAX_SETTABLE_MB, so nothing this class can express hits it.
+		add_filter(
+			'upload_size_limit',
+			static fn (): int => ( UploadLinkService::MAX_SETTABLE_MB + 1 ) * UploadLinkService::BYTES_PER_MB
+		);
+	}
+
+	/**
 	 * Path to a real fixture JPEG from the WP test suite, or skip.
 	 *
 	 * @return string
@@ -182,6 +204,7 @@ class UploadLinkServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_default_max_bytes_falls_back_to_constant(): void {
+		$this->lift_server_upload_ceiling();
 		delete_option( UploadLinkService::MAX_BYTES_OPTION );
 
 		$link = $this->service->mint( $this->admin_id, [] );
@@ -196,6 +219,7 @@ class UploadLinkServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_default_max_bytes_honours_the_stored_option(): void {
+		$this->lift_server_upload_ceiling();
 		update_option( UploadLinkService::MAX_BYTES_OPTION, 5 );
 
 		$link = $this->service->mint( $this->admin_id, [] );
@@ -211,6 +235,7 @@ class UploadLinkServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_default_max_bytes_filter_overrides_the_option(): void {
+		$this->lift_server_upload_ceiling();
 		update_option( UploadLinkService::MAX_BYTES_OPTION, 5 );
 		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 3 * UploadLinkService::BYTES_PER_MB );
 
@@ -229,6 +254,7 @@ class UploadLinkServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_default_max_bytes_filter_returning_null_defers_to_the_option(): void {
+		$this->lift_server_upload_ceiling();
 		update_option( UploadLinkService::MAX_BYTES_OPTION, 5 );
 		add_filter( 'albert/media/upload_link_max_bytes', static fn () => null );
 
