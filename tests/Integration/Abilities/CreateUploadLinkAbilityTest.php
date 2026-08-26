@@ -52,7 +52,7 @@ class CreateUploadLinkAbilityTest extends TestCase {
 	 *
 	 * @return void
 	 */
-	public function test_minted_ticket_is_redeemable(): void {
+	public function test_minted_link_is_redeemable(): void {
 		$result = ( new CreateUploadLink() )->execute( [] );
 
 		$this->assertIsArray( $result );

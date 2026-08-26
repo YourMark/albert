@@ -237,6 +237,28 @@ abstract class BaseAbility implements Ability {
 		// Observers are loggers; the caller is the one that needs the secrets.
 		$observed = $this->redact_sensitive_output( $result );
 
+		self::fire_after_execute_hooks( $this->id, $args, $observed, $user_id );
+
+		return $result;
+	}
+
+	/**
+	 * Fire the `after_execute` hook pair for an ability execution result.
+	 *
+	 * Shared with {@see \Albert\Media\UploadLinks\UploadLinkController::log()},
+	 * which fires this same pair for the upload-link redemption endpoint — not
+	 * a WP_Ability, so {@see self::guarded_execute()} never runs for it.
+	 *
+	 * @param string                        $ability_id Ability identifier.
+	 * @param array<string, mixed>          $args       Input parameters.
+	 * @param array<string, mixed>|WP_Error $result     Execution result, with any keys the
+	 *                                                  ability declared sensitive masked.
+	 * @param int                           $user_id    Current user ID.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	public static function fire_after_execute_hooks( string $ability_id, array $args, array|WP_Error $result, int $user_id ): void {
 		try {
 			/**
 			 * Fires after any ability is executed.
@@ -249,12 +271,12 @@ abstract class BaseAbility implements Ability {
 			 *                                   ability declared sensitive masked.
 			 * @param int            $user_id    Current user ID.
 			 */
-			do_action( 'albert/abilities/after_execute', $this->id, $args, $observed, $user_id );
+			do_action( 'albert/abilities/after_execute', $ability_id, $args, $result, $user_id );
 
 			/**
 			 * Fires after a specific ability is executed.
 			 *
-			 * The dynamic portion of the hook name, `$this->id`, refers to the
+			 * The dynamic portion of the hook name, `$ability_id`, refers to the
 			 * ability identifier (e.g. 'core/posts/create', 'albert/woo-find-products').
 			 *
 			 * @since 1.1.0
@@ -264,12 +286,10 @@ abstract class BaseAbility implements Ability {
 			 *                                ability declared sensitive masked.
 			 * @param int            $user_id Current user ID.
 			 */
-			do_action( "albert/abilities/after_execute/{$this->id}", $args, $observed, $user_id );
+			do_action( "albert/abilities/after_execute/{$ability_id}", $args, $result, $user_id );
 		} catch ( \Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
 			// Log in debug mode but never break execution.
 		}
-
-		return $result;
 	}
 
 	/**

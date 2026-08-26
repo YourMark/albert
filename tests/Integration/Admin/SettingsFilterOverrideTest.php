@@ -2,15 +2,15 @@
 /**
  * Integration tests for the Settings screen's filter-override UX, rendered
  * through the real page (Settings::render_settings_page() -> the generic
- * 'custom' field dispatch in SettingsRenderer -> UploadLinkService's own
+ * 'custom' field dispatch in SettingsRenderer -> SettingsBootstrap's own
  * render_callback) rather than calling the field's render method directly —
- * that part is covered in isolation by UploadLinkServiceTest. This file
+ * that part is covered in isolation by SettingsBootstrapTest. This file
  * proves the field is actually wired into the real Settings page and
  * dispatches correctly, not just that the callback works standalone.
  *
- * The save-path no-op (UploadLinkService::sanitize_max_mb() returning the
+ * The save-path no-op (SettingsBootstrap::sanitize_max_mb() returning the
  * stored value unchanged while the filter overrides) is unit-tested
- * directly in UploadLinkServiceTest, not here: exercising it through
+ * directly in SettingsBootstrapTest, not here: exercising it through
  * Settings::handle_save_settings() would require invoking a method that
  * ends in wp_safe_redirect() + exit, which would terminate the test runner.
  *
@@ -28,7 +28,7 @@ use Albert\Tests\TestCase;
  *
  * @covers \Albert\Admin\Settings
  * @covers \Albert\Admin\SettingsRenderer
- * @covers \Albert\Media\UploadLinks\UploadLinkService::render_max_mb_field
+ * @covers \Albert\Admin\SettingsBootstrap::render_max_mb_field
  */
 class SettingsFilterOverrideTest extends TestCase {
 

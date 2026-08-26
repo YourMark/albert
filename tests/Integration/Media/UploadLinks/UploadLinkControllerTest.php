@@ -287,7 +287,7 @@ class UploadLinkControllerTest extends TestCase {
 	 *
 	 * @return void
 	 */
-	public function test_a_failed_upload_does_not_leave_the_ticket_retryable(): void {
+	public function test_a_failed_upload_does_not_leave_the_link_retryable(): void {
 		$link = $this->links->mint( $this->admin_id, [ 'max_bytes' => 10 ] );
 
 		$failed = rest_get_server()->dispatch( $this->multipart_request( $link['upload_token'], $this->jpg_fixture(), 'photo.jpg' ) );

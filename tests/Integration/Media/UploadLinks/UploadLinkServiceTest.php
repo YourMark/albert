@@ -57,29 +57,6 @@ class UploadLinkServiceTest extends TestCase {
 
 		$this->service  = new UploadLinkService();
 		$this->admin_id = self::factory()->user->create( [ 'role' => 'administrator' ] );
-
-		// $wp_settings_errors is a plain global, not reset between tests by
-		// WP's own hook-backup mechanism — reset it explicitly so a warning
-		// added in one test can't leak into another's assertions.
-		global $wp_settings_errors;
-		$wp_settings_errors = []; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Test isolation, not production code overriding a WP internal.
-	}
-
-	/**
-	 * Whether a settings error with the given code is currently registered.
-	 *
-	 * @param string $code The settings-error code to look for.
-	 *
-	 * @return bool
-	 */
-	private function has_settings_error( string $code ): bool {
-		foreach ( get_settings_errors( 'albert_settings' ) as $error ) {
-			if ( $error['code'] === $code ) {
-				return true;
-			}
-		}
-
-		return false;
 	}
 
 	/**
@@ -124,7 +101,7 @@ class UploadLinkServiceTest extends TestCase {
 	 *
 	 * @return void
 	 */
-	public function test_mint_returns_ticket_fields(): void {
+	public function test_mint_returns_link_fields(): void {
 		$link = $this->service->mint( $this->admin_id, [] );
 
 		$this->assertIsArray( $link );
@@ -412,163 +389,6 @@ class UploadLinkServiceTest extends TestCase {
 	}
 
 	/**
-	 * With no filter hooked, render_max_mb_field() renders an editable
-	 * input showing the stored/default value, and no override notice.
-	 *
-	 * @return void
-	 */
-	public function test_render_max_mb_field_is_editable_without_a_filter(): void {
-		ob_start();
-		UploadLinkService::render_max_mb_field( [], 9 );
-		$html = ob_get_clean();
-
-		$this->assertStringContainsString( 'value="9"', $html );
-		$this->assertStringNotContainsString( 'disabled', $html );
-		$this->assertStringNotContainsString( 'albert-hint', $html );
-	}
-
-	/**
-	 * With the filter active, render_max_mb_field() shows the filter's
-	 * value (not the $current_value it was passed), disabled, with a
-	 * notice naming the filter.
-	 *
-	 * @return void
-	 */
-	public function test_render_max_mb_field_shows_filtered_value_when_overridden(): void {
-		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 12 * UploadLinkService::BYTES_PER_MB );
-
-		ob_start();
-		UploadLinkService::render_max_mb_field( [], 9 );
-		$html = ob_get_clean();
-
-		$this->assertStringContainsString( 'value="12"', $html );
-		$this->assertStringNotContainsString( 'value="9"', $html );
-		$this->assertStringContainsString( 'disabled', $html );
-		$this->assertStringContainsString( 'albert/media/upload_link_max_bytes', $html );
-		$this->assertStringContainsString( 'albert-hint--info', $html );
-		$this->assertStringNotContainsString( 'albert-hint--warning', $html );
-	}
-
-	/**
-	 * When the filter's requested value exceeds the settable ceiling and
-	 * gets clamped, the field shows a *warning* hint naming both the
-	 * requested and the applied value — not the plain "overridden" info
-	 * notice, which wouldn't explain why the number looks capped.
-	 *
-	 * @return void
-	 */
-	public function test_render_max_mb_field_warns_when_filter_value_is_clamped(): void {
-		add_filter( 'albert/media/upload_link_max_bytes', static fn () => '10G' ); // 10240 MB, clamped to 2048.
-
-		ob_start();
-		UploadLinkService::render_max_mb_field( [], 9 );
-		$html = ob_get_clean();
-
-		$this->assertStringContainsString( 'value="' . UploadLinkService::MAX_SETTABLE_MB . '"', $html );
-		$this->assertStringContainsString( 'disabled', $html );
-		$this->assertStringContainsString( 'albert-hint--warning', $html );
-		$this->assertStringNotContainsString( 'albert-hint--info', $html );
-		$this->assertStringContainsString( '10240', $html ); // The requested value, for context.
-		$this->assertStringContainsString( (string) UploadLinkService::MAX_SETTABLE_MB, $html );
-	}
-
-	// ─── sanitize_max_mb() ────────────────────────────────────────────
-
-	/**
-	 * A valid value passes through unchanged.
-	 *
-	 * @return void
-	 */
-	public function test_sanitize_max_mb_passes_through_a_valid_value(): void {
-		$this->assertSame( 42, UploadLinkService::sanitize_max_mb( '42' ) );
-	}
-
-	/**
-	 * Zero, negative, and non-numeric input fall back to the default rather
-	 * than persisting a byte cap of zero.
-	 *
-	 * @return void
-	 */
-	public function test_sanitize_max_mb_rejects_invalid_input(): void {
-		$this->assertSame( UploadLinkService::DEFAULT_MAX_MB, UploadLinkService::sanitize_max_mb( '0' ) );
-		$this->assertSame( UploadLinkService::DEFAULT_MAX_MB, UploadLinkService::sanitize_max_mb( '-5' ) );
-		$this->assertSame( UploadLinkService::DEFAULT_MAX_MB, UploadLinkService::sanitize_max_mb( 'not-a-number' ) );
-	}
-
-	/**
-	 * Falling back to the default is reported, exactly as clamping down from
-	 * above the ceiling is. Silently rewriting a 0 into 10 leaves somebody
-	 * looking at a number they did not type and no reason for it.
-	 *
-	 * @return void
-	 */
-	public function test_sanitize_max_mb_warns_when_input_is_below_the_minimum(): void {
-		UploadLinkService::sanitize_max_mb( '0' );
-
-		$this->assertTrue( $this->has_settings_error( 'upload_link_max_mb_too_low' ) );
-	}
-
-	/**
-	 * A value above the settable ceiling is clamped, not rejected outright.
-	 *
-	 * @return void
-	 */
-	public function test_sanitize_max_mb_clamps_to_the_settable_ceiling(): void {
-		$this->assertSame(
-			UploadLinkService::MAX_SETTABLE_MB,
-			UploadLinkService::sanitize_max_mb( UploadLinkService::MAX_SETTABLE_MB + 1000 )
-		);
-	}
-
-	/**
-	 * Saving a value above the ceiling registers a settings-error warning —
-	 * shown via the page's existing settings_errors('albert_settings') call,
-	 * the same mechanism the "Settings saved" message already uses — so the
-	 * clamp isn't silent.
-	 *
-	 * @return void
-	 */
-	public function test_sanitize_max_mb_warns_when_clamping(): void {
-		UploadLinkService::sanitize_max_mb( UploadLinkService::MAX_SETTABLE_MB + 1000 );
-
-		$this->assertTrue( $this->has_settings_error( 'upload_link_max_mb_clamped' ) );
-	}
-
-	/**
-	 * A value within bounds never registers the clamp warning.
-	 *
-	 * @return void
-	 */
-	public function test_sanitize_max_mb_does_not_warn_within_bounds(): void {
-		UploadLinkService::sanitize_max_mb( 42 );
-
-		$this->assertFalse( $this->has_settings_error( 'upload_link_max_mb_clamped' ) );
-	}
-
-	/**
-	 * While the filter is active, sanitize_max_mb() is a no-op: it returns
-	 * whatever's already stored rather than reading $value at all. The
-	 * field renders disabled in this state, so a save submits no value for
-	 * it ($_POST simply lacks the key) — without this, that missing value
-	 * would sanitize down to "invalid" and silently reset the stored
-	 * option to the default on every unrelated settings save.
-	 *
-	 * @return void
-	 */
-	public function test_sanitize_max_mb_is_a_noop_while_the_filter_overrides(): void {
-		update_option( UploadLinkService::MAX_BYTES_OPTION, 33 );
-		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 12 * UploadLinkService::BYTES_PER_MB );
-
-		// A real browser submission never happens while disabled, but even
-		// if something did POST a value (or the field is simply absent),
-		// the stored option must survive unchanged either way.
-		$this->assertSame( 33, UploadLinkService::sanitize_max_mb( null ) );
-		$this->assertSame( 33, UploadLinkService::sanitize_max_mb( '999' ) );
-
-		delete_option( UploadLinkService::MAX_BYTES_OPTION );
-	}
-
-	/**
 	 * An invalid post_id is rejected at mint time.
 	 *
 	 * @return void
@@ -637,7 +457,7 @@ class UploadLinkServiceTest extends TestCase {
 	 *
 	 * @return void
 	 */
-	public function test_expired_ticket_fails_cleanly(): void {
+	public function test_expired_link_fails_cleanly(): void {
 		global $wpdb;
 
 		$link = $this->service->mint( $this->admin_id, [] );
@@ -661,7 +481,7 @@ class UploadLinkServiceTest extends TestCase {
 	 *
 	 * @return void
 	 */
-	public function test_role_downgrade_between_mint_and_redemption_revokes_ticket(): void {
+	public function test_role_downgrade_between_mint_and_redemption_revokes_link(): void {
 		$editor_id = self::factory()->user->create( [ 'role' => 'editor' ] );
 		$link      = $this->service->mint( $editor_id, [] );
 
@@ -809,41 +629,6 @@ class UploadLinkServiceTest extends TestCase {
 
 		$this->assertSame( 'active', $state['state'] );
 		$this->assertSame( (int) ( 1.5 * UploadLinkService::BYTES_PER_MB ), $state['value'] );
-	}
-
-	/**
-	 * A sub-megabyte filter value never renders as 0 against the field's own min="1".
-	 *
-	 * @return void
-	 */
-	public function test_a_sub_megabyte_filter_value_never_renders_as_zero(): void {
-		add_filter(
-			'albert/media/upload_link_max_bytes',
-			static function () {
-				return 500;
-			}
-		);
-
-		ob_start();
-		UploadLinkService::render_max_mb_field( [], 10 );
-		$html = ob_get_clean();
-
-		$this->assertStringNotContainsString( 'value="0"', $html );
-		$this->assertStringContainsString( 'value="1"', $html );
-		// The rounding is not allowed to mislead: the hint carries the real size.
-		$this->assertStringContainsString( size_format( 500 ), $html );
-	}
-
-	/**
-	 * A settings save that does not carry this field leaves the stored value
-	 * alone, even once the filter that disabled the field has gone away.
-	 *
-	 * @return void
-	 */
-	public function test_an_unsubmitted_field_does_not_reset_the_stored_value(): void {
-		update_option( UploadLinkService::MAX_BYTES_OPTION, 50 );
-
-		$this->assertSame( 50, UploadLinkService::sanitize_max_mb( null ) );
 	}
 
 	/**

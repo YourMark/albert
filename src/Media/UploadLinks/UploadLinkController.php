@@ -11,6 +11,7 @@ namespace Albert\Media\UploadLinks;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Abstracts\BaseAbility;
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Core\Plugin;
 use Albert\Media\TempFile;
@@ -229,7 +230,7 @@ class UploadLinkController implements Hookable {
 
 			return [
 				'tmp_path' => $file['tmp_name'],
-				'filename' => (string) ( $file['name'] ?? '' ),
+				'filename' => is_string( $file['name'] ?? null ) ? $file['name'] : '',
 			];
 		}
 
@@ -428,7 +429,9 @@ class UploadLinkController implements Hookable {
 	/**
 	 * Log a redemption attempt through Albert's normal execution-log path.
 	 *
-	 * Not a WP_Ability, so `guarded_execute()` never fires this hook for it — fired here directly instead.
+	 * Not a WP_Ability, so `guarded_execute()` never runs for it — this fires
+	 * the same hook pair {@see BaseAbility::fire_after_execute_hooks()} fires
+	 * for every real ability, directly instead.
 	 *
 	 * @param int                           $user_id The issuing user (0 when the token itself was rejected).
 	 * @param array<string, mixed>          $args    Non-sensitive context: post_id, filename. Never the token.
@@ -438,12 +441,6 @@ class UploadLinkController implements Hookable {
 	 * @since 1.4.0
 	 */
 	private function log( int $user_id, array $args, array|WP_Error $result ): void {
-		try {
-			do_action( 'albert/abilities/after_execute', self::LOG_ABILITY_ID, $args, $result, $user_id );
-			// Same pair BaseAbility::guarded_execute() fires for every real ability.
-			do_action( 'albert/abilities/after_execute/' . self::LOG_ABILITY_ID, $args, $result, $user_id );
-		} catch ( \Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
-			// Never let a logging failure surface as an upload failure.
-		}
+		BaseAbility::fire_after_execute_hooks( self::LOG_ABILITY_ID, $args, $result, $user_id );
 	}
 }
