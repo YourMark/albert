@@ -168,10 +168,6 @@ class SettingsBootstrap {
 	 * @return string e.g. "64 MB".
 	 */
 	private static function server_upload_ceiling(): string {
-		if ( ! function_exists( 'wp_max_upload_size' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/media.php';
-		}
-
 		// size_format() can return false; wp_max_upload_size() can't actually trigger that.
 		$formatted = size_format( wp_max_upload_size() );
 

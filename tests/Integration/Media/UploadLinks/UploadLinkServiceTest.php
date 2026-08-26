@@ -598,7 +598,7 @@ class UploadLinkServiceTest extends TestCase {
 	 */
 	public function test_role_downgrade_between_mint_and_redemption_revokes_ticket(): void {
 		$editor_id = self::factory()->user->create( [ 'role' => 'editor' ] );
-		$link    = $this->service->mint( $editor_id, [] );
+		$link      = $this->service->mint( $editor_id, [] );
 
 		$editor = get_userdata( $editor_id );
 		$editor->set_role( 'subscriber' );
@@ -622,8 +622,8 @@ class UploadLinkServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_narrowed_capability_shrinks_effective_allowlist(): void {
-		$admin  = get_userdata( $this->admin_id );
-		$link = $this->service->mint( $this->admin_id, [] );
+		$admin = get_userdata( $this->admin_id );
+		$link  = $this->service->mint( $this->admin_id, [] );
 
 		$this->assertContains( 'text/plain', $link['accepted_types'] );
 
@@ -651,7 +651,7 @@ class UploadLinkServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_finalize_upload_creates_attachment_with_thumbnails(): void {
-		$link  = $this->service->mint( $this->admin_id, [] );
+		$link    = $this->service->mint( $this->admin_id, [] );
 		$context = $this->service->redeem_link( $link['upload_token'] );
 
 		$tmp = wp_tempnam();
@@ -679,7 +679,7 @@ class UploadLinkServiceTest extends TestCase {
 		$admin = get_userdata( $this->admin_id );
 		$admin->add_cap( 'unfiltered_upload' );
 
-		$link  = $this->service->mint( $this->admin_id, [] );
+		$link    = $this->service->mint( $this->admin_id, [] );
 		$context = $this->service->redeem_link( $link['upload_token'] );
 
 		$tmp = wp_tempnam();
@@ -699,7 +699,7 @@ class UploadLinkServiceTest extends TestCase {
 	 * @return void
 	 */
 	public function test_finalize_upload_rejects_type_outside_narrowed_allowlist(): void {
-		$link  = $this->service->mint( $this->admin_id, [ 'accepted_types' => [ 'application/pdf' ] ] );
+		$link    = $this->service->mint( $this->admin_id, [ 'accepted_types' => [ 'application/pdf' ] ] );
 		$context = $this->service->redeem_link( $link['upload_token'] );
 
 		$tmp = wp_tempnam();
@@ -713,5 +713,101 @@ class UploadLinkServiceTest extends TestCase {
 		$data = $result->get_error_data();
 		$this->assertSame( [ 'application/pdf' ], $data['accepted_types'] );
 		$this->assertFileDoesNotExist( $tmp );
+	}
+
+	/**
+	 * The two default constants express the same size, so neither can drift.
+	 *
+	 * @return void
+	 */
+	public function test_the_byte_and_megabyte_defaults_agree(): void {
+		$this->assertSame(
+			UploadLinkService::DEFAULT_MAX_MB * UploadLinkService::BYTES_PER_MB,
+			UploadLinkService::DEFAULT_MAX_BYTES
+		);
+	}
+
+	/**
+	 * A filter returning a float overrides, rather than being silently dropped.
+	 *
+	 * @return void
+	 */
+	public function test_a_float_filter_value_is_honoured(): void {
+		add_filter(
+			'albert/media/upload_link_max_bytes',
+			static function () {
+				return 1.5 * UploadLinkService::BYTES_PER_MB;
+			}
+		);
+
+		$state = UploadLinkService::get_default_max_bytes_filter_state();
+
+		$this->assertSame( 'active', $state['state'] );
+		$this->assertSame( (int) ( 1.5 * UploadLinkService::BYTES_PER_MB ), $state['value'] );
+	}
+
+	/**
+	 * A sub-megabyte filter value never renders as 0 against the field's own min="1".
+	 *
+	 * @return void
+	 */
+	public function test_a_sub_megabyte_filter_value_never_renders_as_zero(): void {
+		add_filter(
+			'albert/media/upload_link_max_bytes',
+			static function () {
+				return 500;
+			}
+		);
+
+		ob_start();
+		UploadLinkService::render_max_mb_field( [], 10 );
+		$html = ob_get_clean();
+
+		$this->assertStringNotContainsString( 'value="0"', $html );
+		$this->assertStringContainsString( 'value="1"', $html );
+		// The rounding is not allowed to mislead: the hint carries the real size.
+		$this->assertStringContainsString( size_format( 500 ), $html );
+	}
+
+	/**
+	 * A settings save that does not carry this field leaves the stored value
+	 * alone, even once the filter that disabled the field has gone away.
+	 *
+	 * @return void
+	 */
+	public function test_an_unsubmitted_field_does_not_reset_the_stored_value(): void {
+		update_option( UploadLinkService::MAX_BYTES_OPTION, 50 );
+
+		$this->assertSame( 50, UploadLinkService::sanitize_max_mb( null ) );
+	}
+
+	/**
+	 * A core-side upload refusal is a 4xx with its own code, not a bare 500
+	 * colliding with the controller's own 'upload_error'.
+	 *
+	 * @return void
+	 */
+	public function test_a_core_upload_refusal_is_recoded_as_a_client_error(): void {
+		$link    = $this->service->mint( $this->admin_id, [] );
+		$context = $this->service->redeem_link( $link['upload_token'] );
+
+		// Make core's own sideload fail after our checks have passed.
+		add_filter(
+			'wp_handle_sideload_prefilter',
+			static function ( $file ) {
+				$file['error'] = 'forced failure';
+
+				return $file;
+			}
+		);
+
+		$tmp = wp_tempnam();
+		copy( $this->jpg_fixture(), $tmp );
+
+		$result = $this->service->finalize_upload( $tmp, 'photo.jpg', $context );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'upload_failed', $result->get_error_code() );
+		$this->assertSame( 400, $result->get_error_data()['status'] );
 	}
 }

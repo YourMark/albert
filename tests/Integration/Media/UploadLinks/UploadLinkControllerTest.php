@@ -65,7 +65,7 @@ class UploadLinkControllerTest extends TestCase {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Test reset.
 		$wpdb->query( $wpdb->prepare( 'TRUNCATE TABLE %i', Tables::ability_log() ) );
 
-		$this->links    = new UploadLinkService();
+		$this->links      = new UploadLinkService();
 		$this->controller = new UploadLinkController( $this->links );
 		$this->controller->register_hooks();
 
@@ -357,7 +357,7 @@ class UploadLinkControllerTest extends TestCase {
 		global $wpdb;
 
 		$editor_id = self::factory()->user->create( [ 'role' => 'editor' ] );
-		$link    = $this->links->mint( $editor_id, [] );
+		$link      = $this->links->mint( $editor_id, [] );
 
 		get_userdata( $editor_id )->set_role( 'subscriber' );
 
@@ -487,5 +487,111 @@ class UploadLinkControllerTest extends TestCase {
 
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertSame( 'too_large', $result->get_error_code() );
+	}
+
+	/**
+	 * The attachment is authored by the user who minted the link, not by 0.
+	 *
+	 * @return void
+	 */
+	public function test_attachment_is_authored_by_the_issuing_user(): void {
+		$author_id = self::factory()->user->create( [ 'role' => 'author' ] );
+		$link      = $this->links->mint( $author_id, [] );
+
+		$response = $this->controller->handle_upload(
+			$this->multipart_request( $link['upload_token'], $this->jpg_fixture(), 'authored.jpg' )
+		);
+
+		$this->assertNotWPError( $response );
+
+		$attachment_id = $response->get_data()['attachment_id'];
+
+		$this->assertSame( $author_id, (int) get_post_field( 'post_author', $attachment_id ) );
+
+		wp_delete_attachment( $attachment_id, true );
+	}
+
+	/**
+	 * A body larger than the cap is refused on its declared size, before the
+	 * bytes are read, rather than after the whole thing has been handled.
+	 *
+	 * @return void
+	 */
+	public function test_declared_content_length_over_the_cap_is_refused(): void {
+		$link = $this->links->mint( $this->admin_id, [ 'max_bytes' => 1024 ] );
+
+		$had_original = isset( $_SERVER['CONTENT_LENGTH'] );
+		$original     = $had_original ? absint( wp_unslash( $_SERVER['CONTENT_LENGTH'] ) ) : 0;
+
+		$_SERVER['CONTENT_LENGTH'] = '99999999';
+
+		$request = new WP_REST_Request( 'PUT', '/' . Plugin::rest_namespace() . '/media/uploads' );
+		$request->set_header( UploadLinkService::TOKEN_HEADER, $link['upload_token'] );
+		$request->set_param( 'filename', 'big.jpg' );
+
+		$result = $this->controller->handle_upload( $request );
+
+		if ( $had_original ) {
+			$_SERVER['CONTENT_LENGTH'] = (string) $original;
+		} else {
+			unset( $_SERVER['CONTENT_LENGTH'] );
+		}
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'too_large', $result->get_error_code() );
+		$this->assertSame( 413, $result->get_error_data()['status'] );
+		$this->assertSame( 1024, $result->get_error_data()['max_bytes'] );
+	}
+
+	/**
+	 * PHP's own size rejection empties tmp_name; that must still read as
+	 * too_large, not as the raw-body branch's "filename is required".
+	 *
+	 * @return void
+	 */
+	public function test_php_size_rejection_reports_too_large(): void {
+		$link = $this->links->mint( $this->admin_id, [] );
+
+		$request = new WP_REST_Request( 'POST', '/' . Plugin::rest_namespace() . '/media/uploads' );
+		$request->set_header( UploadLinkService::TOKEN_HEADER, $link['upload_token'] );
+		$request->set_file_params(
+			[
+				'file' => [
+					'name'     => 'huge.jpg',
+					'type'     => 'image/jpeg',
+					'tmp_name' => '',
+					'error'    => UPLOAD_ERR_INI_SIZE,
+					'size'     => 0,
+				],
+			]
+		);
+
+		$result = $this->controller->handle_upload( $request );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'too_large', $result->get_error_code() );
+		$this->assertSame( 413, $result->get_error_data()['status'] );
+	}
+
+	/**
+	 * The issuing user's ID is logged but never returned to the unauthenticated caller.
+	 *
+	 * @return void
+	 */
+	public function test_capability_revoked_does_not_leak_the_user_id(): void {
+		$author_id = self::factory()->user->create( [ 'role' => 'author' ] );
+		$link      = $this->links->mint( $author_id, [] );
+
+		$user = new \WP_User( $author_id );
+		$user->set_role( 'subscriber' );
+
+		$request = new WP_REST_Request( 'POST', '/' . Plugin::rest_namespace() . '/media/uploads' );
+		$request->set_header( UploadLinkService::TOKEN_HEADER, $link['upload_token'] );
+
+		$result = $this->controller->handle_upload( $request );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'capability_revoked', $result->get_error_code() );
+		$this->assertArrayNotHasKey( 'user_id', $result->get_error_data() );
 	}
 }

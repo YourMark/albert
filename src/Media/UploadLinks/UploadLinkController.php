@@ -127,8 +127,25 @@ class UploadLinkController implements Hookable {
 
 			$this->log( $user_id, [], $context );
 
-			return $context;
+			return $this->scrub_error( $context );
 		}
+
+		$declared = $this->declared_body_size();
+
+		if ( $declared > $context['max_bytes'] ) {
+			$error = $this->too_large_error( $context['max_bytes'] );
+			$this->log( $context['user_id'], [ 'post_id' => $context['post_id'] ], $error );
+
+			return $error;
+		}
+
+		// Act as the issuing user for the rest of the request: core stamps
+		// post_author from the current user, and its own MIME re-check inside
+		// _wp_handle_upload() otherwise runs against the anonymous allowlist
+		// and can reject a type this link legitimately advertised. Cannot
+		// widen anything — finalize_upload() has already rejected everything
+		// outside the link's own (narrower) allowlist by the time core looks.
+		wp_set_current_user( $context['user_id'] );
 
 		$received = $this->receive_file( $request, $context['max_bytes'] );
 
@@ -170,45 +187,42 @@ class UploadLinkController implements Hookable {
 	 */
 	private function receive_file( WP_REST_Request $request, int $max_bytes ): array|WP_Error {
 		$files = $request->get_file_params();
+		$file  = isset( $files['file'] ) && is_array( $files['file'] ) ? $files['file'] : null;
 
-		if ( ! empty( $files['file']['tmp_name'] ) && is_string( $files['file']['tmp_name'] ) ) {
-			$file = $files['file'];
+		// Checked before tmp_name, which PHP leaves empty on its own size
+		// rejections — without this an oversized multipart body falls through
+		// to the raw-body branch and answers "filename parameter required".
+		if ( $file !== null && ! empty( $file['error'] ) ) {
+			$code = (int) $file['error'];
 
-			if ( ! empty( $file['error'] ) ) {
-				return new WP_Error(
-					'upload_error',
-					__( 'The uploaded file could not be received.', 'albert-ai-butler' ),
-					[ 'status' => 400 ]
-				);
+			if ( UPLOAD_ERR_INI_SIZE === $code || UPLOAD_ERR_FORM_SIZE === $code ) {
+				return $this->too_large_error( $max_bytes );
 			}
 
+			if ( UPLOAD_ERR_NO_FILE === $code ) {
+				return $this->no_data_error();
+			}
+
+			return new WP_Error(
+				'upload_error',
+				__( 'The uploaded file could not be received.', 'albert-ai-butler' ),
+				[ 'status' => 400 ]
+			);
+		}
+
+		if ( $file !== null && ! empty( $file['tmp_name'] ) && is_string( $file['tmp_name'] ) ) {
 			$size = isset( $file['size'] ) ? (int) $file['size'] : (int) @filesize( $file['tmp_name'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Best-effort fallback when the client omitted size.
 
 			if ( $size === 0 ) {
-				if ( file_exists( $file['tmp_name'] ) ) {
-					wp_delete_file( $file['tmp_name'] );
-				}
+				$this->delete_temp_file( $file['tmp_name'] );
 
-				return new WP_Error(
-					'upload_error',
-					__( 'No file data was received.', 'albert-ai-butler' ),
-					[ 'status' => 400 ]
-				);
+				return $this->no_data_error();
 			}
 
 			if ( $size > $max_bytes ) {
-				if ( file_exists( $file['tmp_name'] ) ) {
-					wp_delete_file( $file['tmp_name'] );
-				}
+				$this->delete_temp_file( $file['tmp_name'] );
 
-				return new WP_Error(
-					'too_large',
-					__( 'The uploaded file exceeds the size allowed for this upload link.', 'albert-ai-butler' ),
-					[
-						'status'    => 413,
-						'max_bytes' => $max_bytes,
-					]
-				);
+				return $this->too_large_error( $max_bytes );
 			}
 
 			return [
@@ -227,8 +241,12 @@ class UploadLinkController implements Hookable {
 			);
 		}
 
-		// Never call $request->get_body() — that would buffer the whole body
-		// in memory first. Read the input stream directly instead.
+		// WP_REST_Server::serve_request() has already read the whole body into
+		// memory (set_body( get_raw_data() )) before any route callback runs,
+		// so this loop bounds what reaches DISK, not what reaches memory. The
+		// Content-Length check in handle_upload() is what actually keeps an
+		// oversized body out; a client that lies about it is bounded only by
+		// the web server's own body limit.
 		$input = fopen( 'php://input', 'rb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Streaming an HTTP request body, not a filesystem file.
 
 		if ( ! $input ) {
@@ -316,27 +334,100 @@ class UploadLinkController implements Hookable {
 		if ( $too_large ) {
 			wp_delete_file( $tmp_path );
 
-			return new WP_Error(
-				'too_large',
-				__( 'The uploaded file exceeds the size allowed for this upload link.', 'albert-ai-butler' ),
-				[
-					'status'    => 413,
-					'max_bytes' => $max_bytes,
-				]
-			);
+			return $this->too_large_error( $max_bytes );
 		}
 
 		if ( $total === 0 ) {
 			wp_delete_file( $tmp_path );
 
-			return new WP_Error(
-				'upload_error',
-				__( 'No file data was received.', 'albert-ai-butler' ),
-				[ 'status' => 400 ]
-			);
+			return $this->no_data_error();
 		}
 
 		return $tmp_path;
+	}
+
+	/**
+	 * The size the client says it is sending, or 0 when it says nothing.
+	 *
+	 * @return int
+	 * @since 1.4.0
+	 */
+	private function declared_body_size(): int {
+		if ( ! isset( $_SERVER['CONTENT_LENGTH'] ) ) {
+			return 0;
+		}
+
+		return absint( wp_unslash( $_SERVER['CONTENT_LENGTH'] ) );
+	}
+
+	/**
+	 * The one `too_large` rejection, so both receive paths answer identically.
+	 *
+	 * @param int $max_bytes The link's byte cap.
+	 *
+	 * @return WP_Error
+	 * @since 1.4.0
+	 */
+	private function too_large_error( int $max_bytes ): WP_Error {
+		return new WP_Error(
+			'too_large',
+			__( 'The uploaded file exceeds the size allowed for this upload link.', 'albert-ai-butler' ),
+			[
+				'status'    => 413,
+				'max_bytes' => $max_bytes,
+			]
+		);
+	}
+
+	/**
+	 * The one empty-body rejection, so both receive paths answer identically.
+	 *
+	 * @return WP_Error
+	 * @since 1.4.0
+	 */
+	private function no_data_error(): WP_Error {
+		return new WP_Error(
+			'upload_error',
+			__( 'No file data was received.', 'albert-ai-butler' ),
+			[ 'status' => 400 ]
+		);
+	}
+
+	/**
+	 * Delete a temp file if it is still there.
+	 *
+	 * @param string $tmp_path Path to the temp file.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	private function delete_temp_file( string $tmp_path ): void {
+		if ( $tmp_path !== '' && file_exists( $tmp_path ) ) {
+			wp_delete_file( $tmp_path );
+		}
+	}
+
+	/**
+	 * Strip internal detail from an error before it reaches an unauthenticated caller.
+	 *
+	 * `capability_revoked` carries the issuing user's id so {@see self::log()}
+	 * can attribute the failure; that id must not also be returned over the wire.
+	 *
+	 * @param WP_Error $error The error to scrub.
+	 *
+	 * @return WP_Error
+	 * @since 1.4.0
+	 */
+	private function scrub_error( WP_Error $error ): WP_Error {
+		$data = $error->get_error_data();
+
+		if ( ! is_array( $data ) || ! isset( $data['user_id'] ) ) {
+			return $error;
+		}
+
+		unset( $data['user_id'] );
+
+		return new WP_Error( $error->get_error_code(), $error->get_error_message(), $data );
 	}
 
 	/**

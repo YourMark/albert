@@ -75,7 +75,7 @@ class UploadLinkService {
 	 * @since 1.4.0
 	 * @var int
 	 */
-	const DEFAULT_MAX_BYTES = 10485760; // 10 MB.
+	const DEFAULT_MAX_BYTES = self::DEFAULT_MAX_MB * self::BYTES_PER_MB;
 
 	/**
 	 * The above, expressed in MB — what the Settings screen field and its
@@ -334,7 +334,15 @@ class UploadLinkService {
 		$this->delete_temp_file( $tmp_path );
 
 		if ( is_wp_error( $attachment_id ) ) {
-			return $attachment_id;
+			// Core returns 'upload_error' with no status, which REST maps to
+			// 500 — and it collides with the controller's own 'upload_error'.
+			// Re-code it so a caller can tell "your file was refused" from
+			// "the site broke", and get a 4xx for the former.
+			return new WP_Error(
+				'upload_failed',
+				$attachment_id->get_error_message(),
+				[ 'status' => 400 ]
+			);
 		}
 
 		return AttachmentResponse::format( $attachment_id );
@@ -432,8 +440,10 @@ class UploadLinkService {
 	 * @since 1.4.0
 	 */
 	private static function parse_filtered_bytes( $value ): int {
-		if ( is_int( $value ) ) {
-			return $value > 0 ? $value : 0;
+		// is_float too: a filter computing e.g. 1.5 * MB is otherwise dropped
+		// silently, and the screen then shows no override at all.
+		if ( is_int( $value ) || is_float( $value ) ) {
+			return $value > 0 ? (int) $value : 0;
 		}
 
 		if ( is_string( $value ) && trim( $value ) !== '' ) {
@@ -465,7 +475,13 @@ class UploadLinkService {
 		$state   = self::get_default_max_bytes_filter_state();
 		$active  = $state['state'] === 'active';
 		$clamped = $active && $state['requested'] > $state['value'];
-		$value   = $active ? (int) round( $state['value'] / self::BYTES_PER_MB ) : (int) $current_value;
+
+		// Round a sub-megabyte filter value UP, never to 0: the field's own
+		// min is 1, and rendering value="0" against it is invalid. The hint
+		// below carries the exact size so the rounding can't mislead.
+		$value = $active
+			? max( 1, (int) ceil( $state['value'] / self::BYTES_PER_MB ) )
+			: (int) $current_value;
 
 		printf(
 			'<input type="number" name="%1$s" id="albert-field-%1$s" value="%2$d" class="albert-text-input" min="1" max="%3$d" step="1"%4$s />',
@@ -490,10 +506,11 @@ class UploadLinkService {
 		} elseif ( $active ) {
 			self::render_hint(
 				sprintf(
-					/* translators: 1: opening <code>, 2: closing </code> wrapping the filter name. */
-					__( 'A %1$salbert/media/upload_link_max_bytes%2$s filter is currently active, overriding what\'s saved here.', 'albert-ai-butler' ),
+					/* translators: 1: opening <code>, 2: closing </code> wrapping the filter name, 3: the effective size, human-readable (e.g. "500 B") */
+					__( 'A %1$salbert/media/upload_link_max_bytes%2$s filter is currently active, overriding what\'s saved here. The limit in effect is %3$s.', 'albert-ai-butler' ),
 					'<code>',
-					'</code>'
+					'</code>',
+					size_format( $state['value'] )
 				),
 				'info'
 			);
@@ -530,8 +547,15 @@ class UploadLinkService {
 	 * @since 1.4.0
 	 */
 	public static function sanitize_max_mb( $value ): int {
-		if ( self::get_default_max_bytes_filter_state()['state'] === 'active' ) {
-			return (int) get_option( self::MAX_BYTES_OPTION, self::DEFAULT_MAX_MB );
+		$stored = (int) get_option( self::MAX_BYTES_OPTION, self::DEFAULT_MAX_MB );
+
+		// null means the field was not submitted, which is what a disabled
+		// field does. Keyed on the value rather than only on the filter's
+		// state at save time: the filter can go inactive between the render
+		// that disabled the field and the save, and treating "absent" as
+		// "invalid" would then overwrite a stored value nobody touched.
+		if ( $value === null || self::get_default_max_bytes_filter_state()['state'] === 'active' ) {
+			return $stored;
 		}
 
 		// (int) cast, not absint(): a negative input must fall through to the default below.
