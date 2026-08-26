@@ -11,6 +11,7 @@ namespace Albert\Abilities\WordPress\Media;
 
 use Albert\Abstracts\BaseAbility;
 use Albert\Core\Annotations;
+use Albert\Media\AttachmentResponse;
 use Albert\Media\MimeAllowlist;
 use WP_Error;
 
@@ -234,7 +235,7 @@ class UploadMedia extends BaseAbility {
 		$this->set_attachment_metadata( $attachment_id, $args );
 
 		// Return formatted response.
-		return $this->format_attachment_response( $attachment_id );
+		return AttachmentResponse::format( $attachment_id );
 	}
 
 	/**
@@ -270,31 +271,5 @@ class UploadMedia extends BaseAbility {
 				]
 			);
 		}
-	}
-
-	/**
-	 * Format attachment data for response.
-	 *
-	 * @param int $attachment_id The attachment ID.
-	 * @return array<string, mixed> Formatted attachment data.
-	 * @since 1.0.0
-	 */
-	private function format_attachment_response( int $attachment_id ): array {
-		$metadata  = wp_get_attachment_metadata( $attachment_id );
-		$file_size = $metadata['filesize'] ?? 0;
-
-		if ( empty( $file_size ) ) {
-			$attached_file = get_attached_file( $attachment_id );
-			$file_size     = $attached_file ? filesize( $attached_file ) : 0;
-		}
-
-		return [
-			'attachment_id' => $attachment_id,
-			'url'           => wp_get_attachment_url( $attachment_id ),
-			'width'         => $metadata['width'] ?? 0,
-			'height'        => $metadata['height'] ?? 0,
-			'mime_type'     => get_post_mime_type( $attachment_id ),
-			'file_size'     => $file_size ? $file_size : 0,
-		];
 	}
 }
