@@ -31,8 +31,11 @@ class AttachmentResponse {
 		$file_size = $metadata['filesize'] ?? 0;
 
 		if ( empty( $file_size ) ) {
+			// wp_filesize(), not filesize(): returns 0 rather than false-with-a-warning
+			// for an unreadable path, and offload plugins filter it so a remote file
+			// still reports a size. get_attached_file() returns a path either way.
 			$attached_file = get_attached_file( $attachment_id );
-			$file_size     = $attached_file ? filesize( $attached_file ) : 0;
+			$file_size     = $attached_file ? wp_filesize( $attached_file ) : 0;
 		}
 
 		return [
