@@ -38,6 +38,7 @@ use Albert\Abilities\WordPress\Media\FindMedia;
 use Albert\Abilities\WordPress\Media\ViewMedia;
 use Albert\Abilities\WordPress\Media\SetFeaturedImage;
 use Albert\Abilities\WordPress\Media\UploadMedia;
+use Albert\Abilities\WordPress\Media\CreateUploadLink;
 use Albert\Abilities\WordPress\Blocks\GetBlockType;
 use Albert\Abilities\WordPress\Blocks\ListBlockTypes;
 use Albert\Abilities\WordPress\Skills\GetSkill;
@@ -68,6 +69,7 @@ use Albert\Database\Installer as DatabaseInstaller;
 use Albert\Logging\Logger;
 use Albert\Logging\Repository as LoggingRepository;
 use Albert\MCP\Server as McpServer;
+use Albert\Media\UploadTickets\UploadTicketController;
 use Albert\OAuth\Endpoints\AuthorizationPage;
 use Albert\OAuth\Endpoints\ClientRegistration;
 use Albert\OAuth\Endpoints\OAuthController;
@@ -234,6 +236,9 @@ class Plugin {
 		// Register the skills REST controller (read-only data for the Skills screen).
 		( new SkillsController() )->register_hooks();
 
+		// Register the media upload ticket redemption endpoint (doc 32, Path B).
+		( new UploadTicketController() )->register_hooks();
+
 		// Register OAuth controller (REST API endpoints for token exchange).
 		( new OAuthController() )->register_hooks();
 
@@ -314,6 +319,7 @@ class Plugin {
 		$this->abilities_manager->add_ability( new FindMedia() );
 		$this->abilities_manager->add_ability( new ViewMedia() );
 		$this->abilities_manager->add_ability( new UploadMedia() );
+		$this->abilities_manager->add_ability( new CreateUploadLink() );
 		$this->abilities_manager->add_ability( new SetFeaturedImage() );
 
 		// Taxonomy abilities.

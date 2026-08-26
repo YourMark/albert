@@ -7,6 +7,7 @@
 
 namespace Albert\Tests\Integration\Cron;
 
+use Albert\Core\Tokens\SingleUseTokenRepository;
 use Albert\Cron\TokenCleanup;
 use Albert\Database\Installer;
 use Albert\Database\Tables;
@@ -49,8 +50,26 @@ class TokenCleanupTest extends TestCase {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Test reset.
 			$wpdb->query( $wpdb->prepare( 'TRUNCATE TABLE %i', $tables[ $key ] ) );
 		}
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Test reset.
+		$wpdb->query( $wpdb->prepare( 'TRUNCATE TABLE %i', Tables::single_use_tokens() ) );
 
 		$this->cron = new TokenCleanup();
+	}
+
+	/**
+	 * Deletes a long-expired single-use token row and leaves a fresh one alone.
+	 *
+	 * @return void
+	 */
+	public function test_run_deletes_long_expired_single_use_tokens(): void {
+		$repo = new SingleUseTokenRepository();
+		$repo->insert( 'hash_expired', 'media_upload', 1, [], gmdate( 'Y-m-d H:i:s', time() - ( 2 * DAY_IN_SECONDS ) ) );
+		$repo->insert( 'hash_future', 'media_upload', 1, [], gmdate( 'Y-m-d H:i:s', time() + 600 ) );
+
+		$this->cron->run();
+
+		$this->assertNull( $repo->find( 'hash_expired', 'media_upload' ) );
+		$this->assertNotNull( $repo->find( 'hash_future', 'media_upload' ) );
 	}
 
 	/**

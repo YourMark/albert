@@ -81,6 +81,7 @@ albert-ai-butler/
 │   │       │   ├── FindMedia.php       # albert/find-media
 │   │       │   ├── ViewMedia.php       # albert/view-media
 │   │       │   ├── UploadMedia.php     # albert/upload-media
+│   │       │   ├── CreateUploadLink.php # albert/create-upload-link
 │   │       │   └── SetFeaturedImage.php # albert/set-featured-image
 │   │       └── Taxonomies/
 │   │           ├── FindTaxonomies.php  # albert/find-taxonomies
@@ -98,6 +99,12 @@ albert-ai-butler/
 │   │   ├── SkillIndex.php              # Conditional one-line-per-skill index
 │   │   ├── Symbols.php                 # Third-party plugin detection by symbol
 │   │   └── Readers/                    # Environment, DesignTokens, ContentModel, Commerce
+│   │
+│   ├── Media/                           # Media upload tickets (doc 32, Path B)
+│   │   ├── MimeAllowlist.php           # Shared MIME allowlist, used by Path A + Path B
+│   │   └── UploadTickets/
+│   │       ├── UploadTicketService.php     # Mint/redeem/finalize domain logic
+│   │       └── UploadTicketController.php  # POST /media/uploads redemption endpoint
 │   │
 │   ├── MCP/
 │   │   └── Server.php                  # MCP protocol handler
@@ -646,6 +653,7 @@ marker, covering permission/transport/unknown failures the adapter surfaces via 
 | `albert/find-media` | Find media items | media |
 | `albert/view-media` | View a single media item | media |
 | `albert/upload-media` | Sideload media from URL | media |
+| `albert/create-upload-link` | Mint a short-lived, single-use link that accepts an uploaded file | media |
 | `albert/set-featured-image` | Set post featured image | media |
 | `albert/find-taxonomies` | Find taxonomies | taxonomies |
 | `albert/find-terms` | Find taxonomy terms | terms |

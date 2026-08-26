@@ -53,12 +53,29 @@ class Tables {
 	}
 
 	/**
+	 * The generic single-use hashed token table.
+	 *
+	 * Backs {@see \Albert\Core\Tokens\TokenService} — media upload tickets are
+	 * its first consumer (`purpose` = 'media_upload'); doc 40's pending-action
+	 * confirmations are expected to reuse the same table under a different
+	 * `purpose` rather than growing a table of their own.
+	 *
+	 * @return string Prefixed table name.
+	 * @since 1.4.0
+	 */
+	public static function single_use_tokens(): string {
+		global $wpdb;
+
+		return $wpdb->prefix . 'albert_single_use_tokens';
+	}
+
+	/**
 	 * Every Albert table name, flat.
 	 *
 	 * @return array<int, string> All prefixed table names.
 	 * @since 1.2.0
 	 */
 	public static function all(): array {
-		return array_merge( [ self::ability_log() ], array_values( self::oauth() ) );
+		return array_merge( [ self::ability_log(), self::single_use_tokens() ], array_values( self::oauth() ) );
 	}
 }

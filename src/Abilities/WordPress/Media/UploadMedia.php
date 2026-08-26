@@ -11,6 +11,7 @@ namespace Albert\Abilities\WordPress\Media;
 
 use Albert\Abstracts\BaseAbility;
 use Albert\Core\Annotations;
+use Albert\Media\MimeAllowlist;
 use WP_Error;
 
 /**
@@ -197,8 +198,10 @@ class UploadMedia extends BaseAbility {
 			? sanitize_file_name( $args['filename'] )
 			: basename( (string) wp_parse_url( $url, PHP_URL_PATH ) );
 
-		// Validate file type.
-		$file_type = wp_check_filetype_and_ext( $temp_file, $filename );
+		// Validate file type against the current user's own allowlist — never
+		// a blanket default, and never widened by an unfiltered_upload capability.
+		$allowlist = MimeAllowlist::for_user( get_current_user_id() );
+		$file_type = wp_check_filetype_and_ext( $temp_file, $filename, $allowlist );
 
 		if ( ! $file_type['type'] || ! $file_type['ext'] ) {
 			wp_delete_file( $temp_file );
