@@ -16,6 +16,7 @@
 
 namespace Albert\Tests\Integration\Abilities;
 
+use Albert\Abilities\WordPress\Media\CreateUploadLink;
 use Albert\Abilities\WordPress\Media\FindMedia;
 use Albert\Abilities\WordPress\Media\SetFeaturedImage;
 use Albert\Abilities\WordPress\Media\UploadMedia;
@@ -443,6 +444,19 @@ class ExecuteSchemaTest extends TestCase {
 				'attachment_id' => $attachment_id,
 			],
 			'SetFeaturedImage'
+		);
+	}
+
+	/**
+	 * CreateUploadLink returns a link matching the output schema.
+	 *
+	 * @return void
+	 */
+	public function test_create_upload_link_output_matches_schema(): void {
+		$this->assert_execute_matches_schema(
+			new CreateUploadLink(),
+			[],
+			'CreateUploadLink'
 		);
 	}
 

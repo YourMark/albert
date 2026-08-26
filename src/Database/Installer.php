@@ -64,6 +64,7 @@ class Installer {
 		'albert_oauth_encryption_key',
 		'albert_oauth_private_key',
 		'albert_oauth_public_key',
+		'albert_upload_link_max_mb',
 		// Legacy options retired in earlier releases, cleared here for completeness.
 		'albert_logging_db_version',
 		'albert_oauth_db_version',
@@ -282,6 +283,7 @@ class Installer {
 		$charset_collate = $wpdb->get_charset_collate();
 
 		$sql = self::ability_log_sql( $charset_collate )
+			. self::single_use_tokens_sql( $charset_collate )
 			. self::oauth_clients_sql( $charset_collate )
 			. self::oauth_access_tokens_sql( $charset_collate )
 			. self::oauth_refresh_tokens_sql( $charset_collate )
@@ -322,6 +324,33 @@ class Installer {
 			PRIMARY KEY  (id),
 			KEY ability_created (ability_name, created_at),
 			KEY ability_status (ability_name, status, created_at)
+		) $charset_collate;\n\n";
+	}
+
+	/**
+	 * Generic single-use hashed token table DDL, backing {@see \Albert\Core\Tokens\TokenService}.
+	 *
+	 * @param string $charset_collate Charset/collation clause.
+	 *
+	 * @return string CREATE TABLE statement.
+	 * @since 1.4.0
+	 */
+	private static function single_use_tokens_sql( string $charset_collate ): string {
+		$table = Tables::single_use_tokens();
+
+		return "CREATE TABLE {$table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			token_hash varchar(64) NOT NULL,
+			purpose varchar(50) NOT NULL,
+			user_id bigint(20) unsigned NOT NULL,
+			payload longtext DEFAULT NULL,
+			expires_at datetime NOT NULL,
+			redeemed_at datetime DEFAULT NULL,
+			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY  (id),
+			UNIQUE KEY token_hash (token_hash),
+			KEY purpose_expires (purpose, expires_at),
+			KEY user_id (user_id)
 		) $charset_collate;\n\n";
 	}
 

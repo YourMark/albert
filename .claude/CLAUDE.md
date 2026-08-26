@@ -35,6 +35,7 @@ src/
   Contracts/       # Interfaces (Ability, Hookable)
   Core/            # Plugin bootstrap, AbilitiesManager, AbilitiesRegistry
                    #   InvocationRelay : WP 7.1 wp_ability_invoked -> albert/abilities/invoked
+                   #   Tokens/         : TokenService, the reusable single-use hashed token primitive (doc 32/40)
   Context/         # Agent context (doc 21): what a connected assistant is told
                    #   ContextSettings : the owner's choices, option + filters
                    #   SiteContext     : assembles the structured array (the API)
@@ -42,6 +43,15 @@ src/
                    #   Payload         : the two discovery fields + screen preview
                    #   TokenEstimator  : script-aware token estimate; see docs/context-token-budget.md
                    #   Readers/        : Environment, DesignTokens, ContentModel, Commerce
+  Media/           # Shared media handling + upload links (doc 32)
+                   #   MimeAllowlist       : shared MIME allowlist, used by both upload paths
+                   #   AttachmentImporter  : on-disk file -> attachment; the tail both upload paths share.
+                   #                         Sniffs against a caller-supplied allowlist BEFORE core sees the
+                   #                         file, which is what keeps unfiltered_upload from widening either
+                   #                         path (core waves a bad type through for that cap). Never reorder.
+                   #   AttachmentResponse  : the attachment shape both paths return
+                   #   TempFile            : delete-if-present for abandoned uploads
+                   #   UploadLinks/      : UploadLinkService (mint/redeem/finalize), UploadLinkController (REST redemption)
   Support/         # WpCompat : WordPress version-capability detection (7.1 feature probes)
   MCP/             # MCP protocol server
   OAuth/           # Full OAuth 2.0 server (entities, repos, endpoints)
@@ -78,6 +88,7 @@ Never rename the legacy IDs: they are part of the public API.
 ## Critical Warnings
 
 - **NEVER use alternative PHP syntax** (`: endif`, `: endforeach`). ALWAYS use `{ }` braces.
+- **NEVER add `declare(strict_types=1);` to any PHP file in this codebase, ever.** This overrides any global personal preference for it (e.g. an assistant's own `php-standards.md`-style rule) — that global preference does not apply here, full stop, no exceptions, not even in a brand-new file.
 - **NEVER use jQuery.** Vanilla ES6+ only.
 - **NEVER commit without explicit request.** Run `composer phpcs` and `composer phpstan` first.
 - **NEVER bump version without approval.**
@@ -105,6 +116,7 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | `albert/abilities/payload_row` | filter | Augment a normalized ability row before it reaches the Abilities screen (e.g. append `badges`). Fires on both the bulk build and single-row paths. See `docs/extending-the-abilities-screen.md` |
 | `albert/abilities/required_capability` | filter | Override the best-effort capability shown on the Abilities screen |
 | `albert/abilities/before_execute` | action | Before any ability runs |
+| `BaseAbility::$sensitive_output_keys` | property | Not a hook, but part of the ability contract (1.4.0). Top-level result keys holding a credential. The caller receives them intact; every `after_execute` observer is handed a copy with them replaced by `[redacted]`. Observers are loggers (Albert's own writes a DB row, Premium captures the whole success payload), so a short-lived secret would otherwise outlive its own expiry in plaintext. Masks rather than drops, so a log still records the field was returned. Top-level keys only |
 | `albert/abilities/after_execute` | action | After any ability runs |
 | `albert/abilities/before_execute/{id}` | action | Before a specific ability |
 | `albert/abilities/after_execute/{id}` | action | After a specific ability |
@@ -115,6 +127,7 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | `albert/logging/enabled` | filter | Disable Free's ability log (Premium uses this) |
 | `albert/blocks/read_block_limit` | filter | Default top-level blocks per read window (default 200; 0 = unlimited) |
 | `albert/blocks/read_max_bytes` | filter | Per-field byte cap on read text representations (default 50000) |
+| `albert/media/upload_link_max_bytes` | filter | Default byte cap for a media upload link when a caller doesn't request one; accepts an int, a float, or a php.ini-shorthand string (`"10M"`, `"2G"`) via `wp_convert_hr_to_bytes()`, clamped to `MAX_SETTABLE_MB` (2 GB); return `null` to defer to the `albert_upload_link_max_mb` option/default (10 MB). See `UploadLinkService::get_default_max_bytes_filter_state()` |
 | `albert/connections/allowed_user_capability` | filter | The capability a user must hold to be *offered* in the Connections screen's allowed-users picker (default `edit_posts`; `''` offers everyone). Changes who is suggested, never who may authorise: that stays the stored `albert_allowed_users` list. See `Admin\Connections::allowed_user_capability()` |
 | `albert/mcp/hide_unauthorized_tools` | filter | Hide MCP tools the connected user can't execute from `tools/list`, so discovery matches what's callable (default true; false = list all, deny on call) |
 | `albert/privacy/mode` | filter | Override the active PII privacy mode (`strict`/`balanced`/`off`); return `null` to defer to the `albert_privacy_mode` option/default (`balanced`). See `PrivacyMode::resolve()` |

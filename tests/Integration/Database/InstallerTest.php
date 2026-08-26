@@ -68,6 +68,22 @@ class InstallerTest extends TestCase {
 	}
 
 	/**
+	 * Creates the generic single-use token table with the full column set.
+	 *
+	 * @return void
+	 */
+	public function test_install_creates_single_use_tokens_columns(): void {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Schema introspection.
+		$columns = $wpdb->get_col( $wpdb->prepare( 'SHOW COLUMNS FROM %i', Tables::single_use_tokens() ) );
+
+		foreach ( [ 'id', 'token_hash', 'purpose', 'user_id', 'payload', 'expires_at', 'redeemed_at', 'created_at' ] as $column ) {
+			$this->assertContains( $column, $columns, $column );
+		}
+	}
+
+	/**
 	 * Records the installed schema version in its option.
 	 *
 	 * @return void

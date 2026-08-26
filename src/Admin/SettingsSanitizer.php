@@ -10,8 +10,6 @@
  * @since      1.1.0
  */
 
-declare(strict_types=1);
-
 namespace Albert\Admin;
 
 defined( 'ABSPATH' ) || exit;

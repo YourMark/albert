@@ -53,12 +53,24 @@ class Tables {
 	}
 
 	/**
+	 * The generic single-use hashed token table, backing {@see \Albert\Core\Tokens\TokenService}.
+	 *
+	 * @return string Prefixed table name.
+	 * @since 1.4.0
+	 */
+	public static function single_use_tokens(): string {
+		global $wpdb;
+
+		return $wpdb->prefix . 'albert_single_use_tokens';
+	}
+
+	/**
 	 * Every Albert table name, flat.
 	 *
 	 * @return array<int, string> All prefixed table names.
 	 * @since 1.2.0
 	 */
 	public static function all(): array {
-		return array_merge( [ self::ability_log() ], array_values( self::oauth() ) );
+		return array_merge( [ self::ability_log(), self::single_use_tokens() ], array_values( self::oauth() ) );
 	}
 }
