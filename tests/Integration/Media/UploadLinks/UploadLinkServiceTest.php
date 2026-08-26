@@ -297,6 +297,32 @@ class UploadLinkServiceTest extends TestCase {
 		delete_option( UploadLinkService::MAX_BYTES_OPTION );
 	}
 
+	/**
+	 * A cap stored at mint time is re-ceilinged when the link is redeemed.
+	 *
+	 * The server's own limit can be lowered between the two, and the stored
+	 * number would then promise more than core will accept, so the link would
+	 * advertise a size that fails once the bytes actually arrive.
+	 *
+	 * @return void
+	 */
+	public function test_redeem_reapplies_a_lowered_server_ceiling(): void {
+		$this->lift_server_upload_ceiling();
+
+		$link = $this->service->mint( $this->admin_id, [ 'max_bytes' => 50 * UploadLinkService::BYTES_PER_MB ] );
+
+		$this->assertSame( 50 * UploadLinkService::BYTES_PER_MB, $link['max_bytes'] );
+
+		// The host tightens its limit after the link was handed out.
+		remove_all_filters( 'upload_size_limit' );
+		add_filter( 'upload_size_limit', static fn (): int => 1024 );
+
+		$context = $this->service->redeem_link( $link['upload_token'] );
+
+		$this->assertIsArray( $context );
+		$this->assertSame( 1024, $context['max_bytes'] );
+	}
+
 	// ─── Settings-screen filter-override surface ───────────────────────
 
 	/**
@@ -467,6 +493,19 @@ class UploadLinkServiceTest extends TestCase {
 		$this->assertSame( UploadLinkService::DEFAULT_MAX_MB, UploadLinkService::sanitize_max_mb( '0' ) );
 		$this->assertSame( UploadLinkService::DEFAULT_MAX_MB, UploadLinkService::sanitize_max_mb( '-5' ) );
 		$this->assertSame( UploadLinkService::DEFAULT_MAX_MB, UploadLinkService::sanitize_max_mb( 'not-a-number' ) );
+	}
+
+	/**
+	 * Falling back to the default is reported, exactly as clamping down from
+	 * above the ceiling is. Silently rewriting a 0 into 10 leaves somebody
+	 * looking at a number they did not type and no reason for it.
+	 *
+	 * @return void
+	 */
+	public function test_sanitize_max_mb_warns_when_input_is_below_the_minimum(): void {
+		UploadLinkService::sanitize_max_mb( '0' );
+
+		$this->assertTrue( $this->has_settings_error( 'upload_link_max_mb_too_low' ) );
 	}
 
 	/**

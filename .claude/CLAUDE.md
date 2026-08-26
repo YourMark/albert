@@ -43,8 +43,14 @@ src/
                    #   Payload         : the two discovery fields + screen preview
                    #   TokenEstimator  : script-aware token estimate; see docs/context-token-budget.md
                    #   Readers/        : Environment, DesignTokens, ContentModel, Commerce
-  Media/           # Media upload links (doc 32, Path B)
+  Media/           # Shared media handling + upload links (doc 32)
                    #   MimeAllowlist       : shared MIME allowlist, used by both upload paths
+                   #   AttachmentImporter  : on-disk file -> attachment; the tail both upload paths share.
+                   #                         Sniffs against a caller-supplied allowlist BEFORE core sees the
+                   #                         file, which is what keeps unfiltered_upload from widening either
+                   #                         path (core waves a bad type through for that cap). Never reorder.
+                   #   AttachmentResponse  : the attachment shape both paths return
+                   #   TempFile            : delete-if-present for abandoned uploads
                    #   UploadLinks/      : UploadLinkService (mint/redeem/finalize), UploadLinkController (REST redemption)
   Support/         # WpCompat : WordPress version-capability detection (7.1 feature probes)
   MCP/             # MCP protocol server
@@ -110,6 +116,7 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | `albert/abilities/payload_row` | filter | Augment a normalized ability row before it reaches the Abilities screen (e.g. append `badges`). Fires on both the bulk build and single-row paths. See `docs/extending-the-abilities-screen.md` |
 | `albert/abilities/required_capability` | filter | Override the best-effort capability shown on the Abilities screen |
 | `albert/abilities/before_execute` | action | Before any ability runs |
+| `BaseAbility::$sensitive_output_keys` | property | Not a hook, but part of the ability contract (1.4.0). Top-level result keys holding a credential. The caller receives them intact; every `after_execute` observer is handed a copy with them replaced by `[redacted]`. Observers are loggers (Albert's own writes a DB row, Premium captures the whole success payload), so a short-lived secret would otherwise outlive its own expiry in plaintext. Masks rather than drops, so a log still records the field was returned. Top-level keys only |
 | `albert/abilities/after_execute` | action | After any ability runs |
 | `albert/abilities/before_execute/{id}` | action | Before a specific ability |
 | `albert/abilities/after_execute/{id}` | action | After a specific ability |

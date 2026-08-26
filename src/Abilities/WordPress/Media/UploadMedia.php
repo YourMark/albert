@@ -11,7 +11,7 @@ namespace Albert\Abilities\WordPress\Media;
 
 use Albert\Abstracts\BaseAbility;
 use Albert\Core\Annotations;
-use Albert\Media\AttachmentResponse;
+use Albert\Media\AttachmentImporter;
 use Albert\Media\MimeAllowlist;
 use WP_Error;
 
@@ -166,8 +166,9 @@ class UploadMedia extends BaseAbility {
 			);
 		}
 
-		// Validate post_id if provided.
-		$post_id = absint( $args['post_id'] ?? 0 );
+		// (int) cast, not absint(): absint(-12) returns 12, which would
+		// silently attach to a post the caller never asked for.
+		$post_id = max( 0, (int) ( $args['post_id'] ?? 0 ) );
 		if ( ! empty( $post_id ) ) {
 			$post = get_post( $post_id );
 			if ( ! $post ) {
@@ -179,10 +180,8 @@ class UploadMedia extends BaseAbility {
 			}
 		}
 
-		// Download the file.
+		// download_url() needs this one; AttachmentImporter requires the rest itself.
 		require_once ABSPATH . 'wp-admin/includes/file.php';
-		require_once ABSPATH . 'wp-admin/includes/image.php';
-		require_once ABSPATH . 'wp-admin/includes/media.php';
 
 		$temp_file = download_url( $url );
 
@@ -199,43 +198,50 @@ class UploadMedia extends BaseAbility {
 			? sanitize_file_name( $args['filename'] )
 			: basename( (string) wp_parse_url( $url, PHP_URL_PATH ) );
 
-		// Validate file type against the current user's own allowlist — never
-		// a blanket default, and never widened by an unfiltered_upload capability.
-		$allowlist = MimeAllowlist::for_user( get_current_user_id() );
-		$file_type = wp_check_filetype_and_ext( $temp_file, $filename, $allowlist );
+		// Sniffed against the current user's own allowlist, never a blanket
+		// default, and never widened by an unfiltered_upload capability. The
+		// importer consumes the temp file whichever way this goes.
+		$result = AttachmentImporter::import(
+			$temp_file,
+			$filename,
+			MimeAllowlist::for_user( get_current_user_id() ),
+			$post_id
+		);
 
-		if ( ! $file_type['type'] || ! $file_type['ext'] ) {
-			wp_delete_file( $temp_file );
-			return new WP_Error(
-				'invalid_file_type',
-				__( 'Invalid or unsupported file type.', 'albert-ai-butler' ),
-				[ 'status' => 400 ]
-			);
+		if ( is_wp_error( $result ) ) {
+			return self::translate_import_error( $result );
 		}
 
-		// Prepare file array for sideloading.
-		$file_array = [
-			'name'     => $filename,
-			'tmp_name' => $temp_file,
-		];
+		// Title, alt text and caption only; none of them appear in the response,
+		// so what the importer already built stays accurate.
+		$this->set_attachment_metadata( (int) $result['attachment_id'], $args );
 
-		// Sideload the file.
-		$attachment_id = media_handle_sideload( $file_array, $post_id );
+		return $result;
+	}
 
-		// Clean up temp file if still exists.
-		if ( file_exists( $temp_file ) ) {
-			wp_delete_file( $temp_file );
+	/**
+	 * Keep this ability's long-standing error codes over the importer's.
+	 *
+	 * The shared importer speaks the upload-link endpoint's vocabulary, which
+	 * is HTTP-shaped. This ability has answered `invalid_file_type` since
+	 * 1.0.0 and that is part of what callers see, so translate rather than
+	 * quietly renaming it.
+	 *
+	 * @param WP_Error $error The importer's error.
+	 *
+	 * @return WP_Error
+	 * @since 1.4.0
+	 */
+	private static function translate_import_error( WP_Error $error ): WP_Error {
+		if ( $error->get_error_code() !== 'type_not_allowed' ) {
+			return $error;
 		}
 
-		if ( is_wp_error( $attachment_id ) ) {
-			return $attachment_id;
-		}
-
-		// Set metadata.
-		$this->set_attachment_metadata( $attachment_id, $args );
-
-		// Return formatted response.
-		return AttachmentResponse::format( $attachment_id );
+		return new WP_Error(
+			'invalid_file_type',
+			__( 'Invalid or unsupported file type.', 'albert-ai-butler' ),
+			[ 'status' => 400 ]
+		);
 	}
 
 	/**

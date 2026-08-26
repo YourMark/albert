@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Core\Plugin;
+use Albert\Media\TempFile;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -110,9 +111,17 @@ class UploadLinkController implements Hookable {
 		$token = trim( (string) $request->get_header( UploadLinkService::TOKEN_HEADER ) );
 
 		if ( $token === '' ) {
+			// Its own code, not the invalid/spent one. Nothing was presented,
+			// so there is nothing to enumerate here, and telling a client its
+			// link was already used when it simply forgot the header sends it
+			// off to mint a replacement it does not need.
 			return new WP_Error(
-				'link_already_used',
-				__( 'No upload token was provided.', 'albert-ai-butler' ),
+				'missing_token',
+				sprintf(
+					/* translators: %s: the HTTP header name the token belongs in */
+					__( 'No upload token was provided. Send it in the %s header.', 'albert-ai-butler' ),
+					UploadLinkService::TOKEN_HEADER
+				),
 				[ 'status' => 401 ]
 			);
 		}
@@ -128,15 +137,6 @@ class UploadLinkController implements Hookable {
 			$this->log( $user_id, [], $context );
 
 			return $this->scrub_error( $context );
-		}
-
-		$declared = $this->declared_body_size();
-
-		if ( $declared > $context['max_bytes'] ) {
-			$error = $this->too_large_error( $context['max_bytes'] );
-			$this->log( $context['user_id'], [ 'post_id' => $context['post_id'] ], $error );
-
-			return $error;
 		}
 
 		// Act as the issuing user for the rest of the request: core stamps
@@ -211,16 +211,18 @@ class UploadLinkController implements Hookable {
 		}
 
 		if ( $file !== null && ! empty( $file['tmp_name'] ) && is_string( $file['tmp_name'] ) ) {
-			$size = isset( $file['size'] ) ? (int) $file['size'] : (int) @filesize( $file['tmp_name'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Best-effort fallback when the client omitted size.
+			// wp_filesize(), not filesize(): 0 rather than false-with-a-warning
+			// for an unreadable path, and no silenced error to explain away.
+			$size = isset( $file['size'] ) ? (int) $file['size'] : wp_filesize( $file['tmp_name'] );
 
 			if ( $size === 0 ) {
-				$this->delete_temp_file( $file['tmp_name'] );
+				TempFile::delete( $file['tmp_name'] );
 
 				return $this->no_data_error();
 			}
 
 			if ( $size > $max_bytes ) {
-				$this->delete_temp_file( $file['tmp_name'] );
+				TempFile::delete( $file['tmp_name'] );
 
 				return $this->too_large_error( $max_bytes );
 			}
@@ -241,12 +243,19 @@ class UploadLinkController implements Hookable {
 			);
 		}
 
+		// Only on this path is Content-Length the size of the file. A multipart
+		// body also carries boundaries, part headers and the filename field, so
+		// comparing that total against a file-size cap rejects a file that is
+		// exactly at the limit; that branch checks the real size above instead.
+		if ( $this->declared_body_size() > $max_bytes ) {
+			return $this->too_large_error( $max_bytes );
+		}
+
 		// WP_REST_Server::serve_request() has already read the whole body into
 		// memory (set_body( get_raw_data() )) before any route callback runs,
-		// so this loop bounds what reaches DISK, not what reaches memory. The
-		// Content-Length check in handle_upload() is what actually keeps an
-		// oversized body out; a client that lies about it is bounded only by
-		// the web server's own body limit.
+		// so neither this loop nor the check above bounds MEMORY; that is the
+		// web server's own body limit. What the loop still buys is a bound on
+		// what reaches DISK when a client understates Content-Length.
 		$input = fopen( 'php://input', 'rb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Streaming an HTTP request body, not a filesystem file.
 
 		if ( ! $input ) {
@@ -391,20 +400,6 @@ class UploadLinkController implements Hookable {
 			__( 'No file data was received.', 'albert-ai-butler' ),
 			[ 'status' => 400 ]
 		);
-	}
-
-	/**
-	 * Delete a temp file if it is still there.
-	 *
-	 * @param string $tmp_path Path to the temp file.
-	 *
-	 * @return void
-	 * @since 1.4.0
-	 */
-	private function delete_temp_file( string $tmp_path ): void {
-		if ( $tmp_path !== '' && file_exists( $tmp_path ) ) {
-			wp_delete_file( $tmp_path );
-		}
 	}
 
 	/**

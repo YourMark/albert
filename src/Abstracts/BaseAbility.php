@@ -90,6 +90,21 @@ abstract class BaseAbility implements Ability {
 	protected array $meta = [];
 
 	/**
+	 * Top-level result keys holding a credential or other secret.
+	 *
+	 * The calling assistant receives these intact — it usually cannot do its
+	 * job without them — but every `after_execute` observer is handed a copy
+	 * with them masked. Observers are loggers: Albert's own writes rows to a
+	 * table an administrator can read months later, and add-ons capture the
+	 * whole success payload. A short-lived credential that is deliberately
+	 * hashed at rest has no business sitting in that table in the clear.
+	 *
+	 * @since 1.4.0
+	 * @var array<int, string>
+	 */
+	protected array $sensitive_output_keys = [];
+
+	/**
 	 * Constructor.
 	 *
 	 * Child classes should call parent::__construct() after setting their properties.
@@ -219,6 +234,9 @@ abstract class BaseAbility implements Ability {
 
 		$result = $this->execute( $args );
 
+		// Observers are loggers; the caller is the one that needs the secrets.
+		$observed = $this->redact_sensitive_output( $result );
+
 		try {
 			/**
 			 * Fires after any ability is executed.
@@ -227,10 +245,11 @@ abstract class BaseAbility implements Ability {
 			 *
 			 * @param string         $ability_id Ability identifier.
 			 * @param array          $args       Input parameters.
-			 * @param array|WP_Error $result     Execution result.
+			 * @param array|WP_Error $result     Execution result, with any keys the
+			 *                                   ability declared sensitive masked.
 			 * @param int            $user_id    Current user ID.
 			 */
-			do_action( 'albert/abilities/after_execute', $this->id, $args, $result, $user_id );
+			do_action( 'albert/abilities/after_execute', $this->id, $args, $observed, $user_id );
 
 			/**
 			 * Fires after a specific ability is executed.
@@ -241,12 +260,44 @@ abstract class BaseAbility implements Ability {
 			 * @since 1.1.0
 			 *
 			 * @param array          $args    Input parameters.
-			 * @param array|WP_Error $result  Execution result.
+			 * @param array|WP_Error $result  Execution result, with any keys the
+			 *                                ability declared sensitive masked.
 			 * @param int            $user_id Current user ID.
 			 */
-			do_action( "albert/abilities/after_execute/{$this->id}", $args, $result, $user_id );
+			do_action( "albert/abilities/after_execute/{$this->id}", $args, $observed, $user_id );
 		} catch ( \Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
 			// Log in debug mode but never break execution.
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Mask the keys named in {@see self::$sensitive_output_keys} for observers.
+	 *
+	 * Returns the result untouched when the ability declared nothing sensitive,
+	 * which is every ability but one, so this costs a single empty check on the
+	 * common path. Errors are passed through: a WP_Error carries a code and a
+	 * message, never a minted credential.
+	 *
+	 * Replaces rather than removes, so a log still records that the field was
+	 * returned. Only top-level keys are masked; an ability that buries a secret
+	 * inside a nested structure should flatten it or not return it at all.
+	 *
+	 * @param array<string, mixed>|WP_Error $result The real result.
+	 *
+	 * @return array<string, mixed>|WP_Error A copy safe to hand an observer.
+	 * @since 1.4.0
+	 */
+	protected function redact_sensitive_output( array|WP_Error $result ): array|WP_Error {
+		if ( empty( $this->sensitive_output_keys ) || is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		foreach ( $this->sensitive_output_keys as $key ) {
+			if ( array_key_exists( $key, $result ) ) {
+				$result[ $key ] = '[redacted]';
+			}
 		}
 
 		return $result;

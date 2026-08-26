@@ -100,8 +100,11 @@ albert-ai-butler/
 │   │   ├── Symbols.php                 # Third-party plugin detection by symbol
 │   │   └── Readers/                    # Environment, DesignTokens, ContentModel, Commerce
 │   │
-│   ├── Media/                           # Media upload links (doc 32, Path B)
+│   ├── Media/                           # Shared media handling + upload links (doc 32)
 │   │   ├── MimeAllowlist.php           # Shared MIME allowlist, used by Path A + Path B
+│   │   ├── AttachmentImporter.php      # On-disk file -> attachment; the tail both paths share
+│   │   ├── AttachmentResponse.php      # The attachment shape both paths return
+│   │   ├── TempFile.php                # Delete-if-present for abandoned uploads
 │   │   └── UploadLinks/
 │   │       ├── UploadLinkService.php     # Mint/redeem/finalize domain logic
 │   │       └── UploadLinkController.php  # POST /media/uploads redemption endpoint

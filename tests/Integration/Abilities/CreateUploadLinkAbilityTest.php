@@ -65,6 +65,49 @@ class CreateUploadLinkAbilityTest extends TestCase {
 	}
 
 	/**
+	 * The caller gets the real token; observers get it masked.
+	 *
+	 * Albert's own logger writes a row an administrator can read months later,
+	 * and add-ons capture the whole success payload, so a credential the token
+	 * table deliberately stores only as a hash must not arrive in a log column
+	 * in the clear. The assistant still needs it, so redaction happens on the
+	 * copy handed to `after_execute`, not on the return value.
+	 *
+	 * @return void
+	 */
+	public function test_observers_never_see_the_raw_token(): void {
+		$observed = [];
+
+		add_action(
+			'albert/abilities/after_execute',
+			static function ( $ability_id, $args, $result ) use ( &$observed ): void {
+				if ( $ability_id === 'albert/create-upload-link' ) {
+					$observed = $result;
+				}
+			},
+			10,
+			4
+		);
+
+		$returned = ( new CreateUploadLink() )->guarded_execute( [] );
+
+		$this->assertIsArray( $returned );
+		$this->assertNotEmpty( $returned['upload_token'] );
+
+		$this->assertSame( '[redacted]', $observed['upload_token'] );
+		// The curl example embeds the same token a second time.
+		$this->assertSame( '[redacted]', $observed['curl_example'] );
+
+		// Masked, not dropped: a log should still record that a link was minted.
+		$this->assertSame( $returned['expires_at'], $observed['expires_at'] );
+		$this->assertStringNotContainsString( $returned['upload_token'], wp_json_encode( $observed ) );
+
+		// And the real one still works, which is the whole point of redacting
+		// the copy rather than the result.
+		$this->assertIsArray( ( new UploadLinkService() )->redeem_link( $returned['upload_token'] ) );
+	}
+
+	/**
 	 * A user without upload_files is denied at the ability's own permission
 	 * check, before ever reaching the service.
 	 *

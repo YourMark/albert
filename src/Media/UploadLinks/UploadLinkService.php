@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Albert\Core\Plugin;
 use Albert\Core\Tokens\TokenService;
-use Albert\Media\AttachmentResponse;
+use Albert\Media\AttachmentImporter;
 use Albert\Media\MimeAllowlist;
 use WP_Error;
 
@@ -53,11 +53,29 @@ class UploadLinkService {
 	 * HTTP methods the redemption endpoint accepts.
 	 *
 	 * Both, deliberately: PUT suits raw-body clients, POST suits multipart ones.
+	 * Comma-separated because that is the shape `register_rest_route()` wants,
+	 * the same one core's own `WP_REST_Server::EDITABLE` uses. Callers are told
+	 * about it through {@see self::method_list()}, never this string.
 	 *
 	 * @since 1.4.0
 	 * @var string
 	 */
 	const HTTP_METHODS = 'POST, PUT';
+
+	/**
+	 * The accepted methods as a list, for the assistant reading the response.
+	 *
+	 * Derived from {@see self::HTTP_METHODS} rather than written out again, so
+	 * the route and the advertised methods cannot drift apart. A list, because
+	 * the consumer is a machine: handing it "POST, PUT" invites it to send that
+	 * whole string as the method.
+	 *
+	 * @return array<int, string>
+	 * @since 1.4.0
+	 */
+	public static function method_list(): array {
+		return array_map( 'trim', explode( ',', self::HTTP_METHODS ) );
+	}
 
 	/**
 	 * How long a minted link stays valid.
@@ -204,7 +222,7 @@ class UploadLinkService {
 			'upload_url'     => $upload_url,
 			'upload_token'   => $issued['token'],
 			'token_header'   => self::TOKEN_HEADER,
-			'method'         => self::HTTP_METHODS,
+			'methods'        => self::method_list(),
 			'expires_at'     => $issued['expires_at'],
 			'max_bytes'      => $max_bytes,
 			'accepted_types' => MimeAllowlist::mime_list( $allowlist ),
@@ -265,7 +283,10 @@ class UploadLinkService {
 		return [
 			'user_id'        => $user_id,
 			'mime_allowlist' => $effective_allowlist,
-			'max_bytes'      => (int) ( $payload['max_bytes'] ?? self::DEFAULT_MAX_BYTES ),
+			// Re-ceilinged, not just read back: the server's own limit can have
+			// been lowered since this link was minted, and the stored number
+			// would then promise more than core will accept.
+			'max_bytes'      => $this->apply_server_ceiling( (int) ( $payload['max_bytes'] ?? self::DEFAULT_MAX_BYTES ) ),
 			'post_id'        => (int) ( $payload['post_id'] ?? 0 ),
 		];
 	}
@@ -273,9 +294,10 @@ class UploadLinkService {
 	/**
 	 * Turn a received, on-disk file into a media library attachment.
 	 *
-	 * Content sniffing runs against the link's own allowlist, never
-	 * `unfiltered_upload` — that capability can't widen what this endpoint
-	 * accepts. The temp file is always deleted before returning.
+	 * Thin wrapper over {@see AttachmentImporter::import()}, which both upload
+	 * paths share; this keeps the link domain's own vocabulary at the seam the
+	 * controller calls. Content sniffing runs against the link's own allowlist,
+	 * never `unfiltered_upload`. The temp file is always consumed.
 	 *
 	 * @param string                                                     $tmp_path          Path to the already-received file.
 	 * @param string                                                     $original_filename Client-supplied filename (untrusted).
@@ -285,67 +307,12 @@ class UploadLinkService {
 	 * @since 1.4.0
 	 */
 	public function finalize_upload( string $tmp_path, string $original_filename, array $context ): array|WP_Error {
-		$mime_allowlist = $context['mime_allowlist'];
-		$filename       = sanitize_file_name( $original_filename );
-
-		if ( $filename === '' ) {
-			$this->delete_temp_file( $tmp_path );
-
-			return new WP_Error(
-				'type_not_allowed',
-				__( 'A filename with a valid extension is required.', 'albert-ai-butler' ),
-				[
-					'status'         => 415,
-					'accepted_types' => MimeAllowlist::mime_list( $mime_allowlist ),
-				]
-			);
-		}
-
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-		require_once ABSPATH . 'wp-admin/includes/image.php';
-		require_once ABSPATH . 'wp-admin/includes/media.php';
-
-		$file_type = wp_check_filetype_and_ext( $tmp_path, $filename, $mime_allowlist );
-
-		if ( empty( $file_type['ext'] ) || empty( $file_type['type'] ) ) {
-			$this->delete_temp_file( $tmp_path );
-
-			return new WP_Error(
-				'type_not_allowed',
-				__( 'This file type is not accepted.', 'albert-ai-butler' ),
-				[
-					'status'         => 415,
-					'accepted_types' => MimeAllowlist::mime_list( $mime_allowlist ),
-				]
-			);
-		}
-
-		if ( ! empty( $file_type['proper_filename'] ) ) {
-			$filename = $file_type['proper_filename'];
-		}
-
-		$file_array = [
-			'name'     => $filename,
-			'tmp_name' => $tmp_path,
-		];
-
-		$attachment_id = media_handle_sideload( $file_array, $context['post_id'] );
-
-		$this->delete_temp_file( $tmp_path );
-
-		if ( is_wp_error( $attachment_id ) ) {
-			// Core returns 'upload_error' with no status, which REST maps to
-			// 500 — and it collides with the controller's own 'upload_error'.
-			// Re-code it so a caller can tell "your file was refused" from
-			// "the site broke", and get a 4xx for the former.
-			return new WP_Error(
-				'upload_failed',
-				$attachment_id->get_error_message(),
-				[ 'status' => 400 ]
-			);
-		}
-
-		return AttachmentResponse::format( $attachment_id );
+		return AttachmentImporter::import(
+			$tmp_path,
+			$original_filename,
+			$context['mime_allowlist'],
+			$context['post_id']
+		);
 	}
 
 	/**
@@ -358,10 +325,26 @@ class UploadLinkService {
 	 * @since 1.4.0
 	 */
 	private function resolve_max_bytes( int $requested ): int {
-		$ceiling = (int) wp_max_upload_size();
-		$base    = $requested > 0 ? $requested : $this->default_max_bytes();
+		return $this->apply_server_ceiling( $requested > 0 ? $requested : $this->default_max_bytes() );
+	}
 
-		return max( 1, $ceiling > 0 ? min( $base, $ceiling ) : $base );
+	/**
+	 * Clamp a byte cap to what this server will actually accept.
+	 *
+	 * Applied both when minting and when redeeming, so a link cannot outlive a
+	 * tightening of the server's own limit. `wp_max_upload_size()` is
+	 * filterable and can return 0 or less on a misconfigured host; treat that
+	 * as "no usable ceiling" rather than clamping every upload to nothing.
+	 *
+	 * @param int $bytes The cap to clamp.
+	 *
+	 * @return int At least 1.
+	 * @since 1.4.0
+	 */
+	private function apply_server_ceiling( int $bytes ): int {
+		$ceiling = (int) wp_max_upload_size();
+
+		return max( 1, $ceiling > 0 ? min( $bytes, $ceiling ) : $bytes );
 	}
 
 	/**
@@ -562,6 +545,19 @@ class UploadLinkService {
 		$mb = is_scalar( $value ) ? (int) $value : 0;
 
 		if ( $mb < 1 ) {
+			// Say so, exactly as an over-range value does. Silently rewriting
+			// a 0 to 10 leaves somebody staring at a number they did not type.
+			add_settings_error(
+				'albert_settings',
+				'upload_link_max_mb_too_low',
+				sprintf(
+					/* translators: %d: the default that was saved instead (MB) */
+					__( 'The default upload size limit must be at least 1 MB, so %d MB was saved instead.', 'albert-ai-butler' ),
+					self::DEFAULT_MAX_MB
+				),
+				'warning'
+			);
+
 			return self::DEFAULT_MAX_MB;
 		}
 
@@ -623,19 +619,5 @@ class UploadLinkService {
 			self::TOKEN_HEADER,
 			$token
 		);
-	}
-
-	/**
-	 * Delete the temp file if it still exists. Never errors on a missing file.
-	 *
-	 * @param string $tmp_path Path to the temp file.
-	 *
-	 * @return void
-	 * @since 1.4.0
-	 */
-	private function delete_temp_file( string $tmp_path ): void {
-		if ( $tmp_path !== '' && file_exists( $tmp_path ) ) {
-			wp_delete_file( $tmp_path );
-		}
 	}
 }

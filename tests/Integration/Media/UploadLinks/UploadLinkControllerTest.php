@@ -146,7 +146,14 @@ class UploadLinkControllerTest extends TestCase {
 		$response = rest_get_server()->dispatch( $request );
 
 		$this->assertSame( 401, $response->get_status() );
-		$this->assertSame( 'link_already_used', $response->get_data()['code'] );
+		// Its own code: nothing was presented, so this is not the same event as
+		// a spent or forged token, and a client must not read it as one.
+		$this->assertSame( 'missing_token', $response->get_data()['code'] );
+		$this->assertStringContainsString(
+			UploadLinkService::TOKEN_HEADER,
+			$response->get_data()['message'],
+			'The rejection should name the header the token belongs in.'
+		);
 	}
 
 	// ─── Happy path ─────────────────────────────────────────────────
@@ -195,10 +202,12 @@ class UploadLinkControllerTest extends TestCase {
 	public function test_mint_reports_accepted_methods(): void {
 		$link = $this->links->mint( $this->admin_id, [] );
 
-		$this->assertSame( UploadLinkService::HTTP_METHODS, $link['method'] );
+		// A list, not "POST, PUT": the consumer is a model, and a comma string
+		// is something it has to parse before it can use it.
+		$this->assertSame( [ 'POST', 'PUT' ], $link['methods'] );
 
 		$routes = rest_get_server()->get_routes()[ '/' . Plugin::rest_namespace() . '/media/uploads' ];
-		foreach ( [ 'POST', 'PUT' ] as $method ) {
+		foreach ( $link['methods'] as $method ) {
 			$this->assertArrayHasKey( $method, $routes[0]['methods'], "Route does not accept {$method}" );
 		}
 	}
@@ -509,6 +518,53 @@ class UploadLinkControllerTest extends TestCase {
 		$this->assertSame( $author_id, (int) get_post_field( 'post_author', $attachment_id ) );
 
 		wp_delete_attachment( $attachment_id, true );
+	}
+
+	/**
+	 * A multipart file exactly at the cap is accepted.
+	 *
+	 * Content-Length on a multipart request is the whole envelope: boundaries,
+	 * part headers and the filename field on top of the bytes themselves.
+	 * Measuring that against a file-size cap rejected a file that was exactly
+	 * at the limit, and reported the limit it had supposedly exceeded. The
+	 * declared-size check now belongs to the raw-body path, where
+	 * Content-Length really is the file.
+	 *
+	 * @return void
+	 */
+	public function test_multipart_file_exactly_at_the_cap_is_accepted(): void {
+		$fixture = $this->jpg_fixture();
+		$size    = filesize( $fixture );
+
+		// Keep the server's own ceiling out of it: a stock PHP allows 2 MB, and
+		// a fixture near that would be clamped, so this would silently stop
+		// testing the boundary it names.
+		add_filter( 'upload_size_limit', static fn (): int => $size + 1 );
+
+		$link = $this->links->mint( $this->admin_id, [ 'max_bytes' => $size ] );
+
+		$this->assertSame( $size, $link['max_bytes'], 'The cap under test must survive minting.' );
+
+		$had_original = isset( $_SERVER['CONTENT_LENGTH'] );
+		$original     = $had_original ? absint( wp_unslash( $_SERVER['CONTENT_LENGTH'] ) ) : 0;
+
+		// What a real multipart request declares: the file plus its envelope.
+		$_SERVER['CONTENT_LENGTH'] = (string) ( $size + 240 );
+
+		$response = $this->controller->handle_upload(
+			$this->multipart_request( $link['upload_token'], $fixture, 'exactly-at-cap.jpg' )
+		);
+
+		if ( $had_original ) {
+			$_SERVER['CONTENT_LENGTH'] = (string) $original;
+		} else {
+			unset( $_SERVER['CONTENT_LENGTH'] );
+		}
+
+		$this->assertNotWPError( $response );
+		$this->assertSame( 201, $response->get_status() );
+
+		wp_delete_attachment( $response->get_data()['attachment_id'], true );
 	}
 
 	/**

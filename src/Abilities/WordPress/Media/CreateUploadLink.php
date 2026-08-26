@@ -50,15 +50,20 @@ class CreateUploadLink extends BaseAbility {
 		$this->input_schema  = $this->get_input_schema();
 		$this->output_schema = $this->get_output_schema();
 
+		// The token is the credential. The caller needs it; the execution log
+		// does not, and would keep it in the clear long after it expired.
+		$this->sensitive_output_keys = [ 'upload_token', 'curl_example' ];
+
 		$this->meta = [
 			'mcp'         => [
 				'public' => true,
 			],
 			'annotations' => Annotations::action(
-				'Use this when you have the file\'s bytes rather than a URL — otherwise `albert/upload-media` is simpler. '
+				'Use this when you have the file\'s bytes rather than a URL; otherwise `albert/upload-media` is simpler. '
 				. 'The returned `upload_token` must be sent in the `token_header` header, never in the URL: URLs end up '
-				. 'in logs and referrers. The link accepts POST (multipart `file` field) or PUT (raw body) — use whichever '
-				. 'your HTTP tooling makes easier. The link expires in minutes and works exactly once.'
+				. 'in logs and referrers. Send the file either as POST with a multipart `file` field, or as PUT with the '
+				. 'raw bytes as the body plus a `filename` query parameter (the raw body carries no filename of its own, '
+				. 'and one with a real extension is required). The link expires in minutes and works exactly once.'
 			),
 		];
 
@@ -117,9 +122,10 @@ class CreateUploadLink extends BaseAbility {
 					'type'        => 'string',
 					'description' => 'The header name to send upload_token in.',
 				],
-				'method'         => [
-					'type'        => 'string',
-					'description' => 'HTTP method(s) the endpoint accepts.',
+				'methods'        => [
+					'type'        => 'array',
+					'items'       => [ 'type' => 'string' ],
+					'description' => 'HTTP methods the endpoint accepts. POST takes a multipart "file" field; PUT takes the raw bytes as the body and needs a "filename" query parameter.',
 				],
 				'expires_at'     => [
 					'type'        => 'string',
