@@ -29,12 +29,16 @@ defined( 'ABSPATH' ) || exit;
  * as an absolute timestamp, not recomputed from the live setting on every
  * check. An invitation's deadline is a property of that invitation, decided
  * when it was granted: if the owner later tightens or loosens the window,
- * every invitation already waiting keeps the deadline it was given, unless
- * the owner explicitly opts to recalculate it ({@see self::reset_expiry_clock()},
- * offered as a choice when the setting is saved, see
- * {@see \Albert\Admin\Connections::handle_settings_saved()}). Silently
+ * every invitation already waiting keeps the deadline it was given. Silently
  * moving someone's deadline because an unrelated setting changed would be a
  * surprise no security control should spring on someone.
+ *
+ * {@see self::reset_expiry_clock()} recalculates them deliberately, but is
+ * programmatic only. It was briefly offered as a checkbox on the Settings
+ * screen and removed in 1.4.0: "apply to invitations already waiting" asks the
+ * owner to reason about the difference between a window and a deadline in
+ * order to tick a box, which is a distinction the screen should simply make
+ * for them.
  *
  * Before 1.4.0 this was a flat array of ints with no timestamps at all.
  * {@see \Albert\Database\Installer} migrates existing sites once, on
@@ -79,7 +83,7 @@ class AllowedUsers {
 	/**
 	 * Option name for the invitation-expiry window, in days. 0 = never.
 	 * Only consulted when an invitation's `expires_at` is computed: at
-	 * {@see self::add()}, and at an owner-requested {@see self::reset_expiry_clock()}.
+	 * {@see self::add()}, and at a programmatic {@see self::reset_expiry_clock()}.
 	 *
 	 * @since 1.4.0
 	 * @var string
@@ -97,17 +101,6 @@ class AllowedUsers {
 	 * @var int
 	 */
 	const DEFAULT_EXPIRY_DAYS = 1;
-
-	/**
-	 * Option name for the one-shot "also apply this to invitations already
-	 * waiting" checkbox on the Settings screen. Read and immediately reset to
-	 * false by {@see \Albert\Admin\Connections::handle_settings_saved()}, so
-	 * it never silently re-applies on a later, unrelated settings save.
-	 *
-	 * @since 1.4.0
-	 * @var string
-	 */
-	const APPLY_TO_EXISTING_OPTION = 'albert_allowed_user_apply_expiry_to_existing';
 
 	/**
 	 * Every allowed user, normalised.
@@ -353,11 +346,12 @@ class AllowedUsers {
 	 * invitation, using each one's own `added_at` plus the given window.
 	 *
 	 * Not run automatically when the expiry setting changes: an invitation's
-	 * deadline is only ever moved on the owner's explicit say-so, offered as
-	 * a checkbox at save time (see the class docblock and
-	 * {@see \Albert\Admin\Connections::handle_settings_saved()}). Already
-	 * exercised invitations are untouched: their `authorised_at` exemption
-	 * makes `expires_at` moot for them regardless.
+	 * deadline is a property of that invitation, not of the current window (see
+	 * the class docblock). Nothing in Albert calls this today — it is here for
+	 * a caller that genuinely means "move every pending deadline", such as a
+	 * WP-CLI command or an add-on. Already exercised invitations are untouched:
+	 * their `authorised_at` exemption makes `expires_at` moot for them
+	 * regardless.
 	 *
 	 * @param int $days The new expiry window, in days. 0 clears expiry (never).
 	 *
@@ -394,6 +388,8 @@ class AllowedUsers {
 	 * @since 1.4.0
 	 */
 	private static function compute_expiry( int $from ): ?int {
+		// Explicit default: reachable from cron and WP-CLI as well as admin, and
+		// Settings\Storage only registers its default on `admin_init`.
 		$days = (int) get_option( self::EXPIRY_OPTION, self::DEFAULT_EXPIRY_DAYS );
 
 		return $days > 0 ? $from + ( $days * DAY_IN_SECONDS ) : null;

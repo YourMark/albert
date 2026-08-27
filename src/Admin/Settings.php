@@ -11,6 +11,8 @@ namespace Albert\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Admin\Settings\Schema;
+use Albert\Admin\Settings\Value;
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Database\Tables;
 
@@ -83,57 +85,60 @@ class Settings implements Hookable {
 		$sections = $this->collect_sections();
 		$renderer = new SettingsRenderer();
 		?>
-		<div class="wrap albert-wrap">
-			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
+		<div class="wrap albert-settings-page">
+			<div class="albert-page albert-page--narrow">
+				<div class="albert-page__header">
+					<div class="albert-page__text">
+						<h1 class="albert-page__title"><?php echo esc_html( get_admin_page_title() ); ?></h1>
+						<p class="albert-page__description">
+							<?php esc_html_e( 'Configure plugin settings and connection details.', 'albert-ai-butler' ); ?>
+						</p>
+					</div>
+				</div>
 
-			<?php settings_errors( 'albert_settings' ); ?>
+				<?php Notices::render( 'albert_settings' ); ?>
 
-			<div class="albert-content-header">
-				<p class="albert-content-description">
-					<?php esc_html_e( 'Configure plugin settings and connection details.', 'albert-ai-butler' ); ?>
-				</p>
-			</div>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="albert-settings__form">
+					<?php wp_nonce_field( 'albert_save_settings', 'albert_save_settings_nonce' ); ?>
+					<input type="hidden" name="action" value="albert_save_settings" />
 
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="albert-settings-form">
-				<?php wp_nonce_field( 'albert_save_settings', 'albert_save_settings_nonce' ); ?>
-				<input type="hidden" name="action" value="albert_save_settings" />
+					<div class="albert-page__body">
+						<?php
+						$has_visible_section = false;
+						foreach ( $sections as $section ) {
+							$capability = isset( $section['capability'] ) && is_string( $section['capability'] ) && $section['capability'] !== ''
+								? $section['capability']
+								: 'manage_options';
+							if ( ! current_user_can( $capability ) ) {
+								continue;
+							}
+							$show_if = $section['show_if'] ?? null;
+							if ( is_callable( $show_if ) && ! (bool) call_user_func( $show_if ) ) {
+								continue;
+							}
 
-				<div class="albert-page">
-					<?php
-					$has_visible_section = false;
-					foreach ( $sections as $section ) {
-						$capability = isset( $section['capability'] ) && is_string( $section['capability'] ) && $section['capability'] !== ''
-							? $section['capability']
-							: 'manage_options';
-						if ( ! current_user_can( $capability ) ) {
-							continue;
+							// Sections with zero fields never render — skip them so the
+							// save bar doesn't appear for an otherwise-empty page.
+							$section_fields = isset( $section['fields'] ) && is_array( $section['fields'] ) ? $section['fields'] : [];
+							if ( empty( $section_fields ) ) {
+								continue;
+							}
+
+							$has_visible_section = true;
+							$this->render_section( $section, $renderer );
 						}
-						$show_if = $section['show_if'] ?? null;
-						if ( is_callable( $show_if ) && ! (bool) call_user_func( $show_if ) ) {
-							continue;
-						}
-
-						// Sections with zero fields never render — skip them so the
-						// submit button doesn't appear for an otherwise-empty page.
-						$section_fields = isset( $section['fields'] ) && is_array( $section['fields'] ) ? $section['fields'] : [];
-						if ( empty( $section_fields ) ) {
-							continue;
-						}
-
-						$has_visible_section = true;
-						$this->render_section( $section, $renderer );
-					}
-					?>
+						?>
+					</div>
 
 					<?php if ( $has_visible_section ) { ?>
-						<div class="albert-settings-submit">
+						<div class="albert-savebar">
 							<button type="submit" class="button button-primary">
 								<?php esc_html_e( 'Save Settings', 'albert-ai-butler' ); ?>
 							</button>
 						</div>
 					<?php } ?>
-				</div>
-			</form>
+				</form>
+			</div>
 		</div>
 		<?php
 	}
@@ -149,7 +154,6 @@ class Settings implements Hookable {
 	 * @return void
 	 */
 	private function render_section( array $section, SettingsRenderer $renderer ): void {
-		$icon        = isset( $section['icon'] ) && is_string( $section['icon'] ) ? $section['icon'] : '';
 		$title       = isset( $section['title'] ) && is_string( $section['title'] ) ? $section['title'] : '';
 		$badge       = isset( $section['badge'] ) && is_string( $section['badge'] ) ? $section['badge'] : '';
 		$description = isset( $section['description'] ) && is_string( $section['description'] ) ? $section['description'] : '';
@@ -161,20 +165,27 @@ class Settings implements Hookable {
 			return;
 		}
 		?>
-		<section class="albert-settings-card">
-			<div class="albert-settings-card-header">
-				<?php if ( $icon !== '' ) { ?>
-					<span class="dashicons dashicons-<?php echo esc_attr( $icon ); ?>" aria-hidden="true"></span>
-				<?php } ?>
-				<h2><?php echo esc_html( $title ); ?></h2>
+		<section class="albert-card">
+			<div class="albert-card__header">
+				<div class="albert-card__text">
+					<?php
+					// No icon, deliberately. The section schema still accepts an
+					// `icon` key (dropping it would break every add-on that sets
+					// one), but the design system's card header is title and
+					// description only — see docs/design-system.md. Connections,
+					// Context and Skills already render theirs without one, and a
+					// dashicon here made Settings the odd screen out.
+					?>
+					<h2 class="albert-card__title"><?php echo esc_html( $title ); ?></h2>
+					<?php if ( $description !== '' ) { ?>
+						<p class="albert-card__description"><?php echo esc_html( $description ); ?></p>
+					<?php } ?>
+				</div>
 				<?php if ( $badge !== '' ) { ?>
-					<span class="albert-section-badge"><?php echo esc_html( $badge ); ?></span>
+					<span class="albert-badge albert-badge--warning"><?php echo esc_html( $badge ); ?></span>
 				<?php } ?>
 			</div>
-			<div class="albert-settings-card-body">
-				<?php if ( $description !== '' ) { ?>
-					<p class="albert-section-description"><?php echo esc_html( $description ); ?></p>
-				<?php } ?>
+			<div class="albert-card__body">
 				<?php
 				foreach ( $fields as $field ) {
 					if ( ! is_array( $field ) ) {
@@ -185,11 +196,8 @@ class Settings implements Hookable {
 						continue;
 					}
 
-					$option_name   = SettingsRegistry::get_option_name(
-						isset( $section['id'] ) && is_string( $section['id'] ) ? $section['id'] : '',
-						isset( $field['id'] ) && is_string( $field['id'] ) ? $field['id'] : '',
-						isset( $field['option_name'] ) && is_string( $field['option_name'] ) ? $field['option_name'] : null
-					);
+					// Stamped by resolve_option_names(); never re-derived here.
+					$option_name   = isset( $field['option_name'] ) && is_string( $field['option_name'] ) ? $field['option_name'] : '';
 					$default_value = array_key_exists( 'default', $field ) ? $field['default'] : '';
 					$current_value = get_option( $option_name, $default_value );
 
@@ -202,44 +210,18 @@ class Settings implements Hookable {
 	}
 
 	/**
-	 * Collect, register, and filter sections for both render and save paths.
+	 * The registered sections, from the shared schema.
+	 *
+	 * Kept as a thin wrapper rather than inlined at both call sites so the
+	 * render and save paths still read the same way, and so there is one place
+	 * to look when asking where the sections come from.
 	 *
 	 * @since 1.1.0
 	 *
 	 * @return array<int, array<string, mixed>>
 	 */
 	private function collect_sections(): array {
-		$registry = SettingsRegistry::instance();
-
-		// Register Free's built-in sections FIRST so the synthetic `albert/settings`
-		// card created by `albert_register_setting()` can slot between them in the
-		// rendered order.
-		foreach ( SettingsBootstrap::get_builtin_sections() as $builtin ) {
-			$registry->register_section( $builtin );
-		}
-
-		/**
-		 * Fires before the unified settings sections are collected.
-		 *
-		 * Add-ons hook here to call {@see albert_register_setting()} or (for
-		 * advanced use) {@see albert_register_settings_section()}.
-		 *
-		 * @since 1.1.0
-		 */
-		do_action( 'albert/settings/register' );
-
-		/**
-		 * Filters the final list of settings sections.
-		 *
-		 * Last chance to add, remove, or re-order sections before render or save.
-		 *
-		 * @since 1.1.0
-		 *
-		 * @param array<int, array<string, mixed>> $sections Normalised, sorted sections.
-		 */
-		$sections = apply_filters( 'albert/settings/sections', $registry->get_sections() );
-
-		return is_array( $sections ) ? $sections : [];
+		return Schema::collect();
 	}
 
 	/**
@@ -272,8 +254,7 @@ class Settings implements Hookable {
 				continue;
 			}
 
-			$section_id = isset( $section['id'] ) && is_string( $section['id'] ) ? $section['id'] : '';
-			$fields     = isset( $section['fields'] ) && is_array( $section['fields'] ) ? $section['fields'] : [];
+			$fields = isset( $section['fields'] ) && is_array( $section['fields'] ) ? $section['fields'] : [];
 
 			foreach ( $fields as $field ) {
 				if ( ! is_array( $field ) ) {
@@ -291,9 +272,24 @@ class Settings implements Hookable {
 					continue;
 				}
 
-				$field_id    = isset( $field['id'] ) && is_string( $field['id'] ) ? $field['id'] : '';
-				$override    = isset( $field['option_name'] ) && is_string( $field['option_name'] ) ? $field['option_name'] : null;
-				$option_name = SettingsRegistry::get_option_name( $section_id, $field_id, $override );
+				// Stamped by resolve_option_names(); the same value the renderer
+				// used for the input's `name`, by construction.
+				$option_name = isset( $field['option_name'] ) && is_string( $field['option_name'] ) ? $field['option_name'] : '';
+
+				if ( $option_name === '' ) {
+					continue;
+				}
+
+				// A control the owner cannot use is not submitted by the
+				// browser, so $_POST has no key for it and the value below
+				// would be sanitised from null — which for a bounded number
+				// means its minimum, silently overwriting whatever is stored.
+				// The stored value is not what the site is using while an
+				// override is active, but it is what the owner last chose, and
+				// it has to survive until they change it themselves.
+				if ( $this->is_field_locked( $field, $option_name ) ) {
+					continue;
+				}
 
 				// $_POST is read raw here; sanitization happens in SettingsSanitizer per field type.
 				// Nonce verified at top of method via check_admin_referer().
@@ -570,12 +566,12 @@ class Settings implements Hookable {
 	private static function render_status( string $status ): void {
 		switch ( $status ) {
 			case 'valid':
-				$class = 'albert-status-dot--valid';
+				$class = 'albert-license-dot--valid';
 				$label = __( 'Active', 'albert-ai-butler' );
 				break;
 
 			case 'expired':
-				$class = 'albert-status-dot--expired';
+				$class = 'albert-license-dot--expired';
 				$label = __( 'Expired', 'albert-ai-butler' );
 				break;
 
@@ -584,17 +580,17 @@ class Settings implements Hookable {
 			case 'site_inactive':
 			case 'item_name_mismatch':
 			case 'no_activations_left':
-				$class = 'albert-status-dot--invalid';
+				$class = 'albert-license-dot--invalid';
 				$label = ucfirst( str_replace( '_', ' ', $status ) );
 				break;
 
 			default:
-				$class = 'albert-status-dot--none';
+				$class = 'albert-license-dot--none';
 				$label = __( 'Not activated', 'albert-ai-butler' );
 				break;
 		}
 
-		echo '<span class="albert-status-dot ' . esc_attr( $class ) . '"></span> ';
+		echo '<span class="albert-license-dot ' . esc_attr( $class ) . '"></span> ';
 		echo esc_html( $label );
 	}
 
@@ -680,5 +676,35 @@ class Settings implements Hookable {
 			</p>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Whether this field's value is out of the owner's hands right now.
+	 *
+	 * Two ways that happens: something in code owns the value (a constant, a
+	 * filter — see {@see Value}), or the field declares its own `disabled`
+	 * condition for a state the resolver cannot see. Either way the control
+	 * renders read-only, so nothing is submitted for it and nothing should be
+	 * written.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param array<string, mixed> $field       Normalised field definition.
+	 * @param string               $option_name Resolved wp_options key.
+	 *
+	 * @return bool
+	 */
+	private function is_field_locked( array $field, string $option_name ): bool {
+		if ( Value::is_overridden( $option_name ) ) {
+			return true;
+		}
+
+		$disabled = $field['disabled'] ?? false;
+
+		if ( is_callable( $disabled ) ) {
+			return (bool) call_user_func( $disabled );
+		}
+
+		return (bool) $disabled;
 	}
 }

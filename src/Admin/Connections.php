@@ -81,7 +81,6 @@ class Connections implements Hookable {
 		add_action( 'admin_post_' . UserPickerModal::ACTION, [ $this, 'handle_add_allowed_users' ] );
 		add_action( 'admin_post_albert_set_connection_label', [ $this, 'handle_set_connection_label' ] );
 		add_action( 'admin_post_albert_revoke_selected', [ $this, 'handle_revoke_selected' ] );
-		add_action( 'albert/settings/saved', [ $this, 'handle_settings_saved' ] );
 	}
 
 	/**
@@ -595,35 +594,6 @@ class Connections implements Hookable {
 	}
 
 	/**
-	 * After the unified Settings form saves, optionally recalculate the
-	 * expiry date on every invitation still waiting.
-	 *
-	 * Changing the expiry window never moves an existing invitation's
-	 * deadline on its own (see {@see \Albert\OAuth\AllowedUsers} class
-	 * docblock): that is a deliberate choice the owner makes here, via a
-	 * checkbox on the same form, not something the setting does silently.
-	 * The checkbox is a one-shot trigger, not a standing preference: it is
-	 * reset to unchecked immediately after acting, so it does not silently
-	 * re-apply the next time an unrelated setting is saved.
-	 *
-	 * @param array<string, mixed> $saved Map of option_name => sanitized value, from the save.
-	 *
-	 * @return void
-	 * @since 1.4.0
-	 */
-	public function handle_settings_saved( array $saved ): void {
-		if ( empty( $saved[ AllowedUsers::APPLY_TO_EXISTING_OPTION ] ) ) {
-			return;
-		}
-
-		$days = (int) get_option( AllowedUsers::EXPIRY_OPTION, AllowedUsers::DEFAULT_EXPIRY_DAYS );
-
-		AllowedUsers::reset_expiry_clock( $days );
-
-		update_option( AllowedUsers::APPLY_TO_EXISTING_OPTION, false );
-	}
-
-	/**
 	 * Stop anyone without the capability, with a message that says which action failed.
 	 *
 	 * @param string $message The message to die with. Defaults to the revoke wording.
@@ -800,7 +770,7 @@ class Connections implements Hookable {
 					</div>
 				</div>
 
-				<?php settings_errors( 'albert_connections' ); ?>
+				<?php Notices::render( 'albert_connections' ); ?>
 
 				<div class="albert-page__body">
 					<?php $this->render_endpoint_card( $endpoint, $external_state ); ?>
@@ -2022,7 +1992,7 @@ class Connections implements Hookable {
 					</div>
 				</div>
 
-				<?php settings_errors( 'albert_connections' ); ?>
+				<?php Notices::render( 'albert_connections' ); ?>
 
 				<div class="albert-page__body">
 					<section class="albert-card">

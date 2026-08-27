@@ -61,6 +61,8 @@ use Albert\Admin\ContextPage;
 use Albert\Admin\Menu;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
+use Albert\Admin\Settings\Overrides as SettingsOverrides;
+use Albert\Admin\Settings\Storage as SettingsStorage;
 use Albert\Admin\SkillsPage;
 use Albert\Cron\AllowedUserExpiry;
 use Albert\Cron\ConnectionRetentionSweep;
@@ -77,6 +79,7 @@ use Albert\Admin\Rest\AbilitiesController;
 use Albert\Admin\Rest\ContextController;
 use Albert\Admin\Rest\SkillsController;
 use Albert\OAuth\Endpoints\OAuthDiscovery;
+use Albert\Privacy\PrivacyMode;
 use Albert\Vendor\WP\MCP\Core\McpAdapter;
 
 /**
@@ -194,6 +197,11 @@ class Plugin {
 		( new ConnectionRetentionSweep() )->register_hooks();
 		ConnectionRetentionSweep::schedule();
 
+		// Bridges the domain-specific override filters onto the generic settings
+		// chain. Not admin-only: albert_get_setting() reads that chain on MCP
+		// and front-end requests too.
+		( new SettingsOverrides() )->register_hooks();
+
 		// Register admin components.
 		if ( is_admin() ) {
 			// Shared admin assets. Registers the design-token stylesheet every
@@ -222,6 +230,11 @@ class Plugin {
 
 			// Settings page (MCP endpoint, developer options, licenses).
 			( new Settings() )->register_hooks();
+
+			// Hands every registered setting to WordPress's register_setting(),
+			// so sanitisation and defaults belong to the option rather than to
+			// the form. Storage only; Albert still renders every control.
+			( new SettingsStorage() )->register_hooks();
 
 			// Addon submenu pages (registered via filter — see Menu for ordering).
 			add_action( 'admin_menu', [ $this, 'register_addon_admin_pages' ], Menu::POSITION_ADDONS );
@@ -486,6 +499,31 @@ class Plugin {
 	}
 
 	/**
+	 * Default a genuinely new install to Strict privacy, without touching a
+	 * site that has run this plugin before.
+	 *
+	 * `albert_installed_version` is only ever absent the very first time this
+	 * plugin activates on a site — {@see self::maybe_cleanup_legacy_options()}
+	 * writes it on every subsequent request. That makes it the one reliable
+	 * "has this site ever run Albert before" signal available at activation
+	 * time; the privacy option's own absence is not, since a pre-1.3.0 site
+	 * that has simply never opened Settings would look identical to a new
+	 * install if that were the only check. See docs/features/70-admin-design-system.md
+	 * §4: "Never change the behaviour of an installed site silently."
+	 *
+	 * @since 1.4.0
+	 *
+	 * @return void
+	 */
+	private static function maybe_set_new_install_privacy_default(): void {
+		$is_new_install = get_option( 'albert_installed_version', false ) === false;
+
+		if ( $is_new_install && get_option( 'albert_privacy_mode', false ) === false ) {
+			update_option( 'albert_privacy_mode', PrivacyMode::Strict->value );
+		}
+	}
+
+	/**
 	 * Plugin activation hook callback.
 	 *
 	 * Runs when the plugin is activated.
@@ -494,6 +532,8 @@ class Plugin {
 	 * @since 1.0.0
 	 */
 	public static function activate(): void {
+		self::maybe_set_new_install_privacy_default();
+
 		// Create/upgrade all database tables.
 		DatabaseInstaller::install();
 

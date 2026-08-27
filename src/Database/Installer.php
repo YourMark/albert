@@ -53,6 +53,8 @@ class Installer {
 		'albert_installed_version',
 		'albert_allowed_users',
 		'albert_allowed_user_expiry_days',
+		// Legacy: backed a Settings checkbox removed before 1.4.0 shipped. Kept
+		// in the sweep so a site that ran the pre-release does not keep the row.
 		'albert_allowed_user_apply_expiry_to_existing',
 		'albert_connection_never_used_days',
 		'albert_connection_idle_days',

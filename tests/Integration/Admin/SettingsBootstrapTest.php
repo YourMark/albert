@@ -12,6 +12,7 @@
 namespace Albert\Tests\Integration\Admin;
 
 use Albert\Admin\SettingsBootstrap;
+use Albert\Admin\SettingsRenderer;
 use Albert\Media\UploadLinks\UploadLinkService;
 use Albert\Tests\TestCase;
 
@@ -49,23 +50,56 @@ class SettingsBootstrapTest extends TestCase {
 		$this->assertCount( 1, $section['fields'] );
 
 		$field = $section['fields'][0];
-		$this->assertSame( 'custom', $field['type'] );
+
+		// A plain number field, and one that declares nothing about being
+		// overridable: the renderer works that out from Settings\Value. The
+		// hint is the exception, and earns its place by giving the exact size
+		// in force, which a control rounded to whole megabytes cannot show.
+		$this->assertSame( 'number', $field['type'] );
 		$this->assertSame( UploadLinkService::MAX_BYTES_OPTION, $field['option_name'] );
 		$this->assertSame( UploadLinkService::DEFAULT_MAX_MB, $field['default'] );
-		$this->assertSame( [ SettingsBootstrap::class, 'render_max_mb_field' ], $field['render_callback'] );
+		$this->assertArrayNotHasKey( 'render_callback', $field );
+		$this->assertArrayNotHasKey( 'disabled', $field );
+		$this->assertArrayNotHasKey( 'display_value', $field );
+		$this->assertSame( [ SettingsBootstrap::class, 'max_mb_hint' ], $field['hint'] );
 		$this->assertSame( [ SettingsBootstrap::class, 'sanitize_max_mb' ], $field['sanitize_callback'] );
 	}
 
 	/**
-	 * The field's description mentions the server's actual upload ceiling,
-	 * so an owner isn't left guessing why a large value has no effect.
+	 * The server's actual upload ceiling is surfaced, so an owner isn't left
+	 * guessing why a large value has no effect.
+	 *
+	 * It lives in the field's info tip rather than its description: the
+	 * description is held to one line, and the ceiling is the kind of detail a
+	 * reader wants once rather than every time. Asserted on the rendered output
+	 * so this covers the tip actually reaching the screen, not just the schema
+	 * carrying the string.
 	 *
 	 * @return void
 	 */
-	public function test_uploads_section_description_mentions_server_ceiling(): void {
-		$field = $this->uploads_section()['fields'][0];
+	public function test_uploads_field_surfaces_the_server_ceiling(): void {
+		$ceiling = size_format( wp_max_upload_size() );
 
-		$this->assertStringContainsString( size_format( wp_max_upload_size() ), $field['description'] );
+		$this->assertStringContainsString( $ceiling, $this->uploads_section()['fields'][0]['info'] );
+		$this->assertStringContainsString( $ceiling, $this->render_uploads_field( 10 ) );
+	}
+
+	/**
+	 * The info tip renders as the shared control, with the trigger and its
+	 * popover adjacent — `admin-popover.js` finds the popover with
+	 * `nextElementSibling`, so anything between them breaks it.
+	 *
+	 * @return void
+	 */
+	public function test_uploads_field_renders_the_shared_info_control(): void {
+		$html = $this->render_uploads_field( 10 );
+
+		$this->assertStringContainsString( 'albert-tip__trigger', $html );
+		$this->assertStringContainsString( 'aria-expanded="false"', $html );
+		$this->assertMatchesRegularExpression(
+			'/<button[^>]*aria-controls="([^"]+)"[^>]*>.*?<\/button><div class="albert-tip__popover" id="\1"/s',
+			$html
+		);
 	}
 
 	/**
@@ -101,18 +135,38 @@ class SettingsBootstrapTest extends TestCase {
 		$wp_settings_errors = []; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Test isolation, not production code overriding a WP internal.
 	}
 
-	// ─── render_max_mb_field() ────────────────────────────────────────
+	// ─── The Uploads field, rendered ──────────────────────────────────
 
 	/**
-	 * With no filter hooked, render_max_mb_field() renders an editable
-	 * input showing the stored/default value, and no override notice.
+	 * Render the real Uploads field through the shared renderer.
+	 *
+	 * Goes through `SettingsRenderer::render_field()` with the field exactly as
+	 * `get_builtin_sections()` declares it, rather than calling a bespoke
+	 * callback: that is the path the Settings screen actually takes, so these
+	 * assertions cover the `disabled` / `display_value` / `hint` wiring as well
+	 * as the values themselves.
+	 *
+	 * @param int $stored The stored option value, in MB.
+	 *
+	 * @return string
+	 */
+	private function render_uploads_field( int $stored ): string {
+		$field = $this->uploads_section()['fields'][0];
+
+		ob_start();
+		( new SettingsRenderer() )->render_field( $field, $stored );
+
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * With no filter hooked, the field is editable, shows the stored value,
+	 * and says nothing extra.
 	 *
 	 * @return void
 	 */
-	public function test_render_max_mb_field_is_editable_without_a_filter(): void {
-		ob_start();
-		SettingsBootstrap::render_max_mb_field( [], 9 );
-		$html = ob_get_clean();
+	public function test_uploads_field_is_editable_without_a_filter(): void {
+		$html = $this->render_uploads_field( 9 );
 
 		$this->assertStringContainsString( 'value="9"', $html );
 		$this->assertStringNotContainsString( 'disabled', $html );
@@ -120,18 +174,15 @@ class SettingsBootstrapTest extends TestCase {
 	}
 
 	/**
-	 * With the filter active, render_max_mb_field() shows the filter's
-	 * value (not the $current_value it was passed), disabled, with a
-	 * notice naming the filter.
+	 * With the filter active the field shows the filter's value rather than
+	 * the stored one, disabled, with a notice naming the filter.
 	 *
 	 * @return void
 	 */
-	public function test_render_max_mb_field_shows_filtered_value_when_overridden(): void {
+	public function test_uploads_field_shows_filtered_value_when_overridden(): void {
 		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 12 * UploadLinkService::BYTES_PER_MB );
 
-		ob_start();
-		SettingsBootstrap::render_max_mb_field( [], 9 );
-		$html = ob_get_clean();
+		$html = $this->render_uploads_field( 9 );
 
 		$this->assertStringContainsString( 'value="12"', $html );
 		$this->assertStringNotContainsString( 'value="9"', $html );
@@ -142,19 +193,16 @@ class SettingsBootstrapTest extends TestCase {
 	}
 
 	/**
-	 * When the filter's requested value exceeds the settable ceiling and
-	 * gets clamped, the field shows a *warning* hint naming both the
-	 * requested and the applied value — not the plain "overridden" info
-	 * notice, which wouldn't explain why the number looks capped.
+	 * When the filter asks for more than the ceiling allows, the hint turns
+	 * warning and names both the requested and the applied value — the plain
+	 * "overridden" notice would not explain why the number looks capped.
 	 *
 	 * @return void
 	 */
-	public function test_render_max_mb_field_warns_when_filter_value_is_clamped(): void {
+	public function test_uploads_field_warns_when_filter_value_is_clamped(): void {
 		add_filter( 'albert/media/upload_link_max_bytes', static fn () => '10G' ); // 10240 MB, clamped to 2048.
 
-		ob_start();
-		SettingsBootstrap::render_max_mb_field( [], 9 );
-		$html = ob_get_clean();
+		$html = $this->render_uploads_field( 9 );
 
 		$this->assertStringContainsString( 'value="' . UploadLinkService::MAX_SETTABLE_MB . '"', $html );
 		$this->assertStringContainsString( 'disabled', $html );
@@ -177,14 +225,25 @@ class SettingsBootstrapTest extends TestCase {
 			}
 		);
 
-		ob_start();
-		SettingsBootstrap::render_max_mb_field( [], 10 );
-		$html = ob_get_clean();
+		$html = $this->render_uploads_field( 10 );
 
 		$this->assertStringNotContainsString( 'value="0"', $html );
 		$this->assertStringContainsString( 'value="1"', $html );
 		// The rounding is not allowed to mislead: the hint carries the real size.
 		$this->assertStringContainsString( size_format( 500 ), $html );
+	}
+
+	/**
+	 * The unit renders beside the control and is associated with it, so a
+	 * screen reader hears "10 MB" rather than a bare number.
+	 *
+	 * @return void
+	 */
+	public function test_uploads_field_associates_its_unit_with_the_control(): void {
+		$html = $this->render_uploads_field( 10 );
+
+		$this->assertStringContainsString( 'albert-field-suffix', $html );
+		$this->assertMatchesRegularExpression( '/aria-describedby="[^"]*-suffix"/', $html );
 	}
 
 	// ─── sanitize_max_mb() ────────────────────────────────────────────

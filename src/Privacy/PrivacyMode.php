@@ -11,6 +11,8 @@ namespace Albert\Privacy;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Admin\Settings\Value;
+
 /**
  * PrivacyMode enum
  *
@@ -52,40 +54,23 @@ enum PrivacyMode: string {
 	 * @return self
 	 */
 	public static function resolve(): self {
-		if ( defined( 'ALBERT_PRIVACY_MODE' ) ) {
-			$mode = self::normalize( (string) constant( 'ALBERT_PRIVACY_MODE' ) );
-			if ( $mode instanceof self ) {
-				return $mode;
-			}
-		}
+		// A layer whose value is not one of the three modes is skipped rather
+		// than accepted: a typo in ALBERT_PRIVACY_MODE falls through to the
+		// filter or the stored value, which is what this did before Value
+		// existed and is the behaviour worth keeping.
+		$validator = static function ( $value ): bool {
+			return is_scalar( $value ) && self::normalize( (string) $value ) instanceof self;
+		};
 
-		/**
-		 * Filters the active privacy mode.
-		 *
-		 * Return one of `strict`, `balanced`, or `off` to override the stored
-		 * option. Return null (the default) to defer to the option/default.
-		 *
-		 * @since 1.3.0
-		 *
-		 * @param string|null $mode The overriding mode value, or null to defer.
-		 */
-		$filtered = apply_filters( 'albert/privacy/mode', null );
-		if ( is_string( $filtered ) && $filtered !== '' ) {
-			$mode = self::normalize( $filtered );
-			if ( $mode instanceof self ) {
-				return $mode;
-			}
-		}
+		// Constant -> albert/settings/value/albert_privacy_mode -> option.
+		// `albert/privacy/mode` still works and is still the documented way to
+		// set this in code; Settings\Overrides feeds it into the filter layer,
+		// which is also what lets the Settings screen show it as in force.
+		$value = Value::get( 'albert_privacy_mode', '', $validator );
 
-		$option = get_option( 'albert_privacy_mode', '' );
-		if ( is_string( $option ) && $option !== '' ) {
-			$mode = self::normalize( $option );
-			if ( $mode instanceof self ) {
-				return $mode;
-			}
-		}
+		$mode = is_scalar( $value ) ? self::normalize( (string) $value ) : null;
 
-		return self::Balanced;
+		return $mode ?? self::Balanced;
 	}
 
 	/**

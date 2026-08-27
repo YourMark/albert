@@ -142,12 +142,21 @@ class SettingsRegistry {
 			return;
 		}
 
-		if ( ! isset( $section['fields'] ) || ! is_array( $section['fields'] ) || empty( $section['fields'] ) ) {
+		// An empty `fields` array is allowed, and deliberately so since 1.4.0: a
+		// section may be registered first and filled afterwards by
+		// albert_register_setting() calls naming it as their `section`, which is
+		// the natural way an add-on builds its own card. Nothing renders an
+		// empty one — render_section() skips a section with no valid fields —
+		// so the old non-empty requirement bought nothing and silently dropped
+		// the card, taking every field aimed at it down to the shared "Other"
+		// bucket. A `fields` key that is present but not an array is still a
+		// mistake worth reporting.
+		if ( isset( $section['fields'] ) && ! is_array( $section['fields'] ) ) {
 			_doing_it_wrong(
 				__METHOD__,
 				sprintf(
 					/* translators: %s: section id */
-					esc_html__( 'Settings section "%s" requires a non-empty "fields" array.', 'albert-ai-butler' ),
+					esc_html__( 'Settings section "%s": "fields" must be an array.', 'albert-ai-butler' ),
 					esc_html( $id )
 				),
 				'1.1.0'
@@ -155,8 +164,10 @@ class SettingsRegistry {
 			return;
 		}
 
+		$declared_fields = isset( $section['fields'] ) && is_array( $section['fields'] ) ? $section['fields'] : [];
+
 		$valid_fields = [];
-		foreach ( $section['fields'] as $field ) {
+		foreach ( $declared_fields as $field ) {
 			if ( ! is_array( $field ) ) {
 				continue;
 			}
@@ -166,7 +177,11 @@ class SettingsRegistry {
 			}
 		}
 
-		if ( empty( $valid_fields ) ) {
+		// Fields were declared and every one of them was rejected: worth saying
+		// out loud, because the author expected a card and will get nothing.
+		// Declaring none is not the same thing and is not an error — see the
+		// note on `fields` above.
+		if ( $valid_fields === [] && $declared_fields !== [] ) {
 			_doing_it_wrong(
 				__METHOD__,
 				sprintf(
@@ -196,6 +211,19 @@ class SettingsRegistry {
 
 		// Last-write-wins on id collision — allows addons to replace a Free section.
 		$this->sections[ $id ] = $normalised;
+	}
+
+	/**
+	 * Whether a section with this id has been registered.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param string $section_id Section id.
+	 *
+	 * @return bool
+	 */
+	public function has_section( string $section_id ): bool {
+		return isset( $this->sections[ $section_id ] );
 	}
 
 	/**
@@ -357,7 +385,7 @@ class SettingsRegistry {
 		}
 
 		$type          = isset( $field['type'] ) && is_string( $field['type'] ) ? $field['type'] : '';
-		$allowed_types = [ 'text', 'url', 'number', 'textarea', 'select', 'checkbox', 'custom' ];
+		$allowed_types = [ 'text', 'url', 'number', 'textarea', 'select', 'checkbox', 'radio-cards', 'custom' ];
 		if ( ! in_array( $type, $allowed_types, true ) ) {
 			_doing_it_wrong(
 				__METHOD__,
@@ -417,13 +445,14 @@ class SettingsRegistry {
 			}
 		}
 
-		if ( $type === 'select' ) {
+		if ( $type === 'select' || $type === 'radio-cards' ) {
 			if ( ! isset( $field['options'] ) || ! is_array( $field['options'] ) || empty( $field['options'] ) ) {
 				_doing_it_wrong(
 					__METHOD__,
 					sprintf(
-						/* translators: 1: field id, 2: section id */
-						esc_html__( 'Select field "%1$s" in section "%2$s" requires a non-empty "options" array.', 'albert-ai-butler' ),
+						/* translators: 1: field type, 2: field id, 3: section id */
+						esc_html__( 'A "%1$s" field ("%2$s" in section "%3$s") requires a non-empty "options" array.', 'albert-ai-butler' ),
+						esc_html( $type ),
 						esc_html( $id ),
 						esc_html( $section_id )
 					),
@@ -445,9 +474,28 @@ class SettingsRegistry {
 			'options'           => isset( $field['options'] ) && is_array( $field['options'] ) ? $field['options'] : [],
 			'attributes'        => isset( $field['attributes'] ) && is_array( $field['attributes'] ) ? $field['attributes'] : [],
 			'badge'             => isset( $field['badge'] ) && is_string( $field['badge'] ) ? $field['badge'] : '',
+			// The unit rendered beside the control ("days", "MB"). Normalisation
+			// rebuilds the field from this whitelist rather than merging, so a key
+			// missing here is silently dropped, not passed through.
+			'suffix'            => isset( $field['suffix'] ) && is_string( $field['suffix'] ) ? $field['suffix'] : '',
+			// Conditions, not snapshots: `disabled` and `hint` may be callables so
+			// a field declares when it applies rather than what happened to be
+			// true when the schema was built. `display_value` lets a field show
+			// the value actually in force when something else is overriding it.
+			'info'              => isset( $field['info'] ) && is_string( $field['info'] ) ? $field['info'] : '',
+			'disabled'          => $field['disabled'] ?? false,
+			'hint'              => $field['hint'] ?? null,
+			'display_value'     => isset( $field['display_value'] ) && is_callable( $field['display_value'] ) ? $field['display_value'] : null,
 			'option_name'       => isset( $field['option_name'] ) && is_string( $field['option_name'] ) && $field['option_name'] !== ''
 				? $field['option_name']
 				: null,
+			// The allowed range for a number field. One declaration drives both
+			// the control's own `min`/`max` and the sanitiser that clamps what
+			// is stored, so the browser and the database cannot disagree about
+			// it. Declaring them under `attributes` still works and still
+			// clamps; that is where they lived before 1.4.0.
+			'min'               => isset( $field['min'] ) && is_numeric( $field['min'] ) ? $field['min'] : null,
+			'max'               => isset( $field['max'] ) && is_numeric( $field['max'] ) ? $field['max'] : null,
 		];
 
 		return $normalised;

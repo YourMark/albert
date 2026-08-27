@@ -92,6 +92,10 @@ class ConnectionRetention {
 	 * @since 1.4.0
 	 */
 	public static function sweep_never_used(): array {
+		// The default stays explicit even though Settings\Storage registers one.
+		// That registration runs on `admin_init`, and this sweep runs in cron,
+		// where it has not happened: get_option() would return false, cast to 0,
+		// and quietly disable the sweep it is supposed to configure.
 		$days = (int) get_option( self::NEVER_USED_OPTION, self::DEFAULT_NEVER_USED_DAYS );
 
 		if ( $days <= 0 ) {
@@ -125,6 +129,7 @@ class ConnectionRetention {
 	 * @since 1.4.0
 	 */
 	public static function sweep_idle(): array {
+		// Explicit default: cron, not admin. See sweep_never_used().
 		$days = (int) get_option( self::IDLE_OPTION, self::DEFAULT_IDLE_DAYS );
 
 		if ( $days <= 0 ) {

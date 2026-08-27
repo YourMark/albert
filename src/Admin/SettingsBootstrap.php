@@ -44,18 +44,27 @@ class SettingsBootstrap {
 				'title'       => __( 'Privacy', 'albert-ai-butler' ),
 				'priority'    => 60,
 				'icon'        => 'privacy',
-				'description' => __( 'Control how customer and user personal data (names, emails, phone numbers, addresses) is shared with AI assistants. Payment and card data is always removed, regardless of this setting.', 'albert-ai-butler' ),
+				'description' => __( 'What AI assistants may see of your customers and users.', 'albert-ai-butler' ),
 				'fields'      => [
 					[
 						'id'                => 'mode',
-						'type'              => 'select',
+						'type'              => 'radio-cards',
 						'label'             => __( 'Privacy mode', 'albert-ai-butler' ),
-						'description'       => __( 'Strict: personal data is always anonymised. Balanced (recommended): anonymised by default, but an authorised request can reveal it. Off: personal data is not anonymised.', 'albert-ai-butler' ),
 						'default'           => PrivacyMode::Balanced->value,
 						'options'           => [
-							PrivacyMode::Strict->value   => __( 'Strict — always anonymise personal data', 'albert-ai-butler' ),
-							PrivacyMode::Balanced->value => __( 'Balanced — anonymise by default (recommended)', 'albert-ai-butler' ),
-							PrivacyMode::Off->value      => __( 'Off — do not anonymise personal data', 'albert-ai-butler' ),
+							PrivacyMode::Strict->value   => [
+								'label'       => __( 'Strict', 'albert-ai-butler' ),
+								'description' => __( 'Personal data is always anonymised, in every request.', 'albert-ai-butler' ),
+								'recommended' => true,
+							],
+							PrivacyMode::Balanced->value => [
+								'label'       => __( 'Balanced', 'albert-ai-butler' ),
+								'description' => __( 'Anonymised by default, but an authorised request can reveal it.', 'albert-ai-butler' ),
+							],
+							PrivacyMode::Off->value      => [
+								'label'       => __( 'Off', 'albert-ai-butler' ),
+								'description' => __( 'Personal data is passed through as-is. Payment data is still always removed.', 'albert-ai-butler' ),
+							],
 						],
 						'sanitize_callback' => [ PrivacyMode::class, 'sanitize' ],
 					],
@@ -66,13 +75,15 @@ class SettingsBootstrap {
 				'title'       => __( 'Connections', 'albert-ai-butler' ),
 				'priority'    => 65,
 				'icon'        => 'admin-users',
-				'description' => __( 'Controls standing invitations and connections that nobody is actually using.', 'albert-ai-butler' ),
+				'description' => __( 'Standing invitations and unused connections.', 'albert-ai-butler' ),
 				'fields'      => [
 					[
 						'id'          => 'invitation_expiry_days',
 						'type'        => 'number',
-						'label'       => __( 'Invitation expiry (days)', 'albert-ai-butler' ),
-						'description' => __( 'Someone added to the allowed list who never approves an assistant can no longer do so after this many days, the same way a WordPress account-activation link expires. Once they approve one, they keep their access no matter what happens to it later. Set to 0 to disable.', 'albert-ai-butler' ),
+						'label'       => __( 'Invitation expiry', 'albert-ai-butler' ),
+						'suffix'      => __( 'days', 'albert-ai-butler' ),
+						'description' => __( 'How long someone has to approve their first assistant.', 'albert-ai-butler' ),
+						'info'        => __( 'Once they approve one, their access no longer expires. Set to 0 for no deadline.', 'albert-ai-butler' ),
 						'option_name' => AllowedUsers::EXPIRY_OPTION,
 						'default'     => AllowedUsers::DEFAULT_EXPIRY_DAYS,
 						'attributes'  => [
@@ -82,18 +93,12 @@ class SettingsBootstrap {
 						],
 					],
 					[
-						'id'          => 'apply_expiry_to_existing',
-						'type'        => 'checkbox',
-						'label'       => __( 'Apply to invitations already waiting', 'albert-ai-butler' ),
-						'description' => __( 'Recalculates the expiry date for everyone who has not approved yet, using their original invite date and the number of days above. Leave unchecked and they keep the deadline they were already given.', 'albert-ai-butler' ),
-						'option_name' => AllowedUsers::APPLY_TO_EXISTING_OPTION,
-						'default'     => false,
-					],
-					[
 						'id'          => 'connection_never_used_days',
 						'type'        => 'number',
-						'label'       => __( 'Drop never-used connections (days)', 'albert-ai-butler' ),
-						'description' => __( 'A connection that was approved but has never actually been used to do anything is removed after this many days. Once it is used at least once, it is never removed for this reason. Set to 0 to disable.', 'albert-ai-butler' ),
+						'label'       => __( 'Drop never-used connections', 'albert-ai-butler' ),
+						'suffix'      => __( 'days', 'albert-ai-butler' ),
+						'description' => __( 'Removes connections that were approved but never used.', 'albert-ai-butler' ),
+						'info'        => __( 'Once a connection has been used, this rule stops applying to it. Set to 0 to keep them.', 'albert-ai-butler' ),
 						'option_name' => ConnectionRetention::NEVER_USED_OPTION,
 						'default'     => ConnectionRetention::DEFAULT_NEVER_USED_DAYS,
 						'attributes'  => [
@@ -105,8 +110,10 @@ class SettingsBootstrap {
 					[
 						'id'          => 'connection_idle_days',
 						'type'        => 'number',
-						'label'       => __( 'Expire idle connections (days)', 'albert-ai-butler' ),
-						'description' => __( 'A connection that has not been used in this many days is removed automatically. Off by default: turn this on only once you have a sense of how often the assistants you use normally go quiet, so a normal gap is not mistaken for an idle one. Set to 0 to disable.', 'albert-ai-butler' ),
+						'label'       => __( 'Expire idle connections', 'albert-ai-butler' ),
+						'suffix'      => __( 'days', 'albert-ai-butler' ),
+						'description' => __( 'Removes connections that have gone quiet.', 'albert-ai-butler' ),
+						'info'        => __( 'Off by default, because a quiet assistant is not always an abandoned one. Set to 0 to keep them.', 'albert-ai-butler' ),
 						'option_name' => ConnectionRetention::IDLE_OPTION,
 						'default'     => ConnectionRetention::DEFAULT_IDLE_DAYS,
 						'attributes'  => [
@@ -122,21 +129,35 @@ class SettingsBootstrap {
 				'title'       => __( 'Uploads', 'albert-ai-butler' ),
 				'priority'    => 68,
 				'icon'        => 'upload',
-				'description' => __( 'Controls the single-use links an assistant mints to upload a file it has the bytes for (rather than a URL to sideload from).', 'albert-ai-butler' ),
+				'description' => __( 'How assistants send files to your site.', 'albert-ai-butler' ),
 				'fields'      => [
 					[
-						// 'custom', not 'number': shows the filter's value, disabled, when it's overriding.
+						// An ordinary number field. It used to be 'custom' purely
+						// because the renderer had no way to express "disabled,
+						// because a filter is overriding this". It now works that
+						// out itself from Settings\Value, so this field declares
+						// no `disabled` and no `display_value` at all. The `hint`
+						// stays: the generated one names the filter, but only this
+						// field can give the exact size in force, which matters
+						// because the control rounds up to whole megabytes.
 						'id'                => 'default_max_mb',
-						'type'              => 'custom',
-						'label'             => __( 'Default upload size limit (MB)', 'albert-ai-butler' ),
-						'description'       => sprintf(
+						'type'              => 'number',
+						'label'             => __( 'Default upload size limit', 'albert-ai-butler' ),
+						'suffix'            => __( 'MB', 'albert-ai-butler' ),
+						'description'       => __( 'Used when an assistant does not ask for a specific limit.', 'albert-ai-butler' ),
+						'info'              => sprintf(
 							/* translators: %s: this server's own upload size ceiling, human-readable (e.g. "64 MB") */
-							__( 'Used when an assistant mints an upload link without asking for a specific size limit. An assistant can still request a smaller or larger limit for a specific upload; either way, this server itself won\'t accept more than %s regardless of what\'s set here.', 'albert-ai-butler' ),
+							__( 'An assistant can ask for a smaller or larger limit per upload. This server never accepts more than %s, whatever is set here.', 'albert-ai-butler' ),
 							self::server_upload_ceiling()
 						),
 						'option_name'       => UploadLinkService::MAX_BYTES_OPTION,
 						'default'           => UploadLinkService::DEFAULT_MAX_MB,
-						'render_callback'   => [ self::class, 'render_max_mb_field' ],
+						'attributes'        => [
+							'min'  => 1,
+							'max'  => UploadLinkService::MAX_SETTABLE_MB,
+							'step' => 1,
+						],
+						'hint'              => [ self::class, 'max_mb_hint' ],
 						'sanitize_callback' => [ self::class, 'sanitize_max_mb' ],
 					],
 				],
@@ -175,83 +196,46 @@ class SettingsBootstrap {
 	}
 
 	/**
-	 * Render the Uploads section's default_max_mb field.
+	 * What to say under the control when a filter is involved, if anything.
 	 *
-	 * `'type' => 'custom'`, the same escape hatch the licenses table uses,
-	 * since the generic renderer has no concept of "disabled because a
-	 * filter overrides it".
+	 * Returns null in the ordinary case — most of the time there is no filter
+	 * and the field needs no hint at all.
 	 *
 	 * @since 1.4.0
 	 *
-	 * @param array<string, mixed> $field         Field definition (unused — the input is hand-rolled).
-	 * @param mixed                $current_value The stored option's value (or default), from get_option().
-	 *
-	 * @return void
+	 * @return array{text: string, tone: string}|null
 	 */
-	public static function render_max_mb_field( array $field, $current_value ): void {
-		unset( $field );
+	public static function max_mb_hint(): ?array {
+		$state = UploadLinkService::get_default_max_bytes_filter_state();
 
-		$state   = UploadLinkService::get_default_max_bytes_filter_state();
-		$active  = $state['state'] === 'active';
-		$clamped = $active && $state['requested'] > $state['value'];
+		if ( $state['state'] !== 'active' ) {
+			return null;
+		}
 
-		// Round a sub-megabyte filter value UP, never to 0: the field's own
-		// min is 1, and rendering value="0" against it is invalid. The hint
-		// below carries the exact size so the rounding can't mislead.
-		$value = $active
-			? max( 1, (int) ceil( $state['value'] / UploadLinkService::BYTES_PER_MB ) )
-			: (int) $current_value;
-
-		printf(
-			'<input type="number" name="%1$s" id="albert-field-%1$s" value="%2$d" class="albert-text-input" min="1" max="%3$d" step="1"%4$s />',
-			esc_attr( UploadLinkService::MAX_BYTES_OPTION ),
-			absint( $value ),
-			absint( UploadLinkService::MAX_SETTABLE_MB ),
-			$active ? ' disabled' : '' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static string, not user input.
-		);
-
-		if ( $clamped ) {
-			self::render_hint(
-				sprintf(
+		if ( $state['requested'] > $state['value'] ) {
+			return [
+				'text' => sprintf(
 					/* translators: 1: opening <code>, 2: closing </code> wrapping the filter name, 3: the value the filter requested (MB), 4: the maximum allowed (MB) */
-					__( 'A %1$salbert/media/upload_link_max_bytes%2$s filter is requesting %3$d MB, above the %4$d MB maximum — %4$d MB is being used instead.', 'albert-ai-butler' ),
+					__( 'The %1$salbert/media/upload_link_max_bytes%2$s filter is requesting %3$d MB, above the %4$d MB maximum, so %4$d MB is being used instead.', 'albert-ai-butler' ),
 					'<code>',
 					'</code>',
 					(int) round( $state['requested'] / UploadLinkService::BYTES_PER_MB ),
 					UploadLinkService::MAX_SETTABLE_MB
 				),
-				'warning'
-			);
-		} elseif ( $active ) {
-			self::render_hint(
-				sprintf(
-					/* translators: 1: opening <code>, 2: closing </code> wrapping the filter name, 3: the effective size, human-readable (e.g. "500 B") */
-					__( 'A %1$salbert/media/upload_link_max_bytes%2$s filter is currently active, overriding what\'s saved here. The limit in effect is %3$s.', 'albert-ai-butler' ),
-					'<code>',
-					'</code>',
-					size_format( $state['value'] )
-				),
-				'info'
-			);
+				'tone' => 'warning',
+			];
 		}
-	}
 
-	/**
-	 * Render a `.albert-hint` block, matching the Connections screen's own hints.
-	 *
-	 * @param string $notice May contain `<code>` tags; built via sprintf(), not raw user input.
-	 * @param string $tone   'info' or 'warning'.
-	 *
-	 * @return void
-	 * @since 1.4.0
-	 */
-	private static function render_hint( string $notice, string $tone ): void {
-		$icon = $tone === 'warning' ? 'warning' : 'info';
-
-		echo '<div class="albert-hint albert-hint--' . esc_attr( $tone ) . '">';
-		echo '<span class="dashicons dashicons-' . esc_attr( $icon ) . '" aria-hidden="true"></span>';
-		echo '<p>' . wp_kses( $notice, [ 'code' => [] ] ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_kses() with an explicit allowlist above.
-		echo '</div>';
+		return [
+			'text' => sprintf(
+				/* translators: 1: opening <code>, 2: closing </code> wrapping the filter name, 3: the effective size, human-readable (e.g. "500 B") */
+				__( 'The %1$salbert/media/upload_link_max_bytes%2$s filter is overriding what\'s saved here. The limit in effect is %3$s.', 'albert-ai-butler' ),
+				'<code>',
+				'</code>',
+				size_format( $state['value'] )
+			),
+			'tone' => 'info',
+		];
 	}
 
 	/**

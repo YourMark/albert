@@ -13,26 +13,35 @@ if ( ! defined( 'ABSPATH' ) ) {
 	return;
 }
 
-/**
- * AJAX handler: return fresh licenses table HTML.
- *
- * Called by albert-licenses.js after the EDD SL SDK finishes
- * activating or deactivating a license.
- *
- * @since 1.1.0
- *
- * @return void
- */
-function albert_refresh_licenses_table(): void {
-	check_ajax_referer( 'albert_license_nonce', 'nonce' );
+if ( ! function_exists( 'albert_refresh_licenses_table' ) ) {
+	/**
+	 * AJAX handler: return fresh licenses table HTML.
+	 *
+	 * Called by albert-licenses.js after the EDD SL SDK finishes
+	 * activating or deactivating a license.
+	 *
+	 * Guarded like every other function here, and not merely for symmetry: an
+	 * unconditional declaration is hoisted at compile time, so it came into
+	 * existence even when this file returned at the ABSPATH guard above without
+	 * executing a line. Including the file a second time — which is exactly
+	 * what has to happen when Composer's `files` autoload runs before WordPress
+	 * does — then collided with that hoisted copy and killed the process.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return void
+	 */
+	function albert_refresh_licenses_table(): void {
+		check_ajax_referer( 'albert_license_nonce', 'nonce' );
 
-	if ( ! current_user_can( 'manage_options' ) ) {
-		wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'albert' ) ] );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'albert' ) ] );
+		}
+
+		ob_start();
+		\Albert\Admin\Settings::render_licenses_table();
+		wp_send_json_success( [ 'table_html' => ob_get_clean() ] );
 	}
-
-	ob_start();
-	\Albert\Admin\Settings::render_licenses_table();
-	wp_send_json_success( [ 'table_html' => ob_get_clean() ] );
 }
 
 add_action( 'wp_ajax_albert_refresh_licenses_table', 'albert_refresh_licenses_table' );
@@ -68,19 +77,39 @@ if ( ! function_exists( 'albert_register_setting' ) ) {
 	 *  - `title`       (string)  — visible label above the input.
 	 *  - `option_name` (string)  — `wp_options` key (also doubles as the
 	 *                              internal field id).
-	 *  - `type`        (string)  — one of text|url|number|textarea|select|checkbox.
+	 *  - `type`        (string)  — one of text|url|number|textarea|select|
+	 *                              checkbox|radio-cards.
 	 *
-	 * Optional keys: `description`, `default`, `options` (required for select),
-	 * `attributes` (min/max/step/placeholder), `badge`.
+	 * Optional keys: `description`, `default`, `options` (required for `select`
+	 * and `radio-cards`), `attributes` (min/max/step/placeholder), `badge`,
+	 * `suffix`, `info`, `section`.
+	 *
+	 * `section` is the id of the card to land in, and is how an add-on gets a
+	 * heading that says what its settings are about:
+	 *
+	 *  - Name a card that already exists — one of Free's, or one another add-on
+	 *    registered — to add a field to it.
+	 *  - Name one of your own and pass `section_title` to create it here, in
+	 *    the same call. `section_priority` orders it against the rest (default
+	 *    50); anything more involved wants
+	 *    {@see albert_register_settings_section()}.
+	 *
+	 * Ids must be namespaced (`myplugin/logging`). Omitting `section`, or
+	 * naming one that does not exist without a `section_title` to create it,
+	 * puts the field in the shared "Other" card — the 1.1.0 behaviour, kept so
+	 * an add-on written against that version still works, not the destination
+	 * to aim for.
 	 *
 	 * @since 1.1.0
+	 * @since 1.4.0 Accepts `suffix`, `info`, `section`, `section_title` and
+	 *              `section_priority`.
 	 *
 	 * @param array<string, mixed> $setting Field definition (simplified schema).
 	 *
 	 * @return void
 	 */
 	function albert_register_setting( array $setting ): void {
-		$allowed_types = [ 'text', 'url', 'number', 'textarea', 'select', 'checkbox' ];
+		$allowed_types = [ 'text', 'url', 'number', 'textarea', 'select', 'checkbox', 'radio-cards' ];
 
 		$title       = isset( $setting['title'] ) && is_string( $setting['title'] ) ? $setting['title'] : '';
 		$option_name = isset( $setting['option_name'] ) && is_string( $setting['option_name'] ) ? $setting['option_name'] : '';
@@ -109,15 +138,16 @@ if ( ! function_exists( 'albert_register_setting' ) ) {
 			return;
 		}
 
-		if ( $type === 'select' ) {
+		if ( $type === 'select' || $type === 'radio-cards' ) {
 			$options = $setting['options'] ?? null;
 			if ( ! is_array( $options ) || empty( $options ) ) {
 				_doing_it_wrong(
 					'albert_register_setting',
 					sprintf(
-						/* translators: %s: option name */
-						esc_html__( 'albert_register_setting( "%s" ): select settings require a non-empty "options" array.', 'albert-ai-butler' ),
-						esc_html( $option_name )
+						/* translators: 1: option name, 2: field type */
+						esc_html__( 'albert_register_setting( "%1$s" ): "%2$s" settings require a non-empty "options" array.', 'albert-ai-butler' ),
+						esc_html( $option_name ),
+						esc_html( $type )
 					),
 					'1.1.0'
 				);
@@ -148,12 +178,78 @@ if ( ! function_exists( 'albert_register_setting' ) ) {
 		if ( isset( $setting['badge'] ) && is_string( $setting['badge'] ) ) {
 			$internal['badge'] = $setting['badge'];
 		}
+		if ( isset( $setting['suffix'] ) && is_string( $setting['suffix'] ) ) {
+			$internal['suffix'] = $setting['suffix'];
+		}
+		if ( isset( $setting['info'] ) && is_string( $setting['info'] ) ) {
+			$internal['info'] = $setting['info'];
+		}
 
 		$registry = \Albert\Admin\SettingsRegistry::instance();
+
+		// A field may name the card it belongs in, and create that card in the
+		// same call by giving it a title. Two ways to use it: name a card that
+		// already exists (Free's own, or one another add-on registered) to add
+		// to it, or name one of your own with a `section_title` to get a card
+		// headed by what it is about.
+		$section       = isset( $setting['section'] ) && is_string( $setting['section'] ) ? $setting['section'] : '';
+		$section_title = isset( $setting['section_title'] ) && is_string( $setting['section_title'] ) ? $setting['section_title'] : '';
+
+		if ( $section !== '' && strpos( $section, '/' ) === false ) {
+			_doing_it_wrong(
+				'albert_register_setting',
+				sprintf(
+					/* translators: %s: the section id that was passed */
+					esc_html__( 'albert_register_setting(): "section" id "%s" must be namespaced (contain a "/"), e.g. "myplugin/logging".', 'albert-ai-butler' ),
+					esc_html( $section )
+				),
+				'1.4.0'
+			);
+			$section = '';
+		}
+
+		if ( $section !== '' ) {
+			if ( ! $registry->has_section( $section ) && $section_title !== '' ) {
+				$registry->ensure_section_exists(
+					[
+						'id'       => $section,
+						'title'    => $section_title,
+						'priority' => isset( $setting['section_priority'] ) && is_int( $setting['section_priority'] )
+							? $setting['section_priority']
+							: 50,
+					]
+				);
+			}
+
+			// Still absent means a section was named that does not exist and no
+			// title was given to create it. Fall through rather than fail: a
+			// mistyped id should misplace the field, never lose it.
+			if ( $registry->has_section( $section ) ) {
+				$registry->append_field_to_section( $section, $internal );
+
+				return;
+			}
+		}
+
+		/*
+		 * The last-resort card, for a registration that names no section.
+		 *
+		 * "Other", because nothing truer can be said about it. It cannot be
+		 * named after what is inside: it holds whatever no add-on placed, so a
+		 * title borrowed from the first occupant would be wrong the moment a
+		 * second, unrelated setting landed beside it. It was called "Add-ons"
+		 * and that was worse — it described who registered the setting rather
+		 * than what the setting is, which is not what a heading on a settings
+		 * screen is for.
+		 *
+		 * It exists for compatibility, not as the intended destination. Pass
+		 * `section` and `section_title` and this card stays empty, which is
+		 * where it should end up.
+		 */
 		$registry->ensure_section_exists(
 			[
 				'id'       => 'albert/settings',
-				'title'    => __( 'Settings', 'albert-ai-butler' ),
+				'title'    => __( 'Other', 'albert-ai-butler' ),
 				'priority' => 50,
 				'icon'     => 'admin-generic',
 			]
@@ -204,5 +300,30 @@ if ( ! function_exists( 'albert_has_valid_license' ) ) {
 		}
 
 		return true;
+	}
+}
+
+if ( ! function_exists( 'albert_get_setting' ) ) {
+	/**
+	 * The value in force for one Albert setting.
+	 *
+	 * Prefer this over a bare `get_option()` when reading a setting an owner can
+	 * see on the Settings screen: it honours a `wp-config.php` constant and the
+	 * `albert/settings/value/{option_name}` filter, so a value pinned in code is
+	 * what the site actually uses rather than what happens to be stored.
+	 *
+	 * Passing the default matters outside the admin. `register_setting()` runs
+	 * on `admin_init`, so its registered default does not exist in cron, WP-CLI
+	 * or an MCP request.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param string $option_name   The option name, e.g. `albert_privacy_mode`.
+	 * @param mixed  $default_value Returned when nothing is stored.
+	 *
+	 * @return mixed
+	 */
+	function albert_get_setting( string $option_name, $default_value = null ) {
+		return \Albert\Admin\Settings\Value::get( $option_name, $default_value );
 	}
 }

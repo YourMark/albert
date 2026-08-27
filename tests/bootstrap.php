@@ -36,6 +36,25 @@ function _manually_load_plugin() {
 	}
 
 	require dirname( __DIR__ ) . '/albert-ai-butler.php';
+
+	// Composer's `files` autoload ran at the top of this bootstrap, before
+	// WordPress existed, so src/functions.php hit its own ABSPATH guard and
+	// returned. Load it now that ABSPATH is defined, so the public global
+	// helpers — albert_register_setting(), which is how an add-on registers a
+	// setting, and albert_get_setting() — exist in tests as they do on a real
+	// site. Without this they are silently absent and nothing covering them can
+	// run.
+	//
+	// `require`, not `require_once`: Composer already included this path, so
+	// require_once would skip it. The guard is on a function rather than on
+	// ABSPATH because that early return does not leave the file wholly
+	// unloaded: PHP hoists unconditional function declarations at compile time,
+	// so those exist regardless, and re-including would redeclare them. Every
+	// function in that file is wrapped in `function_exists` for exactly this
+	// reason — keep it that way.
+	if ( ! function_exists( 'albert_get_setting' ) ) {
+		require dirname( __DIR__ ) . '/src/functions.php';
+	}
 }
 
 tests_add_filter( 'muplugins_loaded', '_manually_load_plugin' );
