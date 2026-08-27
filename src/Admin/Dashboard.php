@@ -800,26 +800,14 @@ class Dashboard implements Hookable {
 	 * @since 1.4.0
 	 */
 	private function get_ability_counts(): array {
-		$disabled_abilities = AbilitiesPage::get_disabled_abilities();
-
-		// Raw registry, not wp_get_abilities(): the count reports what the site has,
-		// so it must not shrink because a plugin filtered the presented view.
-		$all_abilities = AbilitiesRegistry::get_all_raw();
-
-		$enabled_count = 0;
-
-		foreach ( $all_abilities as $ability ) {
-			$name = $ability->get_name();
-			// Ability is enabled if NOT in the disabled list.
-			if ( ! in_array( $name, $disabled_abilities, true ) ) {
-				++$enabled_count;
-			}
-		}
-
-		return [
-			'enabled' => $enabled_count,
-			'total'   => count( $all_abilities ),
-		];
+		// Asked of the manager, not counted here. The manager snapshots both
+		// figures inside enforce_disabled(), while the registry still holds
+		// every ability; by the time this screen renders, the disabled ones
+		// have been unregistered and counting the registry reports them as
+		// enabled. That is what made the tile read "57 of 57" on a site with
+		// 46 abilities switched off, and hid the "review the ones you switched
+		// off" link, which only appears when the two numbers differ.
+		return Plugin::get_instance()->get_abilities_manager()->get_ability_counts();
 	}
 
 	/**

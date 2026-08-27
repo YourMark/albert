@@ -32,6 +32,17 @@ class AbilitiesManager implements Hookable {
 	private array $abilities = [];
 
 	/**
+	 * How many abilities exist and how many are switched on, counted while the
+	 * registry was still whole.
+	 *
+	 * Null until {@see self::enforce_disabled()} has run.
+	 *
+	 * @since 1.4.0
+	 * @var array{total: int, enabled: int}|null
+	 */
+	private ?array $ability_counts = null;
+
+	/**
 	 * Register WordPress hooks.
 	 *
 	 * @return void
@@ -244,6 +255,14 @@ class AbilitiesManager implements Hookable {
 		}
 
 		$disabled_list = $this->get_effective_disabled_list();
+
+		// Count before unregistering anything. This is the only moment in a
+		// normal request when the registry still holds every ability, and it is
+		// what makes an honest "57 of 103" possible on screens that render
+		// later. Counting afterwards gave "57 of 57" on the Dashboard: the
+		// disabled ones were already gone, so the total and the enabled figure
+		// were the same number counted twice.
+		$this->ability_counts = $this->count_registry( $disabled_list );
 
 		// Raw registry, not wp_get_abilities(): an ability hidden from the filtered
 		// view is still registered and still executable, so it must still be
@@ -693,5 +712,94 @@ class AbilitiesManager implements Hookable {
 		};
 
 		return $args;
+	}
+
+	/**
+	 * How many abilities this site has, and how many are switched on.
+	 *
+	 * Prefer this over counting {@see AbilitiesRegistry::get_all_raw()} on an
+	 * admin screen. That registry is pruned by {@see self::enforce_disabled()}
+	 * on every request except the Abilities page, so a screen counting it
+	 * later sees only the enabled ones and reports every ability as enabled.
+	 *
+	 * The MCP transport meta-tools are excluded, matching
+	 * {@see \Albert\Admin\AbilitiesPayload::build()}. They cannot be switched
+	 * off and are hidden from the Abilities screen, so counting them here would
+	 * make two screens disagree about the same site by exactly three.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @return array{total: int, enabled: int}
+	 */
+	public function get_ability_counts(): array {
+		if ( $this->ability_counts !== null ) {
+			return $this->ability_counts;
+		}
+
+		$this->prime_registry();
+
+		if ( $this->ability_counts !== null ) {
+			return $this->ability_counts;
+		}
+
+		// Still nothing means enforcement did not prune (the Abilities page, or
+		// a WordPress without wp_unregister_ability), so the registry is whole
+		// and safe to count directly.
+		return $this->count_registry( $this->get_effective_disabled_list() );
+	}
+
+	/**
+	 * Make sure the abilities registry has been built for this request.
+	 *
+	 * Reading the registry is what fires `wp_abilities_api_init`, and
+	 * {@see self::enforce_disabled()} rides that action, so this call is also
+	 * what causes the count snapshot to be taken. Without it, the fallback in
+	 * {@see self::get_ability_counts()} triggers the pruning itself and then
+	 * counts what is left: every ability looks enabled, because the disabled
+	 * ones were unregistered a moment earlier by the very call meant to count
+	 * them.
+	 *
+	 * A method on `$this` rather than the static call it wraps, so the side
+	 * effect on `$this->ability_counts` is visible where it happens.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @return void
+	 */
+	private function prime_registry(): void {
+		AbilitiesRegistry::get_all_raw();
+	}
+
+	/**
+	 * Count the registry as it stands right now.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param array<int, string> $disabled_list Effective disabled ability ids.
+	 *
+	 * @return array{total: int, enabled: int}
+	 */
+	private function count_registry( array $disabled_list ): array {
+		$total   = 0;
+		$enabled = 0;
+
+		foreach ( AbilitiesRegistry::get_all_raw() as $ability ) {
+			$id = $ability->get_name();
+
+			if ( AbilitiesRegistry::is_transport_ability( $id ) ) {
+				continue;
+			}
+
+			++$total;
+
+			if ( ! in_array( $id, $disabled_list, true ) ) {
+				++$enabled;
+			}
+		}
+
+		return [
+			'total'   => $total,
+			'enabled' => $enabled,
+		];
 	}
 }
