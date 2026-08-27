@@ -72,14 +72,22 @@
 	/* Status */
 	--albert-color-success: oklch(0.508 0.1332 151.1);          /* #0a7a3b */
 	--albert-color-success-surface: oklch(0.954 0.0199 154.9);  /* #e6f4ea */
-	--albert-color-success-dot: oklch(0.615 0.1538 152.2);      /* #1a9e54 */
+	/* Status lights, not status text. A dot carries no glyph, so it reads as a
+	   colour and needs to stay bright enough to register as one: the text
+	   tokens above are tuned for 4.5:1 as type and go muddy at 10px, which is
+	   why the warning dot read brown when it reused --albert-color-warning.
+	   All three clear the 3:1 that SC 1.4.11 asks of a non-text indicator, with
+	   headroom, and sit in one brightness band so a row of them looks level. */
+	--albert-color-success-dot: oklch(0.615 0.1538 152.2);      /* #1a9e54 — 3.46:1 on surface, 3.35:1 on surface-sunken */
 	--albert-color-success-contrast: oklch(1 0 0);              /* NEW, 5.45:1 on success */
 
 	--albert-color-warning: oklch(0.531 0.119 65.1);            /* #9a5b00 */
 	--albert-color-warning-surface: oklch(0.961 0.0261 82.4);   /* #fbf1df */
+	--albert-color-warning-dot: oklch(0.6075 0.1469 57.1);      /* #c26700 — 4.01:1 on surface, 3.88:1 on surface-sunken */
 
 	--albert-color-danger: oklch(0.509 0.1708 25.4);            /* #b32d2e */
 	--albert-color-danger-surface: oklch(0.956 0.0187 25.6);    /* #fdecea */
+	--albert-color-danger-dot: oklch(0.5801 0.1967 25.3);       /* #d63638 — 4.73:1 on surface, 4.57:1 on surface-sunken */
 	--albert-color-danger-contrast: oklch(1 0 0);               /* NEW, 6.31:1 on danger */
 
 	/* Core's blue-60. The obvious choice was blue-50 (#2271b1, the same blue as
