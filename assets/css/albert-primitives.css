@@ -1727,9 +1727,17 @@ textarea.albert-textarea {
  * whether the row holds two or four, and the row simply ends early when a
  * screen has fewer figures it can honestly show.
  */
+/**
+ * Follows the number of tiles rather than assuming four.
+ *
+ * Free contributes three (what is exposed, who is connected, how protected);
+ * an add-on with retained history adds call volume as a fourth. A fixed
+ * four-column grid left two empty columns on every Free install, which is what
+ * made the row read as broken rather than as short.
+ */
 .albert-stat-row {
 	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
 	gap: var(--albert-space-300);
 }
 

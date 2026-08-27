@@ -66,33 +66,6 @@
 }
 
 /* Ability categories: label left, count right. */
-.albert-dashboard__categories {
-	display: grid;
-	gap: var(--albert-space-300);
-	margin: 0;
-	padding: 0;
-	list-style: none;
-}
-
-.albert-dashboard__categories li {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: var(--albert-space-300);
-	font-size: var(--albert-font-size-base);
-}
-
-.albert-dashboard__category-label {
-	color: var(--albert-color-text);
-}
-
-.albert-dashboard__category-count {
-	flex: none;
-	font-size: var(--albert-font-size-sm);
-	color: var(--albert-color-text-faint);
-	font-variant-numeric: tabular-nums;
-}
-
 /* --------------------------------------------------------------
    Dashboard onboarding
    -------------------------------------------------------------- */
@@ -221,41 +194,40 @@
 }
 
 /* Resources List */
+/* No padding of its own: this sits inside .albert-card__body, which already
+   pads, and the two together were what made the card look loose and unfinished.
+   No dividers either. Two links do not need ruling off from each other. */
 .albert-resources-list {
 	list-style: none;
 	margin: 0;
-	padding: var(--albert-space-400) 20px;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--albert-space-300);
 }
 
 .albert-resources-list li {
 	display: flex;
 	align-items: center;
-	gap: var(--albert-space-300);
-	padding: 10px 0;
-	border-bottom: 1px solid var(--albert-color-neutral-surface);
-}
-
-.albert-resources-list li:last-child {
-	border-bottom: none;
-	padding-bottom: 0;
-}
-
-.albert-resources-list li:first-child {
-	padding-top: 0;
+	gap: var(--albert-space-200);
 }
 
 .albert-resources-list li .dashicons {
-	color: var(--albert-color-text-muted);
-	font-size: var(--albert-font-size-section-title);
-	width: 20px;
-	height: 20px;
-	flex-shrink: 0;
+	color: var(--albert-color-text-faint);
+	font-size: 16px;
+	inline-size: 16px;
+	block-size: 16px;
+	flex: none;
 }
 
 .albert-resources-list a {
 	text-decoration: none;
-	color: var(--albert-color-accent);
-	font-size: var(--albert-font-size-base);
+	color: var(--albert-color-link);
+	font-size: var(--albert-font-size-sm);
+}
+
+.albert-resources-list a:hover {
+	text-decoration: underline;
 }
 
 .albert-resources-list a:hover {
@@ -527,34 +499,46 @@
 }
 
 /* --------------------------------------------------------------
-   Soft-paywall upsell — .albert-upsell-fade + .albert-upsell-cta
-   -------------------------------------------------------------- */
+   Soft-paywall upsell — .albert-upsell-cta
+   --------------------------------------------------------------
+   The gradient over the foot of the table is drawn only when there genuinely
+   are more entries than the five shown, so its presence is a fact rather than
+   decoration. The block underneath states the limit in words as well. */
 
-/* Wrapper lets the fade overlay sit above the table's bottom edge.
- * overflow-x: auto keeps a wide log table scrollable inside the card
+/* overflow-x: auto keeps a wide log table scrollable inside the card
  * instead of bleeding past the viewport on narrow screens (≤375px). */
 .albert-activity-card__body {
-	position: relative;
 	overflow-x: auto;
 }
 
-.albert-upsell-fade {
-	position: absolute;
-	inset-inline: 0;
-	inset-block-end: 0;
-	block-size: 64px;
-	pointer-events: none;
-	background: linear-gradient(to bottom, transparent, var(--albert-color-surface));
-}
-
+/**
+ * A distinct block at the foot of the card, not a centred paywall prompt.
+ *
+ * It used to be centred, which made sense when it sat under a gradient as the
+ * "you have hit the limit" moment. It no longer does, and centred text with no
+ * ground under it read as stray content spilling out of the table rather than
+ * as an offer: the surface and the rule above it are what make it a thing.
+ */
 .albert-upsell-cta {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
+	align-items: flex-start;
 	gap: var(--albert-space-200);
-	text-align: center;
-	padding-block: var(--albert-space-400) var(--albert-space-600);
-	padding-inline: var(--albert-card-padding);
+	padding: var(--albert-card-padding);
+	background: var(--albert-color-surface-sunken);
+}
+
+/* A rule above the offer would stop the eye at the exact point the fade is
+   carrying it across, so the two are separated by tone alone. The border comes
+   back when there is no fade, because then there is nothing to flow from and
+   the block needs its own edge. */
+.albert-upsell-cta:first-child,
+.albert-card__body + .albert-upsell-cta {
+	border-block-start: 1px solid var(--albert-color-border-subtle);
+}
+
+.albert-activity-card__body:has( .albert-activity__fade ) + .albert-upsell-cta {
+	border-block-start: 0;
 }
 
 .albert-upsell-cta__title {
@@ -625,4 +609,298 @@
 		align-self: stretch;
 		inline-size: 100%;
 	}
+}
+
+/* ==========================================================================
+   Needs your attention
+   ==========================================================================
+   Severity is carried three ways, because colour alone fails 1.4.1 and a
+   coloured stripe alone tells a screen reader nothing: the stripe, the
+   uppercase word above the title, and the wording of the title itself.
+
+   Tones reuse the status tokens rather than introducing a fourth vocabulary.
+   The stripes take the *dot* tokens, not the text ones: at 3px wide a
+   text-weight colour reads as a dark smudge rather than as a severity.
+   -------------------------------------------------------------------------- */
+.albert-attention__list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.albert-attention__item {
+	display: flex;
+	gap: var(--albert-space-300);
+	align-items: flex-start;
+	padding: var(--albert-space-300) var(--albert-card-padding);
+	border-block-end: 1px solid var(--albert-color-border-subtle);
+}
+
+.albert-attention__item:last-child {
+	border-block-end: 0;
+}
+
+.albert-attention__stripe {
+	inline-size: 3px;
+	align-self: stretch;
+	border-radius: 2px;
+	flex: none;
+}
+
+.albert-attention__item--danger .albert-attention__stripe {
+	background: var(--albert-color-danger-dot);
+}
+
+.albert-attention__item--warning .albert-attention__stripe {
+	background: var(--albert-color-warning-dot);
+}
+
+.albert-attention__item--info .albert-attention__stripe {
+	background: var(--albert-color-info);
+}
+
+.albert-attention__text {
+	flex: 1;
+	min-inline-size: 0;
+}
+
+.albert-attention__tone {
+	display: block;
+	font-size: var(--albert-font-size-micro);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	font-weight: var(--albert-font-weight-semibold);
+}
+
+/* The word takes the text token, which is tuned to be read. */
+.albert-attention__item--danger .albert-attention__tone {
+	color: var(--albert-color-danger);
+}
+
+.albert-attention__item--warning .albert-attention__tone {
+	color: var(--albert-color-warning);
+}
+
+.albert-attention__item--info .albert-attention__tone {
+	color: var(--albert-color-info);
+}
+
+.albert-attention__title {
+	margin: 0;
+	font-weight: var(--albert-font-weight-medium);
+	color: var(--albert-color-text);
+}
+
+.albert-attention__detail {
+	margin: 2px 0 0;
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-attention__action {
+	flex: none;
+	align-self: center;
+	display: flex;
+	align-items: center;
+	gap: var(--albert-space-300);
+}
+
+/* Quiet, so it never competes with the action that actually resolves the item. */
+.albert-attention__dismiss {
+	background: none;
+	border: 0;
+	padding: 0;
+	color: var(--albert-color-text-faint);
+	font-size: var(--albert-font-size-sm);
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.albert-attention__dismiss:hover,
+.albert-attention__dismiss:focus-visible {
+	color: var(--albert-color-text-muted);
+}
+
+.albert-attention__empty {
+	display: flex;
+	gap: var(--albert-space-300);
+	align-items: center;
+	color: var(--albert-color-text-muted);
+	font-size: var(--albert-font-size-sm);
+}
+
+.albert-attention__empty p {
+	margin: 0;
+}
+
+.albert-attention__empty .dashicons {
+	color: var(--albert-color-success);
+	flex: none;
+}
+
+/* Narrow: the action drops under the text rather than squeezing beside it,
+   and lines up with the title by clearing the stripe and its gap. */
+@media (max-width: 782px) {
+	.albert-attention__item {
+		flex-wrap: wrap;
+	}
+
+	.albert-attention__action {
+		align-self: flex-start;
+		margin-inline-start: calc(3px + var(--albert-space-300));
+	}
+}
+
+/* Degree of privacy: a status light beside the mode's name, never instead of
+   it. Dot tokens, not text tokens, for the reason recorded in albert-tokens.css. */
+.albert-stat__value--word {
+	display: flex;
+	align-items: center;
+	gap: var(--albert-space-200);
+	font-size: var(--albert-font-size-section-title);
+	padding-block: 0.35rem 0.1rem;
+}
+
+.albert-degree {
+	inline-size: 10px;
+	block-size: 10px;
+	border-radius: 50%;
+	flex: none;
+}
+
+.albert-degree--strict { background: var(--albert-color-success-dot); }
+.albert-degree--balanced { background: var(--albert-color-warning-dot); }
+.albert-degree--off { background: var(--albert-color-danger-dot); }
+
+/* ==========================================================================
+   Try asking your assistant
+   ========================================================================== */
+.albert-suggestions__list { list-style: none; margin: 0; padding: 0; }
+
+.albert-suggestions__item {
+	display: flex;
+	gap: var(--albert-space-300);
+	align-items: center;
+	padding: var(--albert-space-300) var(--albert-card-padding);
+	border-block-end: 1px solid var(--albert-color-border-subtle);
+}
+
+.albert-suggestions__item:last-child { border-block-end: 0; }
+
+.albert-suggestions__mark {
+	font-family: Georgia, "Times New Roman", serif;
+	font-size: 1.5rem;
+	line-height: 1;
+	color: var(--albert-color-text-faint);
+	flex: none;
+	align-self: flex-start;
+}
+
+.albert-suggestions__text {
+	margin: 0;
+	flex: 1;
+	min-inline-size: 0;
+	color: var(--albert-color-text);
+}
+
+/* Always visible, not hover-revealed. A control that appears on hover cannot be
+   found by touch and cannot be found by anyone scanning the page. */
+.albert-suggestions__copy { flex: none; }
+
+/* ==========================================================================
+   Add-on recommendation
+   ========================================================================== */
+.albert-recommend__head { display: flex; gap: var(--albert-space-300); align-items: flex-start; }
+
+.albert-recommend__mark {
+	inline-size: 28px;
+	block-size: 28px;
+	font-size: 17px;
+	flex: none;
+	border-radius: var(--albert-radius-sm);
+	display: grid;
+	place-items: center;
+	background: var(--albert-color-accent-surface);
+	color: var(--albert-color-accent);
+}
+
+.albert-recommend__because {
+	margin: 0;
+	font-size: var(--albert-font-size-micro);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--albert-color-text-faint);
+	font-weight: var(--albert-font-weight-medium);
+}
+
+.albert-recommend__title {
+	margin: 2px 0 0;
+	font-size: var(--albert-font-size-card-title);
+	font-weight: var(--albert-font-weight-semibold);
+}
+
+.albert-recommend__detail {
+	margin: var(--albert-space-300) 0;
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-recommend__actions { display: flex; gap: var(--albert-space-300); align-items: center; }
+
+/* The endpoint's override notice sits under the field it qualifies. */
+.albert-endpoint__notice { margin-block-start: var(--albert-space-300); }
+
+.albert-endpoint__more { margin: var(--albert-space-300) 0 0; font-size: var(--albert-font-size-sm); }
+
+/* The left column carries two cards now, so it stacks them. */
+.albert-dashboard__main {
+	display: flex;
+	flex-direction: column;
+	gap: var(--albert-space-400);
+	min-inline-size: 0;
+}
+
+.albert-upsell-cta__lede {
+	margin: 0 0 var(--albert-space-300);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
+}
+
+/* Only drawn when the list is genuinely truncated, so it always means "there is
+   more" rather than decorating the bottom edge of a complete list. */
+/**
+ * The list runs out under a fade that leads straight into the offer.
+ *
+ * Drawn only when there genuinely are more entries than the five shown, which
+ * is what makes it a statement rather than an ornament: the rows really do
+ * continue, and the block below is how you see the rest. Deep enough to read
+ * as "cut off" rather than as a stray gradient, and it ends in the surface
+ * colour so the eye carries straight down into the upsell.
+ */
+.albert-activity__fade {
+	position: sticky;
+	inset-block-end: 0;
+	block-size: 56px;
+	margin-block-start: -56px;
+	background: linear-gradient(
+		to bottom,
+		rgb( 255 255 255 / 0 ),
+		color-mix( in oklab, var( --albert-color-surface ) 70%, transparent ) 45%,
+		var( --albert-color-surface )
+	);
+	pointer-events: none;
+}
+
+/* The one sentence that answers what actually stops somebody mid-setup. Sits
+   under the prompts, on the sunken surface, so it reads as a footnote to them
+   rather than as another list item. */
+.albert-suggestions__assurance {
+	border-block-start: 1px solid var(--albert-color-border-subtle);
+	background: var(--albert-color-surface-sunken);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-suggestions__assurance p {
+	margin: 0;
 }

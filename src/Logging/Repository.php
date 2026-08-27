@@ -212,7 +212,7 @@ class Repository {
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- IN clause built from esc_sql() escaped values.
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT l.id, l.ability_name, l.user_id, l.created_at, UNIX_TIMESTAMP( l.created_at ) AS created_ts, l.status, l.error_code
+				"SELECT l.id, l.ability_name, l.user_id, l.created_at, UNIX_TIMESTAMP( l.created_at ) AS created_ts, l.status, l.error_code, l.error_message
 				FROM %i l
 				INNER JOIN (
 					SELECT ability_name, MAX(id) as max_id

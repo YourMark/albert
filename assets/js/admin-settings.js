@@ -123,3 +123,98 @@ if ( document.readyState === 'loading' ) {
 } else {
 	init();
 }
+
+/**
+ * Dismissing an attention item on the Dashboard.
+ *
+ * The row is removed optimistically and put back if the request fails, because
+ * the alternative is a button that appears to do nothing for a round trip. When
+ * the last item goes, the card swaps to its empty state rather than emptying
+ * out: a card with a heading and nothing under it reads as broken.
+ */
+( function () {
+	'use strict';
+
+	var card = document.querySelector( '.albert-attention' );
+
+	if ( ! card || typeof window.albertAdmin === 'undefined' ) {
+		return;
+	}
+
+	card.addEventListener( 'click', function ( event ) {
+		var button = event.target.closest( '[data-albert-dismiss-attention]' );
+
+		if ( ! button ) {
+			return;
+		}
+
+		var item = button.closest( '.albert-attention__item' );
+		var id = button.getAttribute( 'data-albert-dismiss-attention' );
+
+		if ( ! item || ! id ) {
+			return;
+		}
+
+		var list = item.parentNode;
+		var next = item.nextElementSibling;
+
+		button.disabled = true;
+		item.remove();
+
+		if ( ! list.querySelector( '.albert-attention__item' ) ) {
+			showEmptyState();
+		}
+
+		var body = new FormData();
+		body.append( 'action', 'albert_dismiss_attention' );
+		body.append( 'nonce', window.albertAdmin.dismissNonce );
+		body.append( 'id', id );
+
+		window
+			.fetch( window.albertAdmin.ajaxUrl, {
+				method: 'POST',
+				credentials: 'same-origin',
+				body: body,
+			} )
+			.then( function ( response ) {
+				return response.ok ? response.json() : { success: false };
+			} )
+			.then( function ( result ) {
+				if ( ! result || ! result.success ) {
+					throw new Error( 'dismiss failed' );
+				}
+			} )
+			.catch( function () {
+				// Put it back exactly where it was, so the page still describes
+				// the site truthfully.
+				button.disabled = false;
+				list.insertBefore( item, next );
+			} );
+	} );
+
+	function showEmptyState() {
+		var body = card.querySelector( '.albert-card__body' );
+		var description = card.querySelector( '.albert-card__description' );
+
+		if ( description ) {
+			description.remove();
+		}
+
+		if ( ! body ) {
+			return;
+		}
+
+		body.className = 'albert-card__body albert-attention__empty';
+		body.innerHTML = '';
+
+		var icon = document.createElement( 'span' );
+		icon.className = 'dashicons dashicons-yes-alt';
+		icon.setAttribute( 'aria-hidden', 'true' );
+
+		var text = document.createElement( 'p' );
+		text.textContent = card.getAttribute( 'data-empty-text' ) || '';
+
+		body.appendChild( icon );
+		body.appendChild( text );
+	}
+} )();
