@@ -16,29 +16,14 @@
  * @since 1.4.0
  */
 
-/* Full width, like Abilities: the table needs the room. */
+/* Full width, like Abilities and for the same reason: the table takes what the
+   viewport gives it. The `full` tier; see albert-primitives.css. */
 .albert-skills {
-	max-width: none;
+	max-inline-size: none;
 }
 
 .albert-skills__header {
 	margin: 4px 0 0;
-}
-
-.albert-skills__title {
-	margin: 0;
-	padding: 0;
-	font-size: var(--albert-font-size-page-title);
-	font-weight: var(--albert-font-weight-semibold);
-	line-height: var(--albert-line-height-tight);
-	color: var(--albert-color-text);
-}
-
-.albert-skills__subtitle {
-	margin: 7px 0 0;
-	max-width: 640px;
-	font-size: var(--albert-font-size-body);
-	color: var(--albert-color-text-muted);
 }
 
 .albert-skills__summary-row {

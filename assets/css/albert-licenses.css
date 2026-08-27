@@ -94,29 +94,29 @@
 }
 
 /* Status dot */
-.albert-status-dot {
+.albert-license-dot {
 	display: inline-block;
 	width: 10px;
 	height: 10px;
 	border-radius: 50%;
 }
 
-.albert-status-dot--valid {
+.albert-license-dot--valid {
 	background: var(--albert-color-success);
 	box-shadow: 0 0 0 2px var(--albert-color-success-tint-10);
 }
 
-.albert-status-dot--expired {
+.albert-license-dot--expired {
 	background: var(--albert-color-warning);
 	box-shadow: 0 0 0 2px var(--albert-color-warning-tint-10);
 }
 
-.albert-status-dot--invalid {
+.albert-license-dot--invalid {
 	background: var(--albert-color-danger);
 	box-shadow: 0 0 0 2px oklch(0.52 0.18 25 / 0.1);
 }
 
-.albert-status-dot--none {
+.albert-license-dot--none {
 	background: var(--albert-color-text-muted);
 	opacity: 0.4;
 }

@@ -28,12 +28,34 @@
    ========================================================================== */
 
 /**
- * Card screens cap their measure so prose and card content stay readable.
- * The Abilities screen, table-shaped and wanting the full width a table
- * benefits from, doesn't use this wrapper at all rather than opting out of it.
+ * One shell, three tiers, and a screen picks one.
+ *
+ * Every Albert screen uses this same element and the same markup beneath it.
+ * A screen never declares a width of its own — it names a tier:
+ *
+ *   .albert-page              wide    Dashboard, Connections
+ *   .albert-page--narrow      narrow  Settings, Context
+ *   .albert-page--full        full    Abilities, Skills
+ *
+ * That rule is the whole system. The moment a screen sets its own max-width
+ * the set drifts, which is exactly how this once carried four different page
+ * widths across four stylesheets, none aware of the others.
+ *
+ * Picking a tier is a judgement about the *content*, not the screen: one
+ * column of form or prose takes narrow, multi-column content takes wide, and a
+ * table takes what the viewport gives it.
  */
 .albert-page {
-	max-width: 1280px;
+	max-inline-size: var(--albert-page-width);
+}
+
+.albert-page--narrow {
+	max-inline-size: var(--albert-page-width-narrow);
+}
+
+/* Not a token: full is the absence of a cap, not a value. */
+.albert-page--full {
+	max-inline-size: none;
 }
 
 .albert-page__header {
@@ -64,9 +86,10 @@
 	color: var(--albert-color-text);
 }
 
-.albert-page__description {
+.albert-page__description,
+.albert-page__intro { /* deprecated alias */
 	margin: 0;
-	max-width: 640px;
+	max-inline-size: var(--albert-measure-description);
 	font-size: var(--albert-font-size-body);
 	line-height: var(--albert-line-height-snug);
 	color: var(--albert-color-text-muted);
@@ -85,10 +108,31 @@
 }
 
 /* ==========================================================================
+   Classes add-ons render
+
+   `.albert-settings-card`, `.albert-settings-card-body` and
+   `.albert-page__intro` are Albert's pre-1.4.0 names, kept as aliases on the
+   rules that replaced them. They are NOT dead code: `albert-premium-service`
+   renders all three on its Activity Log screen
+   (src/Admin/ActivityLogPage.php:200, :220, :221) and depends on the
+   `albert-admin` and `albert-primitives` handles to style them.
+
+   They were deleted during the 1.4.0 admin rebuild and had to be restored,
+   because the "is this selector still used?" sweep only looked inside this
+   plugin. A class Free ships is part of the add-on surface whether or not Free
+   itself still renders it — check the sibling plugins before removing one.
+
+   Aliased onto the modern rules rather than copied, so an add-on's card cannot
+   drift away from Albert's own. Removed once Premium migrates to
+   `.albert-card` / `.albert-card__body` / `.albert-page__description`.
+   ========================================================================== */
+
+/* ==========================================================================
    Card
    ========================================================================== */
 
-.albert-card {
+.albert-card,
+.albert-settings-card { /* deprecated alias — see "Classes add-ons render" below */
 	background: var(--albert-color-surface);
 	border: 1px solid var(--albert-color-border);
 	border-radius: var(--albert-radius-md);
@@ -99,7 +143,7 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--albert-space-300);
-	padding: 14px 18px;
+	padding: var(--albert-card-padding-block) var(--albert-card-padding);
 	border-block-end: 1px solid var(--albert-color-border);
 }
 
@@ -121,8 +165,9 @@
 	color: var(--albert-color-text-muted);
 }
 
-.albert-card__body {
-	padding: 18px;
+.albert-card__body,
+.albert-settings-card-body { /* deprecated alias */
+	padding: var(--albert-card-padding);
 }
 
 /* A card whose body is a list of rows manages its own dividers. */
@@ -139,7 +184,7 @@
 	align-items: flex-start;
 	justify-content: space-between;
 	gap: var(--albert-space-400);
-	padding: var(--albert-space-400) 18px;
+	padding: var(--albert-space-400) var(--albert-card-padding);
 }
 
 .albert-toggle-row + .albert-toggle-row {
@@ -1186,5 +1231,559 @@
 
 /* Give the search a sensible fixed width instead of stretching. */
 .albert-toolbar .components-search-control {
-	width: 232px;
+	inline-size: 14.5rem;
+}
+
+/**
+ * Every control in the toolbar at one height.
+ *
+ * `@wordpress/components` renders its search field compact (32px) but its
+ * select controls at the default 40px, so the filter row arrived with two
+ * control heights sitting next to each other. This brings the selects down to
+ * the search field's height rather than the other way around, because 32px is
+ * also what Albert's own inputs use — one control height across the whole
+ * admin, not one per component library default.
+ */
+.albert-toolbar .components-select-control__input,
+.albert-toolbar select {
+	min-block-size: var(--albert-control-height);
+	block-size: var(--albert-control-height);
+	padding-block: 0;
+	line-height: normal;
+}
+
+/* ==========================================================================
+   Radio cards
+   ========================================================================== */
+
+/**
+ * A stack of full-width, self-describing options — each with its own title,
+ * description and an optional "Recommended" badge — for a choice important
+ * enough to explain rather than list bare in a <select>. Used by the Settings
+ * screen's privacy mode (docs/features/70-admin-design-system.md §4).
+ */
+.albert-radio-cards {
+	display: flex;
+	flex-direction: column;
+	gap: var(--albert-space-200);
+}
+
+.albert-radio-card {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--albert-space-300);
+	padding: var(--albert-space-300) var(--albert-space-400);
+	border: 1px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
+	background: var(--albert-color-surface);
+	cursor: pointer;
+}
+
+.albert-radio-card input[type="radio"] {
+	flex-shrink: 0;
+	margin-block-start: 2px;
+}
+
+.albert-radio-card input[type="radio"]:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+/* Selected state signalled by border + background, never colour alone: the
+   radio's own checked dot already carries the "which one" information. */
+.albert-radio-card:has(input:checked) {
+	background: var(--albert-color-accent-surface);
+	border-color: var(--albert-color-accent);
+}
+
+.albert-radio-card__body {
+	min-inline-size: 0;
+}
+
+.albert-radio-card__title {
+	display: flex;
+	align-items: center;
+	gap: var(--albert-space-200);
+	font-size: var(--albert-font-size-body);
+	font-weight: var(--albert-font-weight-semibold);
+	color: var(--albert-color-text);
+}
+
+.albert-radio-card__description {
+	display: block;
+	margin-block-start: 2px;
+	font-size: var(--albert-font-size-sm);
+	line-height: var(--albert-line-height-snug);
+	color: var(--albert-color-text-muted);
+}
+
+/**
+ * A group whose value is owned by a constant or a filter.
+ *
+ * Deliberately does NOT dim the text. The obvious way to say "disabled" is to
+ * fade it, but this group stays the only place the mode actually in force is
+ * readable, so the state is carried by the cursor, the flattened surface and
+ * the radios' own native disabled rendering — none of which touch text
+ * contrast — plus the hint underneath, which says in words what is happening
+ * rather than leaving it to appearance.
+ *
+ * Only the background changes, so both text colours keep AA against it:
+ * --albert-color-text (#1e1e1e) on --albert-color-surface-sunken (#fbfbfc)
+ * measures 16.12:1, and --albert-color-text-muted (#646970) on the same
+ * measures 5.35:1 (WCAG 2.2 relative-luminance formula; 4.5:1 required).
+ */
+.albert-radio-cards--disabled .albert-radio-card {
+	cursor: default;
+	background: var(--albert-color-surface-sunken);
+}
+
+.albert-radio-cards--disabled .albert-radio-card:has(input:checked) {
+	/* The chosen card keeps its accent border so "which one is in force" still
+	   reads at a glance; only the fill flattens. */
+	background: var(--albert-color-surface-sunken);
+	border-color: var(--albert-color-accent);
+}
+
+/* ==========================================================================
+   Form controls
+   ========================================================================== */
+
+/**
+ * One appearance for every settings control, whatever its tag.
+ *
+ * These three classes are what `Admin\SettingsRenderer` emits. Before this
+ * existed only `.albert-text-input` was styled, and it was styled against a
+ * class the renderer does not emit for selects (`.albert-select-input`, while
+ * the renderer writes `.albert-select`), so a select and a textarea fell back
+ * to the browser default beside a styled text field. Three controls in one
+ * form, three different heights and borders.
+ *
+ * The boundary is `--albert-color-border-input`, not `--albert-color-border`.
+ * The latter is the card hairline at roughly 1.4:1, and SC 1.4.11 asks 3:1 of
+ * anything that delimits a control; `border-input` is core's own input border
+ * and measures 3.17:1 on surface.
+ */
+/*
+ * Height comes from `--albert-control-height` (2rem / 32px), the same height
+ * `@wordpress/components` gives a compact control — which is what the
+ * DataViews search field on Abilities and Skills already is. Before this,
+ * Albert's own inputs sat at 40px against that 32px search box on adjacent
+ * screens, which is the "clunky" difference: two control heights in one admin.
+ *
+ * `line-height: normal` and no block padding, because the height is set
+ * explicitly. Leaving padding in as well is what made these 40px: core's own
+ * wp-admin input rules contribute a min-height, and padding stacked on top of
+ * it rather than composing with it.
+ */
+.albert-text-input,
+.albert-select,
+.albert-textarea {
+	box-sizing: border-box;
+	inline-size: 100%;
+	max-inline-size: var(--albert-measure-field);
+	padding-block: 0;
+	padding-inline: var(--albert-space-300);
+	border: 1px solid var(--albert-color-border-input);
+	border-radius: var(--albert-radius-md);
+	background: var(--albert-color-surface);
+	font-size: var(--albert-font-size-base);
+	line-height: normal;
+	color: var(--albert-color-text);
+}
+
+/**
+ * The height, qualified by element on purpose.
+ *
+ * Core sets `min-height: 40px` on a long list of input types via an attribute
+ * selector (`input[type="number"]`, …, in wp-admin's bundled forms CSS). That
+ * is specificity 0-1-1; a bare `.albert-text-input` is 0-1-0, so core wins on
+ * specificity no matter which stylesheet loads later, and the control silently
+ * renders 8px taller than the design.
+ *
+ * Adding the element qualifier ties it at 0-1-1, and Albert's stylesheet loads
+ * after core's, so this wins. It is the same trap that once let
+ * `.albert-text-input { flex: 1 }` beat a later `inline-size`: when a control
+ * is not the size you asked for, check what core says about it first.
+ */
+input.albert-text-input,
+select.albert-select,
+textarea.albert-textarea {
+	min-block-size: var(--albert-control-height);
+	block-size: var(--albert-control-height);
+}
+
+.albert-text-input:focus-visible,
+.albert-select:focus-visible,
+.albert-textarea:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+/* Prose, so it takes the full column and grows down rather than sideways.
+   Element-qualified to match the height rule above: a class-only selector
+   would lose to it and pin the textarea to one line. */
+textarea.albert-textarea {
+	max-inline-size: 100%;
+	block-size: auto;
+	min-block-size: 6rem;
+	padding-block: var(--albert-space-200);
+	line-height: var(--albert-line-height-snug);
+	resize: vertical;
+}
+
+/* The checkbox and its label share a baseline instead of the checkbox floating
+   above the first line of a wrapping label. */
+.albert-checkbox-wrap {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--albert-space-200);
+}
+
+/* ==========================================================================
+   Field
+   ========================================================================== */
+
+/**
+ * A labelled control: label (+ optional badge), description, then the control
+ * and its optional unit. This is what `Admin\SettingsRenderer` emits, and it
+ * is the one way to put a form control on any Albert screen.
+ *
+ * It lives here rather than in the Settings stylesheet because every screen
+ * needs it. Add-ons get it for free by declaring the `albert-primitives`
+ * handle; see docs/settings-api.md.
+ */
+/**
+ * Field groups — label column, then the control.
+ *
+ * The label column is capped rather than proportional: a description is prose
+ * and wants a readable measure, and a proportional column grew it to half the
+ * card on a wide screen. The control column takes the rest, but the control
+ * inside it sizes to its own type (see below) instead of filling that width.
+ */
+.albert-field-group {
+	display: grid;
+	grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+	gap: var(--albert-space-400);
+	align-items: start;
+	margin-block-end: var(--albert-space-400);
+}
+
+.albert-field-group:last-child {
+	margin-block-end: 0;
+}
+
+/*
+ * Custom fields keep a single-column flow so existing render callbacks
+ * (licenses table, copy-to-clipboard widgets) aren't squeezed into the
+ * narrower input column.
+ */
+.albert-field-group--custom {
+	display: block;
+}
+
+.albert-field-label-wrap {
+	display: flex;
+	flex-direction: column;
+	gap: var(--albert-space-100);
+}
+
+/**
+ * The label and its info control, on one line.
+ *
+ * The wrap above is a column, so every child of it starts a new line. Without
+ * this row the "(i)" landed under the label and above the description — an
+ * orphan between the thing it names and the text it extends.
+ */
+.albert-field-label-row {
+	display: flex;
+	align-items: center;
+	gap: var(--albert-space-100);
+	flex-wrap: wrap;
+}
+
+/**
+ * The control and its unit, on one baseline: "90 days".
+ *
+ * A unit belongs beside the number it qualifies, not buried in the
+ * description. Wrapping is allowed so a long unit on a narrow screen drops
+ * under the field rather than squeezing it.
+ */
+.albert-field-input-wrap {
+	display: flex;
+	align-items: center;
+	gap: var(--albert-space-200);
+	flex-wrap: wrap;
+	min-width: 0;
+}
+
+/**
+ * A number input is sized to its digits, not to the column.
+ *
+ * Everything else about these controls (border, padding, focus ring, the
+ * `--albert-measure-field` cap) comes from the shared form-control rule in
+ * albert-primitives.css. Only the number field differs, because a four-digit
+ * value in a 26rem box reads as a field expecting a sentence.
+ */
+.albert-field-input-wrap input[type="number"] {
+	flex: none;
+	inline-size: 7rem;
+}
+
+/**
+ * A field's hint sits under the control, on its own line.
+ *
+ * `flex-basis: 100%` rather than a separate row: the control column is a
+ * wrapping flex holding the control and its unit, so the hint has to claim a
+ * full line to drop beneath them instead of squeezing in beside the unit.
+ */
+.albert-field-hint {
+	flex-basis: 100%;
+	margin-block-start: var(--albert-space-200);
+	max-inline-size: var(--albert-measure-description);
+}
+
+/* The unit that qualifies the value beside it: "days", "MB". */
+.albert-field-suffix {
+	font-size: var(--albert-font-size-base);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-field-label {
+	display: block;
+	font-weight: 600;
+	font-size: var(--albert-font-size-base);
+	color: var(--albert-color-text);
+	margin-bottom: 0;
+}
+
+/* Legacy one-column layout for custom fields still needs a small gap below the label. */
+.albert-field-group--custom .albert-field-label {
+	margin-bottom: var(--albert-space-100);
+}
+
+.albert-field-description {
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
+	margin: 0;
+	line-height: 1.5;
+}
+
+.albert-field-group--custom .albert-field-description {
+	margin: 0 0 var(--albert-space-200) 0;
+}
+
+@media (max-width: 782px) {
+	.albert-field-group {
+		grid-template-columns: 1fr;
+	}
+}
+
+
+/* Empty state */
+.albert-empty-state {
+	text-align: center;
+	padding: var(--albert-space-600) var(--albert-space-400);
+	color: var(--albert-color-text-muted);
+}
+
+.albert-empty-state .dashicons {
+	font-size: var(--albert-icon-size-lg);
+	width: 32px;
+	height: 32px;
+	margin-bottom: var(--albert-space-200);
+	opacity: 0.5;
+}
+
+.albert-empty-state p {
+	margin: 0;
+	font-size: var(--albert-font-size-base);
+}
+
+.albert-copy-button {
+	flex-shrink: 0;
+}
+
+.albert-copy-button.copied {
+	color: var(--albert-color-success);
+}
+
+.albert-copy-button:focus-visible {
+	outline: 2px solid var(--albert-color-accent);
+	outline-offset: 1px;
+}
+
+/* Copy text (inline) */
+.albert-copy-text {
+	cursor: pointer;
+	position: relative;
+	padding: 4px 8px;
+	display: inline-block;
+}
+
+.albert-copy-text:hover {
+	background: var(--albert-color-surface-hover);
+	border-radius: 2px;
+}
+
+.albert-copy-text.copied::after {
+	content: attr(data-copied);
+	position: absolute;
+	top: -28px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: var(--albert-color-text);
+	color: var(--albert-color-surface);
+	padding: 4px 8px;
+	border-radius: 3px;
+	font-size: var(--albert-font-size-micro);
+	white-space: nowrap;
+}
+
+/* ==========================================================================
+   Endpoint field
+   ========================================================================== */
+
+/**
+ * A read-only address plus its Copy button. Shared, because the MCP endpoint is
+ * shown on both Connections and the Dashboard and has to look and behave
+ * identically in both places.
+ *
+ * The field is mono and sits on the sunken surface so it reads as a value to be
+ * copied rather than a box to be typed in, and `flex-wrap` lets the button drop
+ * below the field on a narrow screen instead of crushing it.
+ */
+.albert-endpoint {
+	display: flex;
+	gap: var(--albert-space-200);
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+/*
+ * A small flex-basis, not a comfortable one. The endpoint card appears both
+ * full width (Connections) and in the Dashboard's narrow 1fr column, and a
+ * 320px basis was wider than that column, which forced the Copy button onto
+ * its own line. The field is a scrollable input, so shrinking it truncates
+ * the display without losing anything; the button dropping below is the worse
+ * outcome, so the field yields first.
+ */
+.albert-endpoint__field {
+	flex: 1 1 8rem;
+	min-inline-size: 0;
+	padding: var(--albert-space-200) var(--albert-space-300);
+	border: 1px solid var(--albert-color-border-input);
+	border-radius: var(--albert-radius-md);
+	background: var(--albert-color-surface-sunken);
+	font-family: var(--albert-font-family-mono);
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text);
+}
+
+.albert-endpoint__field:focus-visible {
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
+}
+
+/* ==========================================================================
+   Save bar
+   ========================================================================== */
+
+/**
+ * A sticky footer for a screen that saves via a real, page-reloading submit
+ * rather than an instant auto-save. Keeps the button reachable while a long,
+ * one-column list of sections scrolls past it. Not the same job as
+ * `.albert-savestate`, which replaces the submit button entirely on
+ * instant-save screens — here the button stays real, this only keeps it in
+ * view.
+ */
+.albert-savebar {
+	position: sticky;
+	inset-block-end: 0;
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	gap: var(--albert-space-300);
+	padding-block: var(--albert-space-300);
+	background: var(--albert-color-surface);
+	border-block-start: 1px solid var(--albert-color-border);
+}
+
+/* ==========================================================================
+   Stat row
+   ========================================================================== */
+
+/**
+ * A row of plain numbers, never a chart or a sparkline. Each tile only ever
+ * shows a figure the site can actually compute; a screen with nothing to show
+ * for a tile omits the tile rather than rendering a zero or a dash (see
+ * docs/features/70-admin-design-system.md §0 and §4).
+ */
+/**
+ * A fixed four-column track, not `auto-fit`.
+ *
+ * `auto-fit` collapses to as many tracks as there are tiles, so a screen with
+ * two computable figures stretched each tile to half the page — a 28px number
+ * adrift in 600px of card. A fixed track count means a tile is the same size
+ * whether the row holds two or four, and the row simply ends early when a
+ * screen has fewer figures it can honestly show.
+ */
+.albert-stat-row {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: var(--albert-space-300);
+}
+
+@media screen and (max-width: 960px) {
+	.albert-stat-row {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media screen and (max-width: 480px) {
+	.albert-stat-row {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.albert-stat {
+	padding: var(--albert-space-400) var(--albert-card-padding);
+	border: 1px solid var(--albert-color-border);
+	border-radius: var(--albert-radius-md);
+	background: var(--albert-color-surface);
+}
+
+/*
+ * Label first, then the value, then an optional meta line. The label leads
+ * because a bare 28px number is not a fact until you know what it counts, and
+ * a reader scanning four of these reads the labels to find the one they want.
+ */
+.albert-stat__label {
+	display: block;
+	font-size: var(--albert-font-size-micro);
+	font-weight: var(--albert-font-weight-semibold);
+	letter-spacing: var(--albert-letter-spacing-micro);
+	text-transform: uppercase;
+	color: var(--albert-color-text-faint);
+}
+
+.albert-stat__value {
+	display: block;
+	margin-block-start: var(--albert-space-200);
+	font-size: var(--albert-font-size-stat);
+	font-weight: var(--albert-font-weight-semibold);
+	letter-spacing: var(--albert-letter-spacing-stat);
+	line-height: 1;
+	color: var(--albert-color-text);
+}
+
+/*
+ * The one line under the value that says what to do about it, or what it is.
+ * Optional: a tile with nothing true to add here renders without it rather
+ * than padding the space with a restatement of the label.
+ */
+.albert-stat__meta {
+	display: block;
+	margin-block-start: 7px;
+	font-size: var(--albert-font-size-sm);
+	color: var(--albert-color-text-muted);
 }

@@ -9,31 +9,17 @@
  * operation badge, the "last used" cell, and the detail fly-in drawer.
  */
 
-/* Full width — the table needs the room (5 columns), so contain only the
-   subtitle for readability rather than the whole table. */
+/* Full width — the table takes whatever the viewport gives it. Five columns
+   need the room, and the subtitle is capped on its own so the prose stays
+   readable without constraining the table. This is the `full` tier; see the
+   page-shell block in albert-primitives.css. */
 .albert-abilities {
-	max-width: none;
+	max-inline-size: none;
 }
 
 /* Page header. */
 .albert-abilities__header {
 	margin: 4px 0 0;
-}
-
-.albert-abilities__title {
-	margin: 0;
-	padding: 0;
-	font-size: var(--albert-font-size-page-title);
-	font-weight: var(--albert-font-weight-semibold);
-	line-height: var(--albert-line-height-tight);
-	color: var(--albert-color-text);
-}
-
-.albert-abilities__subtitle {
-	margin: 7px 0 0;
-	max-width: 640px;
-	font-size: var(--albert-font-size-body);
-	color: var(--albert-color-text-muted);
 }
 
 .albert-abilities__summary-row {

@@ -63,6 +63,30 @@ class Assets implements Hookable {
 	public const PRIMITIVES_HANDLE = 'albert-primitives';
 
 	/**
+	 * The page navigation's script handle.
+	 *
+	 * Not part of the add-on contract the way the two stylesheet handles are:
+	 * an add-on never enqueues this, because Albert renders the navigation on
+	 * the add-on's screen itself. It is a constant so the handle is written
+	 * once.
+	 *
+	 * @since 1.4.0
+	 * @var string
+	 */
+	public const NAV_HANDLE = 'albert-nav';
+
+	/**
+	 * The info-popover script handle.
+	 *
+	 * Drives `.albert-tip`, the server-rendered info control. Enqueued on every
+	 * Albert screen because the field system that uses it is shared.
+	 *
+	 * @since 1.4.0
+	 * @var string
+	 */
+	public const POPOVER_HANDLE = 'albert-admin-popover';
+
+	/**
 	 * Register the hook that registers the shared handles.
 	 *
 	 * @return void
@@ -97,6 +121,31 @@ class Assets implements Hookable {
 		}
 
 		wp_enqueue_style( self::PRIMITIVES_HANDLE );
+
+		// Enqueued here for the same reason as the stylesheet above: the
+		// navigation renders on every Albert screen, add-on pages included, so
+		// the one script that belongs to it cannot live in any single screen's
+		// own callback. It keeps the current entry in view when the strip
+		// scrolls; see assets/js/albert-nav.js.
+		wp_enqueue_script(
+			self::NAV_HANDLE,
+			ALBERT_PLUGIN_URL . 'assets/js/albert-nav.js',
+			[],
+			self::version( 'assets/js/albert-nav.js' ),
+			true
+		);
+
+		// The info control ships with the field system, and the field system is
+		// shared, so any Albert screen can now render a `.albert-tip`. Enqueued
+		// here rather than per screen for that reason; a second enqueue of the
+		// same handle elsewhere is a no-op.
+		wp_enqueue_script(
+			self::POPOVER_HANDLE,
+			ALBERT_PLUGIN_URL . 'assets/js/admin-popover.js',
+			[],
+			self::version( 'assets/js/admin-popover.js' ),
+			true
+		);
 	}
 
 	/**
