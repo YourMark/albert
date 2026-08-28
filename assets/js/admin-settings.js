@@ -131,41 +131,93 @@ if ( document.readyState === 'loading' ) {
  * the alternative is a button that appears to do nothing for a round trip. When
  * the last item goes, the card swaps to its empty state rather than emptying
  * out: a card with a heading and nothing under it reads as broken.
+ *
+ * The swap hides, it never destroys. A first version replaced the card body's
+ * innerHTML, which detached the list the rollback still held a reference to,
+ * so a failed request put the row back into an orphaned node and the item
+ * vanished for good while the server still had it undismissed. Anything the
+ * optimistic path touches has to be restorable, because the whole point of the
+ * rollback is that the page goes on describing the site truthfully.
  */
-( function () {
+( () => {
 	'use strict';
 
-	var card = document.querySelector( '.albert-attention' );
+	const card = document.querySelector( '.albert-attention' );
 
 	if ( ! card || typeof window.albertAdmin === 'undefined' ) {
 		return;
 	}
 
-	card.addEventListener( 'click', function ( event ) {
-		var button = event.target.closest( '[data-albert-dismiss-attention]' );
+	const list = card.querySelector( '.albert-attention__list' );
+	const description = card.querySelector( '.albert-card__description' );
 
-		if ( ! button ) {
+	/**
+	 * Show or hide the "nothing right now" state.
+	 *
+	 * Built once, on first need, and thereafter only toggled, so the list, the
+	 * count line and the empty state all survive a rollback.
+	 *
+	 * @param {boolean} isEmpty Whether the card has no items left.
+	 */
+	const setEmpty = ( isEmpty ) => {
+		const body = card.querySelector( '.albert-card__body' );
+
+		if ( ! body ) {
 			return;
 		}
 
-		var item = button.closest( '.albert-attention__item' );
-		var id = button.getAttribute( 'data-albert-dismiss-attention' );
+		let empty = card.querySelector( '.albert-attention__empty' );
+
+		if ( ! empty && isEmpty ) {
+			empty = document.createElement( 'div' );
+			empty.className = 'albert-card__body albert-attention__empty';
+
+			const icon = document.createElement( 'span' );
+			icon.className = 'dashicons dashicons-yes-alt';
+			icon.setAttribute( 'aria-hidden', 'true' );
+
+			const text = document.createElement( 'p' );
+			text.textContent = card.getAttribute( 'data-empty-text' ) || '';
+
+			empty.append( icon, text );
+			body.after( empty );
+		}
+
+		if ( empty ) {
+			empty.hidden = ! isEmpty;
+		}
+
+		body.hidden = isEmpty;
+
+		if ( description ) {
+			description.hidden = isEmpty;
+		}
+	};
+
+	card.addEventListener( 'click', ( event ) => {
+		const button = event.target.closest( '[data-albert-dismiss-attention]' );
+
+		if ( ! button || ! list ) {
+			return;
+		}
+
+		const item = button.closest( '.albert-attention__item' );
+		const id = button.getAttribute( 'data-albert-dismiss-attention' );
 
 		if ( ! item || ! id ) {
 			return;
 		}
 
-		var list = item.parentNode;
-		var next = item.nextElementSibling;
+		const next = item.nextElementSibling;
 
 		button.disabled = true;
 		item.remove();
 
 		if ( ! list.querySelector( '.albert-attention__item' ) ) {
-			showEmptyState();
+			setEmpty( true );
 		}
 
-		var body = new FormData();
+		const body = new FormData();
 		body.append( 'action', 'albert_dismiss_attention' );
 		body.append( 'nonce', window.albertAdmin.dismissNonce );
 		body.append( 'id', id );
@@ -174,47 +226,22 @@ if ( document.readyState === 'loading' ) {
 			.fetch( window.albertAdmin.ajaxUrl, {
 				method: 'POST',
 				credentials: 'same-origin',
-				body: body,
+				body,
 			} )
-			.then( function ( response ) {
-				return response.ok ? response.json() : { success: false };
-			} )
-			.then( function ( result ) {
+			.then( ( response ) =>
+				response.ok ? response.json() : { success: false }
+			)
+			.then( ( result ) => {
 				if ( ! result || ! result.success ) {
 					throw new Error( 'dismiss failed' );
 				}
 			} )
-			.catch( function () {
+			.catch( () => {
 				// Put it back exactly where it was, so the page still describes
 				// the site truthfully.
 				button.disabled = false;
 				list.insertBefore( item, next );
+				setEmpty( false );
 			} );
 	} );
-
-	function showEmptyState() {
-		var body = card.querySelector( '.albert-card__body' );
-		var description = card.querySelector( '.albert-card__description' );
-
-		if ( description ) {
-			description.remove();
-		}
-
-		if ( ! body ) {
-			return;
-		}
-
-		body.className = 'albert-card__body albert-attention__empty';
-		body.innerHTML = '';
-
-		var icon = document.createElement( 'span' );
-		icon.className = 'dashicons dashicons-yes-alt';
-		icon.setAttribute( 'aria-hidden', 'true' );
-
-		var text = document.createElement( 'p' );
-		text.textContent = card.getAttribute( 'data-empty-text' ) || '';
-
-		body.appendChild( icon );
-		body.appendChild( text );
-	}
 } )();
