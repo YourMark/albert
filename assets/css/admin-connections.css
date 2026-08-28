@@ -284,13 +284,6 @@
 	color: var(--albert-color-text);
 }
 
-/* A class-based `display` always outranks the UA stylesheet's `[hidden]`
-   rule, so the attribute alone does not hide this element once .albert-bulkbar
-   sets display: flex. Restate it here at the same specificity, in the same
-   file, so hidden actually means hidden. */
-.albert-bulkbar[hidden] {
-	display: none;
-}
 
 .albert-bulkbar__check {
 	display: inline-flex;
@@ -331,12 +324,6 @@
 	padding: var(--albert-space-300) 18px;
 }
 
-/* Same reason as .albert-bulkbar[hidden] above: a class-based display beats
-   the UA stylesheet's [hidden] rule, and the filter relies on `hidden` to
-   actually remove a non-matching row from view. */
-.albert-conn[hidden] {
-	display: none;
-}
 
 .albert-conn + .albert-conn {
 	border-block-start: 1px solid var(--albert-color-border-subtle);
@@ -399,10 +386,6 @@
 	color: var(--albert-color-text-faint);
 }
 
-.albert-conn__title[hidden],
-.albert-conn__naming-trigger[hidden] {
-	display: none;
-}
 
 /**
  * Link-coloured, but underlined only on interaction: `.albert-link-button`
@@ -433,9 +416,6 @@
 	display: contents;
 }
 
-.albert-conn__naming-form[hidden] {
-	display: none;
-}
 
 /* Sized and bordered like every other text field on this screen
    (`.albert-search__input`), not the taller, larger-print browser default

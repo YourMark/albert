@@ -160,15 +160,15 @@
 	--albert-measure-prose: 90ch;         /* owner-authored prose in a textarea */
 	--albert-measure-field: 26rem;        /* 416px — text and URL inputs */
 
-	/* Card padding — the inline edge every card, row and card-aligned element
-	   shares, so a row list lines up with the header above it. Named because
-	   the literal was previously repeated in four stylesheets, and anything
-	   sitting flush to a card edge has to match it or the column looks bent. */
 	/* Control height — 2rem (32px), the height @wordpress/components gives a
 	   compact control. Albert's own inputs and core's DataViews controls sit
 	   side by side across these screens, so they share one height. */
 	--albert-control-height: 2rem;
 
+	/* Card padding: the inline edge every card, row and card-aligned element
+	   shares, so a row list lines up with the header above it. Named because
+	   the literal was previously repeated in four stylesheets, and anything
+	   sitting flush to a card edge has to match it or the column looks bent. */
 	--albert-card-padding: 1.125rem;        /* 18px — card body and inline edge */
 	--albert-card-padding-block: 0.875rem;  /* 14px — card header block padding */
 

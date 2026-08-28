@@ -300,56 +300,6 @@
 	}
 }
 
-.albert-disconnect-option--destructive:hover {
-	border-color: var(--albert-color-danger);
-	background: oklch(0.52 0.18 25 / 0.06);
-}
-
-/* --------------------------------------------------------------
-   Log status pill — .albert-log-pill
-   -------------------------------------------------------------- */
-
-.albert-log-pill {
-	display: inline-flex;
-	align-items: center;
-	gap: 3px;
-	padding: 1px 6px;
-	border-radius: 10px;
-	font-size: var(--albert-font-size-micro);
-	font-weight: 600;
-	line-height: 1.6;
-	vertical-align: middle;
-	/* Neutral default — overridden by modifiers. */
-	background-color: oklch(0.93 0.003 265);
-	color: var(--albert-color-text-muted);
-}
-
-.albert-log-pill--success {
-	background-color: var(--albert-color-success-tint-10);
-	color: oklch(0.38 0.14 145);
-	border: 1px solid var(--albert-color-success-tint-20);
-}
-
-.albert-log-pill--error {
-	background-color: var(--albert-color-danger-tint-10);
-	color: oklch(0.38 0.16 25);
-	border: 1px solid var(--albert-color-danger-tint-20);
-}
-
-/* Upsell hint beneath log lines and activity cards */
-.albert-upsell-hint {
-	margin-block-start: var(--albert-space-100);
-	font-size: var(--albert-font-size-micro);
-	color: var(--albert-color-text-muted);
-}
-
-/* Activity list pill alignment */
-.albert-activity-list li {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--albert-space-100);
-}
 
 /* --------------------------------------------------------------
    Status dot — .albert-status-dot (additive; replaces the pill on

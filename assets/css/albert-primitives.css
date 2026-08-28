@@ -45,6 +45,25 @@
  * column of form or prose takes narrow, multi-column content takes wide, and a
  * table takes what the viewport gives it.
  */
+/**
+ * `hidden` means hidden, on anything Albert renders.
+ *
+ * The UA stylesheet's `[hidden] { display: none }` is specificity 0-1-0 and
+ * loses to any class that sets `display`, so an element styled
+ * `display: flex` stays visible with the attribute set. Five components had
+ * each rediscovered this and restated the rule locally, one file at a time,
+ * and the sixth (the Dashboard's attention card) was written assuming the
+ * attribute worked. Stating it once, for the prefix every Albert element
+ * carries, is what stops the seventh.
+ *
+ * `!important` because the whole point is to outrank a component's own
+ * `display`, and the attribute selector is scoped to `albert-*` so nothing
+ * WordPress renders is caught by it.
+ */
+[class*="albert-"][hidden] {
+	display: none !important;
+}
+
 .albert-page {
 	max-inline-size: var(--albert-page-width);
 }
@@ -132,7 +151,7 @@
    ========================================================================== */
 
 .albert-card,
-.albert-settings-card { /* deprecated alias — see "Classes add-ons render" below */
+.albert-settings-card { /* deprecated alias, see "Classes add-ons render" above */
 	background: var(--albert-color-surface);
 	border: 1px solid var(--albert-color-border);
 	border-radius: var(--albert-radius-md);
@@ -969,9 +988,6 @@
 	color: var(--albert-color-text);
 }
 
-.albert-picker__selected-count[hidden] {
-	display: none;
-}
 
 .albert-picker__results {
 	margin: 0;
@@ -1451,14 +1467,12 @@ textarea.albert-textarea {
  * It lives here rather than in the Settings stylesheet because every screen
  * needs it. Add-ons get it for free by declaring the `albert-primitives`
  * handle; see docs/settings-api.md.
- */
-/**
- * Field groups — label column, then the control.
  *
- * The label column is capped rather than proportional: a description is prose
- * and wants a readable measure, and a proportional column grew it to half the
- * card on a wide screen. The control column takes the rest, but the control
- * inside it sizes to its own type (see below) instead of filling that width.
+ * Two columns: label, then the control. The label column is capped rather than
+ * proportional, because a description is prose and wants a readable measure.
+ * A proportional column grew it to half the card on a wide screen. The control
+ * column takes the rest, but the control inside it sizes to its own type (see
+ * below) instead of filling that width.
  */
 .albert-field-group {
 	display: grid;
@@ -1561,6 +1575,39 @@ textarea.albert-textarea {
 	margin-bottom: var(--albert-space-100);
 }
 
+/**
+ * A group of radios, named by its own <legend>.
+ *
+ * The fieldset is structural, never decorative: browsers give one a border, a
+ * default margin and asymmetric padding, all of which would draw a box around
+ * a group that already sits inside a card. Stripped to nothing so the grouping
+ * is announced without being seen.
+ *
+ * `min-inline-size: 0` because a fieldset's default `min-width: min-content`
+ * stops it shrinking below its widest child, which breaks any flex or grid
+ * parent it lands in, the one fieldset quirk that is not a paint problem.
+ */
+.albert-field-fieldset {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	min-inline-size: 0;
+}
+
+/* A legend is not a normal box: it renders in the fieldset's border gap and
+   ignores `display` in some engines unless taken out of that flow. `float`
+   with a full-width clear is the reliable way to make it behave like the
+   ordinary label row it replaced. */
+.albert-field-fieldset > .albert-field-label-row {
+	float: inline-start;
+	inline-size: 100%;
+	padding: 0;
+}
+
+.albert-field-fieldset > .albert-field-label-row + * {
+	clear: both;
+}
+
 .albert-field-description {
 	font-size: var(--albert-font-size-sm);
 	color: var(--albert-color-text-muted);
@@ -1586,11 +1633,14 @@ textarea.albert-textarea {
 	color: var(--albert-color-text-muted);
 }
 
+/* A dashicon's font-size IS its box, so the three have to be one value. A
+   token for the glyph and a hardcoded 32px box meant the icon outgrew its
+   frame the moment a reader raised their base font size. */
 .albert-empty-state .dashicons {
+	inline-size: var(--albert-icon-size-lg);
+	block-size: var(--albert-icon-size-lg);
 	font-size: var(--albert-icon-size-lg);
-	width: 32px;
-	height: 32px;
-	margin-bottom: var(--albert-space-200);
+	margin-block-end: var(--albert-space-200);
 	opacity: 0.5;
 }
 
@@ -1717,23 +1767,13 @@ textarea.albert-textarea {
  * shows a figure the site can actually compute; a screen with nothing to show
  * for a tile omits the tile rather than rendering a zero or a dash (see
  * docs/features/70-admin-design-system.md §0 and §4).
- */
-/**
- * A fixed four-column track, not `auto-fit`.
  *
- * `auto-fit` collapses to as many tracks as there are tiles, so a screen with
- * two computable figures stretched each tile to half the page — a 28px number
- * adrift in 600px of card. A fixed track count means a tile is the same size
- * whether the row holds two or four, and the row simply ends early when a
- * screen has fewer figures it can honestly show.
- */
-/**
- * Follows the number of tiles rather than assuming four.
- *
- * Free contributes three (what is exposed, who is connected, how protected);
- * an add-on with retained history adds call volume as a fourth. A fixed
- * four-column grid left two empty columns on every Free install, which is what
- * made the row read as broken rather than as short.
+ * The track count follows the number of tiles rather than assuming four. Free
+ * contributes three (what is exposed, who is connected, how protected); an
+ * add-on with retained history adds call volume as a fourth. A fixed
+ * four-column grid left two empty columns on every Free install, which read as
+ * broken rather than as short. `minmax()` is what stops the other extreme: two
+ * tiles cannot stretch to half the page each.
  */
 .albert-stat-row {
 	display: grid;
