@@ -37,10 +37,20 @@ defined( 'ABSPATH' ) || exit;
  * on MCP and front-end requests, and reading the schema means firing
  * `albert/settings/register`, which would run every add-on's registration
  * callback on requests that will never render a form. So this is a resolver
- * over an option *name*, nothing more: it does not type-check or sanitise an
- * override, and a caller that needs a closed vocabulary normalises the result
- * itself, exactly as `PrivacyMode` does. {@see Storage} is what makes the
+ * over an option *name*, nothing more. {@see Storage} is what makes the
  * *stored* value trustworthy; this is only about which layer wins.
+ *
+ * **A validator belongs to the option, not to the call site**, and is reachable
+ * from the option name alone: {@see Validators} for Free's own, and
+ * `albert/settings/validator/{option_name}` for anybody else's. The reason is
+ * that every caller has to reach the same verdict. When the rule lived at the
+ * call site, {@see \Albert\Privacy\PrivacyMode::resolve()} applied one and the
+ * Settings screen did not, so `define( 'ALBERT_PRIVACY_MODE', 'bananas' )` made
+ * the screen render the field read-only, showing `bananas` and naming the
+ * constant, while the site went on running the stored mode. The screen locked
+ * an owner out of a setting the constant did not control, which is the exact
+ * failure this class exists to prevent. An explicit `$validator` argument still
+ * wins, for a caller with a narrower question than the option's own.
  *
  * @since 1.4.0
  */
@@ -56,6 +66,8 @@ class Value {
 	 * @param callable|null $validator     Optional `fn( $value ): bool`. An
 	 *                                     override it rejects is skipped and
 	 *                                     resolution continues to the next layer.
+	 *                                     Omit to use the option's own, if it
+	 *                                     has registered one.
 	 *
 	 * @return mixed
 	 */
@@ -79,22 +91,24 @@ class Value {
 	 *
 	 * @since 1.4.0
 	 *
-	 * A `$validator` makes a layer skippable. Without one, any non-null override
-	 * wins; with one, an override the caller cannot use is passed over rather
-	 * than taking the site down — a typo in a `wp-config.php` constant falls
-	 * through to the filter or the stored value instead of resolving to
-	 * nonsense. Callers with a closed vocabulary should pass one.
+	 * A validator makes a layer skippable: an override it rejects is passed over
+	 * rather than taking the site down, so a typo in a `wp-config.php` constant
+	 * falls through to the filter or the stored value instead of resolving to
+	 * nonsense. When none is passed, the option's own is used. See the class
+	 * docblock on why that has to be reachable from the name alone.
 	 *
 	 * @since 1.4.0
 	 *
 	 * @param string        $option_name The option name.
-	 * @param callable|null $validator   Optional `fn( $value ): bool`.
+	 * @param callable|null $validator   Optional `fn( $value ): bool`. Omit to
+	 *                                   use the option's own.
 	 *
 	 * @return array{source: string, value: mixed, name: string}|null Null when the
 	 *                                                                stored value wins.
 	 */
 	public static function override( string $option_name, ?callable $validator = null ): ?array {
-		$constant = self::constant_name( $option_name );
+		$validator = $validator ?? self::validator( $option_name );
+		$constant  = self::constant_name( $option_name );
 
 		if ( $constant !== '' && defined( $constant ) ) {
 			$value = constant( $constant );
@@ -185,6 +199,44 @@ class Value {
 	}
 
 	/**
+	 * The option's own validator, if it has declared one.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param string $option_name The option name.
+	 *
+	 * @return callable|null `fn( $value ): bool`, or null when the option
+	 *                       accepts anything.
+	 */
+	public static function validator( string $option_name ): ?callable {
+		/**
+		 * Filters the validator that decides whether an override is usable.
+		 *
+		 * Return `fn( $value ): bool`. An override it rejects is skipped and
+		 * resolution continues to the next layer, so a malformed constant falls
+		 * through to the stored value instead of pinning the site to nonsense.
+		 *
+		 * Declare one for any setting with a closed vocabulary or a range. It is
+		 * what stops the Settings screen reporting an override that the code
+		 * reading the setting would refuse: both ask this same question.
+		 *
+		 * @since 1.4.0
+		 *
+		 * @param callable|null $validator The validator, or null to accept anything.
+		 */
+		$validator = apply_filters( self::validator_name( $option_name ), null );
+
+		if ( is_callable( $validator ) ) {
+			return $validator;
+		}
+
+		// Free's own, which are a plain static map rather than something
+		// published on a hook: this has to answer correctly on the very first
+		// request, before anything has had a chance to register.
+		return Validators::for_option( $option_name );
+	}
+
+	/**
 	 * The filter that overrides one setting.
 	 *
 	 * @since 1.4.0
@@ -195,6 +247,19 @@ class Value {
 	 */
 	public static function filter_name( string $option_name ): string {
 		return 'albert/settings/value/' . $option_name;
+	}
+
+	/**
+	 * The filter that declares one setting's validator.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param string $option_name The option name.
+	 *
+	 * @return non-empty-string Always: the prefix alone guarantees it.
+	 */
+	public static function validator_name( string $option_name ): string {
+		return 'albert/settings/validator/' . $option_name;
 	}
 
 	/**

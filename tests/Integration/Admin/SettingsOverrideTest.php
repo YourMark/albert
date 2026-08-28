@@ -19,14 +19,16 @@
 
 namespace Albert\Tests\Integration\Admin;
 
-use Albert\Admin\SettingsRegistry;
+use Albert\Admin\Settings\Lock;
 use Albert\Admin\Settings\Overrides;
 use Albert\Admin\Settings\Schema;
 use Albert\Admin\Settings\Value;
-use Albert\Admin\Settings;
+use Albert\Admin\SettingsRegistry;
 use Albert\Admin\SettingsRenderer;
 use Albert\Admin\SettingsSanitizer;
 use Albert\Media\UploadLinks\UploadLinkService;
+use Albert\OAuth\AllowedUsers;
+use Albert\OAuth\ConnectionRetention;
 use Albert\Privacy\PrivacyMode;
 use Albert\Tests\TestCase;
 
@@ -250,10 +252,7 @@ class SettingsOverrideTest extends TestCase {
 			'An absent value must sanitise to something destructive for this test to mean anything.'
 		);
 
-		$guard = new \ReflectionMethod( Settings::class, 'is_field_locked' );
-		$guard->setAccessible( true );
-
-		$this->assertTrue( $guard->invoke( new Settings(), $field, 'albert_privacy_mode' ) );
+		$this->assertTrue( Lock::is_locked( $field, Value::override( 'albert_privacy_mode' ) ) );
 	}
 
 	/**
@@ -264,10 +263,124 @@ class SettingsOverrideTest extends TestCase {
 	public function test_the_save_loop_does_not_skip_an_ordinary_field(): void {
 		$field = $this->field_for( 'albert_privacy_mode' );
 
-		$guard = new \ReflectionMethod( Settings::class, 'is_field_locked' );
-		$guard->setAccessible( true );
+		$this->assertFalse( Lock::is_locked( $field, Value::override( 'albert_privacy_mode' ) ) );
+	}
 
-		$this->assertFalse( $guard->invoke( new Settings(), $field, 'albert_privacy_mode' ) );
+	/**
+	 * An override the option's own validator rejects locks nothing.
+	 *
+	 * The screen and the code reading a setting have to agree about whether an
+	 * override is in force. They did not: `PrivacyMode::resolve()` applied a
+	 * vocabulary check and the screen did not, so a typo'd constant rendered the
+	 * field read-only, showing the typo, naming the constant, and skipped by
+	 * the save loop, while the site went on running the stored mode. The owner
+	 * was locked out of a setting the constant did not control.
+	 *
+	 * @return void
+	 */
+	public function test_an_invalid_override_neither_locks_the_field_nor_changes_the_mode(): void {
+		update_option( 'albert_privacy_mode', 'off' );
+
+		add_filter( 'albert/privacy/mode', static fn () => 'bananas' );
+
+		$field = $this->field_for( 'albert_privacy_mode' );
+		$this->assertNotNull( $field );
+
+		$this->assertNull(
+			Value::override( 'albert_privacy_mode' ),
+			'A value outside the vocabulary is not an override.'
+		);
+		$this->assertFalse( Lock::is_locked( $field, Value::override( 'albert_privacy_mode' ) ) );
+		$this->assertSame( PrivacyMode::Off, PrivacyMode::resolve() );
+	}
+
+	/**
+	 * The same, one layer up: a constant is skipped too, so resolution falls
+	 * through to the stored value rather than pinning the site to nonsense.
+	 *
+	 * @runInSeparateProcess
+	 * @preserveGlobalState disabled
+	 *
+	 * @return void
+	 */
+	public function test_an_invalid_constant_falls_through_to_the_stored_mode(): void {
+		define( 'ALBERT_PRIVACY_MODE', 'bananas' );
+		update_option( 'albert_privacy_mode', 'off' );
+
+		$this->assertNull( Value::override( 'albert_privacy_mode' ) );
+		$this->assertSame( PrivacyMode::Off, PrivacyMode::resolve() );
+	}
+
+	/**
+	 * A validator answers to the option, so it applies without anything having
+	 * been booted.
+	 *
+	 * Free's own live in a static map rather than on a hook for exactly this
+	 * reason: a privacy question asked before `plugins_loaded` must still get
+	 * the fall-through.
+	 *
+	 * @return void
+	 */
+	public function test_the_validator_does_not_depend_on_registration(): void {
+		remove_all_filters( Value::validator_name( 'albert_privacy_mode' ) );
+
+		$validator = Value::validator( 'albert_privacy_mode' );
+
+		$this->assertIsCallable( $validator );
+		$this->assertTrue( $validator( 'strict' ) );
+		$this->assertFalse( $validator( 'bananas' ) );
+	}
+
+	/**
+	 * Every setting the screen can report as overridden is read through the
+	 * chain that decides that, so the two cannot describe the site differently.
+	 *
+	 * A constant used to lock the connection-retention fields on screen while
+	 * the sweeps went on reading the stored option: a countdown to a date
+	 * nothing was ever going to act on, and a field nobody could edit.
+	 *
+	 * @return void
+	 */
+	public function test_the_retention_settings_resolve_through_the_chain(): void {
+		$cases = [
+			ConnectionRetention::NEVER_USED_OPTION => 'sweep_never_used',
+			ConnectionRetention::IDLE_OPTION       => 'sweep_idle',
+			AllowedUsers::EXPIRY_OPTION            => null,
+		];
+
+		foreach ( $cases as $option_name => $unused ) {
+			update_option( $option_name, 5 );
+
+			add_filter( Value::filter_name( $option_name ), static fn () => 30 );
+
+			$this->assertSame(
+				30,
+				Value::get( $option_name, 0 ),
+				$option_name . ' must resolve through the settings chain.'
+			);
+
+			remove_all_filters( Value::filter_name( $option_name ) );
+			delete_option( $option_name );
+		}
+	}
+
+	/**
+	 * The retention sweep uses the overridden window, not the stored one.
+	 *
+	 * @return void
+	 */
+	public function test_the_idle_sweep_reads_the_override(): void {
+		update_option( ConnectionRetention::IDLE_OPTION, 0 );
+
+		// 0 disables the sweep; the override switches it back on, which is only
+		// observable if the sweep is reading the same chain the screen does.
+		add_filter( Value::filter_name( ConnectionRetention::IDLE_OPTION ), static fn () => 30 );
+
+		$this->assertIsArray( ConnectionRetention::sweep_idle() );
+		$this->assertSame( 30, (int) Value::get( ConnectionRetention::IDLE_OPTION, 0 ) );
+
+		remove_all_filters( Value::filter_name( ConnectionRetention::IDLE_OPTION ) );
+		delete_option( ConnectionRetention::IDLE_OPTION );
 	}
 
 	/**

@@ -30,8 +30,14 @@ use Albert\Media\UploadLinks\UploadLinkService;
  * fully editable, and could save over it without changing what the site did.
  * Now the control renders read-only and says where the value comes from.
  *
+ * What decides whether a given override is *usable* is a separate thing and
+ * lives in {@see Validators}, deliberately as a static map rather than another
+ * set of hooks registered from here. See that class for why.
+ *
  * Registered in every context, not just admin — the generic chain is what
- * `albert_get_setting()` reads on MCP and front-end requests too.
+ * `albert_get_setting()` reads on MCP and front-end requests too, and a cron
+ * sweep resolving a setting differently from the screen that shows it is the
+ * bug this class exists to stop.
  *
  * @since 1.4.0
  */

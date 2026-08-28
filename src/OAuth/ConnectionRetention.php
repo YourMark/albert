@@ -11,6 +11,8 @@ namespace Albert\OAuth;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Admin\Settings\Value;
+
 use Albert\OAuth\Repositories\ClientRepository;
 
 /**
@@ -92,11 +94,18 @@ class ConnectionRetention {
 	 * @since 1.4.0
 	 */
 	public static function sweep_never_used(): array {
+		// Read through the settings chain, not get_option(): a constant or an
+		// `albert/settings/value/{option}` filter pins this the same way it pins
+		// any other setting, and (the part that matters) the Settings screen
+		// renders the field read-only when one is in force. A sweep reading the
+		// stored option while the screen says code owns it would delete
+		// connections on a schedule nobody could see or change.
+		//
 		// The default stays explicit even though Settings\Storage registers one.
 		// That registration runs on `admin_init`, and this sweep runs in cron,
 		// where it has not happened: get_option() would return false, cast to 0,
 		// and quietly disable the sweep it is supposed to configure.
-		$days = (int) get_option( self::NEVER_USED_OPTION, self::DEFAULT_NEVER_USED_DAYS );
+		$days = (int) Value::get( self::NEVER_USED_OPTION, self::DEFAULT_NEVER_USED_DAYS );
 
 		if ( $days <= 0 ) {
 			return [];
@@ -129,8 +138,9 @@ class ConnectionRetention {
 	 * @since 1.4.0
 	 */
 	public static function sweep_idle(): array {
-		// Explicit default: cron, not admin. See sweep_never_used().
-		$days = (int) get_option( self::IDLE_OPTION, self::DEFAULT_IDLE_DAYS );
+		// Settings chain and an explicit default: cron, not admin. See
+		// sweep_never_used().
+		$days = (int) Value::get( self::IDLE_OPTION, self::DEFAULT_IDLE_DAYS );
 
 		if ( $days <= 0 ) {
 			return [];

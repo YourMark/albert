@@ -11,6 +11,8 @@ namespace Albert\OAuth;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Admin\Settings\Value;
+
 /**
  * AllowedUsers class
  *
@@ -388,9 +390,13 @@ class AllowedUsers {
 	 * @since 1.4.0
 	 */
 	private static function compute_expiry( int $from ): ?int {
+		// Read through the settings chain so a constant or filter pinning this
+		// window is the window actually used, matching what the Settings screen
+		// reports while one is in force.
+		//
 		// Explicit default: reachable from cron and WP-CLI as well as admin, and
 		// Settings\Storage only registers its default on `admin_init`.
-		$days = (int) get_option( self::EXPIRY_OPTION, self::DEFAULT_EXPIRY_DAYS );
+		$days = (int) Value::get( self::EXPIRY_OPTION, self::DEFAULT_EXPIRY_DAYS );
 
 		return $days > 0 ? $from + ( $days * DAY_IN_SECONDS ) : null;
 	}

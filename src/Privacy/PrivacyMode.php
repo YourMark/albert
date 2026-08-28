@@ -54,23 +54,22 @@ enum PrivacyMode: string {
 	 * @return self
 	 */
 	public static function resolve(): self {
-		// A layer whose value is not one of the three modes is skipped rather
-		// than accepted: a typo in ALBERT_PRIVACY_MODE falls through to the
-		// filter or the stored value, which is what this did before Value
-		// existed and is the behaviour worth keeping.
-		$validator = static function ( $value ): bool {
-			return is_scalar( $value ) && self::normalize( (string) $value ) instanceof self;
-		};
-
 		// Constant -> albert/settings/value/albert_privacy_mode -> option.
 		// `albert/privacy/mode` still works and is still the documented way to
 		// set this in code; Settings\Overrides feeds it into the filter layer,
 		// which is also what lets the Settings screen show it as in force.
-		$value = Value::get( 'albert_privacy_mode', '', $validator );
+		//
+		// No validator is passed. A layer holding something that is not one of
+		// the three modes still has to be skipped, since a typo in
+		// ALBERT_PRIVACY_MODE must fall through rather than resolve to nonsense.
+		// But the rule for that is declared once, against the option, by
+		// Settings\Overrides, and Value finds it from the name alone. Passing
+		// one here is what made this method and the Settings screen disagree:
+		// the screen asked without a validator, accepted the typo, and locked
+		// the field to a value the site was not using.
+		$value = Value::get( 'albert_privacy_mode', '' );
 
-		$mode = is_scalar( $value ) ? self::normalize( (string) $value ) : null;
-
-		return $mode ?? self::Balanced;
+		return self::try_parse( is_scalar( $value ) ? (string) $value : '' ) ?? self::Balanced;
 	}
 
 	/**
@@ -85,21 +84,28 @@ enum PrivacyMode: string {
 	 * @return string One of `strict`, `balanced`, or `off`.
 	 */
 	public static function sanitize( $value ): string {
-		$mode = is_string( $value ) ? self::normalize( $value ) : null;
+		$mode = is_scalar( $value ) ? self::try_parse( (string) $value ) : null;
 
 		return ( $mode ?? self::Balanced )->value;
 	}
 
 	/**
-	 * Normalise a raw string to a case, or null when unrecognised.
+	 * Parse a raw string to a case, or null when it is not one of the three.
+	 *
+	 * Public because it is the vocabulary check, and more than this enum needs
+	 * to make it: {@see \Albert\Admin\Settings\Overrides} answers the option's
+	 * `albert/settings/validator/albert_privacy_mode` with it, so the Settings
+	 * screen and {@see self::resolve()} judge an override by the same rule
+	 * rather than each keeping a copy.
 	 *
 	 * @since 1.3.0
+	 * @since 1.4.0 Renamed from the private `normalize()` and made public.
 	 *
 	 * @param string $value The raw value.
 	 *
 	 * @return self|null
 	 */
-	private static function normalize( string $value ): ?self {
+	public static function try_parse( string $value ): ?self {
 		return self::tryFrom( strtolower( trim( $value ) ) );
 	}
 }
