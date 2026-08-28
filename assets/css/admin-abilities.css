@@ -500,6 +500,25 @@ code.albert-flyin__card-value {
 	padding: 6px 12px;
 }
 
+/**
+ * One select-all control, not two.
+ *
+ * This screen composes DataViews by hand, and renders `BulkActionToolbar`
+ * above `Layout`. Both ship a select-all checkbox: the toolbar's, and the
+ * table header's. Once anything is selected they stack 47px apart, and both
+ * carry the *identical* accessible name, "Deselect all" — so a screen reader
+ * announces the same control twice in a row with nothing to tell them apart,
+ * and on screen it reads as a stray extra checkbox.
+ *
+ * The table header's is the one that stays: it is the control the pointer is
+ * already on (it is what created the selection), and it is the only one
+ * present before there is a selection to clear. What is left in the bar is
+ * what a bulk bar is for — the count, the actions, and its own labelled
+ * Cancel, which clears the selection.
+ */
+.albert-abilities__bulkbar .dataviews-view-table-selection-checkbox {
+	display: none;
+}
 
 /* Permissions section — Free default. Mirrors Premium's Capability/Custom
    toggle; the Custom tab is a locked preview + upsell (Premium replaces the
