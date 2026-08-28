@@ -89,6 +89,10 @@ class SettingsBootstrapTest extends TestCase {
 	 * popover adjacent — `admin-popover.js` finds the popover with
 	 * `nextElementSibling`, so anything between them breaks it.
 	 *
+	 * The popover is a `<span>`, not a `<div>`: the whole control is phrasing
+	 * content so it stays legal inside a `<legend>`, a `<p>` or a `<label>`,
+	 * which is where a tip beside a field's name has to sit.
+	 *
 	 * @return void
 	 */
 	public function test_uploads_field_renders_the_shared_info_control(): void {
@@ -97,7 +101,7 @@ class SettingsBootstrapTest extends TestCase {
 		$this->assertStringContainsString( 'albert-tip__trigger', $html );
 		$this->assertStringContainsString( 'aria-expanded="false"', $html );
 		$this->assertMatchesRegularExpression(
-			'/<button[^>]*aria-controls="([^"]+)"[^>]*>.*?<\/button><div class="albert-tip__popover" id="\1"/s',
+			'/<button[^>]*aria-controls="([^"]+)"[^>]*>.*?<\/button><span class="albert-tip__popover" id="\1"/s',
 			$html
 		);
 	}

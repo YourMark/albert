@@ -13,6 +13,7 @@ namespace Albert\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Admin\Settings\Lock;
 use Albert\Admin\Settings\Value;
 use Throwable;
 
@@ -67,26 +68,49 @@ class SettingsRenderer {
 			// Custom and radio-cards fields keep a single-column layout: a custom
 			// render callback (licenses table, copy-to-clipboard widgets) or a stack
 			// of full-width cards neither fit the two-column grid below.
+			//
+			// A group of radios is wrapped in a <fieldset> and named by its
+			// <legend>, which is how HTML names a group and what a screen reader
+			// announces before each option. A <label> cannot do that job: it
+			// names one control, and there is no single control here to name.
+			// The `for` pointed at an id nothing on the page carried, so the
+			// group had no accessible name at all and the label was inert.
+			$is_group = $type === 'radio-cards';
+
 			echo '<div class="albert-field-group albert-field-group--custom">';
+			echo $is_group ? '<fieldset class="albert-field-fieldset">' : '';
+
 			if ( $label !== '' ) {
-				echo '<div class="albert-field-label-row">';
-				echo '<label class="albert-field-label" for="' . esc_attr( $input_id ) . '">' . esc_html( $label );
+				// The <legend> IS the label row, rather than sitting inside one.
+				// A legend only captions its fieldset when it is that fieldset's
+				// first child, so wrapping it in the row div would have left the
+				// group unnamed while looking correct on screen, the same
+				// silent failure as the `for` it replaces.
+				if ( $is_group ) {
+					echo '<legend class="albert-field-label albert-field-label-row">' . esc_html( $label );
+				} else {
+					echo '<div class="albert-field-label-row">';
+					echo '<label class="albert-field-label" for="' . esc_attr( $input_id ) . '">' . esc_html( $label );
+				}
+
 				if ( $badge !== '' ) {
 					echo ' <span class="albert-badge albert-badge--warning">' . esc_html( $badge ) . '</span>';
 				}
-				echo '</label>';
+
+				echo $is_group ? '' : '</label>';
 				$this->render_info( $field, $label, $input_id );
-				echo '</div>';
+				echo $is_group ? '</legend>' : '</div>';
 			}
 			if ( $description !== '' ) {
 				echo '<p class="albert-field-description">' . esc_html( $description ) . '</p>';
 			}
-			if ( $type === 'radio-cards' ) {
-				$this->render_radio_cards( $field, $current_value, $option_name, $this->is_disabled( $field, $override ) );
+			if ( $is_group ) {
+				$this->render_radio_cards( $field, $current_value, $option_name, Lock::is_locked( $field, $override ) );
 			} else {
 				$this->render_custom( $field, $current_value );
 			}
 			$this->render_hint( $field, $override );
+			echo $is_group ? '</fieldset>' : '';
 			echo '</div>';
 			return;
 		}
@@ -128,7 +152,7 @@ class SettingsRenderer {
 			}
 		}
 
-		if ( $this->is_disabled( $field, $override ) ) {
+		if ( Lock::is_locked( $field, $override ) ) {
 			$field['attributes']['disabled'] = true;
 		}
 
@@ -207,40 +231,6 @@ class SettingsRenderer {
 		$info = isset( $field['info'] ) && is_string( $field['info'] ) ? $field['info'] : '';
 
 		InfoTip::render( $info, $label, $input_id . '-info' );
-	}
-
-	/**
-	 * Whether this field's control should render disabled.
-	 *
-	 * An active override disables the control on its own, with no declaration
-	 * needed: a box somebody can type into and save, whose value a constant or
-	 * filter then discards, is a lie about what the site does. Fields used to
-	 * declare this themselves — the upload size limit carried a `disabled`
-	 * callback purely to say "a filter is overriding this" — which meant every
-	 * new overridable setting had to remember to.
-	 *
-	 * `disabled` may still be a bool or a callable returning one, for a
-	 * condition the resolver cannot see (a network policy, a licence state).
-	 *
-	 * @since 1.4.0
-	 *
-	 * @param array<string, mixed>                                   $field    Normalised field definition.
-	 * @param array{source: string, value: mixed, name: string}|null $override Active override, if any.
-	 *
-	 * @return bool
-	 */
-	private function is_disabled( array $field, ?array $override = null ): bool {
-		if ( $override !== null ) {
-			return true;
-		}
-
-		$disabled = $field['disabled'] ?? false;
-
-		if ( is_callable( $disabled ) ) {
-			return (bool) call_user_func( $disabled );
-		}
-
-		return (bool) $disabled;
 	}
 
 	/**
@@ -472,10 +462,15 @@ class SettingsRenderer {
 		$options = isset( $field['options'] ) && is_array( $field['options'] ) ? $field['options'] : [];
 		$value   = $current_value === null ? '' : (string) $current_value;
 
+		// No `role="radiogroup"`: render_field() wraps this in a <fieldset> with
+		// a <legend>, which is the native grouping and the only one of the two
+		// that carries a name. An ARIA role on top would announce a second,
+		// anonymous group around the same radios.
+		//
 		// Disabled rather than hidden: the choices stay readable, so somebody
 		// can still see which one is in force and what the alternatives are.
 		printf(
-			'<div class="albert-radio-cards%s" role="radiogroup">',
+			'<div class="albert-radio-cards%s">',
 			$disabled ? ' albert-radio-cards--disabled' : '' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static string.
 		);
 
