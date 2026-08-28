@@ -1834,23 +1834,52 @@ input.albert-endpoint__field {
 	line-height: normal;
 }
 
+/* ==========================================================================
+   Button height
+   ========================================================================== */
+
 /**
- * The Copy button beside it, at the same height.
+ * One button height across every Albert screen.
  *
- * This file says elsewhere that buttons are core's and Albert does not
- * re-implement them, and that still holds: this sets a height, nothing else,
- * and only for a button that is half of a field-and-button pair. A pair whose
- * two halves are different heights is a layout fault rather than a button
- * style, and core's `.button` is 40px here while every control around it is
- * 32px.
+ * This file still says Albert does not re-implement buttons, and it still
+ * doesn't: colour, border, radius, focus ring, hover and the whole
+ * primary/secondary vocabulary remain core's, so a button here goes on looking
+ * like wp-admin and follows the admin colour scheme. What is set is a height,
+ * because height is not a button style, it is what decides whether a row of
+ * controls lines up.
  *
- * Scoped to `.albert-endpoint` on purpose. Core buttons everywhere else on
- * these screens keep core's height, because they stand alone and should look
- * like wp-admin.
+ * Measured across the six screens before writing this, there were **five**
+ * heights doing the same job: core `.button` at 40, `@wordpress/components`
+ * `is-compact` at 32, `.button-small` at 24, `.albert-button-danger` at 28 and
+ * `.albert-deactivate-btn` at 23. Copy alone shipped at two of them. None of
+ * that was a decision anybody made; each was locally reasonable and nobody had
+ * ever looked at the set.
+ *
+ * 32px, because that is already `--albert-control-height`: what every input,
+ * select and DataViews control on these screens measures. A button beside a
+ * field is the common case here, and the alternative was moving every field to
+ * 40px, which is the "way too big" this started from.
+ *
+ * **Not everything with a `<button>` tag is a control.** Three affordances are
+ * deliberately left alone, because they are type, not boxes, and giving them a
+ * 32px frame would be worse than the inconsistency:
+ *   .albert-tip__trigger            the "(i)" that sits inside a label
+ *   .albert-context__preview-toggle an inline disclosure inside a sentence
+ *   .albert-link-button             a text link that happens to be a button
+ * None of them carries `.button`, so none is caught here. That is the test for
+ * anything added later: if it belongs in a row of controls it takes this
+ * height; if it belongs in a line of text it does not.
+ *
+ * Ties core's own `.wp-core-ui .button` on specificity (0-2-0) and wins on load
+ * order, since Albert's stylesheets are enqueued after core's. Verified by
+ * measurement, not assumed: see the note on the toolbar selects above for what
+ * happens when that assumption is skipped.
  */
-.albert-endpoint .button {
+.albert-page .button,
+.albert-page button.button {
 	display: inline-flex;
 	align-items: center;
+	justify-content: center;
 	min-block-size: var(--albert-control-height);
 	block-size: var(--albert-control-height);
 	padding-block: 0;
@@ -1882,6 +1911,14 @@ input.albert-endpoint__field {
 	align-items: center;
 	gap: var(--albert-space-300);
 	padding-block: var(--albert-space-300);
+	/* Line the button up with the cards' *contents*, not with their outer edge.
+	   The bar is a sibling of the cards and spans the same width, so with no
+	   inline padding the button sat flush against the card border at 182px
+	   while every card title, description and field label above it started at
+	   201px. The eye tracks that content column down the page and the button
+	   jutted out of it. The +1px is the card's own border, which the bar does
+	   not have: card padding alone would land it a pixel short. */
+	padding-inline: calc(var(--albert-card-padding) + 1px);
 	background: var(--albert-color-surface);
 	border-block-start: 1px solid var(--albert-color-border);
 }

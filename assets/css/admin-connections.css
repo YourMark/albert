@@ -135,11 +135,13 @@
  * solid red button on every row would shout, and these are the rows somebody
  * scans rather than acts on.
  */
+/* Height from the shared token, not a number of its own: this is a button in a
+   row of buttons. See the button-height block in albert-primitives.css. */
 .albert-button-danger {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-block-size: 28px;
+	min-block-size: var(--albert-control-height);
 	padding: 0 var(--albert-space-300);
 	border: 1px solid var(--albert-color-danger);
 	border-radius: var(--albert-radius-sm);

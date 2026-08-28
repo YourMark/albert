@@ -122,11 +122,17 @@
 }
 
 /* Deactivate button */
+/* Height from the shared token. It was 23px, from ad-hoc vertical padding, next
+   to a 32px field and a 40px Activate button. See albert-primitives.css. */
 .albert-deactivate-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-block-size: var(--albert-control-height);
 	background: none;
 	border: 1px solid var(--albert-color-danger);
 	color: var(--albert-color-danger);
-	padding: 3px 10px;
+	padding: 0 10px;
 	border-radius: var(--albert-radius-md);
 	font-size: var(--albert-font-size-sm);
 	font-weight: 500;
