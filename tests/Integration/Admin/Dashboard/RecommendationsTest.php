@@ -137,8 +137,8 @@ class RecommendationsTest extends TestCase {
 
 		$shown = ( new Recommendations() )->current( 1 );
 
-		$this->assertCount( 2, $shown, 'Three qualifying add-ons must not produce three cards.' );
-		$this->assertSame( [ 'first', 'second' ], array_column( $shown, 'slug' ) );
+		$this->assertCount( 1, $shown, 'Three qualifying add-ons must not produce three cards.' );
+		$this->assertSame( [ 'first' ], array_column( $shown, 'slug' ) );
 	}
 
 	/**

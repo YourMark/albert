@@ -113,6 +113,52 @@ class SuggestionsTest extends TestCase {
 	}
 
 	/**
+	 * A prompt needing an ability this site does not have is withheld, even
+	 * though nothing has switched that ability off.
+	 *
+	 * The regression this guards is the whole card's promise failing open.
+	 * `AbilitiesState` answers from a blocklist, so an ability that was never
+	 * registered has never been disabled and reads as enabled, which put
+	 * "Which products sold best last month?" at the top of the card on every
+	 * site without WooCommerce.
+	 *
+	 * @return void
+	 */
+	public function test_a_prompt_is_withheld_when_its_ability_is_not_registered(): void {
+		update_option( 'albert_disabled_abilities', [] );
+
+		$this->assertTrue(
+			\Albert\Core\AbilitiesState::is_enabled( 'albert/nothing-registers-this' ),
+			'An unregistered ability reads as enabled; that is what makes the registry check necessary.'
+		);
+
+		$this->only_prompt( [ 'albert/nothing-registers-this' ] );
+
+		$this->assertSame( [], ( new Suggestions() )->all() );
+	}
+
+	/**
+	 * The shipped WooCommerce prompt does not appear without WooCommerce.
+	 *
+	 * The concrete case behind the test above, asserted against the real
+	 * defaults rather than a fixture, because it is the shipped list that was
+	 * wrong.
+	 *
+	 * @return void
+	 */
+	public function test_the_shipped_woocommerce_prompt_is_absent_without_woocommerce(): void {
+		update_option( 'albert_disabled_abilities', [] );
+
+		$this->assertFalse( class_exists( 'WooCommerce' ), 'This test only means anything without WooCommerce.' );
+
+		$texts = array_column( ( new Suggestions() )->all(), 'text' );
+
+		foreach ( $texts as $text ) {
+			$this->assertStringNotContainsString( 'products sold', $text );
+		}
+	}
+
+	/**
 	 * Malformed entries are dropped rather than rendered as blanks.
 	 *
 	 * @return void

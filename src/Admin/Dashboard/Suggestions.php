@@ -11,6 +11,7 @@ namespace Albert\Admin\Dashboard;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Core\AbilitiesRegistry;
 use Albert\Core\AbilitiesState;
 
 /**
@@ -22,10 +23,19 @@ use Albert\Core\AbilitiesState;
  * derived from the Abilities screen either.
  *
  * **Every suggestion is checked before it is shown.** A prompt names the
- * abilities it needs, and it is listed only when all of them are switched on,
- * so the card never recommends something that would fail. That is also what
- * makes it site-specific for free: a shop with the WooCommerce abilities
- * enabled is offered order questions, and a site without them never sees them.
+ * abilities it needs, and it is listed only when all of them are *available on
+ * this site*: registered, and switched on. So the card never recommends
+ * something that would fail. That is also what makes it site-specific for free:
+ * a shop with the WooCommerce abilities enabled is offered order questions, and
+ * a site without them never sees them.
+ *
+ * **Registered, not merely enabled**, and the distinction is the whole check.
+ * `AbilitiesState` answers from a blocklist, so an ability that does not exist
+ * on this site has never been switched off and reads as enabled. Asking it
+ * alone put "Which products sold best last month?" at the top of the card on
+ * every WordPress site in the world, shop or not: Albert only registers the
+ * WooCommerce abilities when WooCommerce is active, so on a plain site
+ * `albert/woo-find-orders` was simultaneously absent and "enabled".
  *
  * Registered as data so an add-on contributes a prompt without touching markup.
  *
@@ -69,10 +79,14 @@ class Suggestions {
 			return [];
 		}
 
+		// Fetched once, outside the filter: this is the raw registry, and asking
+		// it per prompt would walk it several times over for one page render.
+		$registered = AbilitiesRegistry::get_all_raw();
+
 		$available = array_values(
 			array_filter(
 				$prompts,
-				static function ( $prompt ): bool {
+				static function ( $prompt ) use ( $registered ): bool {
 					if ( ! is_array( $prompt ) || empty( $prompt['text'] ) || ! is_string( $prompt['text'] ) ) {
 						return false;
 					}
@@ -80,7 +94,13 @@ class Suggestions {
 					$requires = isset( $prompt['requires'] ) && is_array( $prompt['requires'] ) ? $prompt['requires'] : [];
 
 					foreach ( $requires as $ability_id ) {
-						if ( ! AbilitiesState::is_enabled( (string) $ability_id ) ) {
+						$ability_id = (string) $ability_id;
+
+						if ( ! isset( $registered[ $ability_id ] ) ) {
+							return false;
+						}
+
+						if ( ! AbilitiesState::is_enabled( $ability_id ) ) {
 							return false;
 						}
 					}

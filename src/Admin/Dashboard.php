@@ -151,7 +151,7 @@ class Dashboard implements Hookable {
 			'albert-admin-utils',
 			ALBERT_PLUGIN_URL . 'assets/js/albert-admin-utils.js',
 			[],
-			ALBERT_VERSION,
+			Assets::version( 'assets/js/albert-admin-utils.js' ),
 			true
 		);
 
@@ -566,22 +566,26 @@ class Dashboard implements Hookable {
 			],
 		];
 
+		$stats[] = $this->privacy_stat();
+
 		/**
 		 * Filters the tiles shown in the Dashboard's stat row.
 		 *
-		 * Each tile is `[ 'label' => string, 'value' => string, 'meta' => string ]`,
-		 * where `meta` may contain a link and is expected to be already escaped.
-		 * Free seeds the two figures it can compute from data it retains; an
-		 * add-on with its own history (call volume, failure rate, duration)
-		 * appends tiles here rather than Free guessing at numbers it cannot
-		 * verify. See docs/features/70-admin-design-system.md §4.
+		 * Each tile is `[ 'label' => string, 'value' => string, 'meta' => string ]`
+		 * plus an optional `indicator`. `label` and `value` are escaped as text;
+		 * `meta` may contain a link and is `wp_kses`'d down to `<a href>`;
+		 * `indicator` names a status dot (`strict`/`balanced`/`off`) rather than
+		 * passing markup.
+		 *
+		 * Free seeds the figures it can compute from data it retains; an add-on
+		 * with its own history (call volume, failure rate, duration) appends
+		 * tiles here rather than Free guessing at numbers it cannot verify. See
+		 * docs/features/70-admin-design-system.md §4.
 		 *
 		 * @since 1.4.0
 		 *
-		 * @param array<int, array{label: string, value: string, meta: string}> $stats Stat tiles.
+		 * @param array<int, array{label: string, value: string, meta: string, indicator?: string}> $stats Stat tiles.
 		 */
-		$stats[] = $this->privacy_stat();
-
 		$stats = apply_filters( 'albert/dashboard/stats', $stats );
 
 		if ( ! is_array( $stats ) || empty( $stats ) ) {
@@ -734,7 +738,7 @@ class Dashboard implements Hookable {
 	 * alone. The dot takes a status-light token rather than the text one, which
 	 * is tuned to be read at type sizes and goes muddy at 10px.
 	 *
-	 * @return array{label: string, value: string, meta: string}
+	 * @return array{label: string, value: string, meta: string, indicator: string}
 	 * @since 1.4.0
 	 */
 	private function privacy_stat(): array {
@@ -946,8 +950,8 @@ class Dashboard implements Hookable {
 
 		$is_invalid = $state === 'invalid';
 		?>
-		<div class="albert-hint albert-hint--<?php echo $is_invalid ? 'warning' : 'info'; ?> albert-endpoint__notice">
-			<span class="dashicons dashicons-<?php echo $is_invalid ? 'warning' : 'info-outline'; ?>" aria-hidden="true"></span>
+		<div class="albert-hint albert-hint--<?php echo esc_attr( $is_invalid ? 'warning' : 'info' ); ?> albert-endpoint__notice">
+			<span class="dashicons dashicons-<?php echo esc_attr( $is_invalid ? 'warning' : 'info-outline' ); ?>" aria-hidden="true"></span>
 			<p>
 				<?php
 				if ( $is_invalid ) {
@@ -1097,9 +1101,18 @@ class Dashboard implements Hookable {
 				</div>
 				<p class="albert-recommend__detail">
 					<?php
+					// The inactive wording belongs to the add-on, not to this
+					// card: an entry that does not supply one keeps its ordinary
+					// detail rather than being described in somebody else's
+					// words. Hardcoding it here is how an installed-but-off
+					// Premium came to be offered as a way to "work with your shop".
+					$inactive_detail = isset( $addon['inactive_detail'] ) && is_string( $addon['inactive_detail'] )
+						? $addon['inactive_detail']
+						: (string) $addon['detail'];
+
 					echo esc_html(
 						( $addon['state'] ?? '' ) === AddonState::INACTIVE
-							? __( 'You already have this. Switch it on to let assistants work with your shop.', 'albert-ai-butler' )
+							? $inactive_detail
 							: (string) $addon['detail']
 					);
 					?>
@@ -1270,7 +1283,20 @@ class Dashboard implements Hookable {
 		// enabled. That is what made the tile read "57 of 57" on a site with
 		// 46 abilities switched off, and hid the "review the ones you switched
 		// off" link, which only appears when the two numbers differ.
-		return Plugin::get_instance()->get_abilities_manager()->get_ability_counts();
+		$manager = Plugin::get_instance()->get_abilities_manager();
+
+		// Nullable until abilities are registered on `init`. This screen renders
+		// long after that, so the guard is belt and braces. But a dashboard
+		// that fatals rather than showing one fewer figure is the worse trade,
+		// and PHPStan does not report nullable method calls below level 8.
+		if ( $manager === null ) {
+			return [
+				'enabled' => 0,
+				'total'   => 0,
+			];
+		}
+
+		return $manager->get_ability_counts();
 	}
 
 	/**
@@ -1291,11 +1317,11 @@ class Dashboard implements Hookable {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
 		$names = $wpdb->get_col(
 			$wpdb->prepare(
-				'SELECT DISTINCT COALESCE( NULLIF( c.label, "" ), c.name ) AS display_name
+				"SELECT DISTINCT COALESCE( NULLIF( c.label, '' ), c.name ) AS display_name
 				FROM %i c
 				INNER JOIN %i t ON t.client_id = c.client_id
 				WHERE t.revoked = 0
-				ORDER BY display_name ASC',
+				ORDER BY display_name ASC",
 				$tables['clients'],
 				$tables['access_tokens']
 			)

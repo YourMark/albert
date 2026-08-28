@@ -31,10 +31,13 @@ defined( 'ABSPATH' ) || exit;
  * only works if the notice is inside it when the announcement matters — see
  * above. Core's own notice output carries no live region at all.
  *
- * The classes are core's (`notice`, `notice-{type}`, `is-dismissible`) on
- * purpose: an admin notice should look and behave like every other WordPress
- * admin notice, and `is-dismissible` is wired by core's JS wherever the node
- * sits. Only the emission is ours.
+ * The markup is core's, from `wp_admin_notice()` (WP 6.4+), which is what
+ * `settings_errors()` itself calls. An admin notice should look and behave like
+ * every other WordPress admin notice, `is-dismissible` is wired by core's JS
+ * wherever the node sits, and anything core changes about that markup arrives
+ * here for free. All this class decides is *where* the notice goes and that it
+ * is announced; it hand-rolled the `<div>` for a while and that was one more
+ * copy of core's markup than anybody needed.
  *
  * @since 1.4.0
  */
@@ -69,11 +72,21 @@ class Notices {
 				$type = 'success';
 			}
 
-			printf(
-				'<div id="setting-error-%1$s" class="notice notice-%2$s settings-error inline is-dismissible"><p><strong>%3$s</strong></p></div>',
-				esc_attr( isset( $error['code'] ) && is_string( $error['code'] ) ? $error['code'] : '' ),
-				esc_attr( $type ),
-				esc_html( (string) $error['message'] )
+			$code = isset( $error['code'] ) && is_string( $error['code'] ) ? $error['code'] : '';
+
+			wp_admin_notice(
+				'<strong>' . esc_html( (string) $error['message'] ) . '</strong>',
+				[
+					'id'                 => 'setting-error-' . sanitize_html_class( $code ),
+					'type'               => $type,
+					'dismissible'        => true,
+					// `inline` is the whole reason this class exists: it is what
+					// opts the notice out of core's hoist. `settings-error` keeps
+					// the class settings_errors() would have emitted, so anything
+					// selecting on it still finds these.
+					'additional_classes' => [ 'settings-error', 'inline' ],
+					'paragraph_wrap'     => true,
+				]
 			);
 		}
 

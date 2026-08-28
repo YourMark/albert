@@ -11,6 +11,7 @@ namespace Albert\Admin\Dashboard;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Admin\Settings\Value;
 use Albert\Core\AbilitiesRegistry;
 use Albert\Core\AbilitiesState;
 use Albert\Core\Plugin;
@@ -41,7 +42,10 @@ use Albert\OAuth\Repositories\ClientRepository;
  *   choices teaches people to stop reading it.
  *
  * Dismissal is per item and only where dismissing is safe, see
- * {@see self::is_dismissible()}.
+ * {@see self::is_dismissible()}. It also **lapses**, and an item's id carries
+ * the instance it is about rather than only its subject, so neither one can
+ * turn a single click into a permanent blind spot. See
+ * {@see self::is_dismissed()}.
  *
  * Every check is cheap: options that are already autoloaded, one bulk log query
  * shared across every ability, and the connection list the screen loads anyway.
@@ -65,6 +69,17 @@ class Attention {
 	 * @var string
 	 */
 	public const DISMISS_ACTION = 'albert_dismiss_attention';
+
+	/**
+	 * How long a dismissal holds before the finding is offered again.
+	 *
+	 * Long enough that clicking Dismiss is not pointless, short enough that a
+	 * condition still true a season later gets said once more.
+	 *
+	 * @since 1.4.0
+	 * @var int
+	 */
+	private const DISMISSAL_DAYS = 90;
 
 	/**
 	 * Tones, most urgent first. Also the sort order of the rendered list.
@@ -173,14 +188,19 @@ class Attention {
 			)
 		);
 
+		// A tone this class does not know sorts last, not first. `array_search()`
+		// returns false for a miss and (int) false is 0, which is `danger`'s own
+		// rank, so an add-on item with a typo'd tone jumped the queue while
+		// render_attention_item() drew it as `info`. The rank and the rendering
+		// have to agree, and both now fall back to the least urgent reading.
 		usort(
 			$items,
 			static function ( array $a, array $b ): int {
-				$rank = static fn( array $i ): int => (int) array_search(
-					$i['tone'] ?? 'info',
-					self::TONE_ORDER,
-					true
-				);
+				$rank = static function ( array $item ): int {
+					$position = array_search( $item['tone'] ?? 'info', self::TONE_ORDER, true );
+
+					return $position === false ? count( self::TONE_ORDER ) : (int) $position;
+				};
 
 				return $rank( $a ) <=> $rank( $b );
 			}
@@ -236,7 +256,7 @@ class Attention {
 				continue;
 			}
 
-			$label = Plugin::get_instance()->get_abilities_manager()->get_label( (string) $ability_name );
+			$label = $this->ability_label( (string) $ability_name );
 			$when  = isset( $row->created_ts ) ? (int) $row->created_ts : 0;
 
 			$items[] = [
@@ -264,6 +284,34 @@ class Attention {
 		);
 
 		return array_slice( $items, 0, self::MAX_FAILURES );
+	}
+
+	/**
+	 * One ability's human-readable name.
+	 *
+	 * The list this walks comes from the raw registry, which holds abilities
+	 * registered directly with WordPress by other plugins as well as Albert's
+	 * own, and the manager only knows its own, so `get_label()` returns null
+	 * for a third-party one and the item's title came out as " failed the last
+	 * time it ran". `get_abilities_manager()` is nullable besides.
+	 * {@see AbilitiesRegistry::label_for()} is the shared fallback, and
+	 * prettifies the slug when it has nothing better.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param string $ability_name Ability id.
+	 *
+	 * @return string
+	 */
+	private function ability_label( string $ability_name ): string {
+		$manager = Plugin::get_instance()->get_abilities_manager();
+		$label   = $manager !== null ? $manager->get_label( $ability_name ) : null;
+
+		if ( is_string( $label ) && $label !== '' ) {
+			return $label;
+		}
+
+		return AbilitiesRegistry::label_for( $ability_name );
 	}
 
 	/**
@@ -355,7 +403,12 @@ class Attention {
 	 * @return array<int, array<string, mixed>>
 	 */
 	private function connections_about_to_go(): array {
-		$days = (int) get_option( ConnectionRetention::NEVER_USED_OPTION, ConnectionRetention::DEFAULT_NEVER_USED_DAYS );
+		// The same read the sweep makes, chain and all. A prediction derived
+		// from a different source than the thing it predicts is not a
+		// prediction: with a constant pinning the window, reading the stored
+		// option here would count down to a date the sweep was never going to
+		// act on.
+		$days = (int) Value::get( ConnectionRetention::NEVER_USED_OPTION, ConnectionRetention::DEFAULT_NEVER_USED_DAYS );
 
 		if ( $days <= 0 ) {
 			return [];
@@ -455,7 +508,11 @@ class Attention {
 			$name = $user instanceof \WP_User ? $user->display_name : __( 'Someone', 'albert-ai-butler' );
 
 			$items[] = [
-				'id'          => 'invitation:' . $user_id,
+				// The deadline is part of the id, so a fresh invitation to the
+				// same person is a different finding. Without it, dismissing
+				// one person's expiry notice silenced every later one they were
+				// ever sent.
+				'id'          => 'invitation:' . $user_id . ':' . $expires,
 				'tone'        => 'warning',
 				'tone_label'  => $left <= 0 ? __( 'Expired', 'albert-ai-butler' ) : __( 'Expiring', 'albert-ai-butler' ),
 				'title'       => $left <= 0
@@ -574,12 +631,20 @@ class Attention {
 	}
 
 	/**
-	 * Whether this user has dismissed this exact finding.
+	 * Whether this user has dismissed this exact finding, recently enough for
+	 * it to still count.
 	 *
 	 * Keyed on the item id, which carries the subject with it
 	 * (`ability-failed:albert/upload-media`), so dismissing one ability's
 	 * failure never hides another's. Per user, because one administrator
 	 * deciding they do not care must not blind the rest.
+	 *
+	 * **A dismissal expires.** "I have seen this" is a statement about today,
+	 * not a permanent instruction, and this card's whole contract is that an
+	 * item is a condition that is *still true*. A dismissal that never lapsed
+	 * turned the one advisory item somebody clicked away into a permanent
+	 * blind spot: switch `albert/get-skill` back on and off again a year later
+	 * and the card stays silent about it.
 	 *
 	 * @since 1.4.0
 	 *
@@ -593,13 +658,58 @@ class Attention {
 			return false;
 		}
 
-		$dismissed = get_user_meta( $user_id, self::DISMISSED_META, true );
+		$dismissed = self::dismissals( $user_id );
 
-		return is_array( $dismissed ) && in_array( $id, $dismissed, true );
+		if ( ! isset( $dismissed[ $id ] ) ) {
+			return false;
+		}
+
+		return $dismissed[ $id ] > time() - ( self::DISMISSAL_DAYS * DAY_IN_SECONDS );
+	}
+
+	/**
+	 * This user's dismissals, as `id => unix timestamp`.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param int $user_id User id.
+	 *
+	 * @return array<string, int>
+	 */
+	private static function dismissals( int $user_id ): array {
+		$raw = get_user_meta( $user_id, self::DISMISSED_META, true );
+
+		if ( ! is_array( $raw ) ) {
+			return [];
+		}
+
+		$dismissals = [];
+
+		foreach ( $raw as $id => $when ) {
+			// A flat list of ids, with no timestamp, is the shape this used
+			// before dismissals expired. Read it as long-lapsed rather than
+			// guessing a date: the item comes back once, and is written in the
+			// current shape the next time it is dismissed.
+			if ( is_int( $id ) && is_string( $when ) ) {
+				$dismissals[ $when ] = 0;
+				continue;
+			}
+
+			if ( is_string( $id ) && is_numeric( $when ) ) {
+				$dismissals[ $id ] = (int) $when;
+			}
+		}
+
+		return $dismissals;
 	}
 
 	/**
 	 * Record a dismissal.
+	 *
+	 * Lapsed entries are dropped on the way past. Nothing else ever prunes this
+	 * meta, and an id carries its subject (every invitation, every ability),
+	 * so an append-only list on a busy site grows without bound and is read on
+	 * every Dashboard render.
 	 *
 	 * @since 1.4.0
 	 *
@@ -613,15 +723,15 @@ class Attention {
 			return;
 		}
 
-		$dismissed = get_user_meta( $user_id, self::DISMISSED_META, true );
-		$dismissed = is_array( $dismissed ) ? $dismissed : [];
+		$now     = time();
+		$cutoff  = $now - ( self::DISMISSAL_DAYS * DAY_IN_SECONDS );
+		$current = array_filter(
+			self::dismissals( $user_id ),
+			static fn( int $when ): bool => $when > $cutoff
+		);
 
-		if ( in_array( $id, $dismissed, true ) ) {
-			return;
-		}
+		$current[ $id ] = $now;
 
-		$dismissed[] = $id;
-
-		update_user_meta( $user_id, self::DISMISSED_META, $dismissed );
+		update_user_meta( $user_id, self::DISMISSED_META, $current );
 	}
 }

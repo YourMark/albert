@@ -70,6 +70,7 @@ class AttentionTest extends TestCase {
 	private function record_failure( string $code, int $days_ago = 0 ): void {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test setup against Albert's own log table.
 		$wpdb->insert(
 			Tables::ability_log(),
 			[
@@ -108,6 +109,7 @@ class AttentionTest extends TestCase {
 		global $wpdb;
 
 		if ( $this->ability !== '' ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test teardown against Albert's own log table.
 			$wpdb->delete( Tables::ability_log(), [ 'ability_name' => $this->ability ] );
 		}
 
@@ -228,5 +230,127 @@ class AttentionTest extends TestCase {
 
 		delete_user_meta( 1, Attention::DISMISSED_META );
 		remove_all_filters( 'albert/dashboard/attention' );
+	}
+
+	/**
+	 * A dismissal lapses, so a condition still true months later is said again.
+	 *
+	 * The card's contract is that an item is a condition that is *still true*.
+	 * A dismissal that never expired turned one click into a permanent blind
+	 * spot: the same finding, arising again a year later, stayed silent.
+	 *
+	 * @return void
+	 */
+	public function test_a_dismissal_lapses(): void {
+		$this->add_item( 'lapsing-thing' );
+
+		Attention::dismiss( 'lapsing-thing', 1 );
+		$this->assertNotContains( 'lapsing-thing', $this->item_ids() );
+
+		// Age the record past the window rather than waiting out a season.
+		update_user_meta( 1, Attention::DISMISSED_META, [ 'lapsing-thing' => time() - ( 400 * DAY_IN_SECONDS ) ] );
+
+		$this->assertContains( 'lapsing-thing', $this->item_ids() );
+
+		delete_user_meta( 1, Attention::DISMISSED_META );
+		remove_all_filters( 'albert/dashboard/attention' );
+	}
+
+	/**
+	 * Dismissing prunes what has already lapsed, so the meta cannot grow
+	 * without bound on a busy site.
+	 *
+	 * @return void
+	 */
+	public function test_dismissing_prunes_lapsed_records(): void {
+		update_user_meta(
+			1,
+			Attention::DISMISSED_META,
+			[
+				'ancient' => time() - ( 400 * DAY_IN_SECONDS ),
+				'recent'  => time(),
+			]
+		);
+
+		Attention::dismiss( 'new-one', 1 );
+
+		$stored = get_user_meta( 1, Attention::DISMISSED_META, true );
+
+		$this->assertArrayNotHasKey( 'ancient', $stored );
+		$this->assertArrayHasKey( 'recent', $stored );
+		$this->assertArrayHasKey( 'new-one', $stored );
+
+		delete_user_meta( 1, Attention::DISMISSED_META );
+	}
+
+	/**
+	 * An item with a tone this class does not know sorts last, not first.
+	 *
+	 * `array_search()` returns false on a miss and `(int) false` is 0, which is
+	 * `danger`'s own rank, so a typo'd tone jumped the queue while the renderer
+	 * drew it as `info`. The rank and the rendering have to agree.
+	 *
+	 * @return void
+	 */
+	public function test_an_unknown_tone_sorts_last(): void {
+		add_filter(
+			'albert/dashboard/attention',
+			static function ( array $items ): array {
+				$items[] = [
+					'id'    => 'mystery-tone',
+					'tone'  => 'bananas',
+					'title' => 'Tone nobody declared',
+				];
+				$items[] = [
+					'id'    => 'plain-info',
+					'tone'  => 'info',
+					'title' => 'Ordinary information',
+				];
+
+				return $items;
+			}
+		);
+
+		$ids = $this->item_ids();
+
+		$this->assertGreaterThan(
+			array_search( 'plain-info', $ids, true ),
+			array_search( 'mystery-tone', $ids, true ),
+			'An unrecognised tone must not outrank a real one.'
+		);
+
+		remove_all_filters( 'albert/dashboard/attention' );
+	}
+
+	/**
+	 * Register one add-on item, dismissible, so a test has something to act on.
+	 *
+	 * @param string $id Item id.
+	 *
+	 * @return void
+	 */
+	private function add_item( string $id ): void {
+		add_filter(
+			'albert/dashboard/attention',
+			static function ( array $items ) use ( $id ): array {
+				$items[] = [
+					'id'          => $id,
+					'tone'        => 'info',
+					'title'       => 'Something to dismiss',
+					'dismissible' => true,
+				];
+
+				return $items;
+			}
+		);
+	}
+
+	/**
+	 * The ids currently on the card for user 1.
+	 *
+	 * @return array<int, string>
+	 */
+	private function item_ids(): array {
+		return array_column( ( new Attention( new LoggingRepository() ) )->items( 1 ), 'id' );
 	}
 }

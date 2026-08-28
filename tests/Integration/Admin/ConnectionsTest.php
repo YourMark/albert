@@ -684,10 +684,4 @@ class ConnectionsTest extends TestCase {
 			$this->assertStringNotContainsString( 'evil.test', $e->getMessage() );
 		}
 	}
-
-	/*
-	---------------------------------------------------------------------
-	 * Settings-saved: applying a new expiry window to existing invitations
-	 * ------------------------------------------------------------------
-	 */
 }
