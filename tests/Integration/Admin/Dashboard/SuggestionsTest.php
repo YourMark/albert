@@ -144,12 +144,23 @@ class SuggestionsTest extends TestCase {
 	 * defaults rather than a fixture, because it is the shipped list that was
 	 * wrong.
 	 *
+	 * Skipped rather than asserted when WooCommerce is present. The suite runs
+	 * on a WooCommerce matrix as well as a plain one, and an environment
+	 * precondition written as an assertion fails on the legitimate half: that
+	 * reports a broken test as a broken product. The presence half of the
+	 * contract is covered by
+	 * {@see self::test_a_prompt_is_offered_when_its_abilities_are_enabled()},
+	 * which registers the abilities it needs rather than depending on which
+	 * plugins the runner happens to have.
+	 *
 	 * @return void
 	 */
 	public function test_the_shipped_woocommerce_prompt_is_absent_without_woocommerce(): void {
-		update_option( 'albert_disabled_abilities', [] );
+		if ( class_exists( 'WooCommerce' ) ) {
+			$this->markTestSkipped( 'WooCommerce is active, so the prompt is legitimately offered.' );
+		}
 
-		$this->assertFalse( class_exists( 'WooCommerce' ), 'This test only means anything without WooCommerce.' );
+		update_option( 'albert_disabled_abilities', [] );
 
 		$texts = array_column( ( new Suggestions() )->all(), 'text' );
 

@@ -175,9 +175,11 @@ class RecommendationsTest extends TestCase {
 	/**
 	 * An entry with no host applies to every site.
 	 *
-	 * This is how Premium differs from a contextual add-on: WooCommerce's is
-	 * worth mentioning to a shop and nobody else, but there is no site that
-	 * cannot use more history.
+	 * Free ships nothing like this any more: the WooCommerce entry is worth
+	 * mentioning to a shop and nobody else, and Premium, which used to be the
+	 * hostless one, moved to the activity card so the Dashboard stopped
+	 * pitching it twice. The capability stays supported for add-ons, so it
+	 * stays tested against a fixture rather than a shipped entry.
 	 *
 	 * @return void
 	 */
