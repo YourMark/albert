@@ -11,7 +11,6 @@ namespace Albert\Admin\Dashboard;
 
 defined( 'ABSPATH' ) || exit;
 
-use Albert\Admin\Settings\Value;
 use Albert\Core\AbilitiesRegistry;
 use Albert\Core\AbilitiesState;
 use Albert\Core\Plugin;
@@ -21,6 +20,7 @@ use Albert\MCP\Skills\SkillRegistry;
 use Albert\OAuth\AllowedUsers;
 use Albert\OAuth\ConnectionRetention;
 use Albert\OAuth\Repositories\ClientRepository;
+use Albert\Settings\Value;
 
 /**
  * What on this site needs the owner to do something.

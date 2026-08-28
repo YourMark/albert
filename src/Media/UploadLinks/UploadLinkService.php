@@ -11,11 +11,11 @@ namespace Albert\Media\UploadLinks;
 
 defined( 'ABSPATH' ) || exit;
 
-use Albert\Admin\Settings\Value;
 use Albert\Core\Plugin;
 use Albert\Core\Tokens\TokenService;
 use Albert\Media\AttachmentImporter;
 use Albert\Media\MimeAllowlist;
+use Albert\Settings\Value;
 use WP_Error;
 
 /**

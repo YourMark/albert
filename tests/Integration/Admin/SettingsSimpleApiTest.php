@@ -12,7 +12,7 @@
 
 namespace Albert\Tests\Integration\Admin;
 
-use Albert\Admin\Settings\Schema;
+use Albert\Settings\Schema;
 use Albert\Admin\SettingsRegistry;
 use Albert\Admin\SettingsRenderer;
 use Albert\Admin\SettingsSanitizer;

@@ -486,6 +486,14 @@ class SettingsRegistry {
 			'option_name'       => isset( $field['option_name'] ) && is_string( $field['option_name'] ) && $field['option_name'] !== ''
 				? $field['option_name']
 				: null,
+			// Whether `register_setting()` exposes this option over REST.
+			// Opt-in and default false, so a setting is never published because
+			// it happens to exist. Listed here because this normalisation
+			// rebuilds the field from the whitelist rather than merging: the key
+			// was read by Settings\Storage and documented in
+			// docs/settings-api.md, but never survived to reach it, so nothing
+			// registered through either API could actually opt in.
+			'show_in_rest'      => ! empty( $field['show_in_rest'] ),
 			// The allowed range for a number field. One declaration drives both
 			// the control's own `min`/`max` and the sanitiser that clamps what
 			// is stored, so the browser and the database cannot disagree about

@@ -137,7 +137,7 @@ appears in Albert.
 ## Storage: WordPress owns the option, Albert owns the screen (1.4.0+)
 
 Every field registered through this API is handed to WordPress's
-`register_setting()` by `Albert\Admin\Settings\Storage`. Only the storage half
+`register_setting()` by `Albert\Settings\Storage`. Only the storage half
 of WordPress's Settings API is used — `add_settings_field()`,
 `do_settings_sections()` and `settings_fields()` are never called, so no
 WordPress markup reaches the screen. Albert renders every control itself and the
@@ -172,7 +172,15 @@ Registration is skipped for a read-only `custom` field (one whose
 `sanitize_callback` is `'__return_null'`), because it stores nothing.
 
 `show_in_rest` is opt-in per field and defaults to `false`; a setting is not
-exposed over REST merely because it exists.
+exposed over REST merely because it exists. Pass `'show_in_rest' => true` on the
+field to publish it.
+
+**Your registration callback now runs on every admin request.** Registration
+happens on `admin_init`, so `albert/settings/register` fires on ordinary admin
+pages and on admin-ajax, not only when the Settings screen is being drawn.
+Before 1.4.0 it fired only on that screen. The schema is collected once per
+request, but keep the callback to declaring fields: no queries, no HTTP, no side
+effects.
 
 ## Overrides: when code owns a setting (1.4.0+)
 
@@ -189,6 +197,15 @@ control that would not change anything. Highest priority first:
 A field under an active override renders read-only, names its source, and is
 skipped by the save loop, so submitting the form cannot overwrite a value the
 owner was never shown a control for.
+
+**Read-only means `readonly`, not `disabled`,** wherever the element has it
+(`text`, `url`, `number`, `textarea`). A disabled control leaves the tab order,
+which put the value in force and the sentence explaining the lock out of reach
+of exactly the people who most need the explanation. `select`, checkbox and
+radio have no `readonly`, so those stay `disabled`; `aria-disabled="true"`
+states it either way, and the control's `aria-describedby` points at the hint.
+The lock never depended on the browser withholding the value: the save loop
+skips a locked field outright.
 
 **Read your own setting through the chain.** `get_option()` sees only layer 3,
 so a reader that bypasses `albert_get_setting()` will use a different value from
@@ -313,6 +330,7 @@ add_action( 'albert/settings/register', static function (): void {
 | `attributes` | array | no | Extra HTML attributes (e.g. `placeholder`, `step`). |
 | `min` / `max` | int\|float | no | The allowed range for a `number` field. Drives **both** the control's attributes and the sanitiser, so a value outside it cannot be stored, whatever posted it. Declaring them under `attributes` works identically and is what fields did before 1.4.0. *Since 1.4.0.* |
 | `option_name` | string | no | Use a literal `wp_options` key instead of the auto-generated one. |
+| `show_in_rest` | bool | no | Expose this option over the REST API. Opt-in, default `false`. *Since 1.4.0.* |
 | `suffix` | string | no | The unit shown beside the control ("days", "MB"). Associated with it via `aria-describedby`, so "90" and "90 days" are not the same field to a screen reader. |
 | `info` | string | no | Text for an info "(i)" beside the label. **Keep `description` to one line and put the rest here** — the edge case, the consequence, what `0` does. May contain `<code>`. The description must still read correctly without opening it. |
 | `disabled` | bool\|callable | no | Renders the control read-only. Rarely needed: an active constant or filter does this on its own (see below). Use it for a condition the resolver cannot see. A callable is evaluated at render time, so a field declares the *condition* rather than a snapshot. |
@@ -343,7 +361,7 @@ than by the stored option. When one is, the control renders read-only and says
 where the value comes from: a box somebody can type into and save, whose value
 code then discards, is a lie about what the site does.
 
-**You do not declare any of this.** `Albert\Admin\Settings\Value` resolves it
+**You do not declare any of this.** `Albert\Settings\Value` resolves it
 and `SettingsRenderer` reacts, so a new overridable setting is an ordinary field
 definition and nothing more. Free's upload size limit used to carry three
 callbacks (`max_mb_is_filtered`, `max_mb_display_value`, `max_mb_hint`) to say
@@ -359,6 +377,20 @@ The chain, highest priority first:
 2. **The filter `albert/settings/value/{option_name}`**, returning `null` to
    defer.
 3. **The stored option**, then the declared default.
+
+**Namespace your option names.** Layer 1 reads a *global* constant, and nothing
+reserves that space: an option called `myplugin_debug` binds to whatever
+`MYPLUGIN_DEBUG` already means on the site, whoever defined it and for whatever
+reason. A declared validator (below) is the safety net when a name does collide,
+since a value it rejects is skipped rather than pinning the site to it.
+
+**Spelling is not meaning.** A validator decides whether a value is *usable*,
+not whether it is written canonically, so `ALBERT_PRIVACY_MODE = 'Strict'` is
+accepted and the site runs Strict. For a `select` or `radio-cards` field the
+renderer runs the value back through the field's own `sanitize_callback` when it
+is not one of the declared option keys, so the control still marks the right
+choice. Declare a `sanitize_callback` on any closed-vocabulary field: without
+one there is nothing to ask, and the control renders with nothing selected.
 
 Read a setting with the helper rather than `get_option()` when you want the
 value actually in force:

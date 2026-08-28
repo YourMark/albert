@@ -159,6 +159,7 @@
 	--albert-measure-description: 40rem;  /* 640px — page and screen descriptions */
 	--albert-measure-prose: 90ch;         /* owner-authored prose in a textarea */
 	--albert-measure-field: 26rem;        /* 416px — text and URL inputs */
+	--albert-measure-field-label: 16.25rem; /* 260px — the label column of a field row */
 
 	/* Control height — 2rem (32px), the height @wordpress/components gives a
 	   compact control. Albert's own inputs and core's DataViews controls sit

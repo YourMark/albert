@@ -13,8 +13,8 @@ namespace Albert\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
-use Albert\Admin\Settings\Lock;
-use Albert\Admin\Settings\Value;
+use Albert\Settings\Lock;
+use Albert\Settings\Value;
 use Throwable;
 
 /**
@@ -57,6 +57,8 @@ class SettingsRenderer {
 		} elseif ( $override !== null ) {
 			$current_value = $override['value'];
 		}
+
+		$current_value = $this->canonical_choice( $field, $current_value );
 
 		$type        = isset( $field['type'] ) && is_string( $field['type'] ) ? $field['type'] : 'text';
 		$label       = isset( $field['label'] ) && is_string( $field['label'] ) ? $field['label'] : '';
@@ -109,7 +111,7 @@ class SettingsRenderer {
 			} else {
 				$this->render_custom( $field, $current_value );
 			}
-			$this->render_hint( $field, $override );
+			$this->render_hint( $this->resolve_hint( $field, $override ), $input_id . '-hint' );
 			echo $is_group ? '</fieldset>' : '';
 			echo '</div>';
 			return;
@@ -136,11 +138,9 @@ class SettingsRenderer {
 
 		$suffix    = isset( $field['suffix'] ) && is_string( $field['suffix'] ) ? $field['suffix'] : '';
 		$suffix_id = $input_id . '-suffix';
+		$hint      = $this->resolve_hint( $field, $override );
+		$hint_id   = $input_id . '-hint';
 
-		// A field whose value is currently owned by something else — a filter, a
-		// constant, a network policy — renders disabled and says why. Resolved
-		// here rather than by the caller so a field only has to declare the
-		// condition, not hand-roll an <input> to express it.
 		// `min` and `max` are field-level declarations that feed both the control
 		// and the sanitiser, so the browser and the stored value cannot disagree
 		// about the range. Copied into attributes here rather than duplicated in
@@ -152,22 +152,55 @@ class SettingsRenderer {
 			}
 		}
 
+		// A field whose value is currently owned by something else — a filter, a
+		// constant, a network policy — is locked and says why. Resolved here
+		// rather than by the caller so a field only has to declare the
+		// condition, not hand-roll an <input> to express it.
+		//
+		// **`readonly` where the element supports it, not `disabled`.** A
+		// disabled control leaves the tab order, so a keyboard or screen-reader
+		// user could reach neither the value in force nor the hint underneath
+		// explaining why they cannot change it: the one part of the field that
+		// answers the question the state raises was the part that became
+		// unreachable. `readonly` keeps it focusable and announced, and the
+		// save loop skips a locked field outright ({@see Lock}), so it does not
+		// matter that a readonly control is still submitted.
+		//
+		// `select`, `checkbox` and radio have no `readonly`, so those stay
+		// `disabled`; `aria-disabled` states it either way.
 		if ( Lock::is_locked( $field, $override ) ) {
-			$field['attributes']['disabled'] = true;
+			$takes_readonly = in_array( $type, [ 'text', 'url', 'number', 'textarea' ], true );
+
+			$field['attributes'][ $takes_readonly ? 'readonly' : 'disabled' ] = true;
+			$field['attributes']['aria-disabled']                             = 'true';
 		}
 
 		// A unit is part of what the value means, so it has to reach assistive
 		// tech, not just the eye — "90" alone is not the same field as "90
-		// days". Associating it by id rather than hiding it (or leaving it as
-		// loose adjacent text, which is not reliably announced with the
-		// control) is what makes it part of the field's description. Appended,
-		// never assigned, so a field that already points at its own help text
-		// keeps it.
+		// days". The hint goes the same way, and matters more when it is the
+		// sentence saying a constant owns this value. Associating both by id
+		// rather than leaving them as loose adjacent text (which is not
+		// reliably announced with the control) is what makes them part of the
+		// field's description. Appended, never assigned, so a field that
+		// already points at its own help text keeps it.
+		$described_by = [];
+
+		if ( isset( $field['attributes']['aria-describedby'] ) && is_string( $field['attributes']['aria-describedby'] ) ) {
+			$described_by[] = trim( $field['attributes']['aria-describedby'] );
+		}
+
 		if ( $suffix !== '' ) {
-			$existing                                = isset( $field['attributes']['aria-describedby'] ) && is_string( $field['attributes']['aria-describedby'] )
-				? trim( $field['attributes']['aria-describedby'] ) . ' '
-				: '';
-			$field['attributes']['aria-describedby'] = $existing . $suffix_id;
+			$described_by[] = $suffix_id;
+		}
+
+		if ( $hint !== null ) {
+			$described_by[] = $hint_id;
+		}
+
+		$described_by = array_filter( $described_by );
+
+		if ( $described_by !== [] ) {
+			$field['attributes']['aria-describedby'] = implode( ' ', $described_by );
 		}
 
 		echo '<div class="albert-field-input-wrap">';
@@ -200,11 +233,74 @@ class SettingsRenderer {
 			echo '<span class="albert-field-suffix" id="' . esc_attr( $suffix_id ) . '">' . esc_html( $suffix ) . '</span>';
 		}
 
-		$this->render_hint( $field, $override );
+		$this->render_hint( $hint, $hint_id );
 
 		echo '</div>';
 
 		echo '</div>';
+	}
+
+	/**
+	 * Spell a closed-vocabulary value the way its own options spell it.
+	 *
+	 * A `select` or `radio-cards` control marks the option whose key matches
+	 * the value exactly, so a value that means the right thing but is written
+	 * differently marks nothing at all: the screen shows a group with no
+	 * selection while the site runs perfectly well.
+	 *
+	 * That is reachable. {@see Value} hands back whatever the winning layer
+	 * held, and a validator judges *meaning*, not spelling —
+	 * `albert_privacy_mode`'s asks {@see \Albert\Privacy\PrivacyMode::try_parse()},
+	 * which trims and lower-cases. So `define( 'ALBERT_PRIVACY_MODE', 'Strict' )`
+	 * is accepted, the site runs Strict, and the group renders with no card
+	 * chosen. The stored value can be off-vocabulary too: `register_setting()`
+	 * only guards writes made during an admin request, so a cron or WP-CLI
+	 * write reaches this the same way.
+	 *
+	 * The field's own `sanitize_callback` is what settles it, because that is
+	 * already the one thing that knows how this option spells itself. Only
+	 * consulted when the raw value is not an option key, and only kept when the
+	 * result is one, so a field without a sanitiser, or one that answers with
+	 * something equally unrecognised, is left exactly as it was rather than
+	 * having a default quietly put in front of the reader.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param array<string, mixed> $field         Normalised field definition.
+	 * @param mixed                $current_value The value about to be displayed.
+	 *
+	 * @return mixed
+	 */
+	private function canonical_choice( array $field, $current_value ) {
+		$type = isset( $field['type'] ) && is_string( $field['type'] ) ? $field['type'] : '';
+
+		if ( $type !== 'select' && $type !== 'radio-cards' ) {
+			return $current_value;
+		}
+
+		$options = isset( $field['options'] ) && is_array( $field['options'] ) ? $field['options'] : [];
+
+		if ( ! is_scalar( $current_value ) || array_key_exists( (string) $current_value, $options ) ) {
+			return $current_value;
+		}
+
+		$callback = isset( $field['sanitize_callback'] ) && is_callable( $field['sanitize_callback'] )
+			? $field['sanitize_callback']
+			: null;
+
+		if ( $callback === null ) {
+			return $current_value;
+		}
+
+		try {
+			$canonical = call_user_func( $callback, $current_value );
+		} catch ( Throwable $e ) {
+			return $current_value;
+		}
+
+		return is_scalar( $canonical ) && array_key_exists( (string) $canonical, $options )
+			? $canonical
+			: $current_value;
 	}
 
 	/**
@@ -234,34 +330,32 @@ class SettingsRenderer {
 	}
 
 	/**
-	 * Render a field's hint, if it has one right now.
+	 * What this field's hint says right now, if it says anything.
 	 *
-	 * The hint sits under the control, inside the control column, because it
-	 * explains the control rather than the setting — "a filter is overriding
-	 * this" is about the box being greyed out, not about what the setting means.
-	 * What the setting means is the description, beside the label.
+	 * Resolved separately from rendering because the control needs to know
+	 * whether a hint exists *before* it is drawn: a locked control points
+	 * `aria-describedby` at the hint's id, and there is no id to point at when
+	 * there is no hint. Asking twice would mean calling a field's hint callback
+	 * twice per render, which is not a promise this class wants to make to the
+	 * add-ons that write them.
 	 *
 	 * `hint` is a callable or an array `[ 'text' => string, 'tone' => string ]`.
 	 * A callable may return null when there is nothing to say, which is the
 	 * common case: most fields have a hint only in an unusual state.
 	 *
-	 * The text may contain `<code>`, and only `<code>`: these strings name
-	 * filters and constants, and every one is built by the field's own author
-	 * through sprintf(), never from user input.
+	 * A field that says nothing while an override is active gets a generated
+	 * hint naming the source, so a locked control always explains itself. A
+	 * field's own hint wins, because it can say more: the upload size limit
+	 * gives the exact size in force, which the generic text cannot know.
 	 *
 	 * @since 1.4.0
-	 *
-	 * A field that says nothing while an override is active gets a generated
-	 * hint naming the source, so a greyed-out control always explains itself.
-	 * A field's own hint wins, because it can say more: the upload size limit
-	 * gives the exact size in force, which the generic text cannot know.
 	 *
 	 * @param array<string, mixed>                                   $field    Normalised field definition.
 	 * @param array{source: string, value: mixed, name: string}|null $override Active override, if any.
 	 *
-	 * @return void
+	 * @return array{text: string, tone: string}|null
 	 */
-	private function render_hint( array $field, ?array $override = null ): void {
+	private function resolve_hint( array $field, ?array $override = null ): ?array {
 		$hint = $field['hint'] ?? null;
 
 		if ( is_callable( $hint ) ) {
@@ -273,16 +367,44 @@ class SettingsRenderer {
 		}
 
 		if ( ! is_array( $hint ) || empty( $hint['text'] ) || ! is_string( $hint['text'] ) ) {
+			return null;
+		}
+
+		return [
+			'text' => $hint['text'],
+			'tone' => isset( $hint['tone'] ) && in_array( $hint['tone'], [ 'info', 'warning' ], true )
+				? (string) $hint['tone']
+				: 'info',
+		];
+	}
+
+	/**
+	 * Draw a resolved hint.
+	 *
+	 * The hint sits under the control, inside the control column, because it
+	 * explains the control rather than the setting — "a filter is overriding
+	 * this" is about the state of the box, not about what the setting means.
+	 * What the setting means is the description, beside the label.
+	 *
+	 * The text may contain `<code>`, and only `<code>`: these strings name
+	 * filters and constants, and every one is built by the field's own author
+	 * through sprintf(), never from user input.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param array{text: string, tone: string}|null $hint Resolved hint, or null for none.
+	 * @param string                                 $id   Id the control's `aria-describedby` points at.
+	 *
+	 * @return void
+	 */
+	private function render_hint( ?array $hint, string $id ): void {
+		if ( $hint === null ) {
 			return;
 		}
 
-		$tone = isset( $hint['tone'] ) && in_array( $hint['tone'], [ 'info', 'warning' ], true )
-			? $hint['tone']
-			: 'info';
+		$icon = $hint['tone'] === 'warning' ? 'warning' : 'info';
 
-		$icon = $tone === 'warning' ? 'warning' : 'info';
-
-		echo '<div class="albert-hint albert-hint--' . esc_attr( $tone ) . ' albert-field-hint">';
+		echo '<div class="albert-hint albert-hint--' . esc_attr( $hint['tone'] ) . ' albert-field-hint" id="' . esc_attr( $id ) . '">';
 		echo '<span class="dashicons dashicons-' . esc_attr( $icon ) . '" aria-hidden="true"></span>';
 		echo '<p>' . wp_kses( $hint['text'], [ 'code' => [] ] ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_kses() with an explicit allowlist.
 		echo '</div>';

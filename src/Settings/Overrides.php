@@ -3,11 +3,11 @@
  * Settings Overrides bridge
  *
  * @package Albert
- * @subpackage Admin
+ * @subpackage Settings
  * @since      1.4.0
  */
 
-namespace Albert\Admin\Settings;
+namespace Albert\Settings;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -44,6 +44,24 @@ use Albert\Media\UploadLinks\UploadLinkService;
 class Overrides implements Hookable {
 
 	/**
+	 * Whether this class's own bridge produced the privacy mode last time the
+	 * value filter ran.
+	 *
+	 * Read by {@see self::privacy_mode_source()}, which runs immediately after
+	 * within the same {@see Value::override()} call. It used to answer from
+	 * `has_filter( 'albert/privacy/mode' )` instead, which is true whenever
+	 * anything is *attached* to that hook, including a callback that returned
+	 * null. So a site that answered `albert/settings/value/albert_privacy_mode`
+	 * directly while some other code merely listened on the legacy hook was told
+	 * its value came from the legacy hook, and went looking in the wrong place.
+	 * Naming a source is only worth doing if the name is right.
+	 *
+	 * @since 1.4.0
+	 * @var bool
+	 */
+	private bool $privacy_mode_bridged = false;
+
+	/**
 	 * Register WordPress hooks.
 	 *
 	 * @return void
@@ -68,6 +86,8 @@ class Overrides implements Hookable {
 	 * @return mixed
 	 */
 	public function privacy_mode( $value ) {
+		$this->privacy_mode_bridged = false;
+
 		if ( $value !== null ) {
 			return $value;
 		}
@@ -86,7 +106,13 @@ class Overrides implements Hookable {
 		 */
 		$legacy = apply_filters( 'albert/privacy/mode', null );
 
-		return is_string( $legacy ) && $legacy !== '' ? $legacy : null;
+		if ( ! is_string( $legacy ) || $legacy === '' ) {
+			return null;
+		}
+
+		$this->privacy_mode_bridged = true;
+
+		return $legacy;
 	}
 
 	/**
@@ -123,7 +149,12 @@ class Overrides implements Hookable {
 	}
 
 	/**
-	 * Name `albert/privacy/mode` as the source when it is what answered.
+	 * Name `albert/privacy/mode` as the source, but only when it is genuinely
+	 * what answered.
+	 *
+	 * Decided by {@see self::$privacy_mode_bridged}, set a moment earlier in
+	 * the same resolution, rather than by asking whether anything is attached
+	 * to the legacy hook. See that property for what the difference cost.
 	 *
 	 * @since 1.4.0
 	 *
@@ -136,6 +167,6 @@ class Overrides implements Hookable {
 			return $name;
 		}
 
-		return has_filter( 'albert/privacy/mode' ) ? 'albert/privacy/mode' : $name;
+		return $this->privacy_mode_bridged ? 'albert/privacy/mode' : $name;
 	}
 }

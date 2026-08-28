@@ -19,10 +19,10 @@
 
 namespace Albert\Tests\Integration\Admin;
 
-use Albert\Admin\Settings\Lock;
-use Albert\Admin\Settings\Overrides;
-use Albert\Admin\Settings\Schema;
-use Albert\Admin\Settings\Value;
+use Albert\Settings\Lock;
+use Albert\Settings\Overrides;
+use Albert\Settings\Schema;
+use Albert\Settings\Value;
 use Albert\Admin\SettingsRegistry;
 use Albert\Admin\SettingsRenderer;
 use Albert\Admin\SettingsSanitizer;
@@ -35,8 +35,8 @@ use Albert\Tests\TestCase;
 /**
  * Override resolution and the read-only UI it produces.
  *
- * @covers \Albert\Admin\Settings\Value
- * @covers \Albert\Admin\Settings\Overrides
+ * @covers \Albert\Settings\Value
+ * @covers \Albert\Settings\Overrides
  */
 class SettingsOverrideTest extends TestCase {
 
@@ -168,7 +168,9 @@ class SettingsOverrideTest extends TestCase {
 
 		$html = $this->render_field( UploadLinkService::MAX_BYTES_OPTION );
 
-		$this->assertStringContainsString( 'disabled', $html );
+		// `readonly` rather than `disabled` for a text-shaped control, so it
+		// stays focusable; see test_a_locked_text_control_stays_reachable...().
+		$this->assertStringContainsString( 'readonly', $html );
 		$this->assertStringContainsString( size_format( 500 * 1024 ), $html );
 		$this->assertStringContainsString( 'albert/media/upload_link_max_bytes', $html );
 
@@ -381,6 +383,126 @@ class SettingsOverrideTest extends TestCase {
 
 		remove_all_filters( Value::filter_name( ConnectionRetention::IDLE_OPTION ) );
 		delete_option( ConnectionRetention::IDLE_OPTION );
+	}
+
+	/**
+	 * An override that means the right thing but is spelled differently still
+	 * marks its own card.
+	 *
+	 * A validator judges *meaning*, not spelling: `albert_privacy_mode`'s asks
+	 * {@see PrivacyMode::try_parse()}, which trims and lower-cases. So `'Strict'`
+	 * is accepted, the site genuinely runs Strict, and {@see Value} hands back
+	 * the string the constant actually held. The control compares that against
+	 * its option keys exactly, so it marked nothing at all: a group with no
+	 * selection, on the screen whose whole job is to say what is in force.
+	 *
+	 * @return void
+	 */
+	public function test_an_override_spelled_differently_still_marks_its_card(): void {
+		update_option( 'albert_privacy_mode', 'off' );
+
+		add_filter( 'albert/privacy/mode', static fn () => '  Strict  ' );
+
+		// The site is running Strict, so the screen has to show Strict.
+		$this->assertSame( PrivacyMode::Strict, PrivacyMode::resolve() );
+
+		$html = $this->render_field( 'albert_privacy_mode' );
+
+		$this->assertMatchesRegularExpression( '/value="strict"[^>]*checked/', $html );
+		$this->assertDoesNotMatchRegularExpression( '/value="off"[^>]*checked/', $html );
+	}
+
+	/**
+	 * The legacy hook is named as the source only when it is what answered.
+	 *
+	 * This used to be decided by `has_filter( 'albert/privacy/mode' )`, which is
+	 * true whenever anything is *attached* to that hook, a callback returning
+	 * null included. A site that set the mode through the generic filter while
+	 * something else merely listened on the legacy one was told its value came
+	 * from the legacy one, and went looking in the wrong place. Naming a source
+	 * is only worth doing if the name is right.
+	 *
+	 * @return void
+	 */
+	public function test_the_source_names_the_hook_that_actually_answered(): void {
+		// Attached, but declining: this must not be credited with the value.
+		add_filter( 'albert/privacy/mode', static fn () => null );
+		add_filter( Value::filter_name( 'albert_privacy_mode' ), static fn () => 'off' );
+
+		$override = Value::override( 'albert_privacy_mode' );
+
+		$this->assertNotNull( $override );
+		$this->assertSame( 'off', $override['value'] );
+		$this->assertSame(
+			Value::filter_name( 'albert_privacy_mode' ),
+			$override['name'],
+			'The generic filter answered, so the generic filter is the source.'
+		);
+	}
+
+	/**
+	 * ...and it is named when it genuinely did answer.
+	 *
+	 * @return void
+	 */
+	public function test_the_legacy_hook_is_named_when_it_answered(): void {
+		add_filter( 'albert/privacy/mode', static fn () => 'off' );
+
+		$override = Value::override( 'albert_privacy_mode' );
+
+		$this->assertNotNull( $override );
+		$this->assertSame( 'albert/privacy/mode', $override['name'] );
+	}
+
+	/**
+	 * A locked text-shaped control stays reachable, and points at the sentence
+	 * that explains why it is locked.
+	 *
+	 * It rendered `disabled`, which takes a control out of the tab order. A
+	 * keyboard or screen-reader user could then reach neither the value in
+	 * force nor the hint underneath saying what owns it: the one part of the
+	 * field that answers the question the state raises was the part that became
+	 * unreachable. `readonly` keeps it focusable, and the save loop skips a
+	 * locked field outright ({@see Lock}), so it not being submitted was never
+	 * what the lock depended on.
+	 *
+	 * @return void
+	 */
+	public function test_a_locked_text_control_stays_reachable_and_explains_itself(): void {
+		add_filter( 'albert/media/upload_link_max_bytes', static fn () => 500 * 1024 );
+
+		$html = $this->render_field( UploadLinkService::MAX_BYTES_OPTION );
+
+		$this->assertStringContainsString( 'readonly', $html );
+		$this->assertStringContainsString( 'aria-disabled="true"', $html );
+
+		// The bare attribute, not `aria-disabled`, which of course contains it.
+		$this->assertDoesNotMatchRegularExpression( '/\sdisabled[\s\/>=]/', $html );
+
+		// The hint carries an id, and the control points at it.
+		$this->assertMatchesRegularExpression(
+			'/aria-describedby="[^"]*albert-field-' . preg_quote( UploadLinkService::MAX_BYTES_OPTION, '/' ) . '-hint/',
+			$html
+		);
+		$this->assertStringContainsString(
+			'id="albert-field-' . UploadLinkService::MAX_BYTES_OPTION . '-hint"',
+			$html
+		);
+	}
+
+	/**
+	 * A group of radios has no `readonly` to reach for, so it stays disabled,
+	 * and says so.
+	 *
+	 * @return void
+	 */
+	public function test_a_locked_radio_group_stays_disabled(): void {
+		add_filter( 'albert/privacy/mode', static fn () => 'off' );
+
+		$html = $this->render_field( 'albert_privacy_mode' );
+
+		$this->assertStringContainsString( 'albert-radio-cards--disabled', $html );
+		$this->assertStringNotContainsString( 'readonly', $html );
 	}
 
 	/**

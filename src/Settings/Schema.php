@@ -3,11 +3,11 @@
  * Settings Schema
  *
  * @package Albert
- * @subpackage Admin
+ * @subpackage Settings
  * @since      1.4.0
  */
 
-namespace Albert\Admin\Settings;
+namespace Albert\Settings;
 
 defined( 'ABSPATH' ) || exit;
 

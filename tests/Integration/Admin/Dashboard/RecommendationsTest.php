@@ -66,7 +66,7 @@ class RecommendationsTest extends TestCase {
 	public function test_recommended_when_the_host_is_active(): void {
 		$this->only_addon( 'WP_Query', 'Albert\Nothing\ThatExists' );
 
-		$addons = ( new Recommendations() )->current( 1 );
+		$addons = ( new Recommendations() )->current();
 
 		$this->assertCount( 1, $addons );
 		$this->assertSame( 'test-addon', $addons[0]['slug'] );
@@ -81,7 +81,7 @@ class RecommendationsTest extends TestCase {
 	public function test_silent_when_the_host_is_absent(): void {
 		$this->only_addon( 'Some\Plugin\That\Is\Not\Installed' );
 
-		$this->assertSame( [], ( new Recommendations() )->current( 1 ) );
+		$this->assertSame( [], ( new Recommendations() )->current() );
 	}
 
 	/**
@@ -93,7 +93,7 @@ class RecommendationsTest extends TestCase {
 	public function test_silent_when_the_addon_is_already_installed(): void {
 		$this->only_addon( 'WP_Query', 'WP_Post' );
 
-		$this->assertSame( [], ( new Recommendations() )->current( 1 ) );
+		$this->assertSame( [], ( new Recommendations() )->current() );
 	}
 
 	/**
@@ -135,7 +135,7 @@ class RecommendationsTest extends TestCase {
 			]
 		);
 
-		$shown = ( new Recommendations() )->current( 1 );
+		$shown = ( new Recommendations() )->current();
 
 		$this->assertCount( 1, $shown, 'Three qualifying add-ons must not produce three cards.' );
 		$this->assertSame( [ 'first' ], array_column( $shown, 'slug' ) );
@@ -199,6 +199,6 @@ class RecommendationsTest extends TestCase {
 			]
 		);
 
-		$this->assertCount( 1, ( new Recommendations() )->current( 1 ) );
+		$this->assertCount( 1, ( new Recommendations() )->current() );
 	}
 }

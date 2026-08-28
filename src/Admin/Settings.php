@@ -11,11 +11,11 @@ namespace Albert\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
-use Albert\Admin\Settings\Lock;
-use Albert\Admin\Settings\Schema;
-use Albert\Admin\Settings\Value;
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Database\Tables;
+use Albert\Settings\Lock;
+use Albert\Settings\Schema;
+use Albert\Settings\Value;
 
 /**
  * Settings class
@@ -99,7 +99,7 @@ class Settings implements Hookable {
 
 				<?php Notices::render( 'albert_settings' ); ?>
 
-				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="albert-settings__form">
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 					<?php wp_nonce_field( 'albert_save_settings', 'albert_save_settings_nonce' ); ?>
 					<input type="hidden" name="action" value="albert_save_settings" />
 

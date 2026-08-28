@@ -56,7 +56,7 @@ class PrivacyModeTest extends TestCase {
 	 * Asserted through the generic settings chain rather than through
 	 * `albert/privacy/mode`. Both still work and both still take precedence
 	 * over the option, but since 1.4.0 the domain-specific filter reaches
-	 * resolution by way of {@see \Albert\Admin\Settings\Overrides}, a real
+	 * resolution by way of {@see \Albert\Settings\Overrides}, a real
 	 * `add_filter()` callback — and this suite's `apply_filters` stub returns
 	 * configured values without running callbacks, so it cannot exercise that.
 	 * `AgentPrivacyOverrideTest` covers the legacy name against real hooks.

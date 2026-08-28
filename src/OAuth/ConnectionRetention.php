@@ -11,9 +11,8 @@ namespace Albert\OAuth;
 
 defined( 'ABSPATH' ) || exit;
 
-use Albert\Admin\Settings\Value;
-
 use Albert\OAuth\Repositories\ClientRepository;
+use Albert\Settings\Value;
 
 /**
  * ConnectionRetention class

@@ -3,11 +3,11 @@
  * Settings Value resolution
  *
  * @package Albert
- * @subpackage Admin
+ * @subpackage Settings
  * @since      1.4.0
  */
 
-namespace Albert\Admin\Settings;
+namespace Albert\Settings;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -39,6 +39,21 @@ defined( 'ABSPATH' ) || exit;
  * callback on requests that will never render a form. So this is a resolver
  * over an option *name*, nothing more. {@see Storage} is what makes the
  * *stored* value trustworthy; this is only about which layer wins.
+ *
+ * **And that is why this is not in `Admin\`.** It lived at
+ * `Albert\Admin\Settings\Value` while `PrivacyMode`, `AllowedUsers`,
+ * `ConnectionRetention` and `UploadLinkService` all read through it, which put
+ * an `Admin` namespace in the path of every MCP request and both cron sweeps.
+ * It also sat a `Settings` namespace beside the `Albert\Admin\Settings` page
+ * class, which PHP allows and nobody enjoys. Settings resolution is its own
+ * bounded context; the form that edits them is the admin's.
+ *
+ * **A constant is a global name.** `albert_privacy_mode` becomes
+ * `ALBERT_PRIVACY_MODE`, and nothing reserves that space: an option named
+ * `myplugin_debug` binds to whatever `MYPLUGIN_DEBUG` already means on the
+ * site. Namespace option names the way Albert does. A declared validator is the
+ * safety net when one collides, since an unusable value is skipped rather than
+ * pinning the site.
  *
  * **A validator belongs to the option, not to the call site**, and is reachable
  * from the option name alone: {@see Validators} for Free's own, and

@@ -15,9 +15,9 @@
 namespace Albert\Tests\Integration\Admin;
 
 use Albert\Admin\SettingsRegistry;
-use Albert\Admin\Settings\Schema;
+use Albert\Settings\Schema;
 use Albert\Admin\SettingsSanitizer;
-use Albert\Admin\Settings\Storage;
+use Albert\Settings\Storage;
 use Albert\Media\UploadLinks\UploadLinkService;
 use Albert\OAuth\ConnectionRetention;
 use Albert\Privacy\PrivacyMode;
@@ -26,8 +26,8 @@ use Albert\Tests\TestCase;
 /**
  * Settings storage integration tests.
  *
- * @covers \Albert\Admin\Settings\Storage
- * @covers \Albert\Admin\Settings\Schema
+ * @covers \Albert\Settings\Storage
+ * @covers \Albert\Settings\Schema
  */
 class SettingsStorageTest extends TestCase {
 
@@ -282,6 +282,59 @@ class SettingsStorageTest extends TestCase {
 		$this->assertSame( 0, get_option( 'albert_test_addon_retention_days' ) );
 
 		delete_option( 'albert_test_addon_retention_days' );
+		remove_all_actions( 'albert/settings/register' );
+	}
+
+	/**
+	 * A setting is not exposed over REST because it happens to exist, and it
+	 * *can* be exposed when its author asks.
+	 *
+	 * The second half is the one that needed a test. `Storage` read
+	 * `show_in_rest` and `docs/settings-api.md` documented it as opt-in per
+	 * field, but `SettingsRegistry::validate_field()` rebuilds a field from a
+	 * whitelist that did not list the key, so it was dropped between the
+	 * registration call and the only code that reads it: nothing registered
+	 * through either API could opt in, and the documented API silently did
+	 * nothing.
+	 *
+	 * @return void
+	 */
+	public function test_rest_exposure_is_opt_in_and_the_opt_in_works(): void {
+		SettingsRegistry::reset();
+		Schema::reset_cache();
+
+		add_action(
+			'albert/settings/register',
+			static function () {
+				albert_register_setting(
+					[
+						'title'        => 'Published',
+						'option_name'  => 'albert_test_rest_published',
+						'type'         => 'text',
+						'show_in_rest' => true,
+					]
+				);
+				albert_register_setting(
+					[
+						'title'       => 'Private',
+						'option_name' => 'albert_test_rest_private',
+						'type'        => 'text',
+					]
+				);
+			}
+		);
+
+		( new Storage() )->register_settings();
+
+		$published = $this->registration( 'albert_test_rest_published' );
+		$private   = $this->registration( 'albert_test_rest_private' );
+
+		$this->assertNotNull( $published );
+		$this->assertNotNull( $private );
+
+		$this->assertTrue( $published['show_in_rest'], 'A field asking to be exposed must be.' );
+		$this->assertFalse( $private['show_in_rest'], 'A field that did not ask must not be.' );
+
 		remove_all_actions( 'albert/settings/register' );
 	}
 

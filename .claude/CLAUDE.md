@@ -52,6 +52,16 @@ src/
                    #   AttachmentResponse  : the attachment shape both paths return
                    #   TempFile            : delete-if-present for abandoned uploads
                    #   UploadLinks/      : UploadLinkService (mint/redeem/finalize), UploadLinkController (REST redemption)
+  Settings/        # What a setting's value IS. Not part of Admin: the chain is read on
+                   # MCP requests, in cron and from WP-CLI (doc: docs/settings-api.md)
+                   #   Value      : constant -> albert/settings/value/{option} -> stored option
+                   #   Validators : per-option rule deciding whether an override is usable,
+                   #                keyed by option name so the screen and the reader agree
+                   #   Overrides  : bridges albert/privacy/mode and the upload byte filter
+                   #                onto the generic chain; registered in every context
+                   #   Storage    : hands every field to register_setting() on admin_init
+                   #   Schema     : the registered sections, collected once per request
+                   #   Lock       : whether a field is out of the owner's hands right now
   Support/         # WpCompat : WordPress version-capability detection (7.1 feature probes)
   MCP/             # MCP protocol server
   OAuth/           # Full OAuth 2.0 server (entities, repos, endpoints)
@@ -135,9 +145,9 @@ All hooks follow `albert/{location}/{hook_name}` convention:
 | `albert/dashboard/suggestions` | filter | Register example prompts for the "Try asking your assistant" card. Each names the ability ids it `requires` and is shown only when every one is enabled, so the card never suggests something that would fail. See `Admin\Dashboard\Suggestions` |
 | `albert/dashboard/recommendations` | filter | Register an add-on Albert may recommend. Shown only when `host_symbol` exists and `addon_symbol` does not, so a site is never sold what it already owns or told about a plugin it does not run. One at a time, and never something the Dashboard already pitches elsewhere: Premium is deliberately absent because the activity card owns that story. Carry an `inactive_detail` for the installed-but-off wording. See `Admin\Dashboard\Recommendations` |
 | `albert/privacy/mode` | filter | Override the active PII privacy mode (`strict`/`balanced`/`off`); return `null` to defer to the `albert_privacy_mode` option/default (`balanced`). See `PrivacyMode::resolve()`. Not deprecated. Since 1.4.0 it resolves through `Settings\Value`, which also makes the Settings screen show the mode as owned by code instead of offering an editable control that saves nothing |
-| `albert/settings/value/{option_name}` | filter | The value in force for one setting, ahead of the stored option; return `null` to defer. A constant named after the option in upper case (`ALBERT_PRIVACY_MODE`) beats it. An overridden setting renders read-only on the Settings screen with a note naming the source. See `Admin\Settings\Value` and `docs/settings-api.md` |
+| `albert/settings/value/{option_name}` | filter | The value in force for one setting, ahead of the stored option; return `null` to defer. A constant named after the option in upper case (`ALBERT_PRIVACY_MODE`) beats it. An overridden setting renders read-only on the Settings screen with a note naming the source. See `Settings\Value` and `docs/settings-api.md` |
 | `albert/settings/value_source/{option_name}` | filter | The hook or constant name reported on screen as the source of an override. For code answering the value filter on another hook's behalf, so an owner is shown the hook they actually wrote |
-| `albert/settings/validator/{option_name}` | filter | Returns `fn( $value ): bool` deciding whether an override of this setting is usable. One rejected is skipped and resolution falls through to the next layer. Declared against the OPTION, never at a call site: the Settings screen and the code reading the setting both consult it, and that is what stops the screen locking a field to a value the site is not using. See `Admin\Settings\Overrides::validators()` |
+| `albert/settings/validator/{option_name}` | filter | Returns `fn( $value ): bool` deciding whether an override of this setting is usable. One rejected is skipped and resolution falls through to the next layer. Declared against the OPTION, never at a call site: the Settings screen and the code reading the setting both consult it, and that is what stops the screen locking a field to a value the site is not using. See `Settings\Validators` |
 | `albert/privacy/pii_fields` | filter | Extend the anonymiser's PII allow-list, grouped by rule (`email`/`phone`/`name`/`context_name`/`postcode`/`empty`/`strip`/`redact`). A returned category REPLACES that category: read the incoming value and append to extend. See `Anonymizer` |
 | `albert/privacy/payment_keys` | filter | Register payment/card keys hard-removed from every result at any depth and in every mode. Shape `[ 'keys' => [], 'prefixes' => [] ]`; empty in Free (add-ons own gateway keys). See `Anonymizer` |
 | `albert/privacy/reveal_capability` | filter | Capability gating a `reveal_personal_data` request (default `manage_options`). Consulted only when an ability passes no explicit `reveal_capability` option. See `PiiPolicy` |

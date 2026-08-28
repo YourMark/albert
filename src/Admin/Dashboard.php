@@ -23,6 +23,7 @@ use Albert\Logging\Repository as LoggingRepository;
 use Albert\MCP\Server as McpServer;
 use Albert\Database\Tables;
 use Albert\OAuth\AllowedUsers;
+use Albert\OAuth\Repositories\ClientRepository;
 use Albert\Privacy\PrivacyMode;
 
 /**
@@ -70,6 +71,27 @@ class Dashboard implements Hookable {
 	 */
 	private ?bool $activity_truncated = null;
 
+	/**
+	 * The live connections for this request, or null before the first read.
+	 *
+	 * @since 1.4.0
+	 * @var array<int, array<string, mixed>>|null
+	 */
+	private ?array $live_connections = null;
+
+	/**
+	 * The screen id `add_menu_page()` gave this page, or '' before it ran.
+	 *
+	 * Taken from core rather than written out as `toplevel_page_albert`, which
+	 * is what the enqueue guard compared against. That literal is core's own
+	 * derivation from the menu slug, so restating it is a second copy of a rule
+	 * this class does not own: rename the slug and the assets stop loading,
+	 * silently, on a page that still renders.
+	 *
+	 * @since 1.4.0
+	 * @var string
+	 */
+	private string $screen_id = '';
 
 	/**
 	 * Constructor.
@@ -105,7 +127,7 @@ class Dashboard implements Hookable {
 	 */
 	public function add_menu_pages(): void {
 		// Add top-level menu (shows Dashboard by default).
-		add_menu_page(
+		$this->screen_id = (string) add_menu_page(
 			__( 'Albert Dashboard', 'albert-ai-butler' ),
 			__( 'Albert', 'albert-ai-butler' ),
 			'manage_options',
@@ -135,8 +157,9 @@ class Dashboard implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function enqueue_assets( string $hook ): void {
-		// Only load on our dashboard page.
-		if ( $hook !== 'toplevel_page_albert' ) {
+		// Only load on our dashboard page, identified by the screen id core
+		// handed back from add_menu_page() rather than by a copy of it.
+		if ( $this->screen_id === '' || $hook !== $this->screen_id ) {
 			return;
 		}
 
@@ -210,7 +233,7 @@ class Dashboard implements Hookable {
 		}
 
 		$has_allowed_users  = AllowedUsers::has_any();
-		$active_connections = $this->get_active_connections_count();
+		$active_connections = count( $this->get_live_connections() );
 		$has_connections    = $active_connections > 0;
 		$setup_complete     = $has_allowed_users && $has_connections;
 		$abilities          = $this->get_ability_counts();
@@ -601,7 +624,16 @@ class Dashboard implements Hookable {
 				$meta = isset( $stat['meta'] ) && is_string( $stat['meta'] ) ? $stat['meta'] : '';
 				?>
 				<div class="albert-stat">
-					<?php $indicator = isset( $stat['indicator'] ) && is_string( $stat['indicator'] ) ? $stat['indicator'] : ''; ?>
+					<?php
+					// sanitize_html_class(), not esc_attr(): this ends up as
+					// half a class name, and that is the function WordPress
+					// has for turning a string into one. esc_attr() only stops
+					// it escaping the attribute, which leaves a filter free to
+					// contribute spaces and buy itself extra classes.
+					$indicator = isset( $stat['indicator'] ) && is_string( $stat['indicator'] )
+						? sanitize_html_class( $stat['indicator'] )
+						: '';
+					?>
 					<span class="albert-stat__label"><?php echo esc_html( (string) $stat['label'] ); ?></span>
 					<span class="albert-stat__value<?php echo $indicator !== '' ? ' albert-stat__value--word' : ''; ?>">
 						<?php if ( $indicator !== '' ) { ?>
@@ -640,7 +672,7 @@ class Dashboard implements Hookable {
 		);
 		$premium_installed = $premium_state === AddonState::INACTIVE;
 		?>
-		<section class="albert-card albert-dashboard__activity">
+		<section class="albert-card">
 			<div class="albert-card__header">
 				<div class="albert-card__text">
 					<h2 class="albert-card__title"><?php esc_html_e( 'Recent activity', 'albert-ai-butler' ); ?></h2>
@@ -1084,7 +1116,14 @@ class Dashboard implements Hookable {
 		<section class="albert-card albert-recommend">
 			<div class="albert-card__body">
 				<div class="albert-recommend__head">
-					<?php $icon = isset( $addon['icon'] ) && is_string( $addon['icon'] ) ? $addon['icon'] : 'admin-plugins'; ?>
+					<?php
+					// A dashicon name, which becomes half a class name, so
+					// sanitize_html_class() rather than esc_attr(). Falls back
+					// when a filter supplies something that is not one.
+					$icon = isset( $addon['icon'] ) && is_string( $addon['icon'] )
+						? sanitize_html_class( $addon['icon'], 'admin-plugins' )
+						: 'admin-plugins';
+					?>
 					<span class="albert-recommend__mark dashicons dashicons-<?php echo esc_attr( $icon ); ?>" aria-hidden="true"></span>
 					<div>
 						<p class="albert-recommend__because">
@@ -1244,25 +1283,33 @@ class Dashboard implements Hookable {
 	}
 
 	/**
-	 * Get count of active OAuth connections.
+	 * The connections this site actually has, by the one definition of the word.
 	 *
-	 * @return int Number of active connections.
-	 * @since 1.0.0
+	 * {@see ClientRepository::getLiveConnections()} is that definition, and it
+	 * is what the Connections screen lists, what both retention sweeps act on,
+	 * and what {@see Attention::connections_about_to_go()} counts down. This
+	 * screen used to ask its own question instead — `revoked = 0` on the access
+	 * tokens alone — and got a different answer in both directions.
+	 *
+	 * `revoked = 0` has no expiry check in it and never looks at a refresh
+	 * token, so this screen counted a client whose every token had expired: for
+	 * up to a day, until `Cron\TokenCleanup` removes the rows, and indefinitely
+	 * on a site where WP-Cron never runs. The screen then read "1 connection"
+	 * and offered the finished-setup state over an assistant that could not
+	 * call anything.
+	 *
+	 * Held for the request because the page asks three times: the setup state,
+	 * the stat tile's figure, and the names beneath it.
+	 *
+	 * @return array<int, array<string, mixed>> Live connections, richest first.
+	 * @since 1.4.0
 	 */
-	private function get_active_connections_count(): int {
-		global $wpdb;
-		$tables = Tables::oauth();
+	private function get_live_connections(): array {
+		if ( $this->live_connections === null ) {
+			$this->live_connections = ( new ClientRepository() )->getLiveConnections();
+		}
 
-		// Count distinct clients with non-revoked tokens (sessions persist via refresh tokens).
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$count = $wpdb->get_var(
-			$wpdb->prepare(
-				'SELECT COUNT(DISTINCT client_id) FROM %i WHERE revoked = 0',
-				$tables['access_tokens']
-			)
-		);
-
-		return (int) $count;
+		return $this->live_connections;
 	}
 
 	/**
@@ -1306,30 +1353,30 @@ class Dashboard implements Hookable {
 	 * takes precedence where one exists, matching the Connections screen. Past
 	 * two, this says "and N more" rather than growing the tile.
 	 *
+	 * Read off {@see self::get_live_connections()} rather than queried again,
+	 * so the names and the figure above them can only ever describe the same
+	 * set. They were two separate queries, and a tile reading "2" over a list
+	 * of three names is worse than either number alone.
+	 *
 	 * @return string A short, already-plain list, or an empty string when nothing is connected.
 	 * @since 1.4.0
 	 */
 	private function get_connection_names(): string {
-		global $wpdb;
+		$names = [];
 
-		$tables = Tables::oauth();
+		foreach ( $this->get_live_connections() as $connection ) {
+			$label = isset( $connection['label'] ) ? trim( (string) $connection['label'] ) : '';
+			$name  = $label !== '' ? $label : trim( (string) ( $connection['name'] ?? '' ) );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
-		$names = $wpdb->get_col(
-			$wpdb->prepare(
-				"SELECT DISTINCT COALESCE( NULLIF( c.label, '' ), c.name ) AS display_name
-				FROM %i c
-				INNER JOIN %i t ON t.client_id = c.client_id
-				WHERE t.revoked = 0
-				ORDER BY display_name ASC",
-				$tables['clients'],
-				$tables['access_tokens']
-			)
-		);
+			if ( $name !== '' ) {
+				$names[] = $name;
+			}
+		}
 
-		$names = array_values( array_filter( array_map( 'strval', (array) $names ) ) );
+		$names = array_values( array_unique( $names ) );
+		sort( $names );
 
-		if ( empty( $names ) ) {
+		if ( $names === [] ) {
 			return '';
 		}
 

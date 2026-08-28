@@ -126,6 +126,26 @@
 	margin-block-start: var(--albert-space-400);
 }
 
+/**
+ * Where a screen's own notices sit.
+ *
+ * `Admin\Notices` emits this between the page header and the body, and it only
+ * renders when there is something in it. The group takes the spacing so the
+ * notices inside it do not each carry core's default margin and stack unevenly:
+ * one gap above the block, one below, one between siblings.
+ */
+.albert-notices {
+	margin-block: var(--albert-space-400);
+}
+
+.albert-notices .notice {
+	margin: 0;
+}
+
+.albert-notices .notice + .notice {
+	margin-block-start: var(--albert-space-200);
+}
+
 /* ==========================================================================
    Classes add-ons render
 
@@ -1435,6 +1455,31 @@ textarea.albert-textarea {
 	outline-offset: var(--albert-focus-offset);
 }
 
+/**
+ * A control whose value is owned by code.
+ *
+ * Two attributes, one appearance. `Admin\SettingsRenderer` locks a text, url,
+ * number or textarea field with `readonly` rather than `disabled`, because a
+ * disabled control leaves the tab order and takes the hint explaining the lock
+ * with it; `select` and the checkbox have no `readonly` and stay `disabled`.
+ * Both need to look the same, and `readonly` has no appearance of its own, so
+ * it is stated here.
+ *
+ * The text is not dimmed, for the reason the radio-card group gives above: a
+ * locked control is the only place the value in force can be read, so the state
+ * is carried by the flattened fill and the cursor, neither of which touches
+ * contrast. `--albert-color-text` on `--albert-color-surface-sunken` measures
+ * 16.12:1.
+ */
+.albert-text-input[readonly],
+.albert-textarea[readonly],
+.albert-text-input:disabled,
+.albert-select:disabled,
+.albert-textarea:disabled {
+	background: var(--albert-color-surface-sunken);
+	cursor: not-allowed;
+}
+
 /* Prose, so it takes the full column and grows down rather than sideways.
    Element-qualified to match the height rule above: a class-only selector
    would lose to it and pin the textarea to one line. */
@@ -1476,7 +1521,10 @@ textarea.albert-textarea {
  */
 .albert-field-group {
 	display: grid;
-	grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+	/* In rem via the token, for the reason the token file gives: a cap written
+	   in px stops growing when the reader raises their base size, which is
+	   exactly when a column holding a label and a description needs to. */
+	grid-template-columns: minmax(0, var(--albert-measure-field-label)) minmax(0, 1fr);
 	gap: var(--albert-space-400);
 	align-items: start;
 	margin-block-end: var(--albert-space-400);
@@ -1527,7 +1575,7 @@ textarea.albert-textarea {
 	align-items: center;
 	gap: var(--albert-space-200);
 	flex-wrap: wrap;
-	min-width: 0;
+	min-inline-size: 0;
 }
 
 /**
@@ -1564,15 +1612,15 @@ textarea.albert-textarea {
 
 .albert-field-label {
 	display: block;
-	font-weight: 600;
+	font-weight: var(--albert-font-weight-semibold);
 	font-size: var(--albert-font-size-base);
 	color: var(--albert-color-text);
-	margin-bottom: 0;
+	margin-block-end: 0;
 }
 
 /* Legacy one-column layout for custom fields still needs a small gap below the label. */
 .albert-field-group--custom .albert-field-label {
-	margin-bottom: var(--albert-space-100);
+	margin-block-end: var(--albert-space-100);
 }
 
 /**
@@ -1612,11 +1660,12 @@ textarea.albert-textarea {
 	font-size: var(--albert-font-size-sm);
 	color: var(--albert-color-text-muted);
 	margin: 0;
-	line-height: 1.5;
+	line-height: var(--albert-line-height-snug);
 }
 
 .albert-field-group--custom .albert-field-description {
-	margin: 0 0 var(--albert-space-200) 0;
+	margin: 0;
+	margin-block-end: var(--albert-space-200);
 }
 
 @media (max-width: 782px) {
@@ -1657,9 +1706,12 @@ textarea.albert-textarea {
 	color: var(--albert-color-success);
 }
 
+/* The focus ring tokens, not a second opinion about them: every other
+   focusable thing in this file uses these three, and a ring that is 2px here
+   and --albert-focus-width everywhere else is one ring nobody agreed on. */
 .albert-copy-button:focus-visible {
-	outline: 2px solid var(--albert-color-accent);
-	outline-offset: 1px;
+	outline: var(--albert-focus-width) solid var(--albert-focus-color);
+	outline-offset: var(--albert-focus-offset);
 }
 
 /* Copy text (inline) */

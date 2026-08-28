@@ -63,15 +63,17 @@ class Recommendations {
 	/**
 	 * The recommendations worth making right now.
 	 *
-	 * @since 1.4.0
+	 * Takes no user, deliberately. A recommendation is decided entirely by what
+	 * this site runs, and there is no per-user state to consult: no dismissal,
+	 * by design (see the class docblock). It carried a `$user_id` parameter
+	 * that was resolved and then never read.
 	 *
-	 * @param int $user_id User the card is for. 0 for the current user.
+	 * @since 1.4.0
 	 *
 	 * @return array<int, array<string, mixed>>
 	 */
-	public function current( int $user_id = 0 ): array {
-		$user_id = $user_id > 0 ? $user_id : get_current_user_id();
-		$found   = [];
+	public function current(): array {
+		$found = [];
 
 		foreach ( $this->all() as $addon ) {
 			if ( ! $this->is_relevant( $addon ) ) {
@@ -87,8 +89,8 @@ class Recommendations {
 		}
 
 		// Capped, because a column of add-on cards is a shop rather than a
-		// dashboard. Two is the honest maximum: the one that applies to every
-		// site, and the one that applies to this one.
+		// dashboard. One, since the recommendation that applied to every site
+		// moved to the activity card: what is left is the site-specific one.
 		return array_slice( $found, 0, self::LIMIT );
 	}
 

@@ -3,11 +3,11 @@
  * Settings Storage
  *
  * @package Albert
- * @subpackage Admin
+ * @subpackage Settings
  * @since      1.4.0
  */
 
-namespace Albert\Admin\Settings;
+namespace Albert\Settings;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -43,6 +43,15 @@ use Albert\Contracts\Interfaces\Hookable;
  * Registering on `init` instead would cover everything but would run every
  * add-on's registration callback on every front-end request, which is not worth
  * it until a real bypass turns up. Do not assume a cron write is sanitised.
+ *
+ * **What that costs, since it is a change add-ons can feel.** Before 1.4.0 the
+ * schema was collected only when the Settings screen rendered or saved. It is
+ * now collected on every admin request, admin-ajax included, because that is
+ * what `admin_init` means — so `albert/settings/register` fires there too, and
+ * every add-on's registration callback runs with it. {@see Schema::collect()}
+ * memoises, so it is once per request rather than once per consumer, but a
+ * registration callback must be cheap and free of side effects. It is a
+ * declaration, not a place to do work.
  *
  * **Sanitisers must be idempotent.** The save loop sanitises before calling
  * `update_option()`, which sanitises again through the registered callback. A

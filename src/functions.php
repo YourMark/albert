@@ -35,7 +35,7 @@ if ( ! function_exists( 'albert_refresh_licenses_table' ) ) {
 		check_ajax_referer( 'albert_license_nonce', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'albert' ) ] );
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'albert-ai-butler' ) ] );
 		}
 
 		ob_start();
@@ -84,7 +84,7 @@ if ( ! function_exists( 'albert_register_setting' ) ) {
 	 * and `radio-cards`), `min` and `max` (a `number` field's allowed range,
 	 * enforced by the sanitiser as well as rendered on the control),
 	 * `attributes` (step/placeholder, and min/max if you prefer them there),
-	 * `badge`, `suffix`, `info`, `section`.
+	 * `badge`, `suffix`, `info`, `show_in_rest`, `section`.
 	 *
 	 * `section` is the id of the card to land in, and is how an add-on gets a
 	 * heading that says what its settings are about:
@@ -103,8 +103,8 @@ if ( ! function_exists( 'albert_register_setting' ) ) {
 	 * to aim for.
 	 *
 	 * @since 1.1.0
-	 * @since 1.4.0 Accepts `min`, `max`, `suffix`, `info`, `section`,
-	 *              `section_title` and `section_priority`.
+	 * @since 1.4.0 Accepts `min`, `max`, `suffix`, `info`, `show_in_rest`,
+	 *              `section`, `section_title` and `section_priority`.
 	 *
 	 * @param array<string, mixed> $setting Field definition (simplified schema).
 	 *
@@ -185,6 +185,9 @@ if ( ! function_exists( 'albert_register_setting' ) ) {
 		}
 		if ( isset( $setting['info'] ) && is_string( $setting['info'] ) ) {
 			$internal['info'] = $setting['info'];
+		}
+		if ( ! empty( $setting['show_in_rest'] ) ) {
+			$internal['show_in_rest'] = true;
 		}
 
 		// The declared range, which drives both the control's own attributes and
@@ -338,6 +341,6 @@ if ( ! function_exists( 'albert_get_setting' ) ) {
 	 * @return mixed
 	 */
 	function albert_get_setting( string $option_name, $default_value = null ) {
-		return \Albert\Admin\Settings\Value::get( $option_name, $default_value );
+		return \Albert\Settings\Value::get( $option_name, $default_value );
 	}
 }

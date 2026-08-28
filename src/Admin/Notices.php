@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
  * notices, so a confirmation or warning looks and behaves identically wherever
  * it appears.
  *
- * Two things this does that a bare `settings_errors()` call does not.
+ * What this does that a bare `settings_errors()` call does not:
  *
  * **It stays where the screen put it.** `wp-admin/js/common.js` runs
  * `$( 'div.updated, div.error, div.notice' ).not( '.inline, .below-h2' )
@@ -27,9 +27,16 @@ defined( 'ABSPATH' ) || exit;
  * saw it. Emitting the markup here, with `inline`, is what opts out of the
  * hoist.
  *
- * **It is actually announced.** The wrapper carries `aria-live="polite"`, which
- * only works if the notice is inside it when the announcement matters — see
- * above. Core's own notice output carries no live region at all.
+ * **No live region, and that is a correction rather than an omission.** The
+ * wrapper carried `aria-live="polite"` and a comment claiming the notice was
+ * therefore announced. It was not: a live region only announces content that
+ * changes *after* the region is in the accessibility tree, and every notice
+ * here is server-rendered, present at parse time, on the page a redirect
+ * landed on. The attribute did nothing, and a comment asserting behaviour the
+ * markup does not have is worse than no comment. Announcing a post-redirect
+ * confirmation needs focus moved to it, which is a change to how the screens
+ * handle their own save flow rather than something this class can do alone;
+ * until then Albert is exactly where core's `settings_errors()` is, and says so.
  *
  * The markup is core's, from `wp_admin_notice()` (WP 6.4+), which is what
  * `settings_errors()` itself calls. An admin notice should look and behave like
@@ -58,7 +65,11 @@ class Notices {
 		// is present, exactly as settings_errors() would.
 		$errors = get_settings_errors( $group );
 
-		echo '<div class="albert-notices" aria-live="polite">';
+		if ( $errors === [] ) {
+			return;
+		}
+
+		echo '<div class="albert-notices">';
 
 		foreach ( $errors as $error ) {
 			if ( ! is_array( $error ) || empty( $error['message'] ) ) {

@@ -11,7 +11,7 @@ namespace Albert\Privacy;
 
 defined( 'ABSPATH' ) || exit;
 
-use Albert\Admin\Settings\Value;
+use Albert\Settings\Value;
 
 /**
  * PrivacyMode enum
@@ -93,7 +93,7 @@ enum PrivacyMode: string {
 	 * Parse a raw string to a case, or null when it is not one of the three.
 	 *
 	 * Public because it is the vocabulary check, and more than this enum needs
-	 * to make it: {@see \Albert\Admin\Settings\Overrides} answers the option's
+	 * to make it: {@see \Albert\Settings\Overrides} answers the option's
 	 * `albert/settings/validator/albert_privacy_mode` with it, so the Settings
 	 * screen and {@see self::resolve()} judge an override by the same rule
 	 * rather than each keeping a copy.
