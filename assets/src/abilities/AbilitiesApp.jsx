@@ -296,44 +296,69 @@ export default function AbilitiesApp() {
 							'albert-ai-butler'
 						) }
 					</p>
-					{ ! isLoading && (
-						<div className="albert-abilities__summary-row">
-							<p
-								className="albert-abilities__summary"
-								aria-live="polite"
-							>
-								<span>
-									<strong>{ items.length }</strong>{ ' ' }
-									{ __( 'registered', 'albert-ai-butler' ) }
-								</span>
-								<span aria-hidden="true">·</span>
-								<span>
-									<strong>{ enabledCount }</strong>{ ' ' }
-									{ __( 'enabled', 'albert-ai-butler' ) }
-								</span>
-							</p>
-							<div className="albert-abilities__bulk-all">
-								<Button
-									variant="secondary"
-									size="compact"
-									disabled={ enabledCount === items.length }
-									onClick={ () => setAllEnabled( true ) }
-								>
-									{ __( 'Enable all', 'albert-ai-butler' ) }
-								</Button>
-								<Button
-									variant="secondary"
-									size="compact"
-									disabled={ enabledCount === 0 }
-									onClick={ () => setAllEnabled( false ) }
-								>
-									{ __( 'Disable all', 'albert-ai-butler' ) }
-								</Button>
-							</div>
-						</div>
-					) }
 				</div>
 			</header>
+
+			{ /*
+			 * Counts and the two bulk actions, on one full-width row directly
+			 * above the list.
+			 *
+			 * Not in `.albert-page__actions`. That slot is documented as
+			 * "primary control and/or save state" and is used for a Back link
+			 * and a save status elsewhere; WordPress puts the *create* action
+			 * beside a page title ("Add Plugin", "Add Post", "Add User", all
+			 * hugging the heading) and puts bulk operations in the tablenav
+			 * directly above the table. Enabling or disabling 118 abilities is
+			 * a bulk operation on the list below, so the header anchor is the
+			 * wrong home for it twice over: wrong kind of action, and far from
+			 * the data it changes.
+			 *
+			 * It also cannot live inside `.albert-page__text`, which is where it
+			 * started: that block is capped at the description's measure, so
+			 * the buttons right-aligned to 822px while the card, the toolbar and
+			 * the table all ended at 1380px. Aligning to an edge nothing draws
+			 * is what read as broken.
+			 *
+			 * Full width, `space-between`: the counts on the left and the
+			 * actions that change those counts on the right, sharing the list's
+			 * own measure.
+			 */ }
+			{ ! isLoading && (
+				<div
+					className="albert-abilities__summary-row"
+					aria-hidden={ openItem ? true : undefined }
+				>
+					<p className="albert-abilities__summary" aria-live="polite">
+						<span>
+							<strong>{ items.length }</strong>{ ' ' }
+							{ __( 'registered', 'albert-ai-butler' ) }
+						</span>
+						<span aria-hidden="true">·</span>
+						<span>
+							<strong>{ enabledCount }</strong>{ ' ' }
+							{ __( 'enabled', 'albert-ai-butler' ) }
+						</span>
+					</p>
+					<div className="albert-abilities__bulk-all">
+						<Button
+							variant="secondary"
+							size="compact"
+							disabled={ enabledCount === items.length }
+							onClick={ () => setAllEnabled( true ) }
+						>
+							{ __( 'Enable all', 'albert-ai-butler' ) }
+						</Button>
+						<Button
+							variant="secondary"
+							size="compact"
+							disabled={ enabledCount === 0 }
+							onClick={ () => setAllEnabled( false ) }
+						>
+							{ __( 'Disable all', 'albert-ai-butler' ) }
+						</Button>
+					</div>
+				</div>
+			) }
 
 			{ error && (
 				<div

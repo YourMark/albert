@@ -22,13 +22,22 @@
 	margin: 4px 0 0;
 }
 
+/**
+ * Counts on the left, the bulk actions that change them on the right, across
+ * the full width of the list below.
+ *
+ * A sibling of `.albert-page__header`, not a child of `.albert-page__text`:
+ * that block is capped at the description's measure, which right-aligned the
+ * buttons to 822px while the card, toolbar and table all ended at 1380px. See
+ * AbilitiesApp for why they are not in `.albert-page__actions` either.
+ */
 .albert-abilities__summary-row {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
-	gap: 12px;
-	margin: 16px 0 18px;
+	gap: var(--albert-space-300);
+	margin: 0 0 var(--albert-space-300);
 }
 
 .albert-abilities__summary {
@@ -490,6 +499,7 @@ code.albert-flyin__card-value {
 	border-bottom: 1px solid var(--albert-color-border);
 	padding: 6px 12px;
 }
+
 
 /* Permissions section — Free default. Mirrors Premium's Capability/Custom
    toggle; the Custom tab is a locked preview + upsell (Premium replaces the
