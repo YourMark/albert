@@ -138,35 +138,80 @@ class SuggestionsTest extends TestCase {
 	}
 
 	/**
-	 * The shipped WooCommerce prompt does not appear without WooCommerce.
+	 * The shipped top-sellers prompt needs the WooCommerce add-on, and says so
+	 * by naming the add-on's own ability.
 	 *
 	 * The concrete case behind the test above, asserted against the real
 	 * defaults rather than a fixture, because it is the shipped list that was
-	 * wrong.
+	 * wrong. It used to name Free's `woo-find-orders` and `woo-find-products`,
+	 * which between them list orders and list products and cannot join the two,
+	 * so the prompt appeared on any shop and answered properly on none.
 	 *
-	 * Skipped rather than asserted when WooCommerce is present. The suite runs
-	 * on a WooCommerce matrix as well as a plain one, and an environment
-	 * precondition written as an assertion fails on the legitimate half: that
-	 * reports a broken test as a broken product. The presence half of the
-	 * contract is covered by
-	 * {@see self::test_a_prompt_is_offered_when_its_abilities_are_enabled()},
-	 * which registers the abilities it needs rather than depending on which
-	 * plugins the runner happens to have.
+	 * Gated on the ability being registered rather than on
+	 * `class_exists( 'WooCommerce' )`. That is both the real rule and the safe
+	 * assertion: the suite runs a WooCommerce matrix as well as a plain one, so
+	 * an environment precondition written as an assertion fails on the
+	 * legitimate half and reports a broken test as a broken product. This one
+	 * asks the same question the code asks, so it cannot be wrong on either leg.
 	 *
 	 * @return void
 	 */
-	public function test_the_shipped_woocommerce_prompt_is_absent_without_woocommerce(): void {
-		if ( class_exists( 'WooCommerce' ) ) {
-			$this->markTestSkipped( 'WooCommerce is active, so the prompt is legitimately offered.' );
-		}
-
+	public function test_the_top_sellers_prompt_needs_the_woocommerce_addon(): void {
 		update_option( 'albert_disabled_abilities', [] );
 
-		$texts = array_column( ( new Suggestions() )->all(), 'text' );
+		$texts           = array_column( ( new Suggestions() )->all(), 'text' );
+		$offered         = false;
+		$has_top_sellers = array_key_exists(
+			'albert-woocommerce/view-top-sellers',
+			\Albert\Core\AbilitiesRegistry::get_all_raw()
+		);
 
 		foreach ( $texts as $text ) {
-			$this->assertStringNotContainsString( 'products sold', $text );
+			if ( str_contains( $text, 'products sold' ) ) {
+				$offered = true;
+			}
 		}
+
+		$this->assertSame(
+			$has_top_sellers,
+			$offered,
+			'The prompt must track the add-on ability it names, in both directions.'
+		);
+	}
+
+	/**
+	 * A shop running Free alone still gets a commerce prompt, and one its own
+	 * abilities can answer.
+	 *
+	 * Gating the top-sellers prompt on the add-on would otherwise leave a shop
+	 * without it with nothing commerce-shaped on the card at all, which reads
+	 * as Albert not knowing it is a shop. `woo-find-orders` filters on a date
+	 * range and returns each order's total, so this one is answerable on its
+	 * own.
+	 *
+	 * @return void
+	 */
+	public function test_a_shop_on_free_alone_still_gets_a_commerce_prompt(): void {
+		update_option( 'albert_disabled_abilities', [] );
+
+		$commerce = array_values(
+			array_filter(
+				( new Suggestions() )->all(),
+				static fn ( array $prompt ): bool => in_array(
+					'albert/woo-find-orders',
+					$prompt['requires'] ?? [],
+					true
+				)
+			)
+		);
+
+		if ( ! array_key_exists( 'albert/woo-find-orders', \Albert\Core\AbilitiesRegistry::get_all_raw() ) ) {
+			$this->assertSame( [], $commerce, 'No WooCommerce, no commerce prompt.' );
+
+			return;
+		}
+
+		$this->assertNotEmpty( $commerce );
 	}
 
 	/**

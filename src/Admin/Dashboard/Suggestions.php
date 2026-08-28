@@ -37,6 +37,16 @@ use Albert\Core\AbilitiesState;
  * WooCommerce abilities when WooCommerce is active, so on a plain site
  * `albert/woo-find-orders` was simultaneously absent and "enabled".
  *
+ * **Name the ability that does the work, not one that is merely nearby.** The
+ * check is only as honest as the ids a prompt declares, and the top-sellers
+ * prompt is the case that shows it: it named Free's `woo-find-orders` and
+ * `woo-find-products`, which between them can list orders and list products
+ * and cannot join the two, so it appeared on any shop and answered properly on
+ * none. It names `albert-woocommerce/view-top-sellers` now. A Free default
+ * naming an add-on's id is not a dependency on the add-on: `requires` is a
+ * string checked against the registry, so without the add-on the prompt is
+ * simply never listed, which is the whole mechanism working.
+ *
  * Registered as data so an add-on contributes a prompt without touching markup.
  *
  * @since 1.4.0
@@ -116,6 +126,20 @@ class Suggestions {
 	/**
 	 * The prompts Free ships.
 	 *
+	 * **A prompt may not presume a fact about the site.** "Find every page that
+	 * still mentions our old address" reads well and is useless: it assumes
+	 * there was a move, that the old address is still somewhere, and that the
+	 * reader knows what it was. Somebody who tries it gets nothing back and
+	 * learns that the card makes things up. Every prompt here asks a question
+	 * that has a real answer on any site with the abilities it names, whether
+	 * that answer is a list or "none".
+	 *
+	 * The same rule ruled out the other tempting ones. "Which images are
+	 * missing alt text?" would be the most useful prompt on this list, but
+	 * `albert/find-media` does not return alt text; answering it means a
+	 * `view-media` call per attachment, which is not a thing to put in front of
+	 * somebody as an example.
+	 *
 	 * Ordered so the first one that survives filtering is the most
 	 * characteristic thing this site can do: commerce on a shop, content
 	 * everywhere else.
@@ -127,20 +151,45 @@ class Suggestions {
 	private function defaults(): array {
 		return [
 			[
+				// Needs the WooCommerce add-on, not Free's own read-only
+				// abilities. Ranking products by what actually sold means
+				// reading the line items of every order in a period and summing
+				// them, which is `view-top-sellers`; Free's `woo-find-orders`
+				// and `woo-find-products` between them can list orders and list
+				// products, and cannot join the two. Gated on the id that does
+				// the work, so a shop running Free alone is not shown an example
+				// that would come back thin.
 				'text'     => __( 'Which products sold best last month?', 'albert-ai-butler' ),
-				'requires' => [ 'albert/woo-find-orders', 'albert/woo-find-products' ],
+				'requires' => [ 'albert-woocommerce/view-top-sellers' ],
 			],
 			[
-				'text'     => __( 'Find every page that still mentions our old address.', 'albert-ai-butler' ),
-				'requires' => [ 'albert/find-pages' ],
-			],
-			[
-				'text'     => __( 'Draft a post announcing our new opening hours, and leave it as a draft.', 'albert-ai-butler' ),
-				'requires' => [ 'albert/create-post' ],
+				// The commerce prompt a shop on Free alone does get. Answerable
+				// from `woo-find-orders` by itself: it filters on a date range
+				// and returns each order's status and total.
+				'text'     => __( 'How many orders came in this week, and what did they add up to?', 'albert-ai-butler' ),
+				'requires' => [ 'albert/woo-find-orders' ],
 			],
 			[
 				'text'     => __( 'Which posts have not been touched in over a year?', 'albert-ai-butler' ),
 				'requires' => [ 'albert/find-posts' ],
+			],
+			[
+				'text'     => __( 'Give me an overview of the pages on this site and how they are organised.', 'albert-ai-butler' ),
+				'requires' => [ 'albert/find-pages' ],
+			],
+			// Third on a site with nothing switched off, and deliberately so:
+			// the two above it are questions, and three questions in a row
+			// suggest an assistant that can only read. This is the one that
+			// shows it can make something. "Leave it as a draft" is part of the
+			// example rather than decoration, because the first thing anybody
+			// wants to know about a writing assistant is whether it publishes.
+			[
+				'text'     => __( 'Turn my three most recent posts into a round-up, and leave it as a draft.', 'albert-ai-butler' ),
+				'requires' => [ 'albert/find-posts', 'albert/create-post' ],
+			],
+			[
+				'text'     => __( 'Who has administrator access to this site?', 'albert-ai-butler' ),
+				'requires' => [ 'albert/find-users' ],
 			],
 			[
 				'text'     => __( 'Summarise what this site is about.', 'albert-ai-butler' ),
