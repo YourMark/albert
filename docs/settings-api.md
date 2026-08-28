@@ -50,7 +50,8 @@ $retention = (int) get_option( 'premium_activity_log_retention_days', 30 );
 | `description` | string | no | Help text rendered with the label. Keep it to one line and put the rest in `info`. |
 | `default` | mixed | no | Returned when no value is stored. Also registered with WordPress, so `get_option()` serves it without callers restating it — on admin requests; see *Storage* below. |
 | `options` | array | **yes for `select` and `radio-cards`** | `value => label` pairs for `select`; for `radio-cards`, `value => [ 'label' =>, 'description' =>, 'recommended' => ]`. |
-| `attributes` | array | no | Extra HTML attributes (e.g. `placeholder`, `min`, `max`, `step`). Reserved keys (`name`, `id`, `type`, `value`, `checked`) are ignored. |
+| `min` / `max` | int\|float | no | The allowed range for a `number` field. Drives **both** the control's attributes and the sanitiser, so a value outside it cannot be stored, whatever posted it. *Since 1.4.0.* |
+| `attributes` | array | no | Extra HTML attributes (e.g. `placeholder`, `step`). `min` and `max` work here too, identically. Reserved keys (`name`, `id`, `type`, `value`, `checked`) are ignored. |
 | `badge` | string | no | Small pill rendered next to the label (e.g. `"Premium"`). |
 | `suffix` | string | no | The unit shown beside the control ("days", "MB"), tied to it with `aria-describedby`. |
 | `info` | string | no | Text for an info "(i)" beside the label, for the detail that will not fit on the description's one line. May contain `<code>`. |
@@ -74,6 +75,10 @@ albert_register_setting( [
     'section_title' => __( 'Logging', 'my-addon' ),
 ] );
 ```
+
+`min` and `max` there are enforced, not decorative: they reach the `<input>`
+*and* the sanitiser, so 99999 in that field is stored as 3650 and the person
+saving is told.
 
 Every later field naming `my-addon/logging` joins that card — including one
 registered by a different add-on, which is how two plugins can share a heading
@@ -168,6 +173,49 @@ Registration is skipped for a read-only `custom` field (one whose
 
 `show_in_rest` is opt-in per field and defaults to `false`; a setting is not
 exposed over REST merely because it exists.
+
+## Overrides: when code owns a setting (1.4.0+)
+
+A setting can be pinned in code, and the screen says so rather than offering a
+control that would not change anything. Highest priority first:
+
+1. **A constant named after the option in upper case.** `albert_privacy_mode`
+   is set by `ALBERT_PRIVACY_MODE`. This is how a `wp-config.php` pins a value
+   across a fleet.
+2. **The filter `albert/settings/value/{option_name}`.** Return `null` (the
+   default) to defer.
+3. **The stored option**, then the declared default.
+
+A field under an active override renders read-only, names its source, and is
+skipped by the save loop, so submitting the form cannot overwrite a value the
+owner was never shown a control for.
+
+**Read your own setting through the chain.** `get_option()` sees only layer 3,
+so a reader that bypasses `albert_get_setting()` will use a different value from
+the one the screen reports:
+
+```php
+$days = (int) albert_get_setting( 'my_addon_log_retention_days', 30 );
+```
+
+**Declare a validator for anything with a range or a closed vocabulary.**
+
+```php
+add_filter( 'albert/settings/validator/my_addon_log_retention_days', static function (): callable {
+    return static fn( $value ): bool => is_numeric( $value ) && (int) $value >= 0;
+} );
+```
+
+An override the validator rejects is skipped and resolution continues to the
+next layer, so a typo in a constant falls through to the stored value instead of
+pinning the site to nonsense. It also has to hang off the option name rather
+than the call site: the screen and the code reading the setting both consult it,
+and that is the only thing that stops the two disagreeing about whether an
+override is in force.
+
+Answering the value filter on another hook's behalf? Name the hook the site
+actually wrote, with `albert/settings/value_source/{option_name}`, so the screen
+points somebody at code they can find.
 
 ## MCP external URL filter
 

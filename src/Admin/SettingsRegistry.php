@@ -230,8 +230,15 @@ class SettingsRegistry {
 	 * Register a section only if no section with this id exists yet.
 	 *
 	 * Used by {@see albert_register_setting()} to lazily create the synthetic
-	 * `albert/settings` section on first call. Calling with a section id that
-	 * already exists is a no-op.
+	 * `albert/settings` section on first call, and to create an add-on's own
+	 * card from a `section` + `section_title` pair. Calling with a section id
+	 * that already exists is a no-op.
+	 *
+	 * A section created here starts empty and is filled by
+	 * {@see self::append_field_to_section()}, so any `fields` passed are ignored.
+	 * Everything else, the namespaced id and the non-empty title, is held to the
+	 * same standard as {@see self::register_section()}, because it is that
+	 * method that does the work.
 	 *
 	 * @since 1.1.0
 	 *
@@ -241,31 +248,21 @@ class SettingsRegistry {
 	 */
 	public function ensure_section_exists( array $section ): void {
 		$id = isset( $section['id'] ) && is_string( $section['id'] ) ? $section['id'] : '';
-		if ( $id === '' ) {
-			return;
-		}
-		if ( isset( $this->sections[ $id ] ) ) {
+
+		if ( $id === '' || isset( $this->sections[ $id ] ) ) {
 			return;
 		}
 
-		// Register expects a non-empty fields array — seed with a placeholder that
-		// will be replaced the first time append_field_to_section() is called.
-		// We bypass register_section() because it enforces that invariant, and use
-		// the normalised internal shape directly.
-		$this->sections[ $id ] = [
-			'id'          => $id,
-			'title'       => isset( $section['title'] ) && is_string( $section['title'] ) ? $section['title'] : '',
-			'description' => isset( $section['description'] ) && is_string( $section['description'] ) ? $section['description'] : '',
-			'priority'    => isset( $section['priority'] ) && is_int( $section['priority'] ) ? $section['priority'] : 10,
-			'show_if'     => isset( $section['show_if'] ) && is_callable( $section['show_if'] ) ? $section['show_if'] : null,
-			'icon'        => isset( $section['icon'] ) && is_string( $section['icon'] ) ? $section['icon'] : '',
-			'badge'       => isset( $section['badge'] ) && is_string( $section['badge'] ) ? $section['badge'] : '',
-			'capability'  => isset( $section['capability'] ) && is_string( $section['capability'] ) && $section['capability'] !== ''
-				? $section['capability']
-				: 'manage_options',
-			'fields'      => [],
-			'_sequence'   => $this->sequence++,
-		];
+		// Delegated, not duplicated. This used to build the normalised shape by
+		// hand, because register_section() once demanded a non-empty `fields`
+		// array and a section created here is filled afterwards by
+		// albert_register_setting(). That requirement was dropped in 1.4.0, so
+		// the copy outlived its reason and had already drifted: it skipped the
+		// namespacing and non-empty-title checks every other section is held to,
+		// and would have gone on skipping whatever was added to them next.
+		unset( $section['fields'] );
+
+		$this->register_section( $section );
 	}
 
 	/**

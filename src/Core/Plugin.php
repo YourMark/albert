@@ -511,6 +511,12 @@ class Plugin {
 	 * install if that were the only check. See docs/features/70-admin-design-system.md
 	 * §4: "Never change the behaviour of an installed site silently."
 	 *
+	 * The registered default stays `balanced`, which is not a contradiction:
+	 * that is what a site with nothing stored falls back to, and the sites with
+	 * nothing stored are precisely the ones that predate the option. Writing a
+	 * value here is what makes Strict a *new install's* default without
+	 * reaching back and changing what an existing one does.
+	 *
 	 * @since 1.4.0
 	 *
 	 * @return void

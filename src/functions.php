@@ -81,8 +81,10 @@ if ( ! function_exists( 'albert_register_setting' ) ) {
 	 *                              checkbox|radio-cards.
 	 *
 	 * Optional keys: `description`, `default`, `options` (required for `select`
-	 * and `radio-cards`), `attributes` (min/max/step/placeholder), `badge`,
-	 * `suffix`, `info`, `section`.
+	 * and `radio-cards`), `min` and `max` (a `number` field's allowed range,
+	 * enforced by the sanitiser as well as rendered on the control),
+	 * `attributes` (step/placeholder, and min/max if you prefer them there),
+	 * `badge`, `suffix`, `info`, `section`.
 	 *
 	 * `section` is the id of the card to land in, and is how an add-on gets a
 	 * heading that says what its settings are about:
@@ -101,8 +103,8 @@ if ( ! function_exists( 'albert_register_setting' ) ) {
 	 * to aim for.
 	 *
 	 * @since 1.1.0
-	 * @since 1.4.0 Accepts `suffix`, `info`, `section`, `section_title` and
-	 *              `section_priority`.
+	 * @since 1.4.0 Accepts `min`, `max`, `suffix`, `info`, `section`,
+	 *              `section_title` and `section_priority`.
 	 *
 	 * @param array<string, mixed> $setting Field definition (simplified schema).
 	 *
@@ -183,6 +185,18 @@ if ( ! function_exists( 'albert_register_setting' ) ) {
 		}
 		if ( isset( $setting['info'] ) && is_string( $setting['info'] ) ) {
 			$internal['info'] = $setting['info'];
+		}
+
+		// The declared range, which drives both the control's own attributes and
+		// the sanitiser that clamps what is stored. Forwarded here because this
+		// function rebuilds the field from a whitelist rather than merging, so a
+		// key missing from that whitelist is dropped in silence: a field
+		// declaring `max => 3650` through this API reached the sanitiser with no
+		// bound at all and happily stored 99999.
+		foreach ( [ 'min', 'max' ] as $bound ) {
+			if ( isset( $setting[ $bound ] ) && is_numeric( $setting[ $bound ] ) ) {
+				$internal[ $bound ] = $setting[ $bound ];
+			}
 		}
 
 		$registry = \Albert\Admin\SettingsRegistry::instance();

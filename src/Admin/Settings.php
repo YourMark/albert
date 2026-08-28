@@ -11,6 +11,7 @@ namespace Albert\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Admin\Settings\Lock;
 use Albert\Admin\Settings\Schema;
 use Albert\Admin\Settings\Value;
 use Albert\Contracts\Interfaces\Hookable;
@@ -287,7 +288,7 @@ class Settings implements Hookable {
 				// The stored value is not what the site is using while an
 				// override is active, but it is what the owner last chose, and
 				// it has to survive until they change it themselves.
-				if ( $this->is_field_locked( $field, $option_name ) ) {
+				if ( Lock::is_locked( $field, Value::override( $option_name ) ) ) {
 					continue;
 				}
 
@@ -412,11 +413,16 @@ class Settings implements Hookable {
 			Assets::version( 'assets/css/admin-settings.css' )
 		);
 
+		// Every handle takes its version from the file's own mtime, as the
+		// stylesheet above already did. `albert-admin` is registered by the
+		// Dashboard as well and first registration wins, so a handle versioned
+		// two different ways depending on which screen you opened first meant a
+		// changed script kept its old cached copy on one of them.
 		wp_enqueue_script(
 			'albert-admin-utils',
 			ALBERT_PLUGIN_URL . 'assets/js/albert-admin-utils.js',
 			[],
-			ALBERT_VERSION,
+			Assets::version( 'assets/js/albert-admin-utils.js' ),
 			true
 		);
 
@@ -424,7 +430,7 @@ class Settings implements Hookable {
 			'albert-admin',
 			ALBERT_PLUGIN_URL . 'assets/js/admin-settings.js',
 			[ 'albert-admin-utils' ],
-			ALBERT_VERSION,
+			Assets::version( 'assets/js/admin-settings.js' ),
 			true
 		);
 
@@ -446,14 +452,14 @@ class Settings implements Hookable {
 			'albert-licenses',
 			ALBERT_PLUGIN_URL . 'assets/css/albert-licenses.css',
 			[ 'albert-admin' ],
-			ALBERT_VERSION
+			Assets::version( 'assets/css/albert-licenses.css' )
 		);
 
 		wp_enqueue_script(
 			'albert-licenses',
 			ALBERT_PLUGIN_URL . 'assets/js/albert-licenses.js',
 			[ 'albert-admin-utils' ],
-			ALBERT_VERSION,
+			Assets::version( 'assets/js/albert-licenses.js' ),
 			true
 		);
 
@@ -676,35 +682,5 @@ class Settings implements Hookable {
 			</p>
 		</div>
 		<?php
-	}
-
-	/**
-	 * Whether this field's value is out of the owner's hands right now.
-	 *
-	 * Two ways that happens: something in code owns the value (a constant, a
-	 * filter — see {@see Value}), or the field declares its own `disabled`
-	 * condition for a state the resolver cannot see. Either way the control
-	 * renders read-only, so nothing is submitted for it and nothing should be
-	 * written.
-	 *
-	 * @since 1.4.0
-	 *
-	 * @param array<string, mixed> $field       Normalised field definition.
-	 * @param string               $option_name Resolved wp_options key.
-	 *
-	 * @return bool
-	 */
-	private function is_field_locked( array $field, string $option_name ): bool {
-		if ( Value::is_overridden( $option_name ) ) {
-			return true;
-		}
-
-		$disabled = $field['disabled'] ?? false;
-
-		if ( is_callable( $disabled ) ) {
-			return (bool) call_user_func( $disabled );
-		}
-
-		return (bool) $disabled;
 	}
 }

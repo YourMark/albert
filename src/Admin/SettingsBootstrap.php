@@ -50,6 +50,16 @@ class SettingsBootstrap {
 						'id'                => 'mode',
 						'type'              => 'radio-cards',
 						'label'             => __( 'Privacy mode', 'albert-ai-butler' ),
+						// Balanced, and deliberately not Strict, even though a
+						// new install is set to Strict on activation
+						// ({@see \Albert\Core\Plugin::activate()}). This is the
+						// value a site falls back to when nothing is stored, and
+						// the sites in that position are the ones that installed
+						// Albert before the option existed. Changing what *they*
+						// do without anybody choosing it is the thing
+						// docs/features/70-admin-design-system.md §4 forbids.
+						// A new install never reaches this: it has a stored value
+						// from its first request.
 						'default'           => PrivacyMode::Balanced->value,
 						'options'           => [
 							PrivacyMode::Strict->value   => [
