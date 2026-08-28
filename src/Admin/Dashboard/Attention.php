@@ -209,9 +209,9 @@ class Attention {
 			return [];
 		}
 
-		$latest  = $this->log->latest_bulk( $names );
-		$items   = [];
-		$cutoff  = time() - ( self::FAILURE_WINDOW_DAYS * DAY_IN_SECONDS );
+		$latest = $this->log->latest_bulk( $names );
+		$items  = [];
+		$cutoff = time() - ( self::FAILURE_WINDOW_DAYS * DAY_IN_SECONDS );
 
 		foreach ( $latest as $ability_name => $row ) {
 			if ( ! is_object( $row ) || ( $row->status ?? '' ) !== 'error' ) {
