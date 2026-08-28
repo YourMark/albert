@@ -198,7 +198,28 @@ class AccessTokenRepository implements AccessTokenRepositoryInterface {
 	}
 
 	/**
-	 * Clean up expired tokens.
+	 * Clean up expired tokens, except any still anchoring a live refresh token.
+	 *
+	 * **The exception is not housekeeping, it is what keeps a live connection
+	 * visible.** `refresh_tokens` carries only `access_token_id`, no
+	 * `client_id`, so the access-token row is the *only* path from a refresh
+	 * token back to the client that holds it. Deleting an expired access token
+	 * whose refresh token is still valid severs that path, and an orphaned
+	 * refresh token can no longer be attributed to anybody.
+	 *
+	 * What that looked like: an access token lives about an hour and a refresh
+	 * token thirty days, so an assistant that had simply been quiet for a while
+	 * lost its access-token row on the next daily sweep. It could still refresh
+	 * and go on calling the site, while
+	 * {@see ClientRepository::getLiveConnections()} (which selects
+	 * `FROM access_tokens`) stopped returning it. The connection disappeared
+	 * from the Connections screen, from the Dashboard count and from the
+	 * retention sweeps: still working, no longer listed, and no longer
+	 * revocable from the UI. A connection an owner cannot see is one they
+	 * cannot withdraw.
+	 *
+	 * The row is collected on a later run, once the refresh token has expired
+	 * or been revoked and there is nothing left to attribute.
 	 *
 	 * @return int Number of tokens deleted.
 	 * @since 1.0.0
@@ -211,8 +232,15 @@ class AccessTokenRepository implements AccessTokenRepositoryInterface {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->query(
 			$wpdb->prepare(
-				'DELETE FROM %i WHERE expires_at < %s',
+				'DELETE t FROM %i t
+				LEFT JOIN %i r
+					ON r.access_token_id = t.token_id
+					AND r.revoked = 0
+					AND r.expires_at > UTC_TIMESTAMP()
+				WHERE t.expires_at < %s
+					AND r.id IS NULL',
 				$tables['access_tokens'],
+				$tables['refresh_tokens'],
 				gmdate( 'Y-m-d H:i:s' )
 			)
 		);
