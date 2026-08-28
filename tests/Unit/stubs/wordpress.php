@@ -286,6 +286,30 @@ if ( ! function_exists( 'wp_get_ability' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_has_ability' ) ) {
+	/**
+	 * Stub wp_has_ability, core's silent existence check.
+	 *
+	 * Answers from the same doubles as the wp_get_ability() stub above, because
+	 * in WordPress the two read one registry and any code asking both in a row
+	 * is entitled to a consistent answer.
+	 *
+	 * It matters that this exists at all. Production code probes with
+	 * `wp_has_ability()` rather than `wp_get_ability()` because the real
+	 * `WP_Abilities_Registry::get_registered()` raises `_doing_it_wrong()` on a
+	 * miss. With no stub, `function_exists()` is false here and every such
+	 * probe takes its does-not-exist branch, which is how a controller test
+	 * ended up asserting a 404 for an ability that was right there.
+	 *
+	 * @param string $ability_id Ability ID.
+	 *
+	 * @return bool Whether a double of this name is registered.
+	 */
+	function wp_has_ability( string $ability_id ): bool {
+		return wp_get_ability( $ability_id ) !== null;
+	}
+}
+
 if ( ! function_exists( 'wp_register_ability' ) ) {
 	/**
 	 * Stub wp_register_ability that records calls to $GLOBALS['albert_test_registered_abilities'].

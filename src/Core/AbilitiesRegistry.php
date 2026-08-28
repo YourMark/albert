@@ -147,13 +147,17 @@ class AbilitiesRegistry {
 	 * or when the Abilities API is unavailable — mirroring the fallback style
 	 * of {@see AbilitiesPage::resolve_category_label()}.
 	 *
-	 * `wp_get_ability()` is only called once the abilities registry has been
-	 * populated (`wp_abilities_api_init` has fired). On admin pages that render
-	 * before that — notably the Albert dashboard — calling it would emit PHP
-	 * notices from the registry, so we skip straight to the prettified-slug
-	 * fallback instead. Callers that hold their own ability instances (e.g.
-	 * Dashboard via AbilitiesManager) should resolve the label there first and
-	 * only fall through to this resolver for slugs they do not hold.
+	 * Two guards stand in front of `wp_get_ability()`, and both are load
+	 * bearing. It is only called once the registry has been populated
+	 * (`wp_abilities_api_init` has fired), because on an admin page that
+	 * renders before that the registry itself complains; and only for a slug
+	 * `wp_has_ability()` confirms, because `wp_get_ability()` complains about
+	 * anything it does not hold. Either miss prints a `_doing_it_wrong` on a
+	 * screen that is only trying to put a name in a table cell.
+	 *
+	 * Callers that hold their own ability instances (e.g. Dashboard via
+	 * AbilitiesManager) should resolve the label there first and only fall
+	 * through to this resolver for slugs they do not hold.
 	 *
 	 * Living in core means both `Dashboard` and `AbilitiesPage` (and Premium,
 	 * later) share one resolver for their Event/label columns.
@@ -164,7 +168,20 @@ class AbilitiesRegistry {
 	 * @since 1.2.0
 	 */
 	public static function label_for( string $slug ): string {
-		if ( function_exists( 'wp_get_ability' ) && did_action( 'wp_abilities_api_init' ) ) {
+		// `wp_has_ability()` first, and it is not belt and braces.
+		// `wp_get_ability()` is not a safe way to ask whether an ability
+		// exists: WP_Abilities_Registry::get_registered() raises
+		// _doing_it_wrong() on a miss before returning null, so probing with it
+		// prints a notice for every slug that is not registered. `wp_has_ability()`
+		// is core's own quiet check and exists for exactly this.
+		//
+		// Slugs that are not registered abilities are the normal case here, not
+		// an edge one. This resolves names out of the ability log, and the cron
+		// sweeps deliberately write event rows into it that were never
+		// abilities (`albert/allowed-user-expired`,
+		// `albert/connection-dropped-unused`), alongside genuine rows left by
+		// abilities that have since been renamed or removed.
+		if ( function_exists( 'wp_has_ability' ) && did_action( 'wp_abilities_api_init' ) && wp_has_ability( $slug ) ) {
 			$ability = wp_get_ability( $slug );
 			if ( $ability !== null ) {
 				$label = (string) $ability->get_label();
