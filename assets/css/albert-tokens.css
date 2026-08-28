@@ -166,6 +166,15 @@
 	   side by side across these screens, so they share one height. */
 	--albert-control-height: 2rem;
 
+	/* The DataViews toolbar: one width for every filter select, and a wider one
+	   for search so the row reads as "search, then filters" rather than as six
+	   identical boxes. A native <select> sizes to its widest option, so without
+	   a width declared the filters vary with whatever happens to be in their
+	   lists and the row looks broken. Wide enough for the longest "All …"
+	   label at the toolbar's own type size, with room for the chevron. */
+	--albert-toolbar-select-width: 11rem;   /* 176px */
+	--albert-toolbar-search-width: 14.5rem; /* 232px */
+
 	/* Card padding: the inline edge every card, row and card-aligned element
 	   shares, so a row list lines up with the header above it. Named because
 	   the literal was previously repeated in four stylesheets, and anything

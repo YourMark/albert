@@ -1267,25 +1267,67 @@
 
 /* Give the search a sensible fixed width instead of stretching. */
 .albert-toolbar .components-search-control {
-	inline-size: 14.5rem;
+	inline-size: var(--albert-toolbar-search-width);
 }
 
 /**
- * Every control in the toolbar at one height.
+ * Every control in the toolbar at one height and one width.
  *
- * `@wordpress/components` renders its search field compact (32px) but its
- * select controls at the default 40px, so the filter row arrived with two
- * control heights sitting next to each other. This brings the selects down to
- * the search field's height rather than the other way around, because 32px is
- * also what Albert's own inputs use — one control height across the whole
- * admin, not one per component library default.
+ * **The height, and why the obvious selector loses.**
+ * `@wordpress/components` renders its search field compact (32px) and its
+ * select controls at 40px, so the row arrives with two control heights side by
+ * side. An earlier rule here said exactly what this one says and never applied
+ * once: Emotion emits its styles under a class repeated three times
+ * (`.css-1s4lx8l.css-1s4lx8l.css-1s4lx8l`, specificity 0-3-0), which is the
+ * library deliberately making itself hard to override. `.albert-toolbar
+ * select` is 0-1-1 and `.albert-toolbar .components-select-control__input` is
+ * 0-2-0, so both lost, silently, whatever the load order.
+ *
+ * Repeating the class to 0-4-0 is the answer rather than `!important`, because
+ * the library is not using `!important` either: this is a specificity contest
+ * and the house rule is to win it on the same terms. If a future version bumps
+ * its own count, this needs one more repetition, and the giveaway is a control
+ * that ignores a rule that is plainly right. Measure the element before
+ * assuming the rule is wrong.
+ *
+ * **The width, which is what the eye actually complains about.** A native
+ * `<select>` sizes itself to its *widest option*, not to the option shown, so
+ * a filter listing one long source name rendered half again as wide as the one
+ * beside it: measured across this row, 106px to 196px, for five controls that
+ * are the same kind of thing and read as a broken line. Fixing the width makes
+ * them a set. `text-overflow` keeps a long value readable rather than clipped.
  */
 .albert-toolbar .components-select-control__input,
 .albert-toolbar select {
 	min-block-size: var(--albert-control-height);
 	block-size: var(--albert-control-height);
+	inline-size: var(--albert-toolbar-select-width);
 	padding-block: 0;
 	line-height: normal;
+	text-overflow: ellipsis;
+}
+
+/* The specificity bump described above. Split from the readable rule so the
+   declarations are stated once and this only re-asserts them. */
+.albert-toolbar
+	.components-select-control__input.components-select-control__input.components-select-control__input {
+	min-block-size: var(--albert-control-height);
+	block-size: var(--albert-control-height);
+	inline-size: var(--albert-toolbar-select-width);
+	padding-block: 0;
+	line-height: normal;
+	text-overflow: ellipsis;
+}
+
+/* The wrappers Emotion puts between the select and the row are auto-height and
+   auto-width, so they follow the control down. Stated rather than assumed,
+   because `components-input-base` sets its own flex behaviour and would
+   otherwise keep the old footprint around a smaller control. */
+.albert-toolbar .components-select-control,
+.albert-toolbar .components-base-control__field,
+.albert-toolbar .components-input-control__container {
+	inline-size: auto;
+	min-inline-size: 0;
 }
 
 /* ==========================================================================
@@ -1772,13 +1814,47 @@ textarea.albert-textarea {
 .albert-endpoint__field {
 	flex: 1 1 8rem;
 	min-inline-size: 0;
-	padding: var(--albert-space-200) var(--albert-space-300);
+	padding-block: 0;
+	padding-inline: var(--albert-space-300);
 	border: 1px solid var(--albert-color-border-input);
 	border-radius: var(--albert-radius-md);
 	background: var(--albert-color-surface-sunken);
 	font-family: var(--albert-font-family-mono);
 	font-size: var(--albert-font-size-sm);
 	color: var(--albert-color-text);
+}
+
+/* Element-qualified for the reason the form-control rule above gives: core
+   sets `min-height: 40px` on `input[type="text"]` at 0-1-1, so a bare class
+   loses no matter the load order and this field rendered 40px while every
+   other control on the same screen was 32px. Measured, not assumed. */
+input.albert-endpoint__field {
+	min-block-size: var(--albert-control-height);
+	block-size: var(--albert-control-height);
+	line-height: normal;
+}
+
+/**
+ * The Copy button beside it, at the same height.
+ *
+ * This file says elsewhere that buttons are core's and Albert does not
+ * re-implement them, and that still holds: this sets a height, nothing else,
+ * and only for a button that is half of a field-and-button pair. A pair whose
+ * two halves are different heights is a layout fault rather than a button
+ * style, and core's `.button` is 40px here while every control around it is
+ * 32px.
+ *
+ * Scoped to `.albert-endpoint` on purpose. Core buttons everywhere else on
+ * these screens keep core's height, because they stand alone and should look
+ * like wp-admin.
+ */
+.albert-endpoint .button {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: var(--albert-control-height);
+	block-size: var(--albert-control-height);
+	padding-block: 0;
+	line-height: normal;
 }
 
 .albert-endpoint__field:focus-visible {
