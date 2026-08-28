@@ -197,6 +197,9 @@
 /* No padding of its own: this sits inside .albert-card__body, which already
    pads, and the two together were what made the card look loose and unfinished.
    No dividers either. Two links do not need ruling off from each other. */
+/* Dormant, not dead: the Resources card is switched off while the pages it
+   links to are being written (see Dashboard::show_resources()). Do not remove
+   in a dead-CSS sweep, the card comes back with one word. */
 .albert-resources-list {
 	list-style: none;
 	margin: 0;

@@ -70,6 +70,7 @@ class Dashboard implements Hookable {
 	 */
 	private ?bool $activity_truncated = null;
 
+
 	/**
 	 * Constructor.
 	 *
@@ -1164,12 +1165,42 @@ class Dashboard implements Hookable {
 	}
 
 	/**
+	 * Whether the Resources card renders.
+	 *
+	 * Off while the pages it links to are still being written: a card whose
+	 * links lead somewhere unfinished is worse than no card at all. Nothing
+	 * else about it has been removed, so bringing it back is changing this
+	 * default to true. The markup, the links and the styles are all still
+	 * here.
+	 *
+	 * A filter rather than a constant so the value is decided at runtime,
+	 * which also lets a site turn it on ahead of us.
+	 *
+	 * @return bool
+	 * @since 1.4.0
+	 */
+	private function show_resources(): bool {
+		/**
+		 * Filters whether the Dashboard's Resources card is shown.
+		 *
+		 * @since 1.4.0
+		 *
+		 * @param bool $show Whether to render the card.
+		 */
+		return (bool) apply_filters( 'albert/dashboard/show_resources', false );
+	}
+
+	/**
 	 * The resources card, identical in both states.
 	 *
 	 * @return void
 	 * @since 1.4.0
 	 */
 	private function render_resources_card(): void {
+		if ( ! $this->show_resources() ) {
+			return;
+		}
+
 		?>
 		<section class="albert-card">
 			<div class="albert-card__header">
