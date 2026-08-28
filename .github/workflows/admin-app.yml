@@ -1,0 +1,65 @@
+name: Admin app
+
+# The React admin screens (Abilities, Skills, Context) are shipped as compiled
+# bundles that `release.yml` builds at tag time into the gitignored
+# assets/build/. Until this workflow existed, nothing compiled or linted them on
+# a pull request: `code-quality.yml` and `tests.yml` both filter to PHP paths,
+# so a JSX change that did not compile would have been discovered by the
+# release, in front of a version tag.
+#
+# Deliberately separate from those two rather than folded in, because their
+# `paths` filters are PHP-only by design and widening them would run PHPCS,
+# PHPStan and the full PHPUnit matrix on every stylesheet edit.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'assets/src/**'
+      - 'package.json'
+      - 'package-lock.json'
+  push:
+    branches:
+      - main
+      - development
+    paths:
+      - 'assets/src/**'
+      - 'package.json'
+      - 'package-lock.json'
+
+jobs:
+  build:
+    name: Lint and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint:js
+
+      # The real gate. A JSX change that does not compile produces no bundle,
+      # and the screen falls back to its "run npm install && npm run build"
+      # notice on a live site.
+      - name: Build
+        run: npm run build
+
+      - name: Confirm the bundles were produced
+        run: |
+          for entry in abilities skills context; do
+            test -f "assets/build/js/${entry}.js" \
+              || { echo "::error::assets/build/js/${entry}.js was not produced"; exit 1; }
+            test -f "assets/build/js/${entry}.asset.php" \
+              || { echo "::error::assets/build/js/${entry}.asset.php was not produced"; exit 1; }
+          done
+          echo "All admin bundles present."
