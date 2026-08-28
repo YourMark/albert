@@ -1911,16 +1911,22 @@ input.albert-endpoint__field {
 	align-items: center;
 	gap: var(--albert-space-300);
 	padding-block: var(--albert-space-300);
-	/* Line the button up with the cards' *contents*, not with their outer edge.
-	   The bar is a sibling of the cards and spans the same width, so with no
-	   inline padding the button sat flush against the card border at 182px
-	   while every card title, description and field label above it started at
-	   201px. The eye tracks that content column down the page and the button
-	   jutted out of it. The +1px is the card's own border, which the bar does
-	   not have: card padding alone would land it a pixel short. */
-	padding-inline: calc(var(--albert-card-padding) + 1px);
+	/* The same inline padding a card body has, so the button lines up with the
+	   card titles, descriptions and field labels above it rather than with the
+	   cards' outer edge. That column is what the eye tracks down the page. */
+	padding-inline: var(--albert-card-padding);
 	background: var(--albert-color-surface);
+	/* Borders on all three open sides, not just the top, and this is the width
+	   fix rather than decoration. A card is bordered, so its white paints
+	   *inside* that border; the bar had no inline borders, so its white ran the
+	   full width of the column and finished one pixel proud of the card on each
+	   side. Two pixels wider than everything above it, which is small enough to
+	   look like a rendering artefact and wrong enough to notice.
+	   Matching the border also makes the padding above correct without
+	   arithmetic: the bar now has the card's box, so the card's padding lands
+	   its contents in the card's column. */
 	border-block-start: 1px solid var(--albert-color-border);
+	border-inline: 1px solid var(--albert-color-border);
 }
 
 /* ==========================================================================
