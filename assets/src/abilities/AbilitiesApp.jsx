@@ -282,9 +282,21 @@ export default function AbilitiesApp() {
 
 	return (
 		<div className="albert-page albert-page--full albert-abilities">
+			{ /*
+			 * `inert` as well as `aria-hidden`, and the pair is the point.
+			 * `aria-hidden` only hides from assistive tech; it leaves the
+			 * content tabbable, which is a WCAG 4.1.2 failure the moment
+			 * anything can reach it. Today nothing can, because the fly-in traps
+			 * focus (verified: 30 tabs, focus never left the dialog), but that
+			 * makes correctness depend on a JS trap holding. `inert` is the
+			 * browser enforcing it, so the trap becomes belt rather than
+			 * load-bearing. Passed as a string because this is React 18, where
+			 * `inert` is not yet a known boolean prop.
+			 */ }
 			<header
 				className="albert-page__header albert-abilities__header"
 				aria-hidden={ openItem ? true : undefined }
+				inert={ openItem ? '' : undefined }
 			>
 				<div className="albert-page__text">
 					<h1 className="albert-page__title">
@@ -327,6 +339,7 @@ export default function AbilitiesApp() {
 				<div
 					className="albert-abilities__summary-row"
 					aria-hidden={ openItem ? true : undefined }
+					inert={ openItem ? '' : undefined }
 				>
 					<p className="albert-abilities__summary" aria-live="polite">
 						<span>
