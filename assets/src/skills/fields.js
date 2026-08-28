@@ -34,8 +34,8 @@ function SkillCell( { item } ) {
 /**
  * Build the DataViews fields array.
  *
- * @param {Object} options          Options.
- * @param {Array}  options.sources  Source filter elements ({ value, label }).
+ * @param {Object} options         Options.
+ * @param {Array}  options.sources Source filter elements ({ value, label }).
  * @return {Array} DataViews fields.
  */
 export function getFields( { sources } ) {

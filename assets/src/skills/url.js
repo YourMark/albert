@@ -35,5 +35,8 @@ export function viewFromUrl( defaultView ) {
  * @return {void}
  */
 export function syncViewToUrl( view ) {
-	sharedSyncViewToUrl( view, { filters: FILTERS, defaultSort: DEFAULT_SORT } );
+	sharedSyncViewToUrl( view, {
+		filters: FILTERS,
+		defaultSort: DEFAULT_SORT,
+	} );
 }
