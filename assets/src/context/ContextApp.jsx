@@ -148,7 +148,9 @@ export default function ContextApp() {
 					 * every status change.
 					 */ }
 					<div aria-live="polite" aria-atomic="true">
-						{ status !== 'error' && <SaveState status={ status } /> }
+						{ status !== 'error' && (
+							<SaveState status={ status } />
+						) }
 					</div>
 					{ status === 'error' && (
 						<>
