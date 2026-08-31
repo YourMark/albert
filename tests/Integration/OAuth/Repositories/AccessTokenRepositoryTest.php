@@ -19,6 +19,7 @@ use Albert\OAuth\Entities\ScopeEntity;
 use Albert\OAuth\Repositories\AccessTokenRepository;
 use Albert\Tests\TestCase;
 use DateTimeImmutable;
+use League\OAuth2\Server\Exception\OAuthServerException;
 
 /**
  * AccessTokenRepository integration tests.
@@ -109,6 +110,32 @@ class AccessTokenRepositoryTest extends TestCase {
 	 */
 	public function test_unknown_token_is_considered_revoked(): void {
 		$this->assertTrue( $this->repository->isAccessTokenRevoked( 'tok_nonexistent' ) );
+	}
+
+	/**
+	 * A failed insert must be loud, not silent.
+	 *
+	 * Forces a real insert failure via the token_id unique key rather than
+	 * mocking $wpdb, so this exercises the actual failure path.
+	 *
+	 * @return void
+	 */
+	public function test_persist_throws_when_insert_fails(): void {
+		global $wpdb;
+
+		$token = $this->build_token( 'tok_dup', 'cli', 1 );
+		$this->repository->persistNewAccessToken( $token );
+
+		$this->expectException( OAuthServerException::class );
+
+		// Suppressed: the resulting duplicate-entry error is expected, not a
+		// sign anything is wrong.
+		$wpdb->suppress_errors( true );
+		try {
+			$this->repository->persistNewAccessToken( $token );
+		} finally {
+			$wpdb->suppress_errors( false );
+		}
 	}
 
 	// ─── Deletion & cleanup ────────────────────────────────────────

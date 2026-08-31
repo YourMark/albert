@@ -19,6 +19,7 @@ use Albert\OAuth\Entities\ScopeEntity;
 use Albert\OAuth\Repositories\AuthCodeRepository;
 use Albert\Tests\TestCase;
 use DateTimeImmutable;
+use League\OAuth2\Server\Exception\OAuthServerException;
 
 /**
  * AuthCodeRepository integration tests.
@@ -85,6 +86,36 @@ class AuthCodeRepositoryTest extends TestCase {
 	 */
 	public function test_unknown_code_is_considered_revoked(): void {
 		$this->assertTrue( $this->repository->isAuthCodeRevoked( 'code_missing' ) );
+	}
+
+	/**
+	 * A failed insert must be loud, not silent.
+	 *
+	 * Previously the return value of $wpdb->insert() was discarded: the browser
+	 * would still redirect with a code that could never be exchanged, and the
+	 * only visible symptom was an unrelated-looking invalid_grant at the token
+	 * endpoint. Forces a real insert failure via the code_id unique key rather
+	 * than mocking $wpdb, so this exercises the actual failure path.
+	 *
+	 * @return void
+	 */
+	public function test_persist_throws_when_insert_fails(): void {
+		global $wpdb;
+
+		$code = $this->build_code( 'code_dup', 'cli', 1 );
+		$this->repository->persistNewAuthCode( $code );
+
+		$this->expectException( OAuthServerException::class );
+
+		// Same code_id again — violates the UNIQUE KEY and forces $wpdb->insert()
+		// to return false. Suppressed: the resulting duplicate-entry error is
+		// expected, not a sign anything is wrong.
+		$wpdb->suppress_errors( true );
+		try {
+			$this->repository->persistNewAuthCode( $code );
+		} finally {
+			$wpdb->suppress_errors( false );
+		}
 	}
 
 	/**

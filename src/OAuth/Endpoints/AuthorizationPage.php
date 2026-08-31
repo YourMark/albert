@@ -142,15 +142,20 @@ class AuthorizationPage implements Hookable {
 			return;
 		}
 
-		// Get OAuth parameters.
-		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- OAuth flow doesn't use WP nonces.
-		$client_id             = isset( $_GET['client_id'] ) ? sanitize_text_field( wp_unslash( $_GET['client_id'] ) ) : '';
-		$redirect_uri          = isset( $_GET['redirect_uri'] ) ? esc_url_raw( wp_unslash( $_GET['redirect_uri'] ) ) : '';
-		$response_type         = isset( $_GET['response_type'] ) ? sanitize_text_field( wp_unslash( $_GET['response_type'] ) ) : '';
-		$state                 = isset( $_GET['state'] ) ? sanitize_text_field( wp_unslash( $_GET['state'] ) ) : '';
-		$scope                 = isset( $_GET['scope'] ) ? sanitize_text_field( wp_unslash( $_GET['scope'] ) ) : 'default';
-		$code_challenge        = isset( $_GET['code_challenge'] ) ? sanitize_text_field( wp_unslash( $_GET['code_challenge'] ) ) : '';
-		$code_challenge_method = isset( $_GET['code_challenge_method'] ) ? sanitize_text_field( wp_unslash( $_GET['code_challenge_method'] ) ) : '';
+		// Get OAuth parameters. On POST (the consent decision) these are read from
+		// $_POST — the hidden fields the consent form resubmits — instead of
+		// relying on the form having no `action` attribute to keep the same values
+		// reachable via $_GET. That reliance worked only by accident: an explicit
+		// `action`, or anything that strips the query string on POST, would have
+		// silently reduced the entire OAuth context to empty strings.
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- OAuth flow doesn't use WP nonces; the POST branch's nonce is verified below before any state changes.
+		$client_id             = $this->read_oauth_param( 'client_id' );
+		$redirect_uri          = $this->read_oauth_param( 'redirect_uri', '', true );
+		$response_type         = $this->read_oauth_param( 'response_type' );
+		$state                 = $this->read_oauth_param( 'state' );
+		$scope                 = $this->read_oauth_param( 'scope', 'default' );
+		$code_challenge        = $this->read_oauth_param( 'code_challenge' );
+		$code_challenge_method = $this->read_oauth_param( 'code_challenge_method' );
 		// phpcs:enable
 
 		// Validate required parameters.
@@ -249,6 +254,33 @@ class AuthorizationPage implements Hookable {
 
 		// Show consent page.
 		$this->render_consent_page( $client, $redirect_uri, $state, $scope, $code_challenge, $code_challenge_method );
+	}
+
+	/**
+	 * Read an OAuth request parameter from the source appropriate to this request.
+	 *
+	 * GET on the initial authorize request, POST on the consent form's submission
+	 * (see the hidden fields in render_consent_page()).
+	 *
+	 * @param string $key           The parameter name.
+	 * @param string $default_value The default when the parameter is absent.
+	 * @param bool   $is_url        Whether to sanitize as a URL rather than plain text.
+	 *
+	 * @return string The sanitized value.
+	 * @since 1.5.0
+	 */
+	private function read_oauth_param( string $key, string $default_value = '', bool $is_url = false ): string {
+		$is_post = isset( $_SERVER['REQUEST_METHOD'] ) && $_SERVER['REQUEST_METHOD'] === 'POST';
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended -- OAuth flow doesn't use WP nonces for GET; the POST branch's nonce is verified in handle_authorization() before any state changes.
+		$source = $is_post ? $_POST : $_GET;
+
+		if ( ! isset( $source[ $key ] ) ) {
+			return $default_value;
+		}
+
+		return $is_url
+			? esc_url_raw( wp_unslash( $source[ $key ] ) )
+			: sanitize_text_field( wp_unslash( $source[ $key ] ) );
 	}
 
 	/**
