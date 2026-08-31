@@ -234,6 +234,12 @@ class Attention {
 		$cutoff = time() - ( self::FAILURE_WINDOW_DAYS * DAY_IN_SECONDS );
 
 		foreach ( $latest as $ability_name => $row ) {
+			// Only `error`. A `success` row that carries an error code — the
+			// ability ran correctly and the answer was "no" — and a `warning`
+			// row — the site refused the call on purpose — are both already
+			// excluded by this identity test, and deliberately so: this card is
+			// for standing conditions someone must act on. "That term does not
+			// exist" is not one, and neither is a permission check working.
 			if ( ! is_object( $row ) || ( $row->status ?? '' ) !== 'error' ) {
 				continue;
 			}
@@ -338,6 +344,10 @@ class Attention {
 			return true;
 		}
 
+		// `_not_found` and `_permission_denied` are kept here as a belt-and-braces
+		// measure. Since 1.4.0 those codes are classified as `success` and
+		// `warning` upstream and never reach this method, but a row written by
+		// an older Free — or by a caller that forced the status — still can.
 		foreach ( [ '_permission_denied', '_not_found', '_invalid_id', '_invalid_input', '_exists' ] as $suffix ) {
 			if ( str_ends_with( $code, $suffix ) ) {
 				return true;

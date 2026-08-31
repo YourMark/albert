@@ -146,6 +146,45 @@ class AttentionTest extends TestCase {
 	}
 
 	/**
+	 * A truthful negative answer is not a finding.
+	 *
+	 * Since 1.4.0 a `_not_found` answer is stored as a `success`, so it never
+	 * reaches the failure check at all. This test pins that: the card is for
+	 * standing conditions someone must act on, and "that term does not exist"
+	 * is not one.
+	 *
+	 * @return void
+	 */
+	public function test_a_truthful_negative_answer_is_not_reported(): void {
+		( new LoggingRepository() )->insert( $this->ability, 1, 'error', 'term_not_found' );
+
+		$this->assertSame( [], $this->failures() );
+	}
+
+	/**
+	 * A warning row is not a finding either.
+	 *
+	 * Since 1.4.0 a policy block is stored as `warning`, so it never reaches
+	 * the failure check. A permission system doing its job is not a standing
+	 * condition anyone has to act on, and listing it here in red would train
+	 * the owner to ignore the card — taking the genuinely broken entry beside
+	 * it with them.
+	 *
+	 * @return void
+	 */
+	public function test_a_warning_is_not_reported(): void {
+		( new LoggingRepository() )->insert(
+			$this->ability,
+			1,
+			'error',
+			'ability_permission_denied',
+			[ 'failure_stage' => 'permission' ]
+		);
+
+		$this->assertSame( [], $this->failures() );
+	}
+
+	/**
 	 * An ability declining is not an ability breaking.
 	 *
 	 * @dataProvider refusal_codes

@@ -136,6 +136,10 @@ class ObservabilityHandler implements McpObservabilityHandlerInterface {
 			$user_id       = get_current_user_id();
 			$context       = $error_message !== null ? [ 'error_message' => $error_message ] : [];
 
+			// Handed in as `error`; Repository::insert() re-reads it through
+			// Outcome, so an MCP-level `*_not_found` lands as `success` and a
+			// permission refusal as `warning`, exactly as they would on the
+			// after_execute path.
 			( new Repository() )->insert( $ability_name, $user_id, 'error', $error_code, $context );
 			ExecutionLogMarker::mark( $ability_name );
 		} catch ( \Throwable $e ) {

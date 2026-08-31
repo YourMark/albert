@@ -71,13 +71,182 @@ class RepositoryTest extends TestCase {
 	 * @return void
 	 */
 	public function test_insert_with_error_status_writes_error_code(): void {
-		$this->repository->insert( 'albert/create-post', 5, 'error', 'rest_forbidden' );
+		$this->repository->insert( 'albert/create-post', 5, 'error', 'db_unreachable' );
 
 		$row = $this->repository->latest_for_ability( 'albert/create-post' );
 
 		$this->assertNotNull( $row );
 		$this->assertSame( 'error', $row->status );
-		$this->assertSame( 'rest_forbidden', $row->error_code );
+		$this->assertSame( 'db_unreachable', $row->error_code );
+	}
+
+	// ─── central outcome classification ──────────────────────────────
+
+	/**
+	 * An `error` handed in with a `_not_found` code is stored as `success`.
+	 *
+	 * The classification lives in insert() rather than in each writer, so a
+	 * caller that only knows `is_wp_error()` — Free's ObservabilityHandler,
+	 * Premium's logger, an add-on writing directly — still lands on the right
+	 * value. No schema change was needed: `status` is `varchar(20)`.
+	 *
+	 * @return void
+	 */
+	public function test_insert_classifies_a_not_found_error_as_success(): void {
+		$this->repository->insert( 'albert/view-term', 5, 'error', 'term_not_found' );
+
+		$row = $this->repository->latest_for_ability( 'albert/view-term' );
+
+		$this->assertNotNull( $row );
+		$this->assertSame( 'success', $row->status );
+		$this->assertSame( 'term_not_found', $row->error_code );
+	}
+
+	/**
+	 * An `error` handed in with a policy code is stored as `warning`.
+	 *
+	 * @return void
+	 */
+	public function test_insert_classifies_a_policy_refusal_as_warning(): void {
+		$this->repository->insert( 'albert/create-post', 5, 'error', 'ability_permission_denied' );
+
+		$row = $this->repository->latest_for_ability( 'albert/create-post' );
+
+		$this->assertNotNull( $row );
+		$this->assertSame( 'warning', $row->status );
+		$this->assertSame( 'ability_permission_denied', $row->error_code );
+	}
+
+	/**
+	 * The `permission` stage in the context outranks the error code.
+	 *
+	 * This is the rule that lets an add-on's own permission callback classify
+	 * correctly without Albert ever having seen its error code.
+	 *
+	 * @return void
+	 */
+	public function test_permission_stage_classifies_an_unknown_code_as_warning(): void {
+		$this->repository->insert(
+			'acme/search',
+			5,
+			'error',
+			'acme_nope',
+			[ 'failure_stage' => 'permission' ]
+		);
+
+		$rows = $this->all_rows_for( 'acme/search' );
+
+		$this->assertCount( 1, $rows );
+		$this->assertSame( 'warning', $rows[0]->status );
+		$this->assertSame( 'permission', $rows[0]->failure_stage );
+	}
+
+	/**
+	 * A success row carries no failure stage.
+	 *
+	 * The column is called *failure*_stage and an answer is not a failure. A
+	 * caller that stamped a stage anyway — Premium records `execute` from where
+	 * the invocation died — has it cleared, which is what makes the "Failed at"
+	 * badge correctly never render for these rows with no extra logic downstream.
+	 *
+	 * @return void
+	 */
+	public function test_success_row_has_a_null_failure_stage(): void {
+		$this->repository->insert(
+			'albert/view-term',
+			5,
+			'error',
+			'term_not_found',
+			[ 'failure_stage' => 'execute' ]
+		);
+
+		$rows = $this->all_rows_for( 'albert/view-term' );
+
+		$this->assertCount( 1, $rows );
+		$this->assertSame( 'success', $rows[0]->status );
+		$this->assertNull( $rows[0]->failure_stage );
+	}
+
+	/**
+	 * A warning keeps its stage — where it stopped is the useful half of the row.
+	 *
+	 * @return void
+	 */
+	public function test_warning_row_keeps_its_failure_stage(): void {
+		$this->repository->insert(
+			'albert/create-post',
+			5,
+			'error',
+			'ability_permission_denied',
+			[ 'failure_stage' => 'permission' ]
+		);
+
+		$rows = $this->all_rows_for( 'albert/create-post' );
+
+		$this->assertCount( 1, $rows );
+		$this->assertSame( 'warning', $rows[0]->status );
+		$this->assertSame( 'permission', $rows[0]->failure_stage );
+	}
+
+	/**
+	 * A genuine failure keeps both its status and its stage.
+	 *
+	 * @return void
+	 */
+	public function test_a_real_failure_keeps_its_status_and_stage(): void {
+		$this->repository->insert(
+			'albert/create-post',
+			5,
+			'error',
+			'db_unreachable',
+			[ 'failure_stage' => 'execute' ]
+		);
+
+		$rows = $this->all_rows_for( 'albert/create-post' );
+
+		$this->assertCount( 1, $rows );
+		$this->assertSame( 'error', $rows[0]->status );
+		$this->assertSame( 'execute', $rows[0]->failure_stage );
+	}
+
+	/**
+	 * The `albert/logging/outcome` filter reaches the repository too.
+	 *
+	 * @return void
+	 */
+	public function test_outcome_filter_applies_to_repository_writes(): void {
+		$filter = static fn( string $status, string $ability ): string => $ability === 'acme/search' ? 'warning' : $status;
+		add_filter( 'albert/logging/outcome', $filter, 10, 2 );
+
+		$this->repository->insert( 'acme/search', 5, 'error', 'acme_not_licensed' );
+
+		remove_filter( 'albert/logging/outcome', $filter, 10 );
+
+		$row = $this->repository->latest_for_ability( 'acme/search' );
+
+		$this->assertNotNull( $row );
+		$this->assertSame( 'warning', $row->status );
+	}
+
+	/**
+	 * A warning is its own retention partition.
+	 *
+	 * Pruning is status-aware, so a run of policy blocks cannot evict the last
+	 * real failure or the last success.
+	 *
+	 * @return void
+	 */
+	public function test_warning_is_its_own_retention_partition(): void {
+		$this->repository->insert( 'albert/view-term', 1, 'success' );
+		$this->repository->insert( 'albert/view-term', 2, 'error', 'db_unreachable' );
+
+		foreach ( range( 1, 4 ) as $i ) {
+			$this->repository->insert( 'albert/view-term', 10 + $i, 'error', 'ability_permission_denied' );
+		}
+
+		$this->assertCount( 1, $this->all_rows_for_status( 'albert/view-term', 'success' ) );
+		$this->assertCount( 1, $this->all_rows_for_status( 'albert/view-term', 'error' ) );
+		$this->assertCount( Repository::RETENTION_COUNT, $this->all_rows_for_status( 'albert/view-term', 'warning' ) );
 	}
 
 	/**

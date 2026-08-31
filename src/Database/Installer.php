@@ -146,9 +146,11 @@ class Installer {
 				self::purge_wildcard_clients();
 			}
 
-			// `albert_allowed_users` gained per-entry timestamps in 1.4.0.
+			// `albert_allowed_users` gained per-entry timestamps in 1.4.0, and
+			// the ability log shed three columns dbDelta will never drop for us.
 			if ( version_compare( $stored, '1.4.0', '<' ) ) {
 				self::migrate_allowed_users_shape();
+				self::drop_legacy_log_columns();
 			}
 		}
 	}
@@ -227,6 +229,63 @@ class Installer {
 	}
 
 	/**
+	 * Drop the three ability-log columns retired in 1.4.0: `ip_address`,
+	 * `referrer` and `request_id`. Called once from {@see self::maybe_upgrade()}
+	 * when upgrading from below 1.4.0.
+	 *
+	 * `dbDelta` is additive — it adds the columns the declared schema gained but
+	 * never removes the ones it lost — so the removal has to be its own step.
+	 *
+	 * None of the three carried an answer to a question the log is asked.
+	 * `ip_address` held the assistant infrastructure's egress address, never a
+	 * person's, so it was PII with nothing attached to it. `request_id` was
+	 * minted per row with `wp_generate_uuid4()`, correlating with nothing: a
+	 * second primary key under a name that implied meaning. `referrer` is never
+	 * populated at all, because a server-to-server MCP call sends no
+	 * `HTTP_REFERER`. What the log actually needs for traceability —
+	 * `client_id`/`client_name` (which assistant) and `user_agent` (which
+	 * channel) — is untouched.
+	 *
+	 * Idempotent and safe from any intermediate state. MySQL 8 has no
+	 * `DROP COLUMN IF EXISTS` (MariaDB does), so each column is looked up in
+	 * `information_schema` first and only the ones still present are named in
+	 * the ALTER; a half-applied upgrade drops the remainder and a second run
+	 * finds nothing to do. Rows are preserved: this drops columns, not data.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	private static function drop_legacy_log_columns(): void {
+		global $wpdb;
+
+		$table  = Tables::ability_log();
+		$legacy = [ 'ip_address', 'referrer', 'request_id' ];
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Schema introspection for a one-shot migration on a custom table.
+		$present = $wpdb->get_col(
+			$wpdb->prepare(
+				'SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME IN (%s, %s, %s)',
+				$table,
+				$legacy[0],
+				$legacy[1],
+				$legacy[2]
+			)
+		);
+
+		if ( empty( $present ) ) {
+			return;
+		}
+
+		// One ALTER, one table rebuild. The clause list is `array_fill()` of a
+		// literal, so nothing but the placeholder count varies; the column names
+		// themselves still go through %i.
+		$clauses = implode( ', ', array_fill( 0, count( $present ), 'DROP COLUMN %i' ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Schema change required for migration; the interpolated fragment is a repeated literal and every identifier is a %i placeholder, so the placeholder count is correct at run time even though the sniff cannot see it in the literal.
+		$wpdb->query( $wpdb->prepare( "ALTER TABLE %i {$clauses}", $table, ...$present ) );
+	}
+
+	/**
 	 * Stamp the running plugin version as the schema's built-for version.
 	 *
 	 * @return void
@@ -298,10 +357,22 @@ class Installer {
 	/**
 	 * Ability-execution log table DDL.
 	 *
+	 * `failure_stage` records *where* in the invocation the call died —
+	 * `short_circuit`, `input`, `permission`, `execute` or `output` — and is
+	 * NULL on success. It is the column that lets the log answer "why did this
+	 * fail?" rather than only "it failed".
+	 *
+	 * `privacy_mode` snapshots the anonymisation mode in force at the moment the
+	 * row was written. It cannot be recomputed at render time: the setting may
+	 * have changed since, and a row read back under a different mode would
+	 * misreport how its own payload was treated. See {@see \Albert\Logging\Repository::insert()}.
+	 *
 	 * @param string $charset_collate Charset/collation clause.
 	 *
 	 * @return string CREATE TABLE statement.
 	 * @since 1.2.0
+	 * @since 1.4.0 Dropped `ip_address`, `referrer` and `request_id`; added
+	 *               `failure_stage` and `privacy_mode`.
 	 */
 	private static function ability_log_sql( string $charset_collate ): string {
 		$table = Tables::ability_log();
@@ -314,18 +385,18 @@ class Installer {
 			status varchar(20) NOT NULL DEFAULT 'success',
 			error_code varchar(100) DEFAULT NULL,
 			error_message longtext DEFAULT NULL,
+			failure_stage varchar(20) DEFAULT NULL,
 			duration_ms int(10) unsigned DEFAULT NULL,
-			ip_address varchar(45) DEFAULT NULL,
 			user_agent text DEFAULT NULL,
-			referrer text DEFAULT NULL,
-			request_id varchar(36) DEFAULT NULL,
+			privacy_mode varchar(20) DEFAULT NULL,
 			input longtext DEFAULT NULL,
 			output longtext DEFAULT NULL,
 			client_id varchar(80) DEFAULT NULL,
 			client_name varchar(255) DEFAULT NULL,
 			PRIMARY KEY  (id),
 			KEY ability_created (ability_name, created_at),
-			KEY ability_status (ability_name, status, created_at)
+			KEY ability_status (ability_name, status, created_at),
+			KEY status_stage (status, failure_stage, created_at)
 		) $charset_collate;\n\n";
 	}
 

@@ -25,6 +25,13 @@ use Albert\Tests\TestCase;
 class InstallerTest extends TestCase {
 
 	/**
+	 * The ability-log columns dropped in 1.4.0.
+	 *
+	 * @var array<int, string>
+	 */
+	const LEGACY_LOG_COLUMNS = [ 'ip_address', 'referrer', 'request_id' ];
+
+	/**
 	 * Ensure the tables exist before each test (normally created at plugin load).
 	 *
 	 * @return void
@@ -33,21 +40,80 @@ class InstallerTest extends TestCase {
 		parent::set_up();
 
 		Installer::install();
+
+		// DDL is not rolled back with the test transaction, so a legacy column
+		// re-added by an earlier test in the run would still be there. Start
+		// every test from the current schema regardless of what ran before.
+		$this->remove_legacy_log_columns();
 	}
 
 	/**
-	 * Creates the ability log table with the full column set.
+	 * The ability log's current column names.
+	 *
+	 * @return array<int, string>
+	 */
+	private function ability_log_columns(): array {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Schema introspection.
+		return $wpdb->get_col( $wpdb->prepare( 'SHOW COLUMNS FROM %i', Tables::ability_log() ) );
+	}
+
+	/**
+	 * Put the ability log back into its pre-1.4.0 shape by re-adding the three
+	 * columns the upgrade is meant to remove. `dbDelta` created the table from
+	 * the current schema in `set_up()`, so the legacy state has to be recreated
+	 * rather than found.
+	 *
+	 * @return void
+	 */
+	private function restore_legacy_log_columns(): void {
+		global $wpdb;
+
+		$table = Tables::ability_log();
+
+		foreach ( self::LEGACY_LOG_COLUMNS as $column ) {
+			if ( in_array( $column, $this->ability_log_columns(), true ) ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Test fixture recreating the legacy schema.
+			$wpdb->query( $wpdb->prepare( 'ALTER TABLE %i ADD COLUMN %i text DEFAULT NULL', $table, $column ) );
+		}
+	}
+
+	/**
+	 * Drop any legacy ability-log column still present, so each test starts
+	 * from the schema `Installer::install()` declares today.
+	 *
+	 * @return void
+	 */
+	private function remove_legacy_log_columns(): void {
+		global $wpdb;
+
+		$table = Tables::ability_log();
+
+		foreach ( array_intersect( self::LEGACY_LOG_COLUMNS, $this->ability_log_columns() ) as $column ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Test fixture resetting the schema between tests.
+			$wpdb->query( $wpdb->prepare( 'ALTER TABLE %i DROP COLUMN %i', $table, $column ) );
+		}
+	}
+
+	/**
+	 * Creates the ability log table with the full column set, and without the
+	 * three retired in 1.4.0.
 	 *
 	 * @return void
 	 */
 	public function test_install_creates_ability_log_columns(): void {
-		global $wpdb;
+		$columns = $this->ability_log_columns();
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Schema introspection.
-		$columns = $wpdb->get_col( $wpdb->prepare( 'SHOW COLUMNS FROM %i', Tables::ability_log() ) );
-
-		foreach ( [ 'id', 'ability_name', 'user_id', 'created_at', 'status', 'error_code', 'error_message', 'input', 'output', 'client_id', 'client_name' ] as $column ) {
+		foreach ( [ 'id', 'ability_name', 'user_id', 'created_at', 'status', 'error_code', 'error_message', 'failure_stage', 'duration_ms', 'user_agent', 'privacy_mode', 'input', 'output', 'client_id', 'client_name' ] as $column ) {
 			$this->assertContains( $column, $columns, $column );
+		}
+
+		foreach ( self::LEGACY_LOG_COLUMNS as $column ) {
+			$this->assertNotContains( $column, $columns, $column );
 		}
 	}
 
@@ -290,6 +356,112 @@ class InstallerTest extends TestCase {
 		Installer::maybe_upgrade();
 
 		$this->assertSame( $added_at, AllowedUsers::added_at( $user_id ) );
+	}
+
+	/**
+	 * Upgrading from below 1.4.0 drops `ip_address`, `referrer` and
+	 * `request_id` — which `dbDelta` alone never would, being additive — adds
+	 * `failure_stage` and `privacy_mode`, and leaves every existing row in
+	 * place. Columns go; history stays.
+	 *
+	 * @return void
+	 */
+	public function test_maybe_upgrade_drops_the_legacy_log_columns_and_keeps_the_rows(): void {
+		global $wpdb;
+
+		$this->restore_legacy_log_columns();
+
+		// Seed rows that carry values in the doomed columns, so the assertion
+		// is about surviving the drop rather than about an empty table.
+		$ids = [];
+		foreach ( [ 'albert/one', 'albert/two' ] as $ability ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test setup.
+			$wpdb->insert(
+				Tables::ability_log(),
+				[
+					'ability_name' => $ability,
+					'user_id'      => 1,
+					'ip_address'   => '203.0.113.7',
+					'referrer'     => 'https://example.test/',
+					'request_id'   => '11111111-2222-3333-4444-555555555555',
+				],
+				[ '%s', '%d', '%s', '%s', '%s' ]
+			);
+			$ids[ $ability ] = (int) $wpdb->insert_id;
+		}
+
+		update_option( Installer::VERSION_OPTION, '0.0.0' );
+
+		Installer::maybe_upgrade();
+
+		$columns = $this->ability_log_columns();
+
+		foreach ( self::LEGACY_LOG_COLUMNS as $column ) {
+			$this->assertNotContains( $column, $columns, $column );
+		}
+
+		foreach ( [ 'failure_stage', 'privacy_mode' ] as $column ) {
+			$this->assertContains( $column, $columns, $column );
+		}
+
+		foreach ( $ids as $ability => $id_before ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test verification.
+			$row = $wpdb->get_row(
+				$wpdb->prepare(
+					'SELECT id FROM %i WHERE ability_name = %s',
+					Tables::ability_log(),
+					$ability
+				)
+			);
+
+			$this->assertNotNull( $row, $ability );
+			$this->assertSame( $id_before, (int) $row->id, $ability );
+		}
+	}
+
+	/**
+	 * The drop is safe from a half-applied state: with only one of the three
+	 * legacy columns still present, the upgrade removes that one and does not
+	 * error over the two that are already gone. MySQL 8 has no
+	 * `DROP COLUMN IF EXISTS`, so this is the case the existence check exists
+	 * for.
+	 *
+	 * @return void
+	 */
+	public function test_maybe_upgrade_handles_a_partially_dropped_log_table(): void {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Test fixture recreating an interrupted upgrade.
+		$wpdb->query( $wpdb->prepare( 'ALTER TABLE %i ADD COLUMN %i text DEFAULT NULL', Tables::ability_log(), 'referrer' ) );
+
+		update_option( Installer::VERSION_OPTION, '0.0.0' );
+
+		Installer::maybe_upgrade();
+
+		$this->assertNotContains( 'referrer', $this->ability_log_columns() );
+	}
+
+	/**
+	 * Running the upgrade a second time, with the columns already dropped, is a
+	 * silent no-op rather than an error on a missing column.
+	 *
+	 * @return void
+	 */
+	public function test_log_column_migration_is_idempotent(): void {
+		global $wpdb;
+
+		$this->restore_legacy_log_columns();
+
+		update_option( Installer::VERSION_OPTION, '0.0.0' );
+		Installer::maybe_upgrade();
+
+		$wpdb->last_error = '';
+
+		update_option( Installer::VERSION_OPTION, '0.0.0' );
+		Installer::maybe_upgrade();
+
+		$this->assertSame( '', (string) $wpdb->last_error );
+		$this->assertNotContains( 'ip_address', $this->ability_log_columns() );
 	}
 
 	/**
