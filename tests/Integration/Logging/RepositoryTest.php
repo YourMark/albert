@@ -410,7 +410,9 @@ class RepositoryTest extends TestCase {
 	 */
 	public function test_latest_bulk_returns_status_and_error_code_fields(): void {
 		$this->repository->insert( 'albert/success-ability', 1, 'success' );
-		$this->repository->insert( 'albert/error-ability', 2, 'error', 'rest_forbidden' );
+		// Not a refusal code: those classify as `warning`, and this test is
+		// about which fields latest_bulk() returns.
+		$this->repository->insert( 'albert/error-ability', 2, 'error', 'db_unreachable' );
 
 		$map = $this->repository->latest_bulk( [ 'albert/success-ability', 'albert/error-ability' ] );
 
@@ -418,7 +420,7 @@ class RepositoryTest extends TestCase {
 		$this->assertNull( $map['albert/success-ability']->error_code );
 
 		$this->assertSame( 'error', $map['albert/error-ability']->status );
-		$this->assertSame( 'rest_forbidden', $map['albert/error-ability']->error_code );
+		$this->assertSame( 'db_unreachable', $map['albert/error-ability']->error_code );
 	}
 
 	/**
