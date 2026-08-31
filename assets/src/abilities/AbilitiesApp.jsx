@@ -54,7 +54,7 @@ const DEFAULT_VIEW = {
 			category: { minWidth: 96, maxWidth: 150 },
 			operation: { width: 116 },
 			source: { minWidth: 100, maxWidth: 160 },
-			lastUsed: { minWidth: 110, maxWidth: 160 },
+			lastUsed: { minWidth: 110, maxWidth: 180 },
 			status: { width: 84 },
 		},
 	},

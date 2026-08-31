@@ -346,6 +346,32 @@
 	color: var(--albert-color-danger);
 }
 
+/* Blocked by policy: nothing broke, so it must not read like the failure two
+   rows down — but the site did say no, so it must not disappear either. It
+   sits between the two: the ring the quiet success has, none of the weight the
+   error adds. */
+.albert-status-dot--warning .albert-status-dot__dot {
+	background-color: var(--albert-color-warning-dot);
+	box-shadow: 0 0 0 3px var(--albert-color-warning-tint-10), 0 0 6px var(--albert-color-warning-tint-20);
+}
+
+.albert-status-dot--warning .albert-status-dot__label {
+	color: var(--albert-color-warning);
+}
+
+/* A status value this build does not recognise — an add-on writing its own.
+   Neutral dot beside the raw word: inventing a colour for it would be a claim
+   about something we cannot read. Consumes the existing neutral tokens; this
+   state gets no colour of its own. */
+.albert-status-dot--neutral .albert-status-dot__dot {
+	background-color: var(--albert-color-switch-off);
+	box-shadow: none;
+}
+
+.albert-status-dot--neutral .albert-status-dot__label {
+	color: var(--albert-color-neutral);
+}
+
 .albert-status-dot--connection .albert-status-dot__dot {
 	background-color: var(--albert-color-accent);
 	box-shadow: 0 0 0 3px var(--albert-color-accent-tint-10), 0 0 6px var(--albert-color-accent-tint-20);

@@ -451,7 +451,10 @@ code.albert-flyin__card-value {
 .albert-lastused {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
+	/* Wraps rather than overflows: the column is narrow and the cell now
+	   carries a status word as well as a relative time. */
+	flex-wrap: wrap;
+	gap: 2px 6px;
 	font-size: 12.5px;
 	color: var(--albert-color-neutral);
 }
@@ -474,6 +477,35 @@ code.albert-flyin__card-value {
 
 .albert-lastused__dot--error {
 	background: var(--albert-color-danger);
+}
+
+/* Blocked by policy. Amber, because nothing broke and red would be a lie —
+   but not the neutral base either, because the site did refuse the call. */
+.albert-lastused__dot--warning {
+	background: var(--albert-color-warning-dot);
+}
+
+/* A status value this build does not recognise. Keeps the neutral base colour:
+   inventing amber for a value we cannot read would be a claim. */
+.albert-lastused__dot--neutral {
+	background: var(--albert-color-switch-off);
+}
+
+/* The status word beside the dot. Status is never carried by the dot's colour
+   alone (WCAG 2.2 AA, 1.4.1), and with three outcomes rather than two the
+   colours are no longer even self-evident. Muted, so the cell still reads as
+   a timestamp first. */
+.albert-lastused__status {
+	color: var(--albert-color-text-faint);
+}
+
+.albert-lastused__status--warning {
+	color: var(--albert-color-warning);
+}
+
+.albert-lastused__status--error {
+	color: var(--albert-color-danger);
+	font-weight: 600;
 }
 
 /* Bulk selection is exposed via the checkbox column + the selection toolbar.

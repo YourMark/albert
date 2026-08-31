@@ -19,6 +19,7 @@ use Albert\Admin\Dashboard\Suggestions;
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Core\AbilitiesRegistry;
 use Albert\Core\Plugin;
+use Albert\Logging\Outcome;
 use Albert\Logging\Repository as LoggingRepository;
 use Albert\MCP\Server as McpServer;
 use Albert\Database\Tables;
@@ -1460,11 +1461,17 @@ class Dashboard implements Hookable {
 
 		// Merge in recent ability executions.
 		foreach ( $this->logging_repository->recent( 6 ) as $row ) {
-			$user     = get_userdata( (int) $row->user_id );
-			$is_error = isset( $row->status ) && $row->status === 'error';
+			$user = get_userdata( (int) $row->user_id );
+
+			// Three outcomes, not two. A `warning` is passed through as itself
+			// so the row renders amber: collapsing it into `error` would paint
+			// the site's own permission rules red for doing their job, and
+			// collapsing it into `success` would hide that the call never ran.
+			$row_status = isset( $row->status ) ? (string) $row->status : '';
+			$status     = in_array( $row_status, Outcome::STATUSES, true ) ? $row_status : Outcome::SUCCESS;
 
 			$events[] = [
-				'status'    => $is_error ? 'error' : 'success',
+				'status'    => $status,
 				'timestamp' => (int) $row->created_ts,
 				'event'     => $this->resolve_ability_label( $row->ability_name ),
 				'id'        => (string) $row->ability_name,
@@ -1541,16 +1548,25 @@ class Dashboard implements Hookable {
 	 * The visible word is required: status is never conveyed by colour alone
 	 * (WCAG 2.2 AA, 1.4.1).
 	 *
-	 * @param string $status One of `success`, `error`, or `connection`.
+	 * @param string $status One of `success`, `warning`, `error`, or `connection`.
 	 *
 	 * @return void
 	 * @since 1.2.0
+	 * @since 1.4.0 Renders `warning` as an amber "Blocked".
 	 */
 	private function render_status_dot( string $status ): void {
 		switch ( $status ) {
 			case 'error':
 				$modifier = 'error';
 				$word     = __( 'Failed', 'albert-ai-butler' );
+				break;
+			case Outcome::WARNING:
+				// Amber, and the word says what happened rather than how bad it
+				// is. The site refused on purpose; that belongs between the
+				// quiet success above it and the loud failure below, not
+				// dressed up as either.
+				$modifier = 'warning';
+				$word     = __( 'Blocked', 'albert-ai-butler' );
 				break;
 			case 'connection':
 				$modifier = 'connection';
