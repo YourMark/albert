@@ -119,7 +119,11 @@ class AbilitiesPayload {
 	 * @since 1.3.0
 	 */
 	public static function row( string $ability_id ): ?array {
-		if ( ! function_exists( 'wp_get_ability' ) ) {
+		// `wp_has_ability()` is the quiet existence check; `wp_get_ability()`
+		// raises _doing_it_wrong() before returning null for anything the
+		// registry does not hold, so probing with it turns "no such row" into a
+		// notice.
+		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( $ability_id ) ) {
 			return null;
 		}
 

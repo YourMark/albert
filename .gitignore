@@ -125,3 +125,15 @@ dependencies.md
 docs/features/
 docs/plans/
 docs/references/
+
+# Working artefacts. Design handoffs, UI-verification screenshots, per-agent
+# memory and local hooks: useful while building, not part of the plugin and not
+# worth ~6MB of binary history. Deliberately not deleted, just untracked.
+/cleanup/
+/design_handoff_*/
+.claude/agent-memory/
+.claude/hooks/
+
+# Session discussion notes. The tracked .claude/*-plan.md and *-summary.md docs
+# are kept on purpose; these are scratch.
+.claude/*-discussion.md

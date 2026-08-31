@@ -135,11 +135,13 @@
  * solid red button on every row would shout, and these are the rows somebody
  * scans rather than acts on.
  */
+/* Height from the shared token, not a number of its own: this is a button in a
+   row of buttons. See the button-height block in albert-primitives.css. */
 .albert-button-danger {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-block-size: 28px;
+	min-block-size: var(--albert-control-height);
 	padding: 0 var(--albert-space-300);
 	border: 1px solid var(--albert-color-danger);
 	border-radius: var(--albert-radius-sm);
@@ -239,29 +241,11 @@
    Endpoint field
    ========================================================================== */
 
-.albert-endpoint {
-	display: flex;
-	gap: var(--albert-space-200);
-	align-items: center;
-	flex-wrap: wrap;
-}
-
-.albert-endpoint__field {
-	flex: 1 1 320px;
-	min-inline-size: 0;
-	padding: var(--albert-space-200) var(--albert-space-300);
-	border: 1px solid var(--albert-color-border-input);
-	border-radius: var(--albert-radius-md);
-	background: var(--albert-color-surface-sunken);
-	font-family: var(--albert-font-family-mono);
-	font-size: var(--albert-font-size-sm);
-	color: var(--albert-color-text);
-}
-
-.albert-endpoint__field:focus-visible {
-	outline: var(--albert-focus-width) solid var(--albert-focus-color);
-	outline-offset: var(--albert-focus-offset);
-}
+/*
+ * `.albert-endpoint` moved to albert-primitives.css in 1.4.0: the Dashboard
+ * shows the same field, and a shared control that lives in one screen's
+ * stylesheet is a control the other screen cannot use without copying it.
+ */
 
 /* ==========================================================================
    Connections toolbar and selection mode
@@ -302,13 +286,6 @@
 	color: var(--albert-color-text);
 }
 
-/* A class-based `display` always outranks the UA stylesheet's `[hidden]`
-   rule, so the attribute alone does not hide this element once .albert-bulkbar
-   sets display: flex. Restate it here at the same specificity, in the same
-   file, so hidden actually means hidden. */
-.albert-bulkbar[hidden] {
-	display: none;
-}
 
 .albert-bulkbar__check {
 	display: inline-flex;
@@ -349,12 +326,6 @@
 	padding: var(--albert-space-300) 18px;
 }
 
-/* Same reason as .albert-bulkbar[hidden] above: a class-based display beats
-   the UA stylesheet's [hidden] rule, and the filter relies on `hidden` to
-   actually remove a non-matching row from view. */
-.albert-conn[hidden] {
-	display: none;
-}
 
 .albert-conn + .albert-conn {
 	border-block-start: 1px solid var(--albert-color-border-subtle);
@@ -417,10 +388,6 @@
 	color: var(--albert-color-text-faint);
 }
 
-.albert-conn__title[hidden],
-.albert-conn__naming-trigger[hidden] {
-	display: none;
-}
 
 /**
  * Link-coloured, but underlined only on interaction: `.albert-link-button`
@@ -451,9 +418,6 @@
 	display: contents;
 }
 
-.albert-conn__naming-form[hidden] {
-	display: none;
-}
 
 /* Sized and bordered like every other text field on this screen
    (`.albert-search__input`), not the taller, larger-print browser default

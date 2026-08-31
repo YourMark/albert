@@ -109,14 +109,14 @@ class LoggerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_wp_error_result_inserts_with_status_error_and_code(): void {
-		$error = new WP_Error( 'rest_forbidden', 'You do not have permission.' );
+		$error = new WP_Error( 'db_unreachable', 'The database went away.' );
 
 		$this->logger->log_execution( 'core/posts/create', [], $error, 42 );
 
 		$this->assertCount( 1, $this->inserts );
 		$this->assertSame( 'error', $this->inserts[0]['status'] );
-		$this->assertSame( 'rest_forbidden', $this->inserts[0]['error_code'] );
-		$this->assertSame( 'You do not have permission.', $this->inserts[0]['context']['error_message'] );
+		$this->assertSame( 'db_unreachable', $this->inserts[0]['error_code'] );
+		$this->assertSame( 'The database went away.', $this->inserts[0]['context']['error_message'] );
 	}
 
 	/**
@@ -154,6 +154,109 @@ class LoggerTest extends TestCase {
 		);
 
 		$this->assertCount( 0, $failed_hooks );
+	}
+
+	// ─── Truthful negative answers ───────────────────────────────────
+
+	/**
+	 * A `_not_found` error is stored as success, not error.
+	 *
+	 * `ViewTerm( 999 )` was asked whether a term exists, looked, and answered
+	 * truthfully. Recording that as a failure is misinformation. The error code
+	 * still rides along, so the row can say *what* it answered.
+	 *
+	 * @return void
+	 */
+	public function test_not_found_error_inserts_with_status_success(): void {
+		$error = new WP_Error( 'term_not_found', 'No such term.' );
+
+		$this->logger->log_execution( 'albert/view-term', [ 'term_id' => 999 ], $error, 42 );
+
+		$this->assertCount( 1, $this->inserts );
+		$this->assertSame( 'success', $this->inserts[0]['status'] );
+		$this->assertSame( 'term_not_found', $this->inserts[0]['error_code'] );
+		$this->assertSame( 'No such term.', $this->inserts[0]['context']['error_message'] );
+	}
+
+	/**
+	 * A truthful negative answer does NOT fire albert/logging/ability_failed.
+	 *
+	 * That hook is Premium's failure signal. A 404 should not wake anyone.
+	 *
+	 * @return void
+	 */
+	public function test_not_found_does_not_fire_ability_failed_action(): void {
+		$error = new WP_Error( 'term_not_found', 'No such term.' );
+
+		$this->logger->log_execution( 'albert/view-term', [ 'term_id' => 999 ], $error, 42 );
+
+		$this->assertCount( 0, $this->ability_failed_hooks() );
+	}
+
+	// ─── Policy blocks ───────────────────────────────────────────────
+
+	/**
+	 * A refusal is stored as warning, not error.
+	 *
+	 * @return void
+	 */
+	public function test_permission_denied_inserts_with_status_warning(): void {
+		$error = new WP_Error( 'ability_permission_denied', 'You may not do that.' );
+
+		$this->logger->log_execution( 'albert/delete-post', [ 'id' => 7 ], $error, 42 );
+
+		$this->assertCount( 1, $this->inserts );
+		$this->assertSame( 'warning', $this->inserts[0]['status'] );
+		$this->assertSame( 'ability_permission_denied', $this->inserts[0]['error_code'] );
+	}
+
+	/**
+	 * A warning does NOT fire albert/logging/ability_failed either.
+	 *
+	 * A permission system doing exactly what it was configured to do is not a
+	 * failure signal, and paging somebody over it trains them to ignore the hook.
+	 *
+	 * @return void
+	 */
+	public function test_warning_does_not_fire_ability_failed_action(): void {
+		$error = new WP_Error( 'ability_disabled', 'That ability is switched off.' );
+
+		$this->logger->log_execution( 'albert/delete-post', [ 'id' => 7 ], $error, 42 );
+
+		$this->assertCount( 0, $this->ability_failed_hooks() );
+	}
+
+	/**
+	 * The outcome filter can silence ability_failed for a code Albert does not know.
+	 *
+	 * A third-party ability that names its "nothing matched" code anything else
+	 * reaches the same quiet outcome through `albert/logging/outcome`.
+	 *
+	 * @return void
+	 */
+	public function test_outcome_filter_can_silence_ability_failed(): void {
+		$GLOBALS['albert_test_filter_returns']['albert/logging/outcome'] = 'success';
+
+		$error = new WP_Error( 'acme_nothing_matched', 'No rows.' );
+		$this->logger->log_execution( 'acme/search', [], $error, 42 );
+
+		$this->assertCount( 0, $this->ability_failed_hooks() );
+		$this->assertSame( 'success', $this->inserts[0]['status'] );
+	}
+
+	/**
+	 * The outcome filter can silence ability_failed by returning a warning too.
+	 *
+	 * @return void
+	 */
+	public function test_outcome_filter_returning_warning_silences_ability_failed(): void {
+		$GLOBALS['albert_test_filter_returns']['albert/logging/outcome'] = 'warning';
+
+		$error = new WP_Error( 'acme_not_licensed', 'Your plan does not include this.' );
+		$this->logger->log_execution( 'acme/search', [], $error, 42 );
+
+		$this->assertCount( 0, $this->ability_failed_hooks() );
+		$this->assertSame( 'warning', $this->inserts[0]['status'] );
 	}
 
 	// ─── Storage gate ────────────────────────────────────────────────
@@ -219,5 +322,19 @@ class LoggerTest extends TestCase {
 		$logger->log_execution( 'core/posts/list', [], [ 'ok' => true ], 1 );
 
 		$this->assertTrue( true, 'Logger swallowed the repository exception.' );
+	}
+
+	/**
+	 * Every recorded firing of the failure notification hook.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function ability_failed_hooks(): array {
+		return array_values(
+			array_filter(
+				$GLOBALS['albert_test_hooks'],
+				static fn( array $h ): bool => $h['hook'] === 'albert/logging/ability_failed'
+			)
+		);
 	}
 }

@@ -72,14 +72,22 @@
 	/* Status */
 	--albert-color-success: oklch(0.508 0.1332 151.1);          /* #0a7a3b */
 	--albert-color-success-surface: oklch(0.954 0.0199 154.9);  /* #e6f4ea */
-	--albert-color-success-dot: oklch(0.615 0.1538 152.2);      /* #1a9e54 */
+	/* Status lights, not status text. A dot carries no glyph, so it reads as a
+	   colour and needs to stay bright enough to register as one: the text
+	   tokens above are tuned for 4.5:1 as type and go muddy at 10px, which is
+	   why the warning dot read brown when it reused --albert-color-warning.
+	   All three clear the 3:1 that SC 1.4.11 asks of a non-text indicator, with
+	   headroom, and sit in one brightness band so a row of them looks level. */
+	--albert-color-success-dot: oklch(0.615 0.1538 152.2);      /* #1a9e54 — 3.46:1 on surface, 3.35:1 on surface-sunken */
 	--albert-color-success-contrast: oklch(1 0 0);              /* NEW, 5.45:1 on success */
 
 	--albert-color-warning: oklch(0.531 0.119 65.1);            /* #9a5b00 */
 	--albert-color-warning-surface: oklch(0.961 0.0261 82.4);   /* #fbf1df */
+	--albert-color-warning-dot: oklch(0.6075 0.1469 57.1);      /* #c26700 — 4.01:1 on surface, 3.88:1 on surface-sunken */
 
 	--albert-color-danger: oklch(0.509 0.1708 25.4);            /* #b32d2e */
 	--albert-color-danger-surface: oklch(0.956 0.0187 25.6);    /* #fdecea */
+	--albert-color-danger-dot: oklch(0.5801 0.1967 25.3);       /* #d63638 — 4.73:1 on surface, 4.57:1 on surface-sunken */
 	--albert-color-danger-contrast: oklch(1 0 0);               /* NEW, 6.31:1 on danger */
 
 	/* Core's blue-60. The obvious choice was blue-50 (#2271b1, the same blue as
@@ -121,17 +129,76 @@
 	--albert-color-overlay: oklch(0 0 0 / 0.7);   /* modal backdrop */
 
 	/* ---------------------------------------------------------------------
-	 * Spacing — 4px base
+	 * Page width — three tiers, and a screen picks one.
+	 *
+	 * A screen never invents a number. It names a tier, and the tier is what
+	 * this file defines:
+	 *
+	 *   narrow   Settings, Context      one column of form or prose, where a
+	 *                                   wide container puts a canyon between a
+	 *                                   label and its control
+	 *   wide     Dashboard, Connections multi-column content that has something
+	 *                                   to put in the extra room
+	 *   full     Abilities, Skills      DataViews tables, which take whatever
+	 *                                   the viewport gives them
+	 *
+	 * "full" has no token, because it is the absence of a cap rather than a
+	 * value; `.albert-page--full` sets `max-inline-size: none`.
+	 *
+	 * In `rem`, so a container grows with the reader's font size. A cap in px
+	 * stays put when someone raises their base size, which is exactly when the
+	 * measure needs to grow with the type.
 	 * ------------------------------------------------------------------ */
-	--albert-space-100: 4px;
-	--albert-space-200: 8px;
-	--albert-space-300: 12px;
-	--albert-space-400: 16px;
-	--albert-space-500: 20px;
-	--albert-space-600: 24px;
+	--albert-page-width-narrow: 54rem;
+	--albert-page-width: 72rem;
+
+	/* Measures — how wide a run of text is allowed to get, by role.
+	   Named here rather than repeated per screen: the page-description measure
+	   was previously written out three times, in three stylesheets, as the same
+	   literal, which is how a "shared" value quietly becomes three values. */
+	--albert-measure-description: 40rem;  /* 640px — page and screen descriptions */
+	--albert-measure-prose: 90ch;         /* owner-authored prose in a textarea */
+	--albert-measure-field: 26rem;        /* 416px — text and URL inputs */
+	--albert-measure-field-label: 16.25rem; /* 260px — the label column of a field row */
+
+	/* Control height — 2rem (32px), the height @wordpress/components gives a
+	   compact control. Albert's own inputs and core's DataViews controls sit
+	   side by side across these screens, so they share one height. */
+	--albert-control-height: 2rem;
+
+	/* The DataViews toolbar: one width for every filter select, and a wider one
+	   for search so the row reads as "search, then filters" rather than as six
+	   identical boxes. A native <select> sizes to its widest option, so without
+	   a width declared the filters vary with whatever happens to be in their
+	   lists and the row looks broken. Wide enough for the longest "All …"
+	   label at the toolbar's own type size, with room for the chevron. */
+	--albert-toolbar-select-width: 11rem;   /* 176px */
+	--albert-toolbar-search-width: 14.5rem; /* 232px */
+
+	/* Card padding: the inline edge every card, row and card-aligned element
+	   shares, so a row list lines up with the header above it. Named because
+	   the literal was previously repeated in four stylesheets, and anything
+	   sitting flush to a card edge has to match it or the column looks bent. */
+	--albert-card-padding: 1.125rem;        /* 18px — card body and inline edge */
+	--albert-card-padding-block: 0.875rem;  /* 14px — card header block padding */
+
+	/* ---------------------------------------------------------------------
+	 * Spacing — 0.25rem base (4px at the default root size)
+	 * ------------------------------------------------------------------ */
+	--albert-space-100: 0.25rem;
+	--albert-space-200: 0.5rem;
+	--albert-space-300: 0.75rem;
+	--albert-space-400: 1rem;
+	--albert-space-500: 1.25rem;
+	--albert-space-600: 1.5rem;
 
 	/* ---------------------------------------------------------------------
 	 * Radius — core's 4px. There is deliberately no 6px or 8px step.
+	 *
+	 * These stay in px on purpose. A corner radius is a fixed optical detail,
+	 * not a measure: scaling it with the root font size makes a "4px corner"
+	 * into an 6px one for a reader at 150%, which reads as a different shape
+	 * rather than as larger text. Same reasoning for hairline borders below.
 	 * ------------------------------------------------------------------ */
 	--albert-radius-sm: 3px;
 	--albert-radius-md: 4px;
@@ -143,21 +210,24 @@
 	--albert-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 	--albert-font-family-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-	--albert-font-size-micro: 11px;      /* uppercase micro labels, table heads */
-	--albert-font-size-mono-sm: 11.5px;  /* ids, counts */
-	--albert-font-size-sm: 12.5px;       /* secondary text, mono endpoint/capability */
-	--albert-font-size-base: 13px;       /* buttons */
-	--albert-font-size-body: 13.5px;     /* body, row titles, page description */
-	--albert-font-size-card-title: 14px;
-	--albert-font-size-section-title: 15px;
-	--albert-font-size-page-title: 23px;
-	--albert-font-size-stat: 28px;
+	/* In rem, so every size scales with the reader's own base size rather than
+	   pinning Albert's text at whatever 13px happens to mean on their display.
+	   The px each was derived from is noted for traceability to the handoff. */
+	--albert-font-size-micro: 0.6875rem;      /* 11px — uppercase micro labels, table heads */
+	--albert-font-size-mono-sm: 0.71875rem;   /* 11.5px — ids, counts */
+	--albert-font-size-sm: 0.78125rem;        /* 12.5px — secondary, mono endpoint/capability */
+	--albert-font-size-base: 0.8125rem;       /* 13px — buttons */
+	--albert-font-size-body: 0.84375rem;      /* 13.5px — body, row titles, page description */
+	--albert-font-size-card-title: 0.875rem;  /* 14px */
+	--albert-font-size-section-title: 0.9375rem; /* 15px */
+	--albert-font-size-page-title: 1.4375rem; /* 23px */
+	--albert-font-size-stat: 1.75rem;         /* 28px */
 
 	/* Icon sizes. Separate from the type scale on purpose: a dashicon's
 	   font-size IS its box, so it has to match the width/height it is given,
 	   and the role-named type steps do not line up with those boxes. */
-	--albert-icon-size-sm: 18px;
-	--albert-icon-size-lg: 32px;
+	--albert-icon-size-sm: 1.125rem;  /* 18px */
+	--albert-icon-size-lg: 2rem;      /* 32px */
 
 	--albert-font-weight-normal: 400;
 	--albert-font-weight-medium: 500;

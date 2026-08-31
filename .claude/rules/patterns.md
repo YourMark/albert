@@ -16,6 +16,15 @@ paths:
 | OAuth | `src/OAuth/` | Authorization server, token management, client registration |
 | MCP | `src/MCP/` | Protocol handler, transport |
 | Admin | `src/Admin/` | Settings UI, ability toggles, connections |
+| Settings | `src/Settings/` | What a setting's value *is*: the constant → filter → option chain, the validators that decide whether an override is usable, and `register_setting()` storage |
+
+`Settings` is not part of `Admin`, and that placement is load-bearing. The
+resolution chain is read on MCP requests, in cron sweeps and from WP-CLI:
+`PrivacyMode`, `AllowedUsers`, `ConnectionRetention` and `UploadLinkService` all
+go through it. It lived under `Admin\Settings\` until 1.4.0, which made a cron
+job depend on an admin namespace and put a `Settings` class and a `Settings`
+namespace side by side. Read a setting with `albert_get_setting()`, never a bare
+`get_option()`, or the screen and the code will describe the site differently.
 
 WooCommerce abilities only load when WooCommerce is active.
 

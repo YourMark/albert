@@ -21,10 +21,10 @@ const BASE_OWNED_KEYS = [ 's', 'layout', 'paged', 'orderby', 'order' ];
  * Unknown or malformed params are ignored, so a hand-edited URL can never break
  * the screen — at worst a filter is dropped.
  *
- * @param {Object} defaultView         The baseline view.
- * @param {Object} config              Per-screen configuration.
- * @param {Object} config.filters      Filterable fields, keyed by field name,
- *                                     each `{ multiple: boolean, operator: string }`.
+ * @param {Object} defaultView    The baseline view.
+ * @param {Object} config         Per-screen configuration.
+ * @param {Object} config.filters Filterable fields, keyed by field name,
+ *                                each `{ multiple: boolean, operator: string }`.
  * @return {Object} The view with URL-derived overrides applied.
  */
 export function viewFromUrl( defaultView, { filters } ) {
@@ -81,12 +81,12 @@ export function viewFromUrl( defaultView, { filters } ) {
  * values are written; the page's own query arg and any unrelated params are
  * preserved.
  *
- * @param {Object} view              The current DataViews view.
- * @param {Object} config            Per-screen configuration.
- * @param {Object} config.filters    Filterable fields, keyed by field name,
- *                                   each `{ multiple: boolean, operator: string }`.
+ * @param {Object} view               The current DataViews view.
+ * @param {Object} config             Per-screen configuration.
+ * @param {Object} config.filters     Filterable fields, keyed by field name,
+ *                                    each `{ multiple: boolean, operator: string }`.
  * @param {Object} config.defaultSort The view's default `{ field, direction }`,
- *                                   omitted from the URL when unchanged.
+ *                                    omitted from the URL when unchanged.
  * @return {void}
  */
 export function syncViewToUrl( view, { filters, defaultSort } ) {

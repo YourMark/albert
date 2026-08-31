@@ -9,10 +9,12 @@
  * operation badge, the "last used" cell, and the detail fly-in drawer.
  */
 
-/* Full width — the table needs the room (5 columns), so contain only the
-   subtitle for readability rather than the whole table. */
+/* Full width — the table takes whatever the viewport gives it. Five columns
+   need the room, and the subtitle is capped on its own so the prose stays
+   readable without constraining the table. This is the `full` tier; see the
+   page-shell block in albert-primitives.css. */
 .albert-abilities {
-	max-width: none;
+	max-inline-size: none;
 }
 
 /* Page header. */
@@ -20,29 +22,22 @@
 	margin: 4px 0 0;
 }
 
-.albert-abilities__title {
-	margin: 0;
-	padding: 0;
-	font-size: var(--albert-font-size-page-title);
-	font-weight: var(--albert-font-weight-semibold);
-	line-height: var(--albert-line-height-tight);
-	color: var(--albert-color-text);
-}
-
-.albert-abilities__subtitle {
-	margin: 7px 0 0;
-	max-width: 640px;
-	font-size: var(--albert-font-size-body);
-	color: var(--albert-color-text-muted);
-}
-
+/**
+ * Counts on the left, the bulk actions that change them on the right, across
+ * the full width of the list below.
+ *
+ * A sibling of `.albert-page__header`, not a child of `.albert-page__text`:
+ * that block is capped at the description's measure, which right-aligned the
+ * buttons to 822px while the card, toolbar and table all ended at 1380px. See
+ * AbilitiesApp for why they are not in `.albert-page__actions` either.
+ */
 .albert-abilities__summary-row {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
-	gap: 12px;
-	margin: 16px 0 18px;
+	gap: var(--albert-space-300);
+	margin: 0 0 var(--albert-space-300);
 }
 
 .albert-abilities__summary {
@@ -456,7 +451,10 @@ code.albert-flyin__card-value {
 .albert-lastused {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
+	/* Wraps rather than overflows: the column is narrow and the cell now
+	   carries a status word as well as a relative time. */
+	flex-wrap: wrap;
+	gap: 2px 6px;
 	font-size: 12.5px;
 	color: var(--albert-color-neutral);
 }
@@ -481,6 +479,35 @@ code.albert-flyin__card-value {
 	background: var(--albert-color-danger);
 }
 
+/* Blocked by policy. Amber, because nothing broke and red would be a lie —
+   but not the neutral base either, because the site did refuse the call. */
+.albert-lastused__dot--warning {
+	background: var(--albert-color-warning-dot);
+}
+
+/* A status value this build does not recognise. Keeps the neutral base colour:
+   inventing amber for a value we cannot read would be a claim. */
+.albert-lastused__dot--neutral {
+	background: var(--albert-color-switch-off);
+}
+
+/* The status word beside the dot. Status is never carried by the dot's colour
+   alone (WCAG 2.2 AA, 1.4.1), and with three outcomes rather than two the
+   colours are no longer even self-evident. Muted, so the cell still reads as
+   a timestamp first. */
+.albert-lastused__status {
+	color: var(--albert-color-text-faint);
+}
+
+.albert-lastused__status--warning {
+	color: var(--albert-color-warning);
+}
+
+.albert-lastused__status--error {
+	color: var(--albert-color-danger);
+	font-weight: 600;
+}
+
 /* Bulk selection is exposed via the checkbox column + the selection toolbar.
    The per-row actions (Enable/Disable) would just duplicate the row toggle, so
    hide the per-row actions column (table) and per-card actions (grid). The
@@ -503,6 +530,26 @@ code.albert-flyin__card-value {
 	background: var(--albert-color-accent-surface);
 	border-bottom: 1px solid var(--albert-color-border);
 	padding: 6px 12px;
+}
+
+/**
+ * One select-all control, not two.
+ *
+ * This screen composes DataViews by hand, and renders `BulkActionToolbar`
+ * above `Layout`. Both ship a select-all checkbox: the toolbar's, and the
+ * table header's. Once anything is selected they stack 47px apart, and both
+ * carry the *identical* accessible name, "Deselect all" — so a screen reader
+ * announces the same control twice in a row with nothing to tell them apart,
+ * and on screen it reads as a stray extra checkbox.
+ *
+ * The table header's is the one that stays: it is the control the pointer is
+ * already on (it is what created the selection), and it is the only one
+ * present before there is a selection to clear. What is left in the bar is
+ * what a bulk bar is for — the count, the actions, and its own labelled
+ * Cancel, which clears the selection.
+ */
+.albert-abilities__bulkbar .dataviews-view-table-selection-checkbox {
+	display: none;
 }
 
 /* Permissions section — Free default. Mirrors Premium's Capability/Custom

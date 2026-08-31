@@ -15,6 +15,7 @@ use Albert\Core\Plugin;
 use Albert\Core\Tokens\TokenService;
 use Albert\Media\AttachmentImporter;
 use Albert\Media\MimeAllowlist;
+use Albert\Settings\Value;
 use WP_Error;
 
 /**
@@ -361,7 +362,19 @@ class UploadLinkService {
 			return $state['value'];
 		}
 
-		$option_mb = (int) get_option( self::MAX_BYTES_OPTION, self::DEFAULT_MAX_MB );
+		// Constant -> albert/settings/value/{option} -> stored option, so a
+		// wp-config.php constant pins this the same way it pins any other
+		// setting. The byte filter above is checked first and returns exact
+		// bytes, because it is the only override that can express a size
+		// finer than a megabyte.
+		//
+		// The default stays explicit: this runs on an MCP request, not in
+		// admin, so the default registered by Settings\Storage on `admin_init`
+		// does not apply and get_option() would otherwise return false.
+		$option_mb = (int) Value::get( self::MAX_BYTES_OPTION, self::DEFAULT_MAX_MB );
+
+		// An override arrives unsanitised, so clamp here rather than trusting it.
+		$option_mb = min( $option_mb, self::MAX_SETTABLE_MB );
 
 		return $option_mb > 0 ? $option_mb * self::BYTES_PER_MB : self::DEFAULT_MAX_BYTES;
 	}

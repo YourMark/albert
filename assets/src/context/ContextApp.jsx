@@ -95,7 +95,7 @@ export default function ContextApp() {
 
 	if ( status === 'loading' ) {
 		return (
-			<div className="albert-page">
+			<div className="albert-page albert-page--narrow">
 				<p>{ __( 'Loading…', 'albert-ai-butler' ) }</p>
 			</div>
 		);
@@ -103,7 +103,7 @@ export default function ContextApp() {
 
 	if ( status === 'load-error' || ! state ) {
 		return (
-			<div className="albert-page">
+			<div className="albert-page albert-page--narrow">
 				<div className="notice notice-error">
 					<p>
 						{ __(
@@ -121,7 +121,7 @@ export default function ContextApp() {
 	);
 
 	return (
-		<div className="albert-page albert-context">
+		<div className="albert-page albert-page--narrow albert-context">
 			{ /*
 			 * A div, not a <header>. A <header> is only scoped out of the banner
 			 * role by an article/aside/main/nav/section *element* ancestor, and
@@ -148,7 +148,9 @@ export default function ContextApp() {
 					 * every status change.
 					 */ }
 					<div aria-live="polite" aria-atomic="true">
-						{ status !== 'error' && <SaveState status={ status } /> }
+						{ status !== 'error' && (
+							<SaveState status={ status } />
+						) }
 					</div>
 					{ status === 'error' && (
 						<>

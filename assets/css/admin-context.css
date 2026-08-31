@@ -18,14 +18,12 @@
    Page
    ========================================================================== */
 
-/**
- * Narrower than the 1280px card default. This screen is one column of prose and
- * one of controls; a full-width payload preview would put a hundred characters
- * on a line, and the design caps it at 1000px for the same reason.
+/*
+ * No page-width rule here. This screen names its tier in the markup
+ * (`albert-page--narrow`, ContextApp.jsx) like every other Albert screen, and
+ * the tier's value lives in albert-tokens.css. One column of prose and
+ * controls plus a payload preview is what narrow is for.
  */
-.albert-context.albert-page {
-	max-inline-size: 1000px;
-}
 
 /* The master switch and the save state, on the header's right. */
 .albert-context__master {
@@ -81,11 +79,14 @@
 
 /* A filter owns this value; the control is read-only and says so. */
 .albert-context__managed {
-	margin: 0 18px var(--albert-space-300);
+	margin: 0 var(--albert-card-padding) var(--albert-space-300);
 }
 
 .albert-context__textarea {
 	inline-size: 100%;
+	/* Prose the owner types, so it gets a readable measure rather than the full
+	   card width — see the page-width note at the top of this file. */
+	max-inline-size: var(--albert-measure-prose);
 	padding: var(--albert-space-300);
 	font-size: var(--albert-font-size-body);
 	line-height: var(--albert-line-height-body);
@@ -156,7 +157,7 @@
 
 .albert-card__footnote {
 	margin: 0;
-	padding: var(--albert-space-300) 18px var(--albert-space-400);
+	padding: var(--albert-space-300) var(--albert-card-padding) var(--albert-space-400);
 	font-size: var(--albert-font-size-sm);
 	line-height: var(--albert-line-height-snug);
 	color: var(--albert-color-text-muted);

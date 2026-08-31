@@ -92,7 +92,36 @@ function OperationBadge( { item } ) {
 }
 
 /**
- * The "Last used" cell: status dot + relative time, or "Never".
+ * How the log's three outcomes render in the "Last used" cell.
+ *
+ * `warning` is the site refusing on purpose — permission denied, or the ability
+ * switched off. Nothing broke, so red would be a lie; the call never ran, so
+ * green would be one too. It gets amber and its own word.
+ *
+ * The word is not decoration: with three outcomes the dot's colour alone can no
+ * longer carry the state (WCAG 2.2 AA, 1.4.1).
+ *
+ * @return {Object} Map of log status to `{ modifier, word }`.
+ */
+function outcomeMeta() {
+	return {
+		success: {
+			modifier: 'success',
+			word: __( 'Success', 'albert-ai-butler' ),
+		},
+		warning: {
+			modifier: 'warning',
+			word: __( 'Blocked', 'albert-ai-butler' ),
+		},
+		error: {
+			modifier: 'error',
+			word: __( 'Failed', 'albert-ai-butler' ),
+		},
+	};
+}
+
+/**
+ * The "Last used" cell: status dot + word + relative time, or "Never".
  *
  * @param {Object} props      Render props.
  * @param {Object} props.item The ability row.
@@ -107,12 +136,24 @@ function LastUsed( { item } ) {
 			</span>
 		);
 	}
+	// An unknown status (an add-on writing its own value) degrades to the
+	// neutral dot with no word, rather than mislabelling the row.
+	const meta = outcomeMeta()[ last.status ];
 	return (
 		<span className="albert-lastused">
 			<span
-				className={ `albert-lastused__dot albert-lastused__dot--${ last.status }` }
+				className={ `albert-lastused__dot albert-lastused__dot--${
+					meta ? meta.modifier : 'neutral'
+				}` }
 				aria-hidden="true"
 			/>
+			{ meta && (
+				<span
+					className={ `albert-lastused__status albert-lastused__status--${ meta.modifier }` }
+				>
+					{ meta.word }
+				</span>
+			) }
 			{ last.human }
 		</span>
 	);

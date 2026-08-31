@@ -17,7 +17,7 @@ import { __ } from '@wordpress/i18n';
  * @type {Array}
  */
 export const STATUS_OPTIONS = [
-	{ value: '', label: __( 'Any status', 'albert-ai-butler' ) },
+	{ value: '', label: __( 'All statuses', 'albert-ai-butler' ) },
 	{ value: 'enabled', label: __( 'Enabled', 'albert-ai-butler' ) },
 	{ value: 'disabled', label: __( 'Disabled', 'albert-ai-butler' ) },
 ];

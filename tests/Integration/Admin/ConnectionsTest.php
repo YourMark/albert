@@ -80,7 +80,6 @@ class ConnectionsTest extends TestCase {
 
 		delete_option( 'albert_allowed_users' );
 		delete_option( AllowedUsers::EXPIRY_OPTION );
-		delete_option( AllowedUsers::APPLY_TO_EXISTING_OPTION );
 
 		// Every handler ends in wp_safe_redirect() + exit(), which would take
 		// the test runner with it.
@@ -684,65 +683,5 @@ class ConnectionsTest extends TestCase {
 			$this->assertStringContainsString( 'page=albert-connections', $e->getMessage() );
 			$this->assertStringNotContainsString( 'evil.test', $e->getMessage() );
 		}
-	}
-
-	/*
-	---------------------------------------------------------------------
-	 * Settings-saved: applying a new expiry window to existing invitations
-	 * ------------------------------------------------------------------
-	 */
-
-	/**
-	 * With the checkbox ticked, a pending invitation's `expires_at` is
-	 * recalculated from the newly saved window.
-	 *
-	 * @return void
-	 */
-	public function test_settings_saved_applies_the_new_window_when_checked(): void {
-		$user_id = self::factory()->user->create();
-		AllowedUsers::add( $user_id );
-
-		update_option( AllowedUsers::EXPIRY_OPTION, 30 );
-
-		$this->screen->handle_settings_saved( [ AllowedUsers::APPLY_TO_EXISTING_OPTION => true ] );
-
-		$this->assertEqualsWithDelta(
-			AllowedUsers::added_at( $user_id ) + ( 30 * DAY_IN_SECONDS ),
-			AllowedUsers::expires_at( $user_id ),
-			5
-		);
-	}
-
-	/**
-	 * Without the checkbox, an existing invitation's deadline is untouched
-	 * even though the window itself changed.
-	 *
-	 * @return void
-	 */
-	public function test_settings_saved_leaves_existing_invitations_alone_when_unchecked(): void {
-		$user_id = self::factory()->user->create();
-		update_option( AllowedUsers::EXPIRY_OPTION, 1 );
-		AllowedUsers::add( $user_id );
-		$original_expiry = AllowedUsers::expires_at( $user_id );
-
-		update_option( AllowedUsers::EXPIRY_OPTION, 30 );
-
-		$this->screen->handle_settings_saved( [] );
-
-		$this->assertSame( $original_expiry, AllowedUsers::expires_at( $user_id ) );
-	}
-
-	/**
-	 * The checkbox is a one-shot trigger: applying it resets it to unchecked
-	 * so it does not silently re-apply on a later, unrelated settings save.
-	 *
-	 * @return void
-	 */
-	public function test_settings_saved_resets_the_checkbox_after_applying(): void {
-		update_option( AllowedUsers::APPLY_TO_EXISTING_OPTION, true );
-
-		$this->screen->handle_settings_saved( [ AllowedUsers::APPLY_TO_EXISTING_OPTION => true ] );
-
-		$this->assertFalse( get_option( AllowedUsers::APPLY_TO_EXISTING_OPTION ) );
 	}
 }

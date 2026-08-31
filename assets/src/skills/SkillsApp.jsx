@@ -71,7 +71,9 @@ export default function SkillsApp() {
 				if ( ! active ) {
 					return;
 				}
-				setItems( Array.isArray( payload?.skills ) ? payload.skills : [] );
+				setItems(
+					Array.isArray( payload?.skills ) ? payload.skills : []
+				);
 			} )
 			.catch(
 				( err ) => active && setError( err.message || String( err ) )
@@ -88,7 +90,9 @@ export default function SkillsApp() {
 	const sources = useMemo( () => {
 		const seen = new Set();
 		items.forEach( ( item ) => seen.add( item.source ) );
-		return [ ...seen ].sort().map( ( value ) => ( { value, label: value } ) );
+		return [ ...seen ]
+			.sort()
+			.map( ( value ) => ( { value, label: value } ) );
 	}, [ items ] );
 
 	const fields = useMemo( () => getFields( { sources } ), [ sources ] );
@@ -135,33 +139,35 @@ export default function SkillsApp() {
 	);
 
 	return (
-		<div className="albert-skills">
+		<div className="albert-page albert-page--full albert-skills">
 			<header
-				className="albert-skills__header"
+				className="albert-page__header albert-skills__header"
 				aria-hidden={ openItem ? true : undefined }
 			>
-				<h1 className="albert-skills__title">
-					{ __( 'Skills', 'albert-ai-butler' ) }
-				</h1>
-				<p className="albert-skills__subtitle">
-					{ __(
-						'An overview of the task guides Albert currently ships. Open one to read the exact guidance a connected assistant follows.',
-						'albert-ai-butler'
+				<div className="albert-page__text">
+					<h1 className="albert-page__title">
+						{ __( 'Skills', 'albert-ai-butler' ) }
+					</h1>
+					<p className="albert-page__description">
+						{ __(
+							'An overview of the task guides Albert currently ships. Open one to read the exact guidance a connected assistant follows.',
+							'albert-ai-butler'
+						) }
+					</p>
+					{ ! isLoading && (
+						<div className="albert-skills__summary-row">
+							<p
+								className="albert-skills__summary"
+								aria-live="polite"
+							>
+								<span>
+									<strong>{ items.length }</strong>{ ' ' }
+									{ __( 'registered', 'albert-ai-butler' ) }
+								</span>
+							</p>
+						</div>
 					) }
-				</p>
-				{ ! isLoading && (
-					<div className="albert-skills__summary-row">
-						<p
-							className="albert-skills__summary"
-							aria-live="polite"
-						>
-							<span>
-								<strong>{ items.length }</strong>{ ' ' }
-								{ __( 'registered', 'albert-ai-butler' ) }
-							</span>
-						</p>
-					</div>
-				) }
+				</div>
 			</header>
 
 			{ error && (

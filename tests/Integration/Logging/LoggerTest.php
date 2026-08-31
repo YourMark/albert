@@ -75,14 +75,17 @@ class LoggerTest extends TestCase {
 		$user_id = self::factory()->user->create( [ 'role' => 'administrator' ] );
 		wp_set_current_user( $user_id );
 
-		$error = new \WP_Error( 'rest_forbidden', 'You are not allowed.' );
+		// Deliberately not a refusal code: `rest_forbidden` and its siblings
+		// classify as `warning` now, and this test is about the error row's
+		// plumbing rather than about how a code is classified.
+		$error = new \WP_Error( 'db_unreachable', 'The database did not respond.' );
 		do_action( 'albert/abilities/after_execute', 'albert/create-post', [], $error, $user_id );
 
 		$row = $this->repository->latest_for_ability( 'albert/create-post' );
 
 		$this->assertNotNull( $row );
 		$this->assertSame( 'error', $row->status );
-		$this->assertSame( 'rest_forbidden', $row->error_code );
+		$this->assertSame( 'db_unreachable', $row->error_code );
 	}
 
 	/**

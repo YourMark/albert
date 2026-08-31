@@ -144,9 +144,73 @@ Generated from `assets/css/albert-tokens.css`. Text pairs are held to SC 1.4.3
 | `switch-off` on `surface` | **3.11:1** | 3.0:1 | 1.4.11 | Muted status dot |
 | `success-dot` on `surface` | **3.47:1** | 3.0:1 | 1.4.11 | Status dot |
 
+## Page width
+
+**Three tiers, and a screen picks one.** A screen never invents a number; it
+names a tier, and the tier's value lives in `albert-tokens.css`.
+
+| Tier | Class | Value | Used by |
+|---|---|---|---|
+| Narrow | `.albert-page--narrow` | `--albert-page-width-narrow` `54rem` | Settings, Context |
+| Wide | `.albert-page` (default) | `--albert-page-width` `72rem` | Dashboard, Connections |
+| Full | `.albert-page--full` | `max-inline-size: none` | Abilities, Skills |
+
+The tier is a judgement about the **content**, not about the screen:
+
+- **Narrow** is for one column of form rows or prose. A wide container puts a
+  canyon between a label and its control, and stretches a paragraph past a
+  readable measure.
+- **Wide** is for content that is itself multi-column and has something to put
+  in the extra room — Dashboard's stat row and 2fr/1fr body, Connections' two
+  cards side by side.
+- **Full** is for a DataViews table, which takes whatever the viewport gives
+  it. Full has no token, because it is the absence of a cap rather than a
+  value.
+
+That rule is the entire system. The moment a screen sets its own `max-width`
+the set drifts, and this is not hypothetical: before 1.4.0 Albert shipped
+Settings at 860px, Context at 1000px, Connections at 1280px and Abilities
+uncapped — four numbers in four stylesheets, none aware of the others.
+
+If a screen seems to want a width between tiers, the thing that actually needs
+constraining is usually a run of text inside it. Use a measure token instead.
+
+React screens name their tier in the JSX (`ContextApp.jsx`) and PHP screens in
+the markup, so the choice is always visible where the page is built, never
+buried in a per-screen stylesheet.
+
+**Measures** cap a run of text by role, so a screen constrains its prose rather
+than its shell:
+
+| Token | Value | Used for |
+|---|---|---|
+| `--albert-measure-description` | `40rem` | Page and screen descriptions |
+| `--albert-measure-prose` | `90ch` | Owner-authored prose in a textarea |
+| `--albert-measure-field` | `26rem` | Text and URL inputs |
+
 ## Scales
 
-**Spacing** `--albert-space-100` … `600`: 4, 8, 12, 16, 20, 24px.
+**Spacing** `--albert-space-100` … `600`: 0.25, 0.5, 0.75, 1, 1.25, 1.5rem
+(4–24px at the default root size).
+
+**Card padding** `--albert-card-padding` 1.125rem (18px) is the inline edge every
+card, row and card-aligned table cell shares, so a row list lines up with the
+header above it. `--albert-card-padding-block` 0.875rem (14px) is the header's
+block padding. Named because the literal was previously repeated across four
+stylesheets, and anything flush to a card edge has to match it or the column
+looks bent.
+
+### rem, except where px is the right answer
+
+Sizes, spacing, type and measures are in `rem`, so the interface scales with the
+reader's own base size instead of pinning Albert at whatever 13px happens to
+mean on their display.
+
+Three things stay in px deliberately: **border widths**, **border radius**, and
+**dashicon glyph boxes**. A corner radius is a fixed optical detail rather than a
+measure — scaling a "4px corner" to 6px for a reader at 150% reads as a different
+shape, not as larger text. A dashicon's `font-size` *is* its box, so it has to
+match the width and height it is given.
 
 **Radius** `--albert-radius-sm` 3px (small controls), `--albert-radius-md` 4px
 (cards, inputs, code blocks), `--albert-radius-pill` 11px (badges, meters).
@@ -178,10 +242,46 @@ controls bring their own ring.
 | Save state | `.albert-savestate` | Put it inside `aria-live="polite"`. Replaces a submit button on instant-save screens. |
 | Payload preview | `.albert-preview` | Mono, `pre-wrap`, capped height. Deliberately has no region highlight: see below. |
 | Swatch | `.albert-swatch` | Give it a `title` with the value it shows. |
-| Info control | `.albert-info` | The "(i)" for a term on the line of common knowledge. React screens use `shared/InfoPopover.jsx`; server-rendered screens use `.albert-tip`. The sentence must read correctly without opening it. |
+| Info control | `.albert-info` / `.albert-tip` | The "(i)" for a term on the line of common knowledge, or a rule with an edge case. React screens use `shared/InfoPopover.jsx`; server-rendered screens call `Admin\InfoTip::render( $text, $label )`. The sentence must read correctly without opening it. |
 | Navigation | `.albert-nav` | Rendered for you on every Albert screen. Real links with `aria-current="page"`, never `role="tab"`. |
+| Radio cards | `.albert-radio-cards` / `.albert-radio-card` | A stack of full-width, self-describing options for a choice worth explaining rather than listing bare in a `<select>` — title, description, optional "Recommended" `.albert-badge`. Selected state is border + tinted background (`:has(input:checked)`), never colour alone: the radio's own dot already carries "which one". `SettingsRenderer`'s `radio-cards` field type renders it (`docs/settings-api.md`). |
+| Save bar | `.albert-savebar` | A sticky footer for a screen that saves via a real, page-reloading submit — keeps the button reachable on a long one-column settings page. Not `.albert-savestate`: that primitive *replaces* a submit button on an instant-save screen; here the button stays real and the bar only keeps it in view. |
+| Stat row | `.albert-stat-row` / `.albert-stat` | A row of plain numbers, never a chart or sparkline. Micro `__label` above a 28px `__value`, with an optional `__meta` line under it. Four fixed tracks, not `auto-fit`: the row ends early when a screen has fewer figures rather than stretching two tiles to half the page each. A tile renders only for a figure the site can actually compute — see "No figure the site can't compute" below. |
+| Endpoint field | `.albert-endpoint` | A read-only address plus its Copy button, shared by Connections and the Dashboard. Mono, on the sunken surface, so it reads as a value to copy rather than a box to type in. The field yields before the button wraps. |
+| Field | `.albert-field-group` | A labelled control: label (+ optional badge), description, then the control and its optional unit. See "Adding a field" below. |
+| Form control | `.albert-text-input` / `.albert-select` / `.albert-textarea` | One appearance for every control, whatever its tag. Boundary is `border-input` (3.17:1), not the card hairline, because SC 1.4.11 asks 3:1 of anything delimiting a control. |
+| Notices | `Admin\Notices::render( $group )` | The one call every screen uses for its `add_settings_error()` queue. Wraps WordPress's own `settings_errors()` in `aria-live="polite"`, which core's own output does not carry on its own. Use this instead of calling `settings_errors()` directly, so a notice announces itself to a screen reader identically everywhere it appears. |
 
 ### One info control, two renderings
+
+Both halves are components you call, not markup you copy:
+
+```php
+// Server-rendered: anywhere, any screen.
+\Albert\Admin\InfoTip::render(
+    __( 'Once they approve one, their access no longer expires.', 'albert-ai-butler' ),
+    __( 'Invitation expiry', 'albert-ai-butler' )
+);
+```
+
+```jsx
+// React screens.
+<InfoPopover text={ __( '…' ) } label={ __( '…' ) } />
+```
+
+`InfoTip` generates the popover id, wires `aria-controls`, and builds the
+trigger's accessible name from the label — "More about Invitation expiry", not a
+row of identical "(i)" buttons. The popover **must** stay the trigger's next
+sibling, because `admin-popover.js` finds it with `nextElementSibling`.
+
+A settings field gets one by declaring `'info' => '…'`; the field renderer calls
+`InfoTip` for you (`docs/settings-api.md`).
+
+**Keep the visible line to one line.** The description under a label says what
+the setting does; the tip carries the edge case, the consequence, and what `0`
+means. This is what stops a settings screen turning into an essay — and the rule
+below still governs what may go behind it.
+
 
 `.albert-info` styles core's `Dropdown` and is what every React screen uses,
 through `assets/src/shared/InfoPopover.jsx`. Core handles open state, Escape,
@@ -252,6 +352,130 @@ without negative margins fighting `.wrap`'s gutters. It reads the registered
 submenu rather than a hardcoded list, so an add-on page appears automatically,
 and it runs a capability check per entry so a page the user cannot reach never
 shows.
+
+**It scrolls, and it scrolls itself to where you are.** `.albert-nav__list` is
+`overflow-x: auto`, so on a narrow viewport the later entries sit outside the
+scroll port. Settings is last, which means the person least able to see the
+current entry is the one sitting on it. `assets/js/albert-nav.js` scrolls the
+`aria-current="page"` entry into view on load, with `inline: 'nearest'` so the
+neighbours stay visible and `block: 'nearest'` so the page itself does not jump.
+It is a no-op when the strip is not scrolling, and it honours
+`prefers-reduced-motion`. Nothing about the markup, tab order or announced state
+changes; only a scroll offset moves.
+
+`Assets::enqueue_on_albert_screens()` enqueues it, for the same reason it
+enqueues the primitives: the navigation appears on add-on screens too, so
+anything belonging to it cannot live in one screen's own callback.
+
+### Adding a field
+
+A field is label, description, control and optional unit, and there is one way
+to make one. On the Settings screen — and from any add-on — declare it and the
+renderer builds it:
+
+```php
+albert_register_setting( [
+    'title'       => __( 'Invitation expiry', 'my-addon' ),
+    'option_name' => 'my_addon_expiry_days',
+    'type'        => 'number',
+    'description' => __( 'How long an unused invitation stays valid.', 'my-addon' ),
+    'suffix'      => __( 'days', 'my-addon' ),
+    'badge'       => __( 'Premium', 'my-addon' ),
+    'default'     => 14,
+] );
+```
+
+Types: `text`, `url`, `number`, `textarea`, `select`, `checkbox`, `radio-cards`,
+`custom`. Full schema in `docs/settings-api.md`.
+
+On a screen of your own, hand the same array to the renderer:
+
+```php
+( new \Albert\Admin\SettingsRenderer() )->render_field( $field, $current_value );
+```
+
+`SettingsRenderer` is stateless and never opens a `<form>`, so a screen can call
+it anywhere inside its own form.
+
+**This works on every Albert screen, which it did not before 1.4.0.** The field
+system lived in `admin-settings.css`, and that stylesheet loads only on Settings
+and Dashboard — so Connections and Context could not render a labelled field at
+all, and an add-on screen would have had to reinvent one. It now lives in
+`albert-primitives.css` with the rest of the shared vocabulary.
+
+The markup, if you are writing it by hand rather than through the renderer:
+
+```html
+<div class="albert-field-group">
+  <div class="albert-field-label-wrap">
+    <label class="albert-field-label" for="x">Label
+      <span class="albert-badge albert-badge--warning">Premium</span>
+    </label>
+    <p class="albert-field-description">What this setting does.</p>
+  </div>
+  <div class="albert-field-input-wrap">
+    <input id="x" type="number" class="albert-text-input" />
+    <span class="albert-field-suffix" id="x-suffix">days</span>
+  </div>
+</div>
+```
+
+A unit gets an `id` and the control an `aria-describedby` pointing at it, so
+"90" and "90 days" are not the same field to a screen reader. The renderer does
+this for you.
+
+### A class Free ships is add-on surface, even if Free stops using it
+
+Before deleting a selector as dead, check the sibling plugins, not just this
+one. `albert-premium-service` renders `.albert-settings-card`,
+`.albert-settings-card-body` and `.albert-page__intro` on its Activity Log
+screen and declares Free's `albert-admin` / `albert-primitives` handles to style
+them. All three were removed during the 1.4.0 rebuild — the sweep asked "does
+anything in this plugin still render it?", which was the wrong question — and
+had to be restored.
+
+They now live as **aliases on the rules that replaced them**
+(`.albert-card`, `.albert-card__body`, `.albert-page__description`) rather than
+as copies, so an add-on's card cannot drift away from Albert's own. They go once
+Premium migrates.
+
+The check before removing a selector:
+
+```bash
+grep -rn "albert-the-class" ../albert-premium-service ../albert-woocommerce
+```
+
+This is the CSS half of the boundary rule in `.claude/CLAUDE.md`: core never
+depends on add-ons, but core is depended *on*, and a published class is as much
+a contract as a hook name or a stylesheet handle.
+
+### One badge, for real this time
+
+The Primitives table above has said "one definition, replacing the two shapes
+shipped before" since this file was written. It was not quite true: a field
+label's "Premium"-style badge (`SettingsRenderer::render_field()`) still drew
+its own `.albert-field-badge` — a second pill shape, accent-tinted rather than
+toned, that never got migrated when `.albert-badge` was introduced. Caught
+while rebuilding the Settings screen in 1.4.0's admin-screens pass. Both the
+built-in and custom field branches now render `.albert-badge
+albert-badge--warning`, the same pill a section-level `badge` renders. There
+is now exactly one badge in the codebase, not one-and-a-half.
+
+### No figure the site can't compute
+
+The Dashboard's stat row exists to answer §0's rule at the component level:
+never show a number nobody measured. Free can compute exactly two figures —
+enabled abilities and active connections — because it only retains 2 rows per
+`(ability_name, status)` in its ability log (`Logging/Repository.php`), which
+is not enough history for a 7-day call count, a failure rate, or a median
+duration.
+
+Rather than hardcode a `class_exists( 'AlbertPremiumService' )` check for
+stats Premium does not compute yet, `Dashboard::render_stat_row()` seeds the
+row with Free's two tiles and runs it through the `albert/dashboard/stats`
+filter. An add-on with the history to back a figure appends its own tile;
+nothing hooking the filter today means nothing beyond Free's two renders —
+never a zero, never an empty tile shaped like a promise.
 
 ## One palette
 

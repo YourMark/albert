@@ -54,7 +54,7 @@ const DEFAULT_VIEW = {
 			category: { minWidth: 96, maxWidth: 150 },
 			operation: { width: 116 },
 			source: { minWidth: 100, maxWidth: 160 },
-			lastUsed: { minWidth: 110, maxWidth: 160 },
+			lastUsed: { minWidth: 110, maxWidth: 180 },
 			status: { width: 84 },
 		},
 	},
@@ -281,57 +281,97 @@ export default function AbilitiesApp() {
 	);
 
 	return (
-		<div className="albert-abilities">
+		<div className="albert-page albert-page--full albert-abilities">
+			{ /*
+			 * `inert` as well as `aria-hidden`, and the pair is the point.
+			 * `aria-hidden` only hides from assistive tech; it leaves the
+			 * content tabbable, which is a WCAG 4.1.2 failure the moment
+			 * anything can reach it. Today nothing can, because the fly-in traps
+			 * focus (verified: 30 tabs, focus never left the dialog), but that
+			 * makes correctness depend on a JS trap holding. `inert` is the
+			 * browser enforcing it, so the trap becomes belt rather than
+			 * load-bearing. Passed as a string because this is React 18, where
+			 * `inert` is not yet a known boolean prop.
+			 */ }
 			<header
-				className="albert-abilities__header"
+				className="albert-page__header albert-abilities__header"
 				aria-hidden={ openItem ? true : undefined }
+				inert={ openItem ? '' : undefined }
 			>
-				<h1 className="albert-abilities__title">
-					{ __( 'Abilities', 'albert-ai-butler' ) }
-				</h1>
-				<p className="albert-abilities__subtitle">
-					{ __(
-						'Capabilities exposed to apps and agents through the WordPress Abilities API. Enable an ability to make it callable, or open one to review its schema and permissions.',
-						'albert-ai-butler'
-					) }
-				</p>
-				{ ! isLoading && (
-					<div className="albert-abilities__summary-row">
-						<p
-							className="albert-abilities__summary"
-							aria-live="polite"
-						>
-							<span>
-								<strong>{ items.length }</strong>{ ' ' }
-								{ __( 'registered', 'albert-ai-butler' ) }
-							</span>
-							<span aria-hidden="true">·</span>
-							<span>
-								<strong>{ enabledCount }</strong>{ ' ' }
-								{ __( 'enabled', 'albert-ai-butler' ) }
-							</span>
-						</p>
-						<div className="albert-abilities__bulk-all">
-							<Button
-								variant="secondary"
-								size="compact"
-								disabled={ enabledCount === items.length }
-								onClick={ () => setAllEnabled( true ) }
-							>
-								{ __( 'Enable all', 'albert-ai-butler' ) }
-							</Button>
-							<Button
-								variant="secondary"
-								size="compact"
-								disabled={ enabledCount === 0 }
-								onClick={ () => setAllEnabled( false ) }
-							>
-								{ __( 'Disable all', 'albert-ai-butler' ) }
-							</Button>
-						</div>
-					</div>
-				) }
+				<div className="albert-page__text">
+					<h1 className="albert-page__title">
+						{ __( 'Abilities', 'albert-ai-butler' ) }
+					</h1>
+					<p className="albert-page__description">
+						{ __(
+							'Capabilities exposed to apps and agents through the WordPress Abilities API. Enable an ability to make it callable, or open one to review its schema and permissions.',
+							'albert-ai-butler'
+						) }
+					</p>
+				</div>
 			</header>
+
+			{ /*
+			 * Counts and the two bulk actions, on one full-width row directly
+			 * above the list.
+			 *
+			 * Not in `.albert-page__actions`. That slot is documented as
+			 * "primary control and/or save state" and is used for a Back link
+			 * and a save status elsewhere; WordPress puts the *create* action
+			 * beside a page title ("Add Plugin", "Add Post", "Add User", all
+			 * hugging the heading) and puts bulk operations in the tablenav
+			 * directly above the table. Enabling or disabling 118 abilities is
+			 * a bulk operation on the list below, so the header anchor is the
+			 * wrong home for it twice over: wrong kind of action, and far from
+			 * the data it changes.
+			 *
+			 * It also cannot live inside `.albert-page__text`, which is where it
+			 * started: that block is capped at the description's measure, so
+			 * the buttons right-aligned to 822px while the card, the toolbar and
+			 * the table all ended at 1380px. Aligning to an edge nothing draws
+			 * is what read as broken.
+			 *
+			 * Full width, `space-between`: the counts on the left and the
+			 * actions that change those counts on the right, sharing the list's
+			 * own measure.
+			 */ }
+			{ ! isLoading && (
+				<div
+					className="albert-abilities__summary-row"
+					aria-hidden={ openItem ? true : undefined }
+					inert={ openItem ? '' : undefined }
+				>
+					<p className="albert-abilities__summary" aria-live="polite">
+						<span>
+							<strong>{ items.length }</strong>{ ' ' }
+							{ __( 'registered', 'albert-ai-butler' ) }
+						</span>
+						<span aria-hidden="true">·</span>
+						<span>
+							<strong>{ enabledCount }</strong>{ ' ' }
+							{ __( 'enabled', 'albert-ai-butler' ) }
+						</span>
+					</p>
+					<div className="albert-abilities__bulk-all">
+						<Button
+							variant="secondary"
+							size="compact"
+							disabled={ enabledCount === items.length }
+							onClick={ () => setAllEnabled( true ) }
+						>
+							{ __( 'Enable all', 'albert-ai-butler' ) }
+						</Button>
+						<Button
+							variant="secondary"
+							size="compact"
+							disabled={ enabledCount === 0 }
+							onClick={ () => setAllEnabled( false ) }
+						>
+							{ __( 'Disable all', 'albert-ai-butler' ) }
+						</Button>
+					</div>
+				</div>
+			) }
 
 			{ error && (
 				<div

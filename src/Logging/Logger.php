@@ -84,21 +84,38 @@ class Logger implements Hookable {
 	public function log_execution( string $ability_name, mixed $input, array|WP_Error $result, int $user_id ): void {
 		try {
 			$is_error      = is_wp_error( $result );
-			$status        = $is_error ? 'error' : 'success';
+			$status        = Outcome::classify( $result, $ability_name );
 			$error_code    = $is_error ? (string) $result->get_error_code() : null;
 			$error_message = $is_error ? (string) $result->get_error_message() : null;
 
 			// Fire the Premium-facing failure notification BEFORE the storage gate
 			// so Premium always receives the signal even when Free's writes are off.
-			if ( $is_error ) {
+			//
+			// Gated on the classified status, not on `is_wp_error()` alone: this
+			// is a failure signal, and two of the three outcomes are not
+			// failures. A `success` — asked whether a term exists, looked,
+			// answered no — is an answer, and a `warning` is the site's own
+			// permission rules doing exactly what they were configured to do.
+			// Neither should wake anyone. The `$is_error` half is redundant
+			// (only an error can classify as one) and kept so the WP_Error type
+			// is provable here.
+			if ( $is_error && $status === Outcome::ERROR ) {
 				/**
-				 * Fires when an ability execution results in a WP_Error.
+				 * Fires when an ability execution results in a genuine failure.
 				 *
 				 * Decoupled from Free's storage gate so Premium (or any add-on)
 				 * can react to failures even when `albert/logging/enabled` returns
 				 * false. Core never depends on who hooks here.
 				 *
+				 * Does NOT fire when {@see Outcome} classifies the error as
+				 * `success` — a legitimately negative answer such as
+				 * `term_not_found` — or as `warning`, a request the site refused
+				 * on purpose. Use `albert/logging/outcome` to change how a code
+				 * is classified.
+				 *
 				 * @since 1.2.0
+				 * @since 1.4.0 Fires only for a classified `error`; a
+				 *               `success` or `warning` outcome stays silent.
 				 *
 				 * @param string   $ability_name The ability identifier.
 				 * @param \WP_Error $result       The error returned by the ability.
