@@ -44,7 +44,6 @@ use Albert\Abilities\WordPress\Users\Update as UpdateUser;
 use Albert\Abilities\WordPress\Users\ViewUser;
 use Albert\Abstracts\BaseAbility;
 use Albert\Tests\TestCase;
-use Albert\Tests\Unit\Helpers\SchemaValidator;
 use WP_Error;
 
 /**
@@ -77,6 +76,96 @@ class ExecuteSchemaTest extends TestCase {
 	}
 
 	/**
+	 * Every ability that declares an output schema is exercised by this file.
+	 *
+	 * A schema is only worth anything if something ran the ability and checked
+	 * the result against it. Coverage here is per-ability and written by hand,
+	 * because each one needs its own fixtures, so the failure mode is not a
+	 * wrong assertion — it is a new ability quietly arriving with no assertion
+	 * at all, which looks exactly like a passing suite.
+	 *
+	 * The list below is the eleven that are genuinely not covered today, and
+	 * naming them is the point: adding a twelfth has to be a decision somebody
+	 * writes down rather than something nobody notices. Removing one from the
+	 * list when it gains a test is the direction this should move.
+	 *
+	 * @return void
+	 */
+	public function test_every_ability_with_an_output_schema_is_exercised(): void {
+		$known_uncovered = [
+			// The block manipulation abilities. They need a post with known
+			// block markup as a fixture, and assertions about the markup that
+			// comes back, which is a different and larger piece of work.
+			'Pages\\AddBlock',
+			'Pages\\EditBlock',
+			'Pages\\MoveBlock',
+			'Pages\\RemoveBlock',
+			'Posts\\AddBlock',
+			'Posts\\EditBlock',
+			'Posts\\MoveBlock',
+			'Posts\\RemoveBlock',
+			// Read-only reflection over the block type registry.
+			'Blocks\\GetBlockType',
+			'Blocks\\ListBlockTypes',
+			// Returns a skill body by slug; covered by the skills registry tests.
+			'Skills\\GetSkill',
+		];
+
+		$source    = (string) file_get_contents( __FILE__ );
+		$uncovered = [];
+		$base_dir  = dirname( __DIR__, 3 ) . '/src/Abilities';
+		$iterator  = new \RecursiveIteratorIterator(
+			new \RecursiveDirectoryIterator( $base_dir, \FilesystemIterator::SKIP_DOTS )
+		);
+
+		foreach ( $iterator as $file ) {
+			if ( $file->getExtension() !== 'php' ) {
+				continue;
+			}
+
+			$relative = str_replace( [ $base_dir . '/WordPress/', '.php' ], '', $file->getPathname() );
+			$class    = 'Albert\\Abilities\\' . str_replace( '/', '\\', str_replace( [ $base_dir . '/', '.php' ], '', $file->getPathname() ) );
+
+			if ( ! class_exists( $class ) ) {
+				continue;
+			}
+
+			$reflection = new \ReflectionClass( $class );
+
+			if ( $reflection->isAbstract() || ! $reflection->isSubclassOf( BaseAbility::class ) ) {
+				continue;
+			}
+
+			if ( empty( $this->get_output_schema( $reflection->newInstance() ) ) ) {
+				continue;
+			}
+
+			$short = str_replace( '/', '\\', $relative );
+
+			if ( in_array( $short, $known_uncovered, true ) ) {
+				continue;
+			}
+
+			// Match the fully qualified name as it appears in the use-list, not
+			// the short name: half of these are called Create or Update, and a
+			// short-name match would be satisfied by any one of them.
+			if ( ! str_contains( $source, $class ) ) {
+				$uncovered[] = $short;
+			}
+		}
+
+		sort( $uncovered );
+
+		$this->assertSame(
+			[],
+			$uncovered,
+			"These abilities declare an output schema that nothing in this file ever checks:\n" .
+			implode( "\n", $uncovered ) .
+			"\n\nAdd an execute-and-validate test, or add it to \$known_uncovered with a reason."
+		);
+	}
+
+	/**
 	 * Get the output schema from an ability via reflection.
 	 *
 	 * @param BaseAbility $ability Ability instance.
@@ -93,6 +182,15 @@ class ExecuteSchemaTest extends TestCase {
 
 	/**
 	 * Assert that execute() returns a valid result matching the output schema.
+	 *
+	 * Validated with `rest_validate_value_from_schema()` — the function core
+	 * itself calls from `WP_Ability::validate_output()` — so what passes here
+	 * is what passes in production. This used to run a hand-written validator
+	 * covering "the subset of JSON Schema that Albert abilities actually use",
+	 * which meant the suite could agree with itself while disagreeing with the
+	 * only validator whose opinion reaches a user. It knew nothing of `enum`,
+	 * `format`, `minimum`/`maximum` or `additionalProperties`, and read
+	 * `integer` more strictly than core does.
 	 *
 	 * @param BaseAbility          $ability Ability instance.
 	 * @param array<string, mixed> $args    Execute arguments.
@@ -116,11 +214,15 @@ class ExecuteSchemaTest extends TestCase {
 		$this->assertIsArray( $result, sprintf( '%s should return an array.', $label ) );
 
 		$schema = $this->get_output_schema( $ability );
-		$errors = SchemaValidator::validate( $result, $schema );
+		$valid  = rest_validate_value_from_schema( $result, $schema, 'output' );
 
-		$this->assertEmpty(
-			$errors,
-			sprintf( "%s output schema violations:\n%s", $label, implode( "\n", $errors ) )
+		$this->assertNotWPError(
+			$valid,
+			sprintf(
+				'%s output schema violations: %s',
+				$label,
+				$valid instanceof WP_Error ? $valid->get_error_message() : ''
+			)
 		);
 
 		return $result;
