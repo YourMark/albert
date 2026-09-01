@@ -382,7 +382,10 @@ class InstallerTest extends TestCase {
 		global $wpdb;
 
 		$this->restore_legacy_log_columns();
-		update_option( Installer::VERSION_OPTION, '1.3.1' );
+		// Below both the 1.4.0 migration gate and ALBERT_VERSION itself. Seeding
+		// the running version instead would make maybe_upgrade() return early on
+		// 'already current' and never reach the migration under test.
+		update_option( Installer::VERSION_OPTION, '1.3.0' );
 
 		\Albert\Core\Plugin::activate();
 
@@ -414,7 +417,10 @@ class InstallerTest extends TestCase {
 		global $wpdb;
 
 		$this->restore_legacy_log_columns();
-		update_option( Installer::VERSION_OPTION, '1.3.1' );
+		// Below both the 1.4.0 migration gate and ALBERT_VERSION itself. Seeding
+		// the running version instead would make maybe_upgrade() return early on
+		// 'already current' and never reach the migration under test.
+		update_option( Installer::VERSION_OPTION, '1.3.0' );
 
 		Installer::maybe_upgrade();
 
