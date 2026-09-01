@@ -104,6 +104,16 @@ jobs:
           # part rather than what breaks other plugins.
           find build/albert-ai-butler/vendor -name "*.sh" -type f -delete
 
+          # The adapter also ships as a standalone plugin; nothing here loads
+          # its bootstrap or its readme. Asserted rather than assumed, so the
+          # build fails loudly if upstream moves them instead of silently
+          # shipping them again.
+          for f in mcp-adapter.php readme.txt; do
+            path="build/albert-ai-butler/vendor/wordpress/mcp-adapter/$f"
+            test -f "$path" || { echo "::error::expected $path to exist; upstream layout changed"; exit 1; }
+            rm "$path"
+          done
+
       - name: Create zip file
         working-directory: build
         run: zip -r albert-ai-butler-${{ steps.version.outputs.version }}.zip albert-ai-butler
