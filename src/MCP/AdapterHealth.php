@@ -38,9 +38,38 @@ class AdapterHealth implements Hookable {
 		add_filter( 'site_status_tests', [ $this, 'add_test' ] );
 		add_filter( 'debug_information', [ $this, 'add_debug_information' ] );
 
-		if ( ! AdapterStatus::adapter_available() ) {
+		if ( $this->missing() !== [] ) {
 			add_action( 'admin_notices', [ $this, 'render_notice' ] );
 		}
+	}
+
+	/**
+	 * Symbols the loaded MCP library does not provide.
+	 *
+	 * A seam, not indirection for its own sake: every branch worth testing here
+	 * is the unhealthy one, and it cannot be reached on a correctly installed
+	 * site. Overriding this in a test is how the critical path gets exercised
+	 * at all — without it the only testable branch is the one that says
+	 * everything is fine.
+	 *
+	 * @return array<int, string>
+	 * @since 1.4.0
+	 */
+	protected function missing(): array {
+		return AdapterStatus::missing_classes();
+	}
+
+	/**
+	 * Whether the adapter entry point is loadable at all.
+	 *
+	 * Separate from {@see self::missing()} because absent and outdated are
+	 * different faults with opposite remedies, and the message has to say which.
+	 *
+	 * @return bool
+	 * @since 1.4.0
+	 */
+	protected function present(): bool {
+		return AdapterStatus::adapter_present();
 	}
 
 	/**
@@ -71,7 +100,7 @@ class AdapterHealth implements Hookable {
 	 * @since 1.4.0
 	 */
 	public function run_test(): array {
-		if ( AdapterStatus::adapter_available() ) {
+		if ( $this->missing() === [] ) {
 			return $this->result(
 				'good',
 				__( 'Albert&#8217;s MCP endpoint is available', 'albert-ai-butler' ),
@@ -112,7 +141,7 @@ class AdapterHealth implements Hookable {
 	private function explanation(): string {
 		$preamble = esc_html__( 'The MCP endpoint is switched off, so every request to it fails with an authentication error even though no token would work — there is nothing registered to authenticate against.', 'albert-ai-butler' );
 
-		if ( ! AdapterStatus::adapter_present() ) {
+		if ( ! $this->present() ) {
 			return $preamble . ' ' . sprintf(
 				/* translators: %s: the composer command that rebuilds dependencies */
 				esc_html__( 'The MCP library is not installed. Reinstall Albert from an official release, or if you are running it from source, install its dependencies with %s.', 'albert-ai-butler' ),
@@ -124,7 +153,7 @@ class AdapterHealth implements Hookable {
 			/* translators: 1: path of the loaded library, 2: list of missing class names */
 			esc_html__( 'A copy of the MCP library is loaded from %1$s, but it is older than Albert needs and does not provide: %2$s. Update the plugin that supplies it, or deactivate it so Albert&#8217;s own copy is used.', 'albert-ai-butler' ),
 			'<code>' . esc_html( (string) AdapterStatus::adapter_path() ) . '</code>',
-			'<code>' . implode( '</code>, <code>', array_map( 'esc_html', AdapterStatus::missing_classes() ) ) . '</code>'
+			'<code>' . implode( '</code>, <code>', array_map( 'esc_html', $this->missing() ) ) . '</code>'
 		);
 	}
 
@@ -141,14 +170,14 @@ class AdapterHealth implements Hookable {
 			return $info;
 		}
 
-		$missing = AdapterStatus::missing_classes();
+		$missing = $this->missing();
 
 		$info['albert'] = [
 			'label'  => __( 'Albert', 'albert-ai-butler' ),
 			'fields' => [
 				'mcp_library'   => [
 					'label' => __( 'MCP library', 'albert-ai-butler' ),
-					'value' => AdapterStatus::adapter_available()
+					'value' => $missing === []
 						? __( 'usable', 'albert-ai-butler' )
 						: __( 'unusable — the MCP endpoint cannot work', 'albert-ai-butler' ),
 				],

@@ -36,7 +36,7 @@ use WP\MCP\Core\McpAdapter;
 class AdapterStatus {
 
 	/**
-	 * The classes Albert calls into, which a usable copy must provide.
+	 * The symbols Albert calls into, which a usable copy must provide.
 	 *
 	 * Detected by symbol rather than by version number, matching how the rest of
 	 * this plugin handles capability checks: the site may be running another
@@ -46,7 +46,7 @@ class AdapterStatus {
 	 * @since 1.4.0
 	 * @var array<int, string>
 	 */
-	private const REQUIRED_CLASSES = [
+	private const REQUIRED_SYMBOLS = [
 		McpAdapter::class,
 		\WP\MCP\Core\McpServer::class,
 		\WP\MCP\Transport\HttpTransport::class,
@@ -55,6 +55,12 @@ class AdapterStatus {
 		\WP\MCP\Abilities\McpAbilityExposure::class,
 		\WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler::class,
 		\WP\MCP\Infrastructure\Observability\Contracts\McpObservabilityHandlerInterface::class,
+		// A trait, and the reason the check below uses three functions rather
+		// than one: `class_exists()` is false for a trait, so a class-only
+		// check called the library usable while
+		// {@see \Albert\Logging\ObservabilityHandler} — which does
+		// `use McpObservabilityHelperTrait;` — would fatal on load.
+		\WP\MCP\Infrastructure\Observability\McpObservabilityHelperTrait::class,
 	];
 
 	/**
@@ -81,8 +87,8 @@ class AdapterStatus {
 	public static function missing_classes(): array {
 		return array_values(
 			array_filter(
-				self::REQUIRED_CLASSES,
-				static fn( string $name ): bool => ! class_exists( $name ) && ! interface_exists( $name )
+				self::REQUIRED_SYMBOLS,
+				static fn( string $name ): bool => ! class_exists( $name ) && ! interface_exists( $name ) && ! trait_exists( $name )
 			)
 		);
 	}

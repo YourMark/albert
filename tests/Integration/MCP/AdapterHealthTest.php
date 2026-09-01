@@ -84,6 +84,91 @@ class AdapterHealthTest extends TestCase {
 	}
 
 	/**
+	 * A trait is detected, not only classes.
+	 *
+	 * `class_exists()` returns false for a trait, so a class-only check called
+	 * the library usable while `Logging\ObservabilityHandler` — which does
+	 * `use McpObservabilityHelperTrait;` — would fatal on load. Asserting the
+	 * trait specifically, because it is the one symbol whose absence the
+	 * obvious implementation cannot see.
+	 *
+	 * @return void
+	 */
+	public function test_the_required_trait_is_detected_as_present(): void {
+		$trait = \WP\MCP\Infrastructure\Observability\McpObservabilityHelperTrait::class;
+
+		$this->assertTrue( trait_exists( $trait ) );
+		$this->assertFalse( class_exists( $trait ), 'A trait is never a class; that is the bug this guards.' );
+		$this->assertNotContains( $trait, AdapterStatus::missing_classes() );
+	}
+
+	/**
+	 * The unhealthy path reports critical, and says which symbols are missing.
+	 *
+	 * Driven by asking AdapterStatus about a symbol that genuinely does not
+	 * exist, rather than by mocking: the value of this test is that the
+	 * critical branch of run_test() is executed at all. Every earlier test here
+	 * exercised only the healthy path, which is the wrong half of a feature
+	 * whose entire purpose is to speak up when things are broken.
+	 *
+	 * @return void
+	 */
+	public function test_a_missing_symbol_is_reported_as_critical(): void {
+		$health = new class() extends AdapterHealth {
+			/**
+			 * Pretend the library is unusable.
+			 *
+			 * @return array<int, string>
+			 */
+			protected function missing(): array {
+				return [ 'WP\\MCP\\Core\\SomethingAlbertNeeds' ];
+			}
+		};
+
+		$result = $health->run_test();
+
+		$this->assertSame( 'critical', $result['status'] );
+		$this->assertSame( 'red', $result['badge']['color'] );
+		$this->assertStringContainsString( 'SomethingAlbertNeeds', $result['description'] );
+		$this->assertStringContainsString( 'authentication error', wp_strip_all_tags( $result['description'] ) );
+	}
+
+	/**
+	 * With the library absent entirely, the remedy offered is to install it.
+	 *
+	 * The two faults share one symptom and have opposite remedies, so the
+	 * message has to tell them apart. This is the "not installed" half.
+	 *
+	 * @return void
+	 */
+	public function test_an_absent_library_is_told_apart_from_an_old_one(): void {
+		$absent = new class() extends AdapterHealth {
+			/**
+			 * Pretend nothing is installed.
+			 *
+			 * @return array<int, string>
+			 */
+			protected function missing(): array {
+				return [ 'WP\\MCP\\Core\\McpAdapter' ];
+			}
+
+			/**
+			 * Pretend the adapter entry point is absent.
+			 *
+			 * @return bool
+			 */
+			protected function present(): bool {
+				return false;
+			}
+		};
+
+		$text = wp_strip_all_tags( $absent->run_test()['description'] );
+
+		$this->assertStringContainsString( 'composer install', $text );
+		$this->assertStringNotContainsString( 'Update the plugin that supplies it', $text );
+	}
+
+	/**
 	 * A correct install reports good.
 	 *
 	 * @return void
