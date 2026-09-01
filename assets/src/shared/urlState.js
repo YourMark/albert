@@ -13,7 +13,14 @@
 
 // Query keys this module always owns, beyond whatever filter fields the
 // caller's `filters` config adds. Cleared before every write.
-const BASE_OWNED_KEYS = [ 's', 'layout', 'paged', 'orderby', 'order', 'ability' ];
+const BASE_OWNED_KEYS = [
+	's',
+	'layout',
+	'paged',
+	'orderby',
+	'order',
+	'ability',
+];
 
 /**
  * The id of the detail panel to open on load, if the URL names one.
@@ -25,7 +32,9 @@ const BASE_OWNED_KEYS = [ 's', 'layout', 'paged', 'orderby', 'order', 'ability' 
  * @return {string|null} The ability id, or null.
  */
 export function openIdFromUrl() {
-	const value = new URLSearchParams( window.location.search ).get( 'ability' );
+	const value = new URLSearchParams( window.location.search ).get(
+		'ability'
+	);
 
 	return value ? value : null;
 }
@@ -96,12 +105,13 @@ export function viewFromUrl( defaultView, { filters } ) {
  * values are written; the page's own query arg and any unrelated params are
  * preserved.
  *
- * @param {Object} view               The current DataViews view.
- * @param {Object} config             Per-screen configuration.
- * @param {Object} config.filters     Filterable fields, keyed by field name,
- *                                    each `{ multiple: boolean, operator: string }`.
- * @param {Object} config.defaultSort The view's default `{ field, direction }`,
- *                                    omitted from the URL when unchanged.
+ * @param {Object}      view               The current DataViews view.
+ * @param {Object}      config             Per-screen configuration.
+ * @param {Object}      config.filters     Filterable fields, keyed by field name,
+ *                                         each `{ multiple: boolean, operator: string }`.
+ * @param {Object}      config.defaultSort The view's default `{ field, direction }`,
+ *                                         omitted from the URL when unchanged.
+ * @param {string|null} config.openId      Which detail panel is open, if any.
  * @return {void}
  */
 export function syncViewToUrl( view, { filters, defaultSort, openId = null } ) {

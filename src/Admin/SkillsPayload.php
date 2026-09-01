@@ -11,6 +11,8 @@ namespace Albert\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Context\SkillIndex;
+use Albert\Core\AbilitiesState;
 use Albert\MCP\Skills\Skill;
 use Albert\MCP\Skills\SkillRegistry;
 
@@ -38,7 +40,7 @@ class SkillsPayload {
 	 * from Albert itself, so there's nothing to distinguish yet), but the
 	 * reason string is ready for whenever a future version shows it.
 	 *
-	 * @return array{skills: list<array<string, mixed>>} The screen payload.
+	 * @return array{skills: list<array<string, mixed>>, reachable: bool} The screen payload.
 	 * @since 1.4.0
 	 */
 	public static function build(): array {
@@ -48,7 +50,16 @@ class SkillsPayload {
 			$rows[] = self::row( $skill );
 		}
 
-		return [ 'skills' => $rows ];
+		return [
+			'skills'    => $rows,
+			// Whether any of this is reachable at all. `albert/get-skill` is an
+			// ordinary ability an owner can switch off, and doing so suppresses
+			// the entire skills index in the discovery response
+			// ({@see \Albert\Context\Payload::skills()}) — so every skill below
+			// stops reaching every assistant, silently. The screen said nothing
+			// about that, which made a full list of skills a lie.
+			'reachable' => AbilitiesState::is_enabled( SkillIndex::FETCH_ABILITY ),
+		];
 	}
 
 	/**
