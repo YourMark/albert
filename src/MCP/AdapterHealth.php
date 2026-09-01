@@ -16,14 +16,13 @@ use Albert\Contracts\Interfaces\Hookable;
 /**
  * AdapterHealth class
  *
- * Puts "is the MCP endpoint actually able to work" somewhere a site owner can
- * find it on purpose, rather than only in a banner they may have dismissed or
- * never loaded the right screen to see.
+ * Puts "can the MCP endpoint work at all" somewhere a site owner can look on
+ * purpose, and says it in an admin notice they cannot miss.
  *
- * It is the same question {@see AdapterStatus} answers for the admin notice.
- * The reason it is worth answering twice is that the failure it describes is
- * indistinguishable from an authentication problem at the endpoint itself, so
- * the person debugging it is usually looking anywhere except the plugin.
+ * Worth stating twice because the failure is invisible from outside: with no
+ * usable MCP library nothing registers a server, and the endpoint answers
+ * `401 rest_forbidden` — indistinguishable from a healthy install that was
+ * handed no token. Whoever is debugging it is looking at their token.
  *
  * @since 1.4.0
  */
@@ -39,10 +38,9 @@ class AdapterHealth implements Hookable {
 		add_filter( 'site_status_tests', [ $this, 'add_test' ] );
 		add_filter( 'debug_information', [ $this, 'add_debug_information' ] );
 
-		// The scan is a filesystem walk over active plugins; the set of those
-		// only changes when one is activated or deactivated.
-		add_action( 'activated_plugin', [ AdapterStatus::class, 'flush' ] );
-		add_action( 'deactivated_plugin', [ AdapterStatus::class, 'flush' ] );
+		if ( ! AdapterStatus::adapter_available() ) {
+			add_action( 'admin_notices', [ $this, 'render_notice' ] );
+		}
 	}
 
 	/**
@@ -73,36 +71,60 @@ class AdapterHealth implements Hookable {
 	 * @since 1.4.0
 	 */
 	public function run_test(): array {
-		if ( ! AdapterStatus::scoped_adapter_available() ) {
+		if ( AdapterStatus::adapter_available() ) {
 			return $this->result(
-				'critical',
-				__( 'Albert&#8217;s MCP endpoint is switched off', 'albert-ai-butler' ),
-				sprintf(
-					'<p>%s</p><p><code>%s</code></p>',
-					esc_html__( 'The bundled MCP library is missing, so no MCP server is registered. Every request to the endpoint answers with an authentication error, which is misleading: no token would work, because there is nothing there to authenticate against. This happens when the plugin is installed from source and its dependencies were installed without development requirements. Reinstall from an official release zip, or rebuild the bundled library:', 'albert-ai-butler' ),
-					esc_html( 'composer install && composer run mozart' )
-				)
-			);
-		}
-
-		$foreign = AdapterStatus::foreign_copies();
-
-		if ( $foreign !== [] ) {
-			return $this->result(
-				'critical',
-				__( 'Another plugin is bundling the same MCP library', 'albert-ai-butler' ),
-				sprintf(
-					'<p>%s</p><ul><li><code>%s</code></li></ul>',
-					esc_html__( 'These active plugins ship their own unscoped copy of the MCP library. Two copies cannot both register a server, so Albert&#8217;s never registers and its endpoint answers with a misleading authentication error. Deactivate them, or ask their authors to namespace-scope the dependency:', 'albert-ai-butler' ),
-					implode( '</code></li><li><code>', array_map( 'esc_html', array_keys( $foreign ) ) )
-				)
+				'good',
+				__( 'Albert&#8217;s MCP endpoint is available', 'albert-ai-butler' ),
+				'<p>' . esc_html__( 'The MCP library is present and offers everything Albert calls.', 'albert-ai-butler' ) . '</p>'
 			);
 		}
 
 		return $this->result(
-			'good',
-			__( 'Albert&#8217;s MCP endpoint is available', 'albert-ai-butler' ),
-			'<p>' . esc_html__( 'The bundled MCP library is present and no other plugin is competing with it.', 'albert-ai-butler' ) . '</p>'
+			'critical',
+			__( 'Albert&#8217;s MCP endpoint is switched off', 'albert-ai-butler' ),
+			'<p>' . $this->explanation() . '</p>'
+		);
+	}
+
+	/**
+	 * The admin notice shown when the endpoint cannot work.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	public function render_notice(): void {
+		printf(
+			'<div class="notice notice-error"><p><strong>%s</strong> %s</p></div>',
+			esc_html__( 'Albert:', 'albert-ai-butler' ),
+			wp_kses_post( $this->explanation() )
+		);
+	}
+
+	/**
+	 * What is wrong and what to do, in one sentence plus the remedy.
+	 *
+	 * Two different faults share one symptom, and they have opposite remedies,
+	 * so they are told apart here rather than left to the reader.
+	 *
+	 * @return string Escaped HTML.
+	 * @since 1.4.0
+	 */
+	private function explanation(): string {
+		$preamble = esc_html__( 'The MCP endpoint is switched off, so every request to it fails with an authentication error even though no token would work — there is nothing registered to authenticate against.', 'albert-ai-butler' );
+
+		if ( ! AdapterStatus::adapter_present() ) {
+			return $preamble . ' ' . sprintf(
+				/* translators: %s: the composer command that rebuilds dependencies */
+				esc_html__( 'The MCP library is not installed. Reinstall Albert from an official release, or if you are running it from source, install its dependencies with %s.', 'albert-ai-butler' ),
+				'<code>composer install</code>'
+			);
+		}
+
+		return $preamble . ' ' . sprintf(
+			/* translators: 1: path of the loaded library, 2: list of missing class names */
+			esc_html__( 'A copy of the MCP library is loaded from %1$s, but it is older than Albert needs and does not provide: %2$s. Update the plugin that supplies it, or deactivate it so Albert&#8217;s own copy is used.', 'albert-ai-butler' ),
+			'<code>' . esc_html( (string) AdapterStatus::adapter_path() ) . '</code>',
+			'<code>' . implode( '</code>, <code>', array_map( 'esc_html', AdapterStatus::missing_classes() ) ) . '</code>'
 		);
 	}
 
@@ -119,20 +141,24 @@ class AdapterHealth implements Hookable {
 			return $info;
 		}
 
-		$foreign = AdapterStatus::foreign_copies();
+		$missing = AdapterStatus::missing_classes();
 
 		$info['albert'] = [
 			'label'  => __( 'Albert', 'albert-ai-butler' ),
 			'fields' => [
-				'mcp_library'      => [
-					'label' => __( 'Bundled MCP library', 'albert-ai-butler' ),
-					'value' => AdapterStatus::scoped_adapter_available()
-						? __( 'present', 'albert-ai-butler' )
-						: __( 'MISSING — the MCP endpoint cannot work', 'albert-ai-butler' ),
+				'mcp_library'   => [
+					'label' => __( 'MCP library', 'albert-ai-butler' ),
+					'value' => AdapterStatus::adapter_available()
+						? __( 'usable', 'albert-ai-butler' )
+						: __( 'unusable — the MCP endpoint cannot work', 'albert-ai-butler' ),
 				],
-				'mcp_other_copies' => [
-					'label' => __( 'Other plugins bundling it', 'albert-ai-butler' ),
-					'value' => $foreign === [] ? __( 'none', 'albert-ai-butler' ) : implode( ', ', array_keys( $foreign ) ),
+				'mcp_loaded_at' => [
+					'label' => __( 'MCP library loaded from', 'albert-ai-butler' ),
+					'value' => AdapterStatus::adapter_path() ?? __( 'not loaded', 'albert-ai-butler' ),
+				],
+				'mcp_missing'   => [
+					'label' => __( 'Missing from that copy', 'albert-ai-butler' ),
+					'value' => $missing === [] ? __( 'nothing', 'albert-ai-butler' ) : implode( ', ', $missing ),
 				],
 			],
 		];

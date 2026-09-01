@@ -81,7 +81,7 @@ use Albert\Admin\Rest\ContextController;
 use Albert\Admin\Rest\SkillsController;
 use Albert\OAuth\Endpoints\OAuthDiscovery;
 use Albert\Privacy\PrivacyMode;
-use Albert\Vendor\WP\MCP\Core\McpAdapter;
+use WP\MCP\Core\McpAdapter;
 
 /**
  * Main Plugin Class

@@ -12,8 +12,8 @@ namespace Albert\MCP;
 defined( 'ABSPATH' ) || exit;
 
 use Albert\Support\WpCompat;
-use Albert\Vendor\WP\MCP\Core\McpServer;
-use Albert\Vendor\WP\McpSchema\Server\Tools\DTO\Tool;
+use WP\MCP\Core\McpServer;
+use WP\McpSchema\Server\Tools\DTO\Tool;
 
 /**
  * Runs every schema Albert emits to an MCP client through

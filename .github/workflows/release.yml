@@ -59,14 +59,10 @@ jobs:
           tools: composer:v2
           coverage: none
 
-      - name: Generate Mozart-scoped dependencies
-        # Install WITH dev deps so Mozart is present; its post-install hook runs
-        # `mozart compose`, producing vendor-prefixed/ (scoped under Albert\Vendor\).
-        run: composer install --prefer-dist --no-progress
-
       - name: Install production dependencies
-        # Strip dev deps (incl. mozart + the unscoped wordpress/* packages) and
-        # rebuild the optimized prod autoloader. vendor-prefixed/ persists.
+        # One install, no build step. The MCP library is an ordinary runtime
+        # requirement now, and Jetpack Autoloader writes its manifests from
+        # Composer's own hook — nothing to generate first, nothing to strip after.
         run: composer install --no-dev --prefer-dist --optimize-autoloader --no-progress
 
       - name: Setup Node
@@ -95,19 +91,17 @@ jobs:
           # Directories
           cp -r src build/albert-ai-butler/
           cp -r vendor build/albert-ai-butler/
-          cp -r vendor-prefixed build/albert-ai-butler/
 
           # Optional directories (copy if they exist)
           [ -d "assets" ] && cp -r assets build/albert-ai-butler/ || true
           [ -d "languages" ] && cp -r languages build/albert-ai-butler/ || true
 
-      - name: Strip build-only and disallowed vendor files
+      - name: Strip non-permitted vendor files
         run: |
-          # wordpress/mcp-adapter + wordpress/php-mcp-schema are bundled into
-          # src/Dependencies/ (Mozart-scoped under Albert\Vendor\). They must
-          # NEVER ship unscoped in vendor/ — that would re-introduce the
-          # WP\MCP\ namespace collision with WooCommerce's bundled copy.
-          rm -rf build/albert-ai-butler/vendor/wordpress
+          # vendor/wordpress/ deliberately DOES ship now. Albert loads it through
+          # Jetpack Autoloader, which resolves one newest copy of WP\MCP\ across
+          # every plugin bundling it, so shipping ours is what lets Albert take
+          # part rather than what breaks other plugins.
           find build/albert-ai-butler/vendor -name "*.sh" -type f -delete
 
       - name: Create zip file
@@ -191,9 +185,6 @@ jobs:
           php-version: '8.2'
           tools: composer:v2
           coverage: none
-
-      - name: Generate Mozart-scoped dependencies
-        run: composer install --prefer-dist --no-progress
 
       - name: Install production dependencies
         run: composer install --no-dev --prefer-dist --optimize-autoloader --no-progress

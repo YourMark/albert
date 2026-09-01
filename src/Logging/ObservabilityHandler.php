@@ -11,8 +11,8 @@ namespace Albert\Logging;
 
 defined( 'ABSPATH' ) || exit;
 
-use Albert\Vendor\WP\MCP\Infrastructure\Observability\Contracts\McpObservabilityHandlerInterface;
-use Albert\Vendor\WP\MCP\Infrastructure\Observability\McpObservabilityHelperTrait;
+use WP\MCP\Infrastructure\Observability\Contracts\McpObservabilityHandlerInterface;
+use WP\MCP\Infrastructure\Observability\McpObservabilityHelperTrait;
 
 /**
  * ObservabilityHandler class

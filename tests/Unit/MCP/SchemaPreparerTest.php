@@ -51,8 +51,8 @@ require_once dirname( __DIR__, 2 ) . '/wp-function-stubs.php';
 require_once dirname( __DIR__ ) . '/stubs/function-exists-shadow.php';
 
 use Albert\MCP\SchemaPreparer;
-use Albert\Vendor\WP\MCP\Core\McpServer;
-use Albert\Vendor\WP\McpSchema\Server\Tools\DTO\Tool;
+use WP\MCP\Core\McpServer;
+use WP\McpSchema\Server\Tools\DTO\Tool;
 use PHPUnit\Framework\TestCase;
 use WP_Error;
 

@@ -17,13 +17,13 @@ use Albert\Core\Plugin;
 use Albert\Logging\ObservabilityHandler;
 use Albert\MCP\Skills\SkillLoader;
 use Albert\OAuth\Server\TokenValidator;
-use Albert\Vendor\WP\MCP\Core\McpAdapter;
-use Albert\Vendor\WP\MCP\Core\McpServer;
-use Albert\Vendor\WP\MCP\Domain\Prompts\McpPrompt;
-use Albert\Vendor\WP\MCP\Domain\Resources\McpResource;
-use Albert\Vendor\WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
-use Albert\Vendor\WP\MCP\Infrastructure\Observability\Contracts\McpObservabilityHandlerInterface;
-use Albert\Vendor\WP\MCP\Transport\HttpTransport;
+use WP\MCP\Core\McpAdapter;
+use WP\MCP\Core\McpServer;
+use WP\MCP\Domain\Prompts\McpPrompt;
+use WP\MCP\Domain\Resources\McpResource;
+use WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
+use WP\MCP\Infrastructure\Observability\Contracts\McpObservabilityHandlerInterface;
+use WP\MCP\Transport\HttpTransport;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -77,8 +77,6 @@ class Server implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function register_hooks(): void {
-		$this->report_adapter_problems();
-
 		add_action( 'mcp_adapter_init', [ $this, 'create_server' ] );
 		// Bound to *_after_ callbacks, not before: the header depends on whether
 		// authentication actually failed (and how), which is only known once the
@@ -259,86 +257,6 @@ class Server implements Hookable {
 		}
 
 		return 200;
-	}
-
-	/**
-	 * Report anything that stops the MCP endpoint working, in the admin.
-	 *
-	 * Two states, one symptom. Albert's scoped adapter can be absent entirely
-	 * (a source install with `--no-dev`), or a second plugin can load an
-	 * unscoped `WP\MCP\*` copy and make the adapter's own
-	 * `DefaultServerFactory::create()` throw `duplicate_server_id`. Either way no
-	 * MCP server registers and every request to our endpoint answers
-	 * `401 rest_forbidden` — which is *also* what a healthy install answers when
-	 * it is handed no token.
-	 *
-	 * That ambiguity is the whole problem: the symptom points at authentication,
-	 * so the site owner debugs their token, their client and their proxy, and
-	 * never suspects the server was never there. The only outside clue was an
-	 * `x-wp-doingitwrong` response header. So say it plainly instead, where they
-	 * will see it.
-	 *
-	 * @return void
-	 * @since 1.4.0
-	 */
-	private function report_adapter_problems(): void {
-		if ( ! AdapterStatus::scoped_adapter_available() ) {
-			add_action( 'admin_notices', [ $this, 'render_missing_adapter_notice' ] );
-
-			// Nothing else is worth saying: with no adapter of our own, a foreign
-			// copy is not the problem the owner has.
-			return;
-		}
-
-		$foreign = AdapterStatus::foreign_copies();
-
-		if ( $foreign !== [] ) {
-			add_action(
-				'admin_notices',
-				function () use ( $foreign ): void {
-					$this->render_conflict_notice( $foreign );
-				}
-			);
-		}
-	}
-
-	/**
-	 * Notice shown when Albert's own scoped adapter was never built.
-	 *
-	 * @return void
-	 * @since 1.4.0
-	 */
-	public function render_missing_adapter_notice(): void {
-		printf(
-			'<div class="notice notice-error"><p>%s</p><p><code>%s</code></p></div>',
-			wp_kses_post(
-				__( '<strong>Albert:</strong> the bundled MCP library is missing, so the MCP endpoint is switched off and every request to it will fail with an authentication error that has nothing to do with your token. This happens when the plugin is installed from source and its dependencies were installed without development requirements. Reinstall from an official release zip, or rebuild the bundled library:', 'albert-ai-butler' )
-			),
-			esc_html( 'composer install && composer run mozart' )
-		);
-	}
-
-	/**
-	 * Notice naming every other plugin that ships an unscoped adapter copy.
-	 *
-	 * @param array<string, string> $foreign Plugin folder => path of the copy.
-	 *
-	 * @return void
-	 * @since 1.4.0
-	 */
-	public function render_conflict_notice( array $foreign ): void {
-		printf(
-			'<div class="notice notice-error"><p>%s</p><ul><li><code>%s</code></li></ul></div>',
-			wp_kses_post(
-				_n(
-					'<strong>Albert:</strong> another active plugin bundles its own unscoped copy of the MCP library. That stops Albert&#8217;s MCP server registering, and every request to it fails with an unrelated-looking authentication error. Deactivate it, or ask its author to namespace-scope the dependency:',
-					'<strong>Albert:</strong> other active plugins bundle their own unscoped copies of the MCP library. That stops Albert&#8217;s MCP server registering, and every request to it fails with an unrelated-looking authentication error. Deactivate them, or ask their authors to namespace-scope the dependency:',
-					count( $foreign ),
-					'albert-ai-butler'
-				)
-			),
-			implode( '</code></li><li><code>', array_map( 'esc_html', array_keys( $foreign ) ) )
-		);
 	}
 
 	/**

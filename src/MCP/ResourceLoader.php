@@ -13,7 +13,7 @@
 
 namespace Albert\MCP;
 
-use Albert\Vendor\WP\MCP\Domain\Resources\McpResource;
+use WP\MCP\Domain\Resources\McpResource;
 
 defined( 'ABSPATH' ) || exit;
 
