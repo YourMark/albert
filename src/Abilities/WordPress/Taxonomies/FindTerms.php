@@ -94,23 +94,42 @@ class FindTerms extends BaseAbility {
 	/**
 	 * Get the output schema for this ability.
 	 *
+	 * Describes the object {@see self::execute()} returns. Until 1.4.0 this
+	 * declared a bare `array` of term items while execute() returned
+	 * `{ terms: [...], total: int }`. WordPress 7.1 validates ability output, so
+	 * the mismatch was not cosmetic: every call came back as
+	 * `ability_invalid_output` — "output is not of type array" — and the
+	 * assistant never saw a term. The list moved under `terms`; the item shape
+	 * is unchanged.
+	 *
 	 * @return array<string, mixed> Output schema.
 	 * @since 1.0.0
+	 * @since 1.4.0 Describes the returned object rather than a bare array.
 	 */
 	protected function get_output_schema(): array {
 		return [
-			'type'  => 'array',
-			'items' => [
-				'type'       => 'object',
-				'properties' => [
-					'id'          => [ 'type' => 'integer' ],
-					'name'        => [ 'type' => 'string' ],
-					'slug'        => [ 'type' => 'string' ],
-					'description' => [ 'type' => 'string' ],
-					'parent'      => [ 'type' => 'integer' ],
-					'count'       => [ 'type' => 'integer' ],
+			'type'       => 'object',
+			'properties' => [
+				'terms' => [
+					'type'  => 'array',
+					'items' => [
+						'type'       => 'object',
+						'properties' => [
+							'id'          => [ 'type' => 'integer' ],
+							'name'        => [ 'type' => 'string' ],
+							'slug'        => [ 'type' => 'string' ],
+							'description' => [ 'type' => 'string' ],
+							'parent'      => [ 'type' => 'integer' ],
+							'count'       => [ 'type' => 'integer' ],
+						],
+					],
 				],
+				// How many are in `terms` — the size of this page, not the size of
+				// the whole taxonomy. This ability paginates, so a caller that wants
+				// the next page asks for it rather than comparing against a total.
+				'total' => [ 'type' => 'integer' ],
 			],
+			'required'   => [ 'terms', 'total' ],
 		];
 	}
 

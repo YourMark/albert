@@ -61,6 +61,18 @@ class ExecuteSchemaTest extends TestCase {
 	private int $admin_id;
 
 	/**
+	 * Ability classes actually executed by this run, keyed by class name.
+	 *
+	 * Static because the coverage gate is one test method reasoning about what
+	 * every other test method in the class did, and PHPUnit builds a fresh
+	 * instance per method. Populated by {@see self::assert_execute_matches_schema()},
+	 * which is the only route by which an ability gets run here.
+	 *
+	 * @var array<class-string, true>
+	 */
+	private static array $executed = [];
+
+	/**
 	 * Set up — authenticate as administrator, enable all abilities.
 	 *
 	 * @return void
@@ -73,96 +85,6 @@ class ExecuteSchemaTest extends TestCase {
 
 		delete_option( 'albert_disabled_abilities' );
 		update_option( 'albert_abilities_saved', true );
-	}
-
-	/**
-	 * Every ability that declares an output schema is exercised by this file.
-	 *
-	 * A schema is only worth anything if something ran the ability and checked
-	 * the result against it. Coverage here is per-ability and written by hand,
-	 * because each one needs its own fixtures, so the failure mode is not a
-	 * wrong assertion — it is a new ability quietly arriving with no assertion
-	 * at all, which looks exactly like a passing suite.
-	 *
-	 * The list below is the eleven that are genuinely not covered today, and
-	 * naming them is the point: adding a twelfth has to be a decision somebody
-	 * writes down rather than something nobody notices. Removing one from the
-	 * list when it gains a test is the direction this should move.
-	 *
-	 * @return void
-	 */
-	public function test_every_ability_with_an_output_schema_is_exercised(): void {
-		$known_uncovered = [
-			// The block manipulation abilities. They need a post with known
-			// block markup as a fixture, and assertions about the markup that
-			// comes back, which is a different and larger piece of work.
-			'Pages\\AddBlock',
-			'Pages\\EditBlock',
-			'Pages\\MoveBlock',
-			'Pages\\RemoveBlock',
-			'Posts\\AddBlock',
-			'Posts\\EditBlock',
-			'Posts\\MoveBlock',
-			'Posts\\RemoveBlock',
-			// Read-only reflection over the block type registry.
-			'Blocks\\GetBlockType',
-			'Blocks\\ListBlockTypes',
-			// Returns a skill body by slug; covered by the skills registry tests.
-			'Skills\\GetSkill',
-		];
-
-		$source    = (string) file_get_contents( __FILE__ );
-		$uncovered = [];
-		$base_dir  = dirname( __DIR__, 3 ) . '/src/Abilities';
-		$iterator  = new \RecursiveIteratorIterator(
-			new \RecursiveDirectoryIterator( $base_dir, \FilesystemIterator::SKIP_DOTS )
-		);
-
-		foreach ( $iterator as $file ) {
-			if ( $file->getExtension() !== 'php' ) {
-				continue;
-			}
-
-			$relative = str_replace( [ $base_dir . '/WordPress/', '.php' ], '', $file->getPathname() );
-			$class    = 'Albert\\Abilities\\' . str_replace( '/', '\\', str_replace( [ $base_dir . '/', '.php' ], '', $file->getPathname() ) );
-
-			if ( ! class_exists( $class ) ) {
-				continue;
-			}
-
-			$reflection = new \ReflectionClass( $class );
-
-			if ( $reflection->isAbstract() || ! $reflection->isSubclassOf( BaseAbility::class ) ) {
-				continue;
-			}
-
-			if ( empty( $this->get_output_schema( $reflection->newInstance() ) ) ) {
-				continue;
-			}
-
-			$short = str_replace( '/', '\\', $relative );
-
-			if ( in_array( $short, $known_uncovered, true ) ) {
-				continue;
-			}
-
-			// Match the fully qualified name as it appears in the use-list, not
-			// the short name: half of these are called Create or Update, and a
-			// short-name match would be satisfied by any one of them.
-			if ( ! str_contains( $source, $class ) ) {
-				$uncovered[] = $short;
-			}
-		}
-
-		sort( $uncovered );
-
-		$this->assertSame(
-			[],
-			$uncovered,
-			"These abilities declare an output schema that nothing in this file ever checks:\n" .
-			implode( "\n", $uncovered ) .
-			"\n\nAdd an execute-and-validate test, or add it to \$known_uncovered with a reason."
-		);
 	}
 
 	/**
@@ -199,6 +121,11 @@ class ExecuteSchemaTest extends TestCase {
 	 * @return array<string, mixed> The result (for further assertions by the caller).
 	 */
 	private function assert_execute_matches_schema( BaseAbility $ability, array $args, string $label ): array {
+		// Recorded before the assertions, not after: an ability whose output is
+		// wrong was still exercised, and reporting it as uncovered on top of the
+		// failure would only bury the failure that matters.
+		self::$executed[ $ability::class ] = true;
+
 		$result = $ability->execute( $args );
 
 		$this->assertNotInstanceOf(
@@ -522,6 +449,73 @@ class ExecuteSchemaTest extends TestCase {
 	}
 
 	/**
+	 * UploadMedia returns attachment data matching the output schema.
+	 *
+	 * This ability had no test at all. It counted as covered only because its
+	 * class name appears in this file's `use` list — the string-matching gate
+	 * could not tell an import from an execution.
+	 *
+	 * The download is stubbed at `pre_http_request` rather than reaching the
+	 * network: `download_url()` streams to the temp path in `$args['filename']`,
+	 * so the stub copies a fixture there and reports 200. Everything after that
+	 * — the mime allowlist, the importer, the attachment metadata — is the real
+	 * code path.
+	 *
+	 * @return void
+	 */
+	public function test_upload_media_output_matches_schema(): void {
+		if ( ! defined( 'DIR_TESTDATA' ) ) {
+			$this->markTestSkipped( 'DIR_TESTDATA not defined.' );
+		}
+
+		$fixture = DIR_TESTDATA . '/images/canola.jpg';
+
+		if ( ! file_exists( $fixture ) ) {
+			$this->markTestSkipped( 'Image fixture not available.' );
+		}
+
+		$stub = static function ( $preempt, $args, $url ) use ( $fixture ) {
+			if ( empty( $args['filename'] ) ) {
+				return $preempt;
+			}
+
+			copy( $fixture, $args['filename'] );
+
+			return [
+				'headers'  => [],
+				'body'     => '',
+				'response' => [
+					'code'    => 200,
+					'message' => 'OK',
+				],
+				'cookies'  => [],
+				'filename' => $args['filename'],
+			];
+		};
+
+		add_filter( 'pre_http_request', $stub, 10, 3 );
+
+		try {
+			$result = $this->assert_execute_matches_schema(
+				new UploadMedia(),
+				[
+					'url'      => 'https://example.org/canola.jpg',
+					'filename' => 'canola.jpg',
+					'alt_text' => 'A field of canola',
+				],
+				'UploadMedia'
+			);
+		} finally {
+			remove_filter( 'pre_http_request', $stub, 10 );
+		}
+
+		$this->assertGreaterThan( 0, $result['attachment_id'] );
+		$this->assertSame( 'image/jpeg', $result['mime_type'] );
+		$this->assertGreaterThan( 0, $result['file_size'] );
+		$this->assertSame( 'A field of canola', get_post_meta( (int) $result['attachment_id'], '_wp_attachment_image_alt', true ) );
+	}
+
+	/**
 	 * SetFeaturedImage returns result matching the output schema.
 	 *
 	 * @return void
@@ -570,17 +564,20 @@ class ExecuteSchemaTest extends TestCase {
 	 * @return void
 	 */
 	public function test_find_taxonomies_output_matches_schema(): void {
-		$result = ( new FindTaxonomies() )->execute( [] );
+		$result = $this->assert_execute_matches_schema(
+			new FindTaxonomies(),
+			[],
+			'FindTaxonomies'
+		);
 
-		$this->assertNotInstanceOf( WP_Error::class, $result );
-		$this->assertIsArray( $result );
-
-		// FindTaxonomies output_schema declares type: 'array' but execute()
-		// returns { taxonomies: [...], total: int }. Validate structure directly.
 		$this->assertArrayHasKey( 'taxonomies', $result );
 		$this->assertArrayHasKey( 'total', $result );
 		$this->assertIsArray( $result['taxonomies'] );
 		$this->assertIsInt( $result['total'] );
+		// Something has to come back, or the item shape goes unvalidated: an empty
+		// list satisfies an `array` schema whatever its `items` say. Every site has
+		// `category`.
+		$this->assertNotEmpty( $result['taxonomies'] );
 	}
 
 	/**
@@ -596,17 +593,18 @@ class ExecuteSchemaTest extends TestCase {
 			]
 		);
 
-		$result = ( new FindTerms() )->execute( [ 'taxonomy' => 'category' ] );
+		$result = $this->assert_execute_matches_schema(
+			new FindTerms(),
+			[ 'taxonomy' => 'category' ],
+			'FindTerms'
+		);
 
-		$this->assertNotInstanceOf( WP_Error::class, $result );
-		$this->assertIsArray( $result );
-
-		// FindTerms output_schema declares type: 'array' but execute()
-		// returns { terms: [...], total: int }. Validate structure directly.
 		$this->assertArrayHasKey( 'terms', $result );
 		$this->assertArrayHasKey( 'total', $result );
 		$this->assertIsArray( $result['terms'] );
 		$this->assertIsInt( $result['total'] );
+		// The fixture above created a term, so the item schema is reached.
+		$this->assertNotEmpty( $result['terms'] );
 	}
 
 	/**
@@ -809,6 +807,135 @@ class ExecuteSchemaTest extends TestCase {
 			new \Albert\Abilities\WooCommerce\ViewCustomer(),
 			[ 'id' => $user_id ],
 			'WooViewCustomer'
+		);
+	}
+
+	/**
+	 * Every ability that declares an output schema was executed by this file.
+	 *
+	 * A schema is only worth anything if something ran the ability and checked
+	 * the result against it. Coverage here is per-ability and written by hand,
+	 * because each one needs its own fixtures, so the failure mode is not a
+	 * wrong assertion — it is a new ability quietly arriving with no assertion
+	 * at all, which looks exactly like a passing suite.
+	 *
+	 * Coverage is measured from what ran, not from what the file mentions.
+	 * Matching class names against this file's own source counted an ability as
+	 * covered whenever its name appeared anywhere — including in a test that
+	 * called `markTestSkipped()` a line earlier and never executed a thing. On
+	 * a run without WooCommerce that was all six WooCommerce abilities: skipped,
+	 * and reported as covered. What is asserted below is that
+	 * {@see self::assert_execute_matches_schema()} actually saw the class.
+	 *
+	 * The list is the ones genuinely not covered today, and naming them is the
+	 * point: adding another has to be a decision somebody writes down rather
+	 * than something nobody notices. Removing one when it gains a test is the
+	 * direction this should move.
+	 *
+	 * This method is deliberately last in the class. PHPUnit runs test methods
+	 * in declaration order, and it can only judge a run it comes after.
+	 *
+	 * @return void
+	 */
+	public function test_every_ability_with_an_output_schema_is_exercised(): void {
+		if ( self::$executed === [] ) {
+			$this->markTestSkipped(
+				'Nothing was executed before this gate ran. It measures a whole-class run; ' .
+				'a --filter that selects it alone has nothing to measure.'
+			);
+		}
+
+		$known_uncovered = [
+			// The block manipulation abilities. They need a post with known
+			// block markup as a fixture, and assertions about the markup that
+			// comes back, which is a different and larger piece of work.
+			'WordPress\\Pages\\AddBlock',
+			'WordPress\\Pages\\EditBlock',
+			'WordPress\\Pages\\MoveBlock',
+			'WordPress\\Pages\\RemoveBlock',
+			'WordPress\\Posts\\AddBlock',
+			'WordPress\\Posts\\EditBlock',
+			'WordPress\\Posts\\MoveBlock',
+			'WordPress\\Posts\\RemoveBlock',
+			// Read-only reflection over the block type registry.
+			'WordPress\\Blocks\\GetBlockType',
+			'WordPress\\Blocks\\ListBlockTypes',
+			// Returns a skill body by slug; covered by the skills registry tests.
+			'WordPress\\Skills\\GetSkill',
+		];
+
+		// The WooCommerce abilities have real tests, and those tests skip
+		// themselves when WooCommerce is not installed. On such a run they are
+		// genuinely uncovered and saying so is the honest answer — but it is not
+		// a defect to fail the build over, because the CI matrix has other rows
+		// where WooCommerce is present and those tests do run. Naming them here,
+		// only on the runs where they cannot run, keeps the gate strict
+		// everywhere else.
+		if ( ! class_exists( 'WooCommerce' ) ) {
+			$known_uncovered = array_merge(
+				$known_uncovered,
+				[
+					'WooCommerce\\FindCustomers',
+					'WooCommerce\\FindOrders',
+					'WooCommerce\\FindProducts',
+					'WooCommerce\\ViewCustomer',
+					'WooCommerce\\ViewOrder',
+					'WooCommerce\\ViewProduct',
+				]
+			);
+		}
+
+		$uncovered = [];
+		$base_dir  = dirname( __DIR__, 3 ) . '/src/Abilities';
+		$iterator  = new \RecursiveIteratorIterator(
+			new \RecursiveDirectoryIterator( $base_dir, \FilesystemIterator::SKIP_DOTS )
+		);
+
+		foreach ( $iterator as $file ) {
+			if ( $file->getExtension() !== 'php' ) {
+				continue;
+			}
+
+			// Stripped uniformly, against `$base_dir` alone. Stripping
+			// `$base_dir . '/WordPress/'` matched nothing for anything outside
+			// that subtree, so every WooCommerce ability kept its full absolute
+			// path — which never matched `$known_uncovered`, and would have put
+			// a local filesystem path into the failure message.
+			$relative = str_replace( [ $base_dir . '/', '.php' ], '', $file->getPathname() );
+			$short    = str_replace( '/', '\\', $relative );
+			$class    = 'Albert\\Abilities\\' . $short;
+
+			if ( ! class_exists( $class ) ) {
+				continue;
+			}
+
+			$reflection = new \ReflectionClass( $class );
+
+			if ( $reflection->isAbstract() || ! $reflection->isSubclassOf( BaseAbility::class ) ) {
+				continue;
+			}
+
+			if ( empty( $this->get_output_schema( $reflection->newInstance() ) ) ) {
+				continue;
+			}
+
+			if ( in_array( $short, $known_uncovered, true ) ) {
+				continue;
+			}
+
+			if ( ! isset( self::$executed[ $class ] ) ) {
+				$uncovered[] = $short;
+			}
+		}
+
+		sort( $uncovered );
+
+		$this->assertSame(
+			[],
+			$uncovered,
+			"These abilities declare an output schema that nothing in this file ever executed:\n" .
+			implode( "\n", $uncovered ) .
+			"\n\nAdd an execute-and-validate test, or add it to \$known_uncovered with a reason."
 		);
 	}
 }

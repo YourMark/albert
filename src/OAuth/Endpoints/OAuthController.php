@@ -15,8 +15,8 @@ use Exception;
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Core\Plugin;
 use Albert\OAuth\Server\AuthorizationServerFactory;
+use Albert\OAuth\ServerMetadata;
 use League\OAuth2\Server\Exception\OAuthServerException;
-use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
@@ -139,13 +139,13 @@ class OAuthController implements Hookable {
 	 * @param OAuthServerException $e The rejection.
 	 *
 	 * @return void
-	 * @since 1.5.0
+	 * @since 1.4.0
 	 */
 	private function log_token_request_failure( OAuthServerException $e ): void {
 		/**
 		 * Fires when the token endpoint rejects a request.
 		 *
-		 * @since 1.5.0
+		 * @since 1.4.0
 		 *
 		 * @param string               $error_type The OAuth error type (e.g. `invalid_grant`).
 		 * @param string               $message    The library's specific failure message.
@@ -176,25 +176,7 @@ class OAuthController implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function handle_authorization_server_metadata(): WP_REST_Response {
-		$base_url = $this->get_base_url();
-
-		$metadata = [
-			'issuer'                                => $base_url,
-			'authorization_endpoint'                => $base_url . '/oauth/authorize',
-			'token_endpoint'                        => $this->get_rest_url( Plugin::rest_namespace() . '/oauth/token' ),
-			'registration_endpoint'                 => $this->get_rest_url( Plugin::rest_namespace() . '/oauth/register' ),
-			'response_types_supported'              => [ 'code' ],
-			'grant_types_supported'                 => [ 'authorization_code', 'refresh_token' ],
-			// 'none' matters here, not just for completeness: every loopback/native
-			// client (RFC 8252 — every local MCP bridge) is registered as a public
-			// client with this auth method (see ClientRegistration::register()), so
-			// omitting it here contradicts what registration actually issues.
-			'token_endpoint_auth_methods_supported' => [ 'client_secret_post', 'client_secret_basic', 'none' ],
-			'code_challenge_methods_supported'      => [ 'S256' ],
-			'scopes_supported'                      => [ 'default' ],
-		];
-
-		$response = new WP_REST_Response( $metadata, 200 );
+		$response = new WP_REST_Response( ServerMetadata::authorization_server(), 200 );
 		$response->header( 'Cache-Control', 'public, max-age=3600' );
 
 		return $response;
@@ -209,11 +191,9 @@ class OAuthController implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function handle_protected_resource_metadata(): WP_REST_Response {
-		$base_url = $this->get_base_url();
-
 		$metadata = [
-			'resource'              => $this->get_rest_url( Plugin::rest_namespace() . '/mcp' ),
-			'authorization_servers' => [ $this->get_rest_url( Plugin::rest_namespace() . '/oauth/metadata' ) ],
+			'resource'              => ServerMetadata::rest_url( Plugin::rest_namespace() . '/mcp' ),
+			'authorization_servers' => [ ServerMetadata::rest_url( Plugin::rest_namespace() . '/oauth/metadata' ) ],
 			'scopes_supported'      => [ 'default' ],
 		];
 
@@ -221,41 +201,5 @@ class OAuthController implements Hookable {
 		$response->header( 'Cache-Control', 'public, max-age=3600' );
 
 		return $response;
-	}
-
-	/**
-	 * Get the base URL for OAuth endpoints.
-	 *
-	 * Uses the external URL setting if configured and developer mode is enabled,
-	 * otherwise falls back to home_url().
-	 *
-	 * @return string The base URL.
-	 * @since 1.0.0
-	 */
-	private function get_base_url(): string {
-		$external_url = (string) apply_filters( 'albert/mcp/external_url', '' );
-		$external_url = rtrim( $external_url, '/' );
-
-		if ( $external_url !== '' ) {
-			$validated = wp_http_validate_url( $external_url );
-			if ( $validated !== false ) {
-				return $validated;
-			}
-		}
-
-		return home_url();
-	}
-
-	/**
-	 * Get a REST URL using the current base URL.
-	 *
-	 * @param string $path The REST route path.
-	 *
-	 * @return string The full REST URL.
-	 * @since 1.0.0
-	 */
-	private function get_rest_url( string $path ): string {
-		$base_url = $this->get_base_url();
-		return $base_url . '/wp-json/' . ltrim( $path, '/' );
 	}
 }

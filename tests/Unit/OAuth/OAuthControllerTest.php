@@ -2,7 +2,7 @@
 /**
  * Unit tests for OAuthController's discovery metadata and failure logging.
  *
- * Covers two of the 1.5.0 interop-hardening fixes: the token endpoint's
+ * Covers two of the 1.4.0 interop-hardening fixes: the token endpoint's
  * previously-silent failure reason, and the metadata/registration mismatch
  * where every loopback client was issued 'none' as its auth method while the
  * metadata declared only client_secret_post/basic.

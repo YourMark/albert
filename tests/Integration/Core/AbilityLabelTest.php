@@ -58,6 +58,7 @@ class AbilityLabelTest extends TestCase {
 		AbilitiesRegistry::get_all_raw();
 
 		global $wp_actions;
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Marks core's abilities-init action as already fired, which is the state under test. There is no API for it, and WP_UnitTestCase rolls the global back between tests.
 		$wp_actions['wp_abilities_api_init'] = 1;
 
 		$this->assertTrue(

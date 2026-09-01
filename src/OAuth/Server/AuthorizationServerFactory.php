@@ -134,13 +134,13 @@ class AuthorizationServerFactory {
 	 * @param string           $default_value The default ISO 8601 duration string.
 	 *
 	 * @return DateInterval
-	 * @since 1.5.0
+	 * @since 1.4.0
 	 */
 	private static function ttl( string $filter_name, string $default_value ): DateInterval {
 		/**
 		 * Filters an OAuth token TTL.
 		 *
-		 * @since 1.5.0
+		 * @since 1.4.0
 		 *
 		 * @param string $duration ISO 8601 duration string (e.g. `PT1H`). Default varies by filter.
 		 */

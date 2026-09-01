@@ -43,6 +43,7 @@ function wp_prepare_json_schema_for_client( array $schema ): array {
 	return $walk( $schema );
 }
 
+// phpcs:ignore Universal.Namespaces.OneDeclarationPerFile.MultipleFound -- The block above declares a stub inside the vendored MCP namespace, which has to be in the same file as the test that needs it: the stub must exist before the class under test is autoloaded.
 namespace Albert\Tests\Unit\MCP;
 
 require_once dirname( __DIR__ ) . '/stubs/wordpress.php';

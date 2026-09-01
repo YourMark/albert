@@ -12,7 +12,6 @@ namespace Albert\Abilities\WordPress\Media;
 use Albert\Abstracts\BaseAbility;
 use Albert\Core\Annotations;
 use WP_Error;
-use WP_REST_Request;
 use WP_Query;
 
 /**

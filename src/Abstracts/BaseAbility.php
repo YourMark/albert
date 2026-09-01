@@ -543,18 +543,6 @@ abstract class BaseAbility implements Ability {
 	}
 
 	/**
-	 * Get the settings key for this ability.
-	 *
-	 * Returns the ability ID as-is for use as the settings key.
-	 *
-	 * @return string
-	 * @since 1.0.0
-	 */
-	protected function get_setting_key(): string {
-		return $this->id;
-	}
-
-	/**
 	 * Get ability ID.
 	 *
 	 * @return string

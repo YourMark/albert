@@ -68,7 +68,8 @@ class SensitiveOutputTest extends TestCase {
 	private function observed_result( string $hook = 'albert/abilities/after_execute' ) {
 		foreach ( $GLOBALS['albert_test_hooks'] as $call ) {
 			if ( $call['hook'] === $hook ) {
-				// after_execute passes ( $id, $args, $result, $user_id ).
+				// The after_execute hook passes id, args, result and user id, in
+				// that order, so the result is the third argument.
 				return $call['args'][2];
 			}
 		}

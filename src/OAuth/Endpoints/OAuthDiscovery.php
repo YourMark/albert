@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Core\Plugin;
+use Albert\OAuth\ServerMetadata;
 use WP;
 
 /**
@@ -216,41 +217,6 @@ class OAuthDiscovery implements Hookable {
 		exit;
 	}
 
-	/**
-	 * Get the base URL for OAuth endpoints.
-	 *
-	 * Uses the external URL setting if configured and developer settings are enabled,
-	 * otherwise falls back to home_url().
-	 *
-	 * @return string The base URL.
-	 * @since 1.0.0
-	 */
-	private function get_base_url(): string {
-		$external_url = (string) apply_filters( 'albert/mcp/external_url', '' );
-		$external_url = rtrim( $external_url, '/' );
-
-		if ( $external_url !== '' ) {
-			$validated = wp_http_validate_url( $external_url );
-			if ( $validated !== false ) {
-				return $validated;
-			}
-		}
-
-		return home_url();
-	}
-
-	/**
-	 * Get a REST URL using the current base URL.
-	 *
-	 * @param string $path The REST route path.
-	 *
-	 * @return string The full REST URL.
-	 * @since 1.0.0
-	 */
-	private function get_rest_url( string $path ): string {
-		$base_url = $this->get_base_url();
-		return $base_url . '/wp-json/' . ltrim( $path, '/' );
-	}
 
 	/**
 	 * Get OAuth Protected Resource Metadata (RFC 9728).
@@ -261,11 +227,9 @@ class OAuthDiscovery implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function get_protected_resource_metadata(): array {
-		$base_url = $this->get_base_url();
-
 		return [
-			'resource'              => $this->get_rest_url( Plugin::rest_namespace() . '/mcp' ),
-			'authorization_servers' => [ $base_url ],
+			'resource'              => ServerMetadata::rest_url( Plugin::rest_namespace() . '/mcp' ),
+			'authorization_servers' => [ ServerMetadata::base_url() ],
 			'scopes_supported'      => [ 'default' ],
 		];
 	}
@@ -277,24 +241,7 @@ class OAuthDiscovery implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function get_authorization_server_metadata(): array {
-		$base_url = $this->get_base_url();
-
-		return [
-			// Required fields.
-			'issuer'                                => $base_url,
-			'authorization_endpoint'                => $base_url . '/oauth/authorize',
-			'token_endpoint'                        => $this->get_rest_url( Plugin::rest_namespace() . '/oauth/token' ),
-			'registration_endpoint'                 => $this->get_rest_url( Plugin::rest_namespace() . '/oauth/register' ),
-
-			// Recommended fields.
-			'response_types_supported'              => [ 'code' ],
-			'grant_types_supported'                 => [ 'authorization_code', 'refresh_token' ],
-			'token_endpoint_auth_methods_supported' => [ 'client_secret_post', 'client_secret_basic' ],
-			'code_challenge_methods_supported'      => [ 'S256' ],
-
-			// Optional but useful fields.
-			'scopes_supported'                      => [ 'default' ],
-		];
+		return ServerMetadata::authorization_server();
 	}
 
 	/**

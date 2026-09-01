@@ -30,8 +30,9 @@ use WP_Ability;
  * decides nothing and blocks nothing — it re-emits the core action under
  * Albert's `albert/{module}/{action}` convention so subscribers bind to a stable
  * Albert hook rather than to a core action whose availability depends on the
- * WordPress version. The consumer is Premium Service's activity log in 1.5.0;
- * there are no consumers in Free today, and that is intentional. Doc 20 §5.
+ * WordPress version. The consumer is Premium Service's activity log, from
+ * Premium 1.2.0; there are no consumers in Free today, and that is
+ * intentional. Doc 20 §5.
  *
  * Below WordPress 7.1 the core action never fires, so the listener is inert
  * rather than broken. Subscribers that must know whether the seam is live can

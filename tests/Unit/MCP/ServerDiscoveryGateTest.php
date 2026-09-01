@@ -17,6 +17,8 @@ use PHPUnit\Framework\TestCase;
 use WP_Error;
 
 /**
+ * Discovery-gate tests: an unauthorised tool must not be listed.
+ *
  * @covers \Albert\MCP\Server::hide_unauthorized_tools
  */
 class ServerDiscoveryGateTest extends TestCase {
@@ -41,13 +43,18 @@ class ServerDiscoveryGateTest extends TestCase {
 	private function tool( string $name ): object {
 		return new class( $name ) {
 			/**
+			 * Test double used by the case below.
+			 *
 			 * @param string $name Tool name.
 			 */
 			public function __construct( private string $name ) {}
 
 			/**
+			 * Test double used by the case below.
+			 *
 			 * @return string
 			 */
+			// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Implements the vendored MCP Tool interface, whose method name is fixed; renaming it would stop this double satisfying the contract.
 			public function getName(): string {
 				return $this->name;
 			}

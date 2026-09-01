@@ -2,7 +2,7 @@
 /**
  * Integration tests for the RFC 7591 dynamic client registration response.
  *
- * Covers the 1.5.0 fix for two related interop gaps: the registration
+ * Covers the 1.4.0 fix for two related interop gaps: the registration
  * response was missing client_id_issued_at, grant_types, response_types,
  * scope, and (for confidential clients) client_secret_expires_at — all
  * present in the RFC, several of them REQUIRED. Separately, every

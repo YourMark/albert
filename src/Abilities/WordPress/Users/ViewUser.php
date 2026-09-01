@@ -13,8 +13,6 @@ use Albert\Abstracts\BaseAbility;
 use Albert\Core\Annotations;
 use Albert\Privacy\PiiPolicy;
 use WP_Error;
-use WP_REST_Request;
-use WP_User;
 
 /**
  * View User Ability class
