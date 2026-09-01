@@ -55,6 +55,34 @@ class SkillsPayloadTest extends TestCase {
 	}
 
 	/**
+	 * The screen reports whether any assistant can read any of this.
+	 *
+	 * Switching off `albert/get-skill` suppresses the whole skills index in the
+	 * discovery response, so a complete list on this screen can reach nobody.
+	 * The screen said nothing about that, which made the list a lie.
+	 *
+	 * @return void
+	 */
+	public function test_reachability_follows_the_get_skill_ability(): void {
+		delete_option( 'albert_disabled_abilities' );
+		update_option( 'albert_abilities_saved', true );
+
+		$this->assertTrue(
+			SkillsPayload::build()['reachable'],
+			'With get-skill enabled the skills are reachable.'
+		);
+
+		update_option( 'albert_disabled_abilities', [ SkillIndex::FETCH_ABILITY ] );
+
+		$this->assertFalse(
+			SkillsPayload::build()['reachable'],
+			'With get-skill switched off nothing can read the skills, and the screen must say so.'
+		);
+
+		delete_option( 'albert_disabled_abilities' );
+	}
+
+	/**
 	 * The screen's available skills are exactly the Tier 0 index's skills.
 	 *
 	 * @return void

@@ -56,6 +56,11 @@ export default function SkillsApp() {
 	const [ view, setView ] = useState( () => viewFromUrl( DEFAULT_VIEW ) );
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ error, setError ] = useState( null );
+
+	// Whether any assistant can read any of this. Switching off
+	// `albert/get-skill` suppresses the whole skills index, so the list below
+	// can be complete and reach nobody.
+	const [ isReachable, setIsReachable ] = useState( true );
 	const [ openSlug, setOpenSlug ] = useState( null );
 
 	// Mirror the view (search, filters, sort, layout, page) into the URL so it
@@ -74,6 +79,7 @@ export default function SkillsApp() {
 				setItems(
 					Array.isArray( payload?.skills ) ? payload.skills : []
 				);
+				setIsReachable( payload?.reachable !== false );
 			} )
 			.catch(
 				( err ) => active && setError( err.message || String( err ) )
@@ -177,6 +183,26 @@ export default function SkillsApp() {
 				>
 					<p>{ error }</p>
 				</div>
+			) }
+
+			{ /*
+			   * The list below can be complete and reach nobody: switching off
+			   * `albert/get-skill` suppresses the entire skills index, so no
+			   * assistant is ever told any of this exists. Said here because
+			   * this is the screen somebody looks at to find out whether their
+			   * skills are working — the Abilities screen shows the switch, but
+			   * not what it costs.
+			   */ }
+			{ ! isLoading && ! isReachable && items.length > 0 && (
+				<p className="albert-hint albert-hint--warning">
+					{ __(
+						'No assistant can read these. Fetching a skill needs the Get skill ability, which is switched off.',
+						'albert-ai-butler'
+					) }{ ' ' }
+					<a href="admin.php?page=albert-abilities">
+						{ __( 'Switch it on', 'albert-ai-butler' ) }
+					</a>
+				</p>
 			) }
 
 			{ isLoading ? (
