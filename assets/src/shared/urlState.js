@@ -13,7 +13,31 @@
 
 // Query keys this module always owns, beyond whatever filter fields the
 // caller's `filters` config adds. Cleared before every write.
-const BASE_OWNED_KEYS = [ 's', 'layout', 'paged', 'orderby', 'order' ];
+const BASE_OWNED_KEYS = [
+	's',
+	'layout',
+	'paged',
+	'orderby',
+	'order',
+	'ability',
+];
+
+/**
+ * The id of the detail panel to open on load, if the URL names one.
+ *
+ * Separate from the view: which row is open is not a filter, a sort or a page.
+ * It exists so something outside this screen can link *at* an ability rather
+ * than at the list and leave the reader to find it.
+ *
+ * @return {string|null} The ability id, or null.
+ */
+export function openIdFromUrl() {
+	const value = new URLSearchParams( window.location.search ).get(
+		'ability'
+	);
+
+	return value ? value : null;
+}
 
 /**
  * Build the initial view by applying URL query overrides onto the default view.
@@ -81,15 +105,16 @@ export function viewFromUrl( defaultView, { filters } ) {
  * values are written; the page's own query arg and any unrelated params are
  * preserved.
  *
- * @param {Object} view               The current DataViews view.
- * @param {Object} config             Per-screen configuration.
- * @param {Object} config.filters     Filterable fields, keyed by field name,
- *                                    each `{ multiple: boolean, operator: string }`.
- * @param {Object} config.defaultSort The view's default `{ field, direction }`,
- *                                    omitted from the URL when unchanged.
+ * @param {Object}      view               The current DataViews view.
+ * @param {Object}      config             Per-screen configuration.
+ * @param {Object}      config.filters     Filterable fields, keyed by field name,
+ *                                         each `{ multiple: boolean, operator: string }`.
+ * @param {Object}      config.defaultSort The view's default `{ field, direction }`,
+ *                                         omitted from the URL when unchanged.
+ * @param {string|null} config.openId      Which detail panel is open, if any.
  * @return {void}
  */
-export function syncViewToUrl( view, { filters, defaultSort } ) {
+export function syncViewToUrl( view, { filters, defaultSort, openId = null } ) {
 	const params = new URLSearchParams( window.location.search );
 
 	[ ...BASE_OWNED_KEYS, ...Object.keys( filters ) ].forEach( ( key ) =>
@@ -125,6 +150,10 @@ export function syncViewToUrl( view, { filters, defaultSort } ) {
 		}
 		params.set( filter.field, String( value ) );
 	} );
+
+	if ( openId ) {
+		params.set( 'ability', openId );
+	}
 
 	const query = params.toString();
 	window.history.replaceState(

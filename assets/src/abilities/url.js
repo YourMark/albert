@@ -8,7 +8,10 @@
 import {
 	viewFromUrl as sharedViewFromUrl,
 	syncViewToUrl as sharedSyncViewToUrl,
+	openIdFromUrl,
 } from '../shared/urlState';
+
+export { openIdFromUrl };
 
 // The filterable fields and how each one's value serialises. Mirrors the
 // filterBy config in fields.js — keep the two in sync if a filter is added.
@@ -35,12 +38,14 @@ export function viewFromUrl( defaultView ) {
 /**
  * Mirror the meaningful parts of the view into the URL.
  *
- * @param {Object} view The current DataViews view.
+ * @param {Object}      view   The current DataViews view.
+ * @param {string|null} openId The ability whose detail panel is open, if any.
  * @return {void}
  */
-export function syncViewToUrl( view ) {
+export function syncViewToUrl( view, openId = null ) {
 	sharedSyncViewToUrl( view, {
 		filters: FILTERS,
 		defaultSort: DEFAULT_SORT,
+		openId,
 	} );
 }

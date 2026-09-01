@@ -32,7 +32,7 @@ import {
 	setAbilitiesEnabledBulk,
 } from './api';
 import { getFields } from './fields';
-import { viewFromUrl, syncViewToUrl } from './url';
+import { viewFromUrl, syncViewToUrl, openIdFromUrl } from './url';
 import Toolbar from './Toolbar';
 import FlyInPanel from './FlyInPanel';
 
@@ -75,7 +75,11 @@ export default function AbilitiesApp() {
 	const [ selection, setSelection ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ error, setError ] = useState( null );
-	const [ openId, setOpenId ] = useState( null );
+	// Seeded from the URL so something outside this screen can link at an
+	// ability rather than at the list. Cleared below if nothing matches, so a
+	// stale or hand-edited link degrades to the plain list rather than to a
+	// panel that never opens.
+	const [ openId, setOpenId ] = useState( () => openIdFromUrl() );
 	// 'enable' | 'disable' | null — drives the bulk "all" confirm dialog.
 	const [ bulkConfirm, setBulkConfirm ] = useState( null );
 
@@ -90,8 +94,8 @@ export default function AbilitiesApp() {
 	// Mirror the view (search, filters, sort, layout, page) into the URL so it
 	// can be shared and bookmarked. replaceState keeps history clean.
 	useEffect( () => {
-		syncViewToUrl( view );
-	}, [ view ] );
+		syncViewToUrl( view, openId );
+	}, [ view, openId ] );
 
 	useEffect( () => {
 		let active = true;
@@ -265,6 +269,12 @@ export default function AbilitiesApp() {
 	}, [ paginationInfo.totalItems, isLoading ] );
 
 	const getItemId = useCallback( ( item ) => item.id, [] );
+
+	useEffect( () => {
+		if ( ! isLoading && openId && ! items.some( ( item ) => item.id === openId ) ) {
+			setOpenId( null );
+		}
+	}, [ isLoading, items, openId ] );
 
 	const onClickItem = useCallback( ( item ) => setOpenId( item.id ), [] );
 
