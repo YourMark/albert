@@ -540,8 +540,11 @@ class Plugin {
 	public static function activate(): void {
 		self::maybe_set_new_install_privacy_default();
 
-		// Create/upgrade all database tables.
-		DatabaseInstaller::install();
+		// maybe_upgrade(), not install(): install() stamps the schema version
+		// without running the version-keyed data migrations, so activating
+		// across a version boundary — deactivate, update the files, reactivate
+		// — recorded the site as up to date and skipped them permanently.
+		DatabaseInstaller::maybe_upgrade();
 
 		// Register OAuth discovery rewrite rules.
 		OAuthDiscovery::activate();

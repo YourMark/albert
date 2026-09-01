@@ -132,27 +132,47 @@ class Installer {
 		$current = self::plugin_version();
 
 		if ( $current === '' ) {
+			// The version is unreadable, so nothing version-keyed can be
+			// reasoned about — but the tables still have to exist, and this
+			// path is reached from activation.
+			self::create_tables();
+
 			return;
 		}
 
 		$stored = (string) get_option( self::VERSION_OPTION, '0' );
 
-		if ( version_compare( $stored, $current, '<' ) ) {
-			self::install();
+		if ( version_compare( $stored, $current, '>=' ) ) {
+			return;
+		}
 
-			// Data migrations keyed on the version being upgraded *from*. The
-			// legacy '*' wildcard clients only exist on installs older than 1.3.1.
-			if ( version_compare( $stored, '1.3.1', '<' ) ) {
-				self::purge_wildcard_clients();
-			}
+		// Deliberately not self::install(): that stamps the version, and the
+		// stamp is what decides whether any of this ever runs again. Stamping
+		// before the migrations below have succeeded means a failure can never
+		// be retried — the option already claims the work is done.
+		self::create_tables();
 
-			// `albert_allowed_users` gained per-entry timestamps in 1.4.0, and
-			// the ability log shed three columns dbDelta will never drop for us.
-			if ( version_compare( $stored, '1.4.0', '<' ) ) {
-				self::migrate_allowed_users_shape();
-				self::drop_legacy_log_columns();
+		// Data migrations keyed on the version being upgraded *from*. The
+		// legacy '*' wildcard clients only exist on installs older than 1.3.1.
+		if ( version_compare( $stored, '1.3.1', '<' ) ) {
+			self::purge_wildcard_clients();
+		}
+
+		// `albert_allowed_users` gained per-entry timestamps in 1.4.0, and
+		// the ability log shed three columns dbDelta will never drop for us.
+		if ( version_compare( $stored, '1.4.0', '<' ) ) {
+			self::migrate_allowed_users_shape();
+
+			if ( ! self::drop_legacy_log_columns() ) {
+				// Leave the version unstamped. The columns being dropped here
+				// are the ones held for being PII, so silently giving up and
+				// recording success is the one outcome worth avoiding: the next
+				// request tries again, and every request after that.
+				return;
 			}
 		}
+
+		self::stamp_version();
 	}
 
 	/**
@@ -252,14 +272,24 @@ class Installer {
 	 * the ALTER; a half-applied upgrade drops the remainder and a second run
 	 * finds nothing to do. Rows are preserved: this drops columns, not data.
 	 *
-	 * @return void
+	 * Returns false only when the database refused to answer — a restricted
+	 * user that cannot read `information_schema`, or an ALTER that failed. That
+	 * is not the same as "nothing to drop", and the caller uses the difference
+	 * to decide whether the upgrade may be recorded as done.
+	 *
+	 * @return bool True when the columns are gone or were never there.
 	 * @since 1.4.0
 	 */
-	private static function drop_legacy_log_columns(): void {
+	private static function drop_legacy_log_columns(): bool {
 		global $wpdb;
 
 		$table  = Tables::ability_log();
 		$legacy = [ 'ip_address', 'referrer', 'request_id' ];
+
+		// Read either side of the query rather than clearing first: a value
+		// already sitting there belongs to somebody else's query, and clearing
+		// $wpdb state to find that out would be rude to whatever reads it next.
+		$error_before = (string) $wpdb->last_error;
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Schema introspection for a one-shot migration on a custom table.
 		$present = $wpdb->get_col(
@@ -272,8 +302,17 @@ class Installer {
 			)
 		);
 
+		$error_after = (string) $wpdb->last_error;
+
+		// An empty result means either "no such columns" or "the query failed",
+		// and those need opposite answers. Without this the migration reports
+		// success to a caller that will then never call it again.
+		if ( $error_after !== '' && $error_after !== $error_before ) {
+			return false;
+		}
+
 		if ( empty( $present ) ) {
-			return;
+			return true;
 		}
 
 		// One ALTER, one table rebuild. The clause list is `array_fill()` of a
@@ -282,7 +321,9 @@ class Installer {
 		$clauses = implode( ', ', array_fill( 0, count( $present ), 'DROP COLUMN %i' ) );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Schema change required for migration; the interpolated fragment is a repeated literal and every identifier is a %i placeholder, so the placeholder count is correct at run time even though the sniff cannot see it in the literal.
-		$wpdb->query( $wpdb->prepare( "ALTER TABLE %i {$clauses}", $table, ...$present ) );
+		$result = $wpdb->query( $wpdb->prepare( "ALTER TABLE %i {$clauses}", $table, ...$present ) );
+
+		return $result !== false;
 	}
 
 	/**
