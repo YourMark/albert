@@ -359,7 +359,26 @@ class Outcome {
 			return false;
 		}
 
-		if ( in_array( $code, self::API_SURFACE_CODES, true ) ) {
+		/**
+		 * Filters the error codes that name something the caller was told exists.
+		 *
+		 * An ability, tool or skill is enumerated to the assistant, so asking
+		 * for one that is not there is a client bug and stays an `error`. A
+		 * post or a customer is not enumerated, so asking is a fair question
+		 * and the honest "no" is a `success`.
+		 *
+		 * The constant can only list what Free knows about. An add-on that
+		 * enumerates its own surface — routes, resources, connectors — registers
+		 * its codes here, rather than having them silently classified as a
+		 * truthful negative answer and disappear from the failure counts.
+		 *
+		 * @since 1.4.0
+		 *
+		 * @param array<int, string> $codes Error codes naming an enumerated surface.
+		 */
+		$api_surface = (array) apply_filters( 'albert/logging/api_surface_codes', self::API_SURFACE_CODES );
+
+		if ( in_array( $code, $api_surface, true ) ) {
 			return false;
 		}
 

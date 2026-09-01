@@ -139,6 +139,34 @@ class AbilitiesRegistry {
 	}
 
 	/**
+	 * The label for a slug, asking the manager first and this registry second.
+	 *
+	 * {@see self::label_for()} documents this two-step order and asks callers
+	 * holding their own ability instances to do the manager lookup themselves.
+	 * Two of them then wrote the same six lines — `Dashboard` and
+	 * `Dashboard\Attention` — which is one edge-case fix away from disagreeing
+	 * about what a row is called. The order is the same; it just lives once.
+	 *
+	 * @param string $slug Ability slug.
+	 *
+	 * @return string Human-readable label.
+	 * @since 1.4.0
+	 */
+	public static function resolve_label( string $slug ): string {
+		$manager = Plugin::get_instance()->get_abilities_manager();
+
+		if ( $manager !== null ) {
+			$label = $manager->get_label( $slug );
+
+			if ( is_string( $label ) && $label !== '' ) {
+				return $label;
+			}
+		}
+
+		return self::label_for( $slug );
+	}
+
+	/**
 	 * Resolve an ability slug to its human-readable label.
 	 *
 	 * Prefers the registered ability's own label via `wp_get_ability()`.

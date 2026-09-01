@@ -792,9 +792,23 @@ class AbilitiesManager implements Hookable {
 
 			++$total;
 
-			if ( ! in_array( $id, $disabled_list, true ) ) {
-				++$enabled;
+			if ( in_array( $id, $disabled_list, true ) ) {
+				continue;
 			}
+
+			// enforce_disabled() unregisters on two grounds, not one: the
+			// disabled list, and an is_executable() refusal — the hook add-ons
+			// use for licence validity, plan tier and kill switches. Counting
+			// only the first over-reported "enabled" on any site whose Premium
+			// licence had lapsed: the ability was gone from the registry a few
+			// lines later, and the tile still claimed it was on.
+			$instance = $this->abilities[ $id ] ?? null;
+
+			if ( $instance instanceof BaseAbility && is_wp_error( $instance->is_executable() ) ) {
+				continue;
+			}
+
+			++$enabled;
 		}
 
 		return [

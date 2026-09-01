@@ -113,7 +113,6 @@ class Attention {
 	 */
 	private const REFUSAL_CODES = [
 		'ability_permission_denied',
-		'ability_invalid_input',
 		'rest_forbidden',
 	];
 
@@ -310,14 +309,7 @@ class Attention {
 	 * @return string
 	 */
 	private function ability_label( string $ability_name ): string {
-		$manager = Plugin::get_instance()->get_abilities_manager();
-		$label   = $manager !== null ? $manager->get_label( $ability_name ) : null;
-
-		if ( is_string( $label ) && $label !== '' ) {
-			return $label;
-		}
-
-		return AbilitiesRegistry::label_for( $ability_name );
+		return AbilitiesRegistry::resolve_label( $ability_name );
 	}
 
 	/**
@@ -348,7 +340,13 @@ class Attention {
 		// measure. Since 1.4.0 those codes are classified as `success` and
 		// `warning` upstream and never reach this method, but a row written by
 		// an older Free — or by a caller that forced the status — still can.
-		foreach ( [ '_permission_denied', '_not_found', '_invalid_id', '_invalid_input', '_exists' ] as $suffix ) {
+		//
+		// `_invalid_input` and `_invalid_id` are deliberately absent. Outcome
+		// keeps `ability_invalid_input` and `rest_post_invalid_id` as errors on
+		// purpose — a malformed request is a fault, not the ability saying no —
+		// and matching them here quietly undid that two files away, hiding a
+		// broken client integration from the one card built to surface it.
+		foreach ( [ '_permission_denied', '_not_found', '_exists' ] as $suffix ) {
 			if ( str_ends_with( $code, $suffix ) ) {
 				return true;
 			}
