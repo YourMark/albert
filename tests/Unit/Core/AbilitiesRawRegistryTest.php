@@ -105,11 +105,15 @@ class AbilitiesRawRegistryTest extends TestCase {
 	private function ability( string $name ): object {
 		return new class( $name ) {
 			/**
+			 * Test double used by the case below.
+			 *
 			 * @param string $name Ability id.
 			 */
 			public function __construct( private string $name ) {}
 
 			/**
+			 * Test double used by the case below.
+			 *
 			 * @return string
 			 */
 			public function get_name(): string {

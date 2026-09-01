@@ -66,7 +66,7 @@ class PermissionFailureTest extends TestCase {
 		wp_set_current_user( $current );
 		$result = $ability->check_permission();
 
-		return true === $result;
+		return $result === true;
 	}
 
 	/**
@@ -87,14 +87,14 @@ class PermissionFailureTest extends TestCase {
 		$ability = new $ability_class();
 		$result  = $ability->check_permission();
 
-		if ( true === $result ) {
+		if ( $result === true ) {
 			// Ability allows subscriber — this is fine for read-only abilities.
 			// The important thing is the return type contract holds.
 			$this->assertTrue( $result );
 		} else {
 			// Ability denies subscriber — must be WP_Error or false.
 			$this->assertTrue(
-				$result instanceof WP_Error || false === $result,
+				$result instanceof WP_Error || $result === false,
 				sprintf(
 					'%s::check_permission() returned unexpected type %s for subscriber.',
 					$ability_class,
@@ -174,7 +174,7 @@ class PermissionFailureTest extends TestCase {
 			// but NOT users (create_users, delete_users, etc.).
 			// We don't hardcode which is which — just verify the return type is valid.
 			$this->assertTrue(
-				true === $result || $result instanceof WP_Error || false === $result,
+				$result === true || $result instanceof WP_Error || $result === false,
 				sprintf(
 					'%s::check_permission() returned invalid type %s for editor.',
 					$ability_class,

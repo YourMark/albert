@@ -139,7 +139,7 @@ class InputValidationTest extends TestCase {
 			$type        = $field_schema['type'] ?? null;
 			$wrong_value = $this->get_wrong_value_for_type( $type );
 
-			if ( null === $wrong_value ) {
+			if ( $wrong_value === null ) {
 				continue;
 			}
 
