@@ -13,7 +13,22 @@
 
 // Query keys this module always owns, beyond whatever filter fields the
 // caller's `filters` config adds. Cleared before every write.
-const BASE_OWNED_KEYS = [ 's', 'layout', 'paged', 'orderby', 'order' ];
+const BASE_OWNED_KEYS = [ 's', 'layout', 'paged', 'orderby', 'order', 'ability' ];
+
+/**
+ * The id of the detail panel to open on load, if the URL names one.
+ *
+ * Separate from the view: which row is open is not a filter, a sort or a page.
+ * It exists so something outside this screen can link *at* an ability rather
+ * than at the list and leave the reader to find it.
+ *
+ * @return {string|null} The ability id, or null.
+ */
+export function openIdFromUrl() {
+	const value = new URLSearchParams( window.location.search ).get( 'ability' );
+
+	return value ? value : null;
+}
 
 /**
  * Build the initial view by applying URL query overrides onto the default view.
@@ -89,7 +104,7 @@ export function viewFromUrl( defaultView, { filters } ) {
  *                                    omitted from the URL when unchanged.
  * @return {void}
  */
-export function syncViewToUrl( view, { filters, defaultSort } ) {
+export function syncViewToUrl( view, { filters, defaultSort, openId = null } ) {
 	const params = new URLSearchParams( window.location.search );
 
 	[ ...BASE_OWNED_KEYS, ...Object.keys( filters ) ].forEach( ( key ) =>
@@ -125,6 +140,10 @@ export function syncViewToUrl( view, { filters, defaultSort } ) {
 		}
 		params.set( filter.field, String( value ) );
 	} );
+
+	if ( openId ) {
+		params.set( 'ability', openId );
+	}
 
 	const query = params.toString();
 	window.history.replaceState(

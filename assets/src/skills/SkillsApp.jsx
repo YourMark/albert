@@ -199,7 +199,11 @@ export default function SkillsApp() {
 						'No assistant can read these. Fetching a skill needs the Get skill ability, which is switched off.',
 						'albert-ai-butler'
 					) }{ ' ' }
-					<a href="admin.php?page=albert-abilities">
+					<a
+						href={ `admin.php?page=albert-abilities&ability=${ encodeURIComponent(
+							'albert/get-skill'
+						) }` }
+					>
 						{ __( 'Switch it on', 'albert-ai-butler' ) }
 					</a>
 				</p>
