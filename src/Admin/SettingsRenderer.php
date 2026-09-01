@@ -104,10 +104,34 @@ class SettingsRenderer {
 				echo $is_group ? '</legend>' : '</div>';
 			}
 			if ( $description !== '' ) {
-				echo '<p class="albert-field-description">' . esc_html( $description ) . '</p>';
+				printf(
+					'<p class="albert-field-description" id="%1$s">%2$s</p>',
+					esc_attr( $input_id . '-description' ),
+					esc_html( $description )
+				);
 			}
 			if ( $is_group ) {
-				$this->render_radio_cards( $field, $current_value, $option_name, Lock::is_locked( $field, $override ) );
+				// The two-column branch assembles aria-describedby; this one
+				// never did, so on a locked group neither the description nor
+				// the hint explaining what owns the value was referenced by
+				// anything at all.
+				$group_described = [];
+
+				if ( $description !== '' ) {
+					$group_described[] = $input_id . '-description';
+				}
+
+				if ( $this->resolve_hint( $field, $override ) !== null ) {
+					$group_described[] = $input_id . '-hint';
+				}
+
+				$this->render_radio_cards(
+					$field,
+					$current_value,
+					$option_name,
+					Lock::is_locked( $field, $override ),
+					implode( ' ', $group_described )
+				);
 			} else {
 				$this->render_custom( $field, $current_value );
 			}
@@ -577,10 +601,11 @@ class SettingsRenderer {
 	 * @param mixed                $current_value Current value.
 	 * @param string               $option_name   wp_options key.
 	 * @param bool                 $disabled      Whether code owns this value.
+	 * @param string               $describedby   Space-separated ids that describe the group.
 	 *
 	 * @return void
 	 */
-	private function render_radio_cards( array $field, $current_value, string $option_name, bool $disabled = false ): void {
+	private function render_radio_cards( array $field, $current_value, string $option_name, bool $disabled = false, string $describedby = '' ): void {
 		$options = isset( $field['options'] ) && is_array( $field['options'] ) ? $field['options'] : [];
 		$value   = $current_value === null ? '' : (string) $current_value;
 
@@ -609,13 +634,22 @@ class SettingsRenderer {
 				esc_attr( $radio_id ),
 				$checked ? ' albert-radio-card--checked' : '' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static string.
 			);
+			// aria-disabled, not disabled. This file argues at length elsewhere
+			// that a locked field must stay reachable, so a keyboard or screen
+			// reader user can find both the value in force and the sentence
+			// explaining what owns it — and then the radio branch used
+			// disabled(), which removes the whole group from the tab order and
+			// takes the explanation with it. HTML radios have no readonly, so
+			// the equivalent is to leave them focusable, mark them
+			// aria-disabled, and have the script put back any change.
 			printf(
-				'<input type="radio" name="%1$s" id="%2$s" value="%3$s"%4$s%5$s />',
+				'<input type="radio" name="%1$s" id="%2$s" value="%3$s"%4$s%5$s%6$s />',
 				esc_attr( $option_name ),
 				esc_attr( $radio_id ),
 				esc_attr( $opt_value_str ),
 				checked( $checked, true, false ), // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- checked() returns a safe attribute string.
-				disabled( $disabled, true, false ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- disabled() returns a safe attribute string.
+				$disabled ? ' aria-disabled="true" data-albert-locked="1"' : '',
+				$describedby !== '' ? ' aria-describedby="' . esc_attr( $describedby ) . '"' : ''
 			);
 			echo '<span class="albert-radio-card__body">';
 			echo '<span class="albert-radio-card__title">' . esc_html( $title );

@@ -392,6 +392,7 @@ export default function AbilitiesApp() {
 				<div
 					className="albert-abilities__card"
 					aria-hidden={ openItem ? true : undefined }
+					inert={ openItem ? '' : undefined }
 				>
 					<DataViews
 						data={ data }

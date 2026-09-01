@@ -143,6 +143,7 @@ export default function SkillsApp() {
 			<header
 				className="albert-page__header albert-skills__header"
 				aria-hidden={ openItem ? true : undefined }
+				inert={ openItem ? '' : undefined }
 			>
 				<div className="albert-page__text">
 					<h1 className="albert-page__title">
@@ -194,6 +195,7 @@ export default function SkillsApp() {
 				<div
 					className="albert-skills__card"
 					aria-hidden={ openItem ? true : undefined }
+					inert={ openItem ? '' : undefined }
 				>
 					<DataViews
 						data={ data }
