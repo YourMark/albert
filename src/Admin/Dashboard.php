@@ -833,7 +833,7 @@ class Dashboard implements Hookable {
 			wp_send_json_error( [ 'message' => __( 'Nothing to dismiss.', 'albert-ai-butler' ) ], 400 );
 		}
 
-		$attention = new Attention( $this->logging_repository );
+		$attention = new Attention();
 		$allowed   = false;
 
 		foreach ( $attention->items() as $item ) {
@@ -867,7 +867,7 @@ class Dashboard implements Hookable {
 	 * @since 1.4.0
 	 */
 	private function render_attention_card(): void {
-		$items = ( new Attention( $this->logging_repository ) )->items();
+		$items = ( new Attention() )->items();
 		?>
 		<?php $empty_text = __( 'Nothing right now. Albert checks your connections, invitations and recent failures every time you open this page.', 'albert-ai-butler' ); ?>
 		<section class="albert-card albert-attention" data-empty-text="<?php echo esc_attr( $empty_text ); ?>">

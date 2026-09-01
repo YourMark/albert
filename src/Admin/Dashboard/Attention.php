@@ -11,10 +11,8 @@ namespace Albert\Admin\Dashboard;
 
 defined( 'ABSPATH' ) || exit;
 
-use Albert\Core\AbilitiesRegistry;
 use Albert\Core\AbilitiesState;
 use Albert\Core\Plugin;
-use Albert\Logging\Repository as LoggingRepository;
 use Albert\MCP\Server as McpServer;
 use Albert\MCP\Skills\SkillRegistry;
 use Albert\OAuth\AllowedUsers;
@@ -90,53 +88,6 @@ class Attention {
 	private const TONE_ORDER = [ 'danger', 'warning', 'info' ];
 
 	/**
-	 * How recently an ability must have failed to count as a current problem.
-	 *
-	 * @since 1.4.0
-	 * @var int
-	 */
-	private const FAILURE_WINDOW_DAYS = 7;
-
-	/**
-	 * The most failures worth listing before the card becomes a wall.
-	 *
-	 * @since 1.4.0
-	 * @var int
-	 */
-	private const MAX_FAILURES = 3;
-
-	/**
-	 * Error codes that mean the ability worked and said no.
-	 *
-	 * @since 1.4.0
-	 * @var array<int, string>
-	 */
-	private const REFUSAL_CODES = [
-		'ability_permission_denied',
-		'ability_invalid_input',
-		'rest_forbidden',
-	];
-
-	/**
-	 * The log, for the one bulk query this class makes.
-	 *
-	 * @since 1.4.0
-	 * @var LoggingRepository
-	 */
-	private LoggingRepository $log;
-
-	/**
-	 * Constructor.
-	 *
-	 * @since 1.4.0
-	 *
-	 * @param LoggingRepository|null $log Injected in tests.
-	 */
-	public function __construct( ?LoggingRepository $log = null ) {
-		$this->log = $log ?? new LoggingRepository();
-	}
-
-	/**
 	 * Everything that needs the owner's attention, most urgent first.
 	 *
 	 * @since 1.4.0
@@ -149,7 +100,6 @@ class Attention {
 		$user_id = $user_id > 0 ? $user_id : get_current_user_id();
 
 		$items = array_merge(
-			$this->failing_abilities(),
 			$this->connections_about_to_go(),
 			$this->invitations_needing_a_nudge(),
 			$this->unreachable_skills(),
@@ -207,189 +157,6 @@ class Attention {
 		);
 
 		return $items;
-	}
-
-	/**
-	 * Abilities whose most recent run failed.
-	 *
-	 * This is the one genuine activity signal Free keeps. The log retains the
-	 * newest rows per ability and status, so "did this ability last succeed or
-	 * fail" survives indefinitely even though the timeline does not. It is
-	 * reported as a state, never as a count, because a count would be capped by
-	 * that retention and would therefore be a lie.
-	 *
-	 * @since 1.4.0
-	 *
-	 * @return array<int, array<string, mixed>>
-	 */
-	private function failing_abilities(): array {
-		$names = array_keys( AbilitiesRegistry::get_all_raw() );
-
-		if ( $names === [] ) {
-			return [];
-		}
-
-		$latest = $this->log->latest_bulk( $names );
-		$items  = [];
-		$cutoff = time() - ( self::FAILURE_WINDOW_DAYS * DAY_IN_SECONDS );
-
-		foreach ( $latest as $ability_name => $row ) {
-			// Only `error`. A `success` row that carries an error code — the
-			// ability ran correctly and the answer was "no" — and a `warning`
-			// row — the site refused the call on purpose — are both already
-			// excluded by this identity test, and deliberately so: this card is
-			// for standing conditions someone must act on. "That term does not
-			// exist" is not one, and neither is a permission check working.
-			if ( ! is_object( $row ) || ( $row->status ?? '' ) !== 'error' ) {
-				continue;
-			}
-
-			// Only recent failures. The log keeps the last failure per ability
-			// indefinitely, so without a window a single failed experiment from
-			// months ago sits at the top of this card forever, in red, and the
-			// card stops meaning "act on this".
-			if ( (int) ( $row->created_ts ?? 0 ) < $cutoff ) {
-				continue;
-			}
-
-			// A refusal is not a fault. These codes are the ability correctly
-			// declining: the caller lacked the capability, or asked for
-			// something that does not exist, or sent input that failed
-			// validation. Reporting them as problems with the site trains an
-			// owner to ignore the card, and the genuinely broken entry beside
-			// them goes with it.
-			if ( $this->is_expected_refusal( $row ) ) {
-				continue;
-			}
-
-			$label = $this->ability_label( (string) $ability_name );
-			$when  = isset( $row->created_ts ) ? (int) $row->created_ts : 0;
-
-			$items[] = [
-				'id'          => 'ability-failed:' . $ability_name,
-				'tone'        => 'danger',
-				'tone_label'  => __( 'Failed', 'albert-ai-butler' ),
-				/* translators: %s: the ability's name, e.g. "Upload media" */
-				'title'       => sprintf( __( '%s failed the last time it ran', 'albert-ai-butler' ), $label ),
-				'detail'      => $this->failure_detail( $row, $when ),
-				'action'      => [
-					'label' => __( 'See the ability', 'albert-ai-butler' ),
-					'url'   => admin_url( 'admin.php?page=albert-abilities' ),
-				],
-				'dismissible' => false,
-				'sort_ts'     => $when,
-			];
-		}
-
-		// Newest first, then capped. Five broken abilities is a site-wide
-		// problem, not five separate ones, and listing all of them pushes
-		// everything else off the screen.
-		usort(
-			$items,
-			static fn( array $a, array $b ): int => ( $b['sort_ts'] ?? 0 ) <=> ( $a['sort_ts'] ?? 0 )
-		);
-
-		return array_slice( $items, 0, self::MAX_FAILURES );
-	}
-
-	/**
-	 * One ability's human-readable name.
-	 *
-	 * The list this walks comes from the raw registry, which holds abilities
-	 * registered directly with WordPress by other plugins as well as Albert's
-	 * own, and the manager only knows its own, so `get_label()` returns null
-	 * for a third-party one and the item's title came out as " failed the last
-	 * time it ran". `get_abilities_manager()` is nullable besides.
-	 * {@see AbilitiesRegistry::label_for()} is the shared fallback, and
-	 * prettifies the slug when it has nothing better.
-	 *
-	 * @since 1.4.0
-	 *
-	 * @param string $ability_name Ability id.
-	 *
-	 * @return string
-	 */
-	private function ability_label( string $ability_name ): string {
-		return AbilitiesRegistry::resolve_label( $ability_name );
-	}
-
-	/**
-	 * Whether a failure is the ability declining rather than breaking.
-	 *
-	 * Matched on the recorded code, plus the suffixes WordPress and Albert both
-	 * use for the same idea, so a new `*_permission_denied` or `*_not_found`
-	 * does not have to be added here to be understood.
-	 *
-	 * @since 1.4.0
-	 *
-	 * @param object $row Log row.
-	 *
-	 * @return bool
-	 */
-	private function is_expected_refusal( object $row ): bool {
-		$code = isset( $row->error_code ) && is_string( $row->error_code ) ? $row->error_code : '';
-
-		if ( $code === '' ) {
-			return false;
-		}
-
-		if ( in_array( $code, self::REFUSAL_CODES, true ) ) {
-			return true;
-		}
-
-		// `_not_found` and `_permission_denied` are kept here as a belt-and-braces
-		// measure. Since 1.4.0 those codes are classified as `success` and
-		// `warning` upstream and never reach this method, but a row written by
-		// an older Free — or by a caller that forced the status — still can.
-		foreach ( [ '_permission_denied', '_not_found', '_invalid_id', '_invalid_input', '_exists' ] as $suffix ) {
-			if ( str_ends_with( $code, $suffix ) ) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	/**
-	 * The sentence under a failed ability.
-	 *
-	 * Prefers the recorded error message, because "the uploads folder is not
-	 * writable" is actionable and "it failed" is not. Falls back to the code,
-	 * then to the time alone.
-	 *
-	 * @since 1.4.0
-	 *
-	 * @param object $row  Log row.
-	 * @param int    $when Unix timestamp, 0 when unknown.
-	 *
-	 * @return string
-	 */
-	private function failure_detail( object $row, int $when ): string {
-		$message = isset( $row->error_message ) && is_string( $row->error_message ) ? trim( $row->error_message ) : '';
-
-		if ( $message === '' && isset( $row->error_code ) && is_string( $row->error_code ) ) {
-			$message = trim( $row->error_code );
-		}
-
-		// A stored message is whatever the failing code chose to say, and some
-		// of them are a paragraph. One line is what fits here; the ability's own
-		// row carries the rest.
-		if ( $message !== '' ) {
-			$message = wp_strip_all_tags( $message );
-			$message = mb_strimwidth( $message, 0, 120, "\u{2026}" );
-		}
-
-		$ago = $when > 0
-			/* translators: %s: human readable time difference, e.g. "2 hours" */
-			? sprintf( __( '%s ago', 'albert-ai-butler' ), human_time_diff( $when, time() ) )
-			: '';
-
-		if ( $message !== '' && $ago !== '' ) {
-			/* translators: 1: when it failed, e.g. "2 hours ago", 2: the reason it failed */
-			return sprintf( __( '%1$s. %2$s', 'albert-ai-butler' ), $ago, $message );
-		}
-
-		return $message !== '' ? $message : $ago;
 	}
 
 	/**
