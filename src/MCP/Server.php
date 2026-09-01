@@ -77,7 +77,7 @@ class Server implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function register_hooks(): void {
-		$this->detect_conflicting_adapter();
+		$this->report_adapter_problems();
 
 		add_action( 'mcp_adapter_init', [ $this, 'create_server' ] );
 		// Bound to *_after_ callbacks, not before: the header depends on whether
@@ -262,85 +262,83 @@ class Server implements Hookable {
 	}
 
 	/**
-	 * Detect a foreign, unscoped copy of the MCP adapter and warn about it.
+	 * Report anything that stops the MCP endpoint working, in the admin.
 	 *
-	 * WooCommerce bundles the same package unscoped too, and that combination is
-	 * already handled (Mozart scoping keeps Albert on its own copy regardless).
-	 * This guards against a different failure: a THIRD, unrelated plugin (e.g. a
-	 * standalone "MCP Adapter" plugin) also loading the raw `WP\MCP\*` namespace.
-	 * The adapter's own `DefaultServerFactory::create()` then throws
-	 * `duplicate_server_id`, no MCP server ever registers, and every request to
-	 * our MCP endpoint returns a generic 401 that looks exactly like an auth
-	 * failure — the only clue is an `x-wp-doingitwrong` response header. A 401 is
-	 * the worst possible symptom for a plugin conflict, so this surfaces the real
-	 * cause directly instead of leaving it to be diagnosed from the outside.
+	 * Two states, one symptom. Albert's scoped adapter can be absent entirely
+	 * (a source install with `--no-dev`), or a second plugin can load an
+	 * unscoped `WP\MCP\*` copy and make the adapter's own
+	 * `DefaultServerFactory::create()` throw `duplicate_server_id`. Either way no
+	 * MCP server registers and every request to our endpoint answers
+	 * `401 rest_forbidden` — which is *also* what a healthy install answers when
+	 * it is handed no token.
+	 *
+	 * That ambiguity is the whole problem: the symptom points at authentication,
+	 * so the site owner debugs their token, their client and their proxy, and
+	 * never suspects the server was never there. The only outside clue was an
+	 * `x-wp-doingitwrong` response header. So say it plainly instead, where they
+	 * will see it.
 	 *
 	 * @return void
 	 * @since 1.4.0
 	 */
-	private function detect_conflicting_adapter(): void {
-		$source = self::declaring_file( 'WP\MCP\Core\McpAdapter' );
+	private function report_adapter_problems(): void {
+		if ( ! AdapterStatus::scoped_adapter_available() ) {
+			add_action( 'admin_notices', [ $this, 'render_missing_adapter_notice' ] );
 
-		if ( ! is_string( $source ) ) {
+			// Nothing else is worth saying: with no adapter of our own, a foreign
+			// copy is not the problem the owner has.
 			return;
 		}
 
-		$source = wp_normalize_path( $source );
+		$foreign = AdapterStatus::foreign_copies();
 
-		// The known-safe case: WooCommerce's own bundled (unscoped) copy.
-		if ( strpos( $source, '/woocommerce/' ) !== false ) {
-			return;
+		if ( $foreign !== [] ) {
+			add_action(
+				'admin_notices',
+				function () use ( $foreign ): void {
+					$this->render_conflict_notice( $foreign );
+				}
+			);
 		}
+	}
 
-		$relative = str_replace( trailingslashit( wp_normalize_path( WP_PLUGIN_DIR ) ), '', $source );
-		$slug     = strtok( $relative, '/' );
-
-		if ( ! is_string( $slug ) ) {
-			return;
-		}
-
-		add_action(
-			'admin_notices',
-			static function () use ( $slug ): void {
-				printf(
-					'<div class="notice notice-error"><p>%s</p></div>',
-					wp_kses_post(
-						sprintf(
-							/* translators: %s: the conflicting plugin's folder name */
-							__( '<strong>Albert:</strong> another active plugin (folder: <code>%s</code>) bundles its own copy of the MCP adapter library outside of Albert\'s. This stops Albert\'s MCP server from registering, and every request to it fails with an unrelated-looking authentication error. Deactivate the other plugin, or ask its author to namespace-scope its bundled dependency.', 'albert-ai-butler' ),
-							esc_html( $slug )
-						)
-					)
-				);
-			}
+	/**
+	 * Notice shown when Albert's own scoped adapter was never built.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	public function render_missing_adapter_notice(): void {
+		printf(
+			'<div class="notice notice-error"><p>%s</p><p><code>%s</code></p></div>',
+			wp_kses_post(
+				__( '<strong>Albert:</strong> the bundled MCP library is missing, so the MCP endpoint is switched off and every request to it will fail with an authentication error that has nothing to do with your token. This happens when the plugin is installed from source and its dependencies were installed without development requirements. Reinstall from an official release zip, or rebuild the bundled library:', 'albert-ai-butler' )
+			),
+			esc_html( 'composer install && composer run mozart' )
 		);
 	}
 
 	/**
-	 * The file a class was declared in, if that class is currently loaded.
+	 * Notice naming every other plugin that ships an unscoped adapter copy.
 	 *
-	 * A plain `string` parameter, deliberately not `class-string`: the whole
-	 * point is inspecting a class Albert has no static knowledge of (a
-	 * potentially foreign, unscoped copy of `WP\MCP\Core\McpAdapter`) without
-	 * ever asserting it is *our* `WP\MCP\Core\McpAdapter`.
+	 * @param array<string, string> $foreign Plugin folder => path of the copy.
 	 *
-	 * @param string $class_name Fully-qualified class name.
-	 *
-	 * @return string|null The declaring file, or null when the class isn't loaded.
+	 * @return void
 	 * @since 1.4.0
 	 */
-	private static function declaring_file( string $class_name ): ?string {
-		if ( ! class_exists( $class_name ) ) {
-			return null;
-		}
-
-		try {
-			$file = ( new \ReflectionClass( $class_name ) )->getFileName();
-		} catch ( \ReflectionException $e ) {
-			return null;
-		}
-
-		return is_string( $file ) ? $file : null;
+	public function render_conflict_notice( array $foreign ): void {
+		printf(
+			'<div class="notice notice-error"><p>%s</p><ul><li><code>%s</code></li></ul></div>',
+			wp_kses_post(
+				_n(
+					'<strong>Albert:</strong> another active plugin bundles its own unscoped copy of the MCP library. That stops Albert&#8217;s MCP server registering, and every request to it fails with an unrelated-looking authentication error. Deactivate it, or ask its author to namespace-scope the dependency:',
+					'<strong>Albert:</strong> other active plugins bundle their own unscoped copies of the MCP library. That stops Albert&#8217;s MCP server registering, and every request to it fails with an unrelated-looking authentication error. Deactivate them, or ask their authors to namespace-scope the dependency:',
+					count( $foreign ),
+					'albert-ai-butler'
+				)
+			),
+			implode( '</code></li><li><code>', array_map( 'esc_html', array_keys( $foreign ) ) )
+		);
 	}
 
 	/**
