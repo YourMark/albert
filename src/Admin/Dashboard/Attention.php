@@ -11,14 +11,7 @@ namespace Albert\Admin\Dashboard;
 
 defined( 'ABSPATH' ) || exit;
 
-use Albert\Core\AbilitiesState;
-use Albert\Core\Plugin;
 use Albert\MCP\Server as McpServer;
-use Albert\MCP\Skills\SkillRegistry;
-use Albert\OAuth\AllowedUsers;
-use Albert\OAuth\ConnectionRetention;
-use Albert\OAuth\Repositories\ClientRepository;
-use Albert\Settings\Value;
 
 /**
  * What on this site needs the owner to do something.
@@ -99,12 +92,7 @@ class Attention {
 	public function items( int $user_id = 0 ): array {
 		$user_id = $user_id > 0 ? $user_id : get_current_user_id();
 
-		$items = array_merge(
-			$this->connections_about_to_go(),
-			$this->invitations_needing_a_nudge(),
-			$this->unreachable_skills(),
-			$this->broken_endpoint_override()
-		);
+		$items = $this->broken_endpoint_override();
 
 		/**
 		 * Filters the Dashboard's attention items.
@@ -157,199 +145,6 @@ class Attention {
 		);
 
 		return $items;
-	}
-
-	/**
-	 * Connections the retention sweep will remove, and when.
-	 *
-	 * Predicted rather than recorded: the sweep runs daily and reads the same
-	 * connection list and the same option, so the date is arithmetic over data
-	 * already in hand. Somebody losing a working integration to a sweep they
-	 * did not know about is the failure this exists to prevent, which is also
-	 * why the item cannot be dismissed.
-	 *
-	 * @since 1.4.0
-	 *
-	 * @return array<int, array<string, mixed>>
-	 */
-	private function connections_about_to_go(): array {
-		// The same read the sweep makes, chain and all. A prediction derived
-		// from a different source than the thing it predicts is not a
-		// prediction: with a constant pinning the window, reading the stored
-		// option here would count down to a date the sweep was never going to
-		// act on.
-		$days = (int) Value::get( ConnectionRetention::NEVER_USED_OPTION, ConnectionRetention::DEFAULT_NEVER_USED_DAYS );
-
-		if ( $days <= 0 ) {
-			return [];
-		}
-
-		$items = [];
-		$now   = time();
-
-		foreach ( ( new ClientRepository() )->getLiveConnections() as $connection ) {
-			if ( (int) ( $connection['last_used_ts'] ?? 0 ) > 0 ) {
-				continue;
-			}
-
-			$created = (int) ( $connection['created_ts'] ?? 0 );
-
-			if ( $created <= 0 ) {
-				continue;
-			}
-
-			$drops_at = $created + ( $days * DAY_IN_SECONDS );
-			$left     = $drops_at - $now;
-
-			// Only worth saying once it is close. A fortnight of advance notice
-			// on day one is noise, and noise is what stops the card being read.
-			if ( $left <= 0 || $left > 7 * DAY_IN_SECONDS ) {
-				continue;
-			}
-
-			$name = (string) ( $connection['label'] ?? '' );
-			$name = $name !== '' ? $name : (string) ( $connection['name'] ?? __( 'An assistant', 'albert-ai-butler' ) );
-
-			$items[] = [
-				'id'          => 'connection-dropping:' . ( $connection['client_id'] ?? '' ),
-				'tone'        => 'warning',
-				'tone_label'  => __( 'Expiring', 'albert-ai-butler' ),
-				'title'       => sprintf(
-					/* translators: 1: connection name, 2: human readable time, e.g. "6 days" */
-					__( '%1$s will be removed in %2$s', 'albert-ai-butler' ),
-					$name,
-					human_time_diff( $now, $drops_at )
-				),
-				'detail'      => sprintf(
-					/* translators: %d: the number of days after which unused connections are dropped */
-					_n(
-						'It has never been used. Albert removes connections that go unused for %d day.',
-						'It has never been used. Albert removes connections that go unused for %d days.',
-						$days,
-						'albert-ai-butler'
-					),
-					$days
-				),
-				'action'      => [
-					'label' => __( 'Manage connections', 'albert-ai-butler' ),
-					'url'   => admin_url( 'admin.php?page=albert-connections' ),
-				],
-				'dismissible' => false,
-			];
-		}
-
-		return $items;
-	}
-
-	/**
-	 * Invitations that expired, or are about to, without being taken up.
-	 *
-	 * Entries carried over from before 1.4.0 have no timestamps at all, by
-	 * design, so they are skipped rather than described with invented dates.
-	 *
-	 * @since 1.4.0
-	 *
-	 * @return array<int, array<string, mixed>>
-	 */
-	private function invitations_needing_a_nudge(): array {
-		$items = [];
-		$now   = time();
-
-		foreach ( array_keys( AllowedUsers::all() ) as $user_id ) {
-			$user_id = (int) $user_id;
-
-			if ( AllowedUsers::has_authorised( $user_id ) ) {
-				continue;
-			}
-
-			$expires = AllowedUsers::expires_at( $user_id );
-
-			if ( $expires === null ) {
-				continue;
-			}
-
-			$left = $expires - $now;
-
-			if ( $left > 2 * DAY_IN_SECONDS ) {
-				continue;
-			}
-
-			$user = get_userdata( $user_id );
-			$name = $user instanceof \WP_User ? $user->display_name : __( 'Someone', 'albert-ai-butler' );
-
-			$items[] = [
-				// The deadline is part of the id, so a fresh invitation to the
-				// same person is a different finding. Without it, dismissing
-				// one person's expiry notice silenced every later one they were
-				// ever sent.
-				'id'          => 'invitation:' . $user_id . ':' . $expires,
-				'tone'        => 'warning',
-				'tone_label'  => $left <= 0 ? __( 'Expired', 'albert-ai-butler' ) : __( 'Expiring', 'albert-ai-butler' ),
-				'title'       => $left <= 0
-					/* translators: %s: the invited person's name */
-					? sprintf( __( "%s's invitation has expired", 'albert-ai-butler' ), $name )
-					: sprintf(
-						/* translators: 1: the invited person's name, 2: human readable time, e.g. "5 hours" */
-						__( "%1\$s's invitation expires in %2\$s", 'albert-ai-butler' ),
-						$name,
-						human_time_diff( $now, $expires )
-					),
-				'detail'      => __( 'They have not connected an assistant yet, so the invitation was never used.', 'albert-ai-butler' ),
-				'action'      => [
-					'label' => __( 'Review access', 'albert-ai-butler' ),
-					'url'   => admin_url( 'admin.php?page=albert-connections' ),
-				],
-				'dismissible' => true,
-			];
-		}
-
-		return $items;
-	}
-
-	/**
-	 * Skills that apply here but that no assistant can actually fetch.
-	 *
-	 * An index entry is a promise that the guidance applies to this site, and
-	 * `albert/get-skill` is what redeems it. With that ability switched off the
-	 * index still lists them and every fetch fails, so the two halves disagree.
-	 * That is an inconsistency rather than a preference, which is what earns it
-	 * a place beside genuine faults, and why it is the one built-in item that
-	 * can be dismissed.
-	 *
-	 * @since 1.4.0
-	 *
-	 * @return array<int, array<string, mixed>>
-	 */
-	private function unreachable_skills(): array {
-		$available = SkillRegistry::available();
-
-		if ( $available === [] || AbilitiesState::is_enabled( 'albert/get-skill' ) ) {
-			return [];
-		}
-
-		return [
-			[
-				'id'          => 'skills-unreachable',
-				'tone'        => 'info',
-				'tone_label'  => __( 'Unreachable', 'albert-ai-butler' ),
-				'title'       => sprintf(
-					/* translators: %d: how many skills apply to this site */
-					_n(
-						'%d skill applies to this site but no assistant can read it',
-						'%d skills apply to this site but no assistant can read them',
-						count( $available ),
-						'albert-ai-butler'
-					),
-					count( $available )
-				),
-				'detail'      => __( 'Fetching a skill needs the Get skill ability, which is switched off.', 'albert-ai-butler' ),
-				'action'      => [
-					'label' => __( 'Switch it on', 'albert-ai-butler' ),
-					'url'   => admin_url( 'admin.php?page=albert-abilities' ),
-				],
-				'dismissible' => true,
-			],
-		];
 	}
 
 	/**

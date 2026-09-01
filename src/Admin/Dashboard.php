@@ -869,7 +869,7 @@ class Dashboard implements Hookable {
 	private function render_attention_card(): void {
 		$items = ( new Attention() )->items();
 		?>
-		<?php $empty_text = __( 'Nothing right now. Connections, invitations and settings that need a decision show up here.', 'albert-ai-butler' ); ?>
+		<?php $empty_text = __( 'Nothing right now. Anything that needs a decision from you shows up here.', 'albert-ai-butler' ); ?>
 		<section class="albert-card albert-attention" data-empty-text="<?php echo esc_attr( $empty_text ); ?>">
 			<div class="albert-card__header">
 				<div class="albert-card__text">
