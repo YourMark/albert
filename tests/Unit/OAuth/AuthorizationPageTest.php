@@ -2,7 +2,7 @@
 /**
  * Unit tests for AuthorizationPage's OAuth parameter source selection.
  *
- * Covers the 1.5.0 fix for the consent form silently depending on having no
+ * Covers the 1.4.0 fix for the consent form silently depending on having no
  * `action` attribute (so a POST landed back on the same query string) to keep
  * client_id/redirect_uri/state/scope/code_challenge/code_challenge_method
  * readable from $_GET. read_oauth_param() makes that explicit instead: GET

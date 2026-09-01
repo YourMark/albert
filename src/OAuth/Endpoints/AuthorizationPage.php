@@ -267,7 +267,7 @@ class AuthorizationPage implements Hookable {
 	 * @param bool   $is_url        Whether to sanitize as a URL rather than plain text.
 	 *
 	 * @return string The sanitized value.
-	 * @since 1.5.0
+	 * @since 1.4.0
 	 */
 	private function read_oauth_param( string $key, string $default_value = '', bool $is_url = false ): string {
 		$is_post = isset( $_SERVER['REQUEST_METHOD'] ) && $_SERVER['REQUEST_METHOD'] === 'POST';

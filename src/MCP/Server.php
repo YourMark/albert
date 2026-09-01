@@ -228,7 +228,7 @@ class Server implements Hookable {
 	 * @param bool   $token_sent   Whether the request carried a Bearer token.
 	 *
 	 * @return string The header value (without the `WWW-Authenticate: ` prefix).
-	 * @since 1.5.0
+	 * @since 1.4.0
 	 */
 	private function build_challenge( string $resource_url, bool $token_sent ): string {
 		$challenge = 'Bearer realm="MCP", resource="' . $resource_url . '"';
@@ -246,7 +246,7 @@ class Server implements Hookable {
 	 * @param mixed $response The value `rest_request_after_callbacks` passed.
 	 *
 	 * @return int The HTTP status, or 200 when none can be determined.
-	 * @since 1.5.0
+	 * @since 1.4.0
 	 */
 	private function response_status( $response ): int {
 		if ( is_wp_error( $response ) ) {
@@ -276,7 +276,7 @@ class Server implements Hookable {
 	 * cause directly instead of leaving it to be diagnosed from the outside.
 	 *
 	 * @return void
-	 * @since 1.5.0
+	 * @since 1.4.0
 	 */
 	private function detect_conflicting_adapter(): void {
 		$source = self::declaring_file( 'WP\MCP\Core\McpAdapter' );
@@ -327,7 +327,7 @@ class Server implements Hookable {
 	 * @param string $class_name Fully-qualified class name.
 	 *
 	 * @return string|null The declaring file, or null when the class isn't loaded.
-	 * @since 1.5.0
+	 * @since 1.4.0
 	 */
 	private static function declaring_file( string $class_name ): ?string {
 		if ( ! class_exists( $class_name ) ) {

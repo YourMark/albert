@@ -2,7 +2,7 @@
 /**
  * Unit tests for AuthorizationServerFactory's token TTLs.
  *
- * Covers the 1.5.0 fix making the three hardcoded TTLs (access token, refresh
+ * Covers the 1.4.0 fix making the three hardcoded TTLs (access token, refresh
  * token, auth code) filterable. A one-hour access token is the right default,
  * but was previously the only option — including for a site relying on a
  * static bearer token because its client can't complete the OAuth dance.

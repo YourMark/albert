@@ -17,7 +17,6 @@ use Albert\Core\Plugin;
 use Albert\OAuth\Server\AuthorizationServerFactory;
 use Albert\OAuth\ServerMetadata;
 use League\OAuth2\Server\Exception\OAuthServerException;
-use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
@@ -140,13 +139,13 @@ class OAuthController implements Hookable {
 	 * @param OAuthServerException $e The rejection.
 	 *
 	 * @return void
-	 * @since 1.5.0
+	 * @since 1.4.0
 	 */
 	private function log_token_request_failure( OAuthServerException $e ): void {
 		/**
 		 * Fires when the token endpoint rejects a request.
 		 *
-		 * @since 1.5.0
+		 * @since 1.4.0
 		 *
 		 * @param string               $error_type The OAuth error type (e.g. `invalid_grant`).
 		 * @param string               $message    The library's specific failure message.

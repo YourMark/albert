@@ -29,6 +29,7 @@ class AbilitiesRegistry {
 	 * Cached source map, populated on first call to get_sources().
 	 *
 	 * @since 1.1.0
+	 * @since 1.4.0 Renamed from `$suppliers_cache`.
 	 * @var array<string, string>|null
 	 */
 	private static ?array $sources_cache = null;
@@ -49,6 +50,8 @@ class AbilitiesRegistry {
 	 *
 	 * @return array<string, string> Prefix => source label.
 	 * @since 1.1.0
+	 * @since 1.4.0 Renamed from `get_suppliers()`, which remains as a
+	 *              deprecated shim {@see self::get_suppliers()}.
 	 */
 	public static function get_sources(): array {
 		if ( self::$sources_cache !== null ) {
