@@ -366,6 +366,72 @@ class InstallerTest extends TestCase {
 	 *
 	 * @return void
 	 */
+	/**
+	 * Activation across a version boundary still runs the data migrations.
+	 *
+	 * The path that mattered and was not covered: a site on 1.3.x is
+	 * deactivated, the files are updated, and it is reactivated. Activation
+	 * used to call install(), which stamps the schema version without running
+	 * anything version-keyed, so the very next maybe_upgrade() saw "already
+	 * current" and skipped the migrations permanently — with the option
+	 * claiming the site was up to date and nothing left to notice it by.
+	 *
+	 * @return void
+	 */
+	public function test_activation_across_a_version_boundary_runs_the_migrations(): void {
+		global $wpdb;
+
+		$this->restore_legacy_log_columns();
+		update_option( Installer::VERSION_OPTION, '1.3.1' );
+
+		\Albert\Core\Plugin::activate();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test verification.
+		$columns = $wpdb->get_col(
+			$wpdb->prepare(
+				'SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s',
+				Tables::ability_log()
+			)
+		);
+
+		$this->assertNotContains( 'ip_address', $columns );
+		$this->assertNotContains( 'referrer', $columns );
+		$this->assertNotContains( 'request_id', $columns );
+		$this->assertSame( (string) ALBERT_VERSION, get_option( Installer::VERSION_OPTION ) );
+	}
+
+	/**
+	 * The version is not stamped until the migrations have actually run.
+	 *
+	 * Stamping first makes every failure permanent: the option says the work is
+	 * done, so nothing tries again. This asserts the ordering directly — after
+	 * an upgrade the columns are gone AND the version moved, never one without
+	 * the other.
+	 *
+	 * @return void
+	 */
+	public function test_version_is_stamped_only_after_the_migrations_succeed(): void {
+		global $wpdb;
+
+		$this->restore_legacy_log_columns();
+		update_option( Installer::VERSION_OPTION, '1.3.1' );
+
+		Installer::maybe_upgrade();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test verification.
+		$columns = $wpdb->get_col(
+			$wpdb->prepare(
+				'SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s',
+				Tables::ability_log()
+			)
+		);
+
+		$stamped = get_option( Installer::VERSION_OPTION );
+
+		$this->assertNotContains( 'ip_address', $columns, 'Columns should be gone before the version is stamped.' );
+		$this->assertSame( (string) ALBERT_VERSION, $stamped );
+	}
+
 	public function test_maybe_upgrade_drops_the_legacy_log_columns_and_keeps_the_rows(): void {
 		global $wpdb;
 
