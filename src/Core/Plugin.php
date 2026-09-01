@@ -70,6 +70,7 @@ use Albert\Cron\TokenCleanup;
 use Albert\Database\Installer as DatabaseInstaller;
 use Albert\Logging\Logger;
 use Albert\Logging\Repository as LoggingRepository;
+use Albert\MCP\AdapterHealth as McpAdapterHealth;
 use Albert\MCP\Server as McpServer;
 use Albert\Media\UploadLinks\UploadLinkController;
 use Albert\OAuth\Endpoints\AuthorizationPage;
@@ -80,7 +81,7 @@ use Albert\Admin\Rest\ContextController;
 use Albert\Admin\Rest\SkillsController;
 use Albert\OAuth\Endpoints\OAuthDiscovery;
 use Albert\Privacy\PrivacyMode;
-use Albert\Vendor\WP\MCP\Core\McpAdapter;
+use WP\MCP\Core\McpAdapter;
 
 /**
  * Main Plugin Class
@@ -266,6 +267,11 @@ class Plugin {
 
 		// Register MCP server (uses OAuth for authentication).
 		( new McpServer() )->register_hooks();
+
+		// Report, in the admin and in Site Health, when the MCP endpoint cannot
+		// work at all. Its failure mode is a 401 that looks exactly like an
+		// authentication problem, so it has to be stated somewhere else.
+		( new McpAdapterHealth() )->register_hooks();
 
 		// Initialize the MCP adapter, but not on admin pages.
 		//

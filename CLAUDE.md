@@ -748,54 +748,76 @@ composer phpcbf
 # Run tests
 composer test
 
-# Regenerate the Mozart-scoped MCP adapter (run after bumping wordpress/mcp-adapter)
-composer mozart
-
 # Activate plugin
 wp plugin activate albert
 ```
 
-## Bundled MCP adapter (Mozart scoping)
+## Bundled MCP adapter (shared, not scoped)
 
-`wordpress/mcp-adapter` (and its dep `wordpress/php-mcp-schema`) ship the `WP\MCP\*`
-namespace. **WooCommerce bundles its own, older copy of the same package**, and whichever
-plugin's autoloader registers first wins, so when WC is active, Albert's code would silently
-run WooCommerce's `0.1.0` instead of its own `0.6.1` (a hard-to-spot bug: "unknown error" to the
-LLM, failures not logged).
+`wordpress/mcp-adapter` (and its dependency `wordpress/php-mcp-schema`) provide the
+`WP\MCP\*` namespace. Other plugins bundle the same package — WooCommerce does, and there is
+a standalone MCP Adapter plugin — so more than one copy on a site is normal and expected.
 
-The fix is **dependency scoping with Mozart** (`coenjacobs/mozart`), set up the standard way:
+**Albert does not scope it, and must not.** The adapter is loaded unscoped and shared, via
+Jetpack Autoloader. That is upstream's supported model and the only one that works.
 
-- Both packages are in **`require-dev`**: they exist only as the *source* to be scoped, and are
-  never shipped unscoped.
-- Mozart copies them into **`vendor-prefixed/`** (the WP-ecosystem convention), rewritten under the
-  **`Albert\Vendor\`** prefix (`Albert\Vendor\WP\MCP\…`), and deletes the originals from `vendor/`
-  (`delete_vendor_directories: true`). Config lives in `composer.json`'s `extra.mozart`.
-- **Generated, not committed.** `vendor-prefixed/` is **gitignored** and regenerated automatically by
-  the `post-install-cmd` / `post-update-cmd` Composer hooks (which run `mozart compose` +
-  `composer dump-autoload`, guarded so they no-op on `--no-dev`). `composer.lock` **is** committed, so
-  every environment resolves identical versions, which also pins what Mozart generates.
-- Autoloaded via the `Albert\\Vendor\\ => vendor-prefixed/` PSR-4 entry (Mozart 1.1.x has no
-  `generate_autoloader`, so a Composer PSR-4 entry is the documented method).
-- Albert's own code references `Albert\Vendor\WP\MCP\…` (never bare `WP\MCP\…`), so it always runs its
-  own copy regardless of WooCommerce. Verify:
-  `wp eval 'echo Albert\Vendor\WP\MCP\Core\McpAdapter::VERSION;'` → `0.6.1`.
-- **Jetpack Autoloader (since adapter 0.6.0).** The adapter now `require`s
-  `automattic/jetpack-autoloader`, which is itself a Composer plugin: Composer blocks any
-  unlisted Composer plugin, so `composer install` fails until it is declared. It is set to
-  **`false`** in `composer.json`'s `config.allow-plugins`: we don't use Jetpack's autoloader
-  (Mozart + our PSR-4 own scoping), so its Composer-plugin behaviour must not run. Mozart still
-  copies it into `vendor-prefixed/` and correctly rewrites it to `Albert\Vendor\Automattic\Jetpack\Autoloader`,
-  where it is inert (nothing loads the adapter's own `Autoloader.php`). Keep it `false` across
-  future adapter bumps.
-- `vendor-prefixed/` is outside `src/` so the gates skip it naturally; it's also excluded in
-  `phpcs.xml.dist` / `phpstan.neon` for the bare-invocation case.
-- **Bumping `wordpress/mcp-adapter`:** `composer update wordpress/mcp-adapter`: the post-update hook
-  regenerates `vendor-prefixed/` and the lock pins it. Nothing to hand-commit (it's gitignored).
-- **Release/CI:** `release.yml` installs with dev (hook generates `vendor-prefixed/`), then
-  `--no-dev` (strips dev + the unscoped packages), and ships `vendor-prefixed/`.
-- **Caveat (not handled by scoping):** the adapter still fires the global hooks `mcp_adapter_init` /
-  `wp_mcp_init`. Harmless while WooCommerce's MCP *feature* is disabled; if it's ever enabled
-  alongside Albert, those hook names need prefixing too.
+### Why scoping was removed
+
+Albert used to scope both packages with Mozart into `Albert\Vendor\WP\MCP\`. That looks
+like the safe choice and is the opposite. Mozart rewrites class names; it does not rewrite
+WordPress, and the adapter coordinates through three things Mozart cannot touch:
+
+- the hook name `mcp_adapter_init`, a literal string,
+- the default server id `mcp-adapter-default-server`, hard-coded,
+- the REST route of the same name.
+
+So a scoped copy is a *second class firing the same global action*. Both copies'
+`DefaultServerFactory::create` stay hooked — different class names, so WordPress keeps both —
+and each writes to its own singleton with the same id. The second write returns
+`duplicate_server_id`, no server registers, and `/albert/v1/mcp` answers `401 rest_forbidden`,
+which is also what a healthy install answers when handed no token. Nothing outside the site
+distinguishes them, so the symptom sends people to debug authentication.
+
+[WordPress/mcp-adapter#172](https://github.com/WordPress/mcp-adapter/issues/172) describes this
+and was closed `NOT_PLANNED`: prefixed copies are unsupported, and guarding `DefaultServerFactory`
+alone "would not make the other shared hooks, filters, routes, and identifiers safe."
+
+### How it works now
+
+- Both packages are ordinary **`require`** entries, and **`automattic/jetpack-autoloader` is a
+  root requirement** — it generates nothing when pulled in only transitively, which is the whole
+  reason it has to be declared here.
+- `config.allow-plugins` sets `automattic/jetpack-autoloader` to **`true`**. It was `false` under
+  Mozart; if it ever goes back to `false`, the manifests stop being generated and the plugin
+  silently loses its adapter.
+- `albert-ai-butler.php` requires **`vendor/autoload_packages.php`**, Jetpack's entry point, not
+  Composer's `vendor/autoload.php`. It calls WordPress functions, which is safe in a plugin file
+  but *not* before WordPress loads — which is why the test bootstraps still use
+  `vendor/autoload.php`.
+- Jetpack publishes each plugin's copy with its version in
+  `vendor/composer/jetpack_autoload_classmap.php` and loads a single newest copy site-wide. One
+  class, one singleton, one `mcp_adapter_init` firing.
+- Albert's code references bare **`WP\MCP\…`**. Never reintroduce `Albert\Vendor\`.
+
+### Consequences worth knowing
+
+- **Albert may run against another plugin's newer copy.** That is the accepted trade-off of the
+  shared model, and the reason `Albert\MCP\AdapterStatus` feature-detects the classes Albert
+  calls rather than checking a version number. If any are missing,
+  `Albert\MCP\AdapterHealth` reports it in an admin notice and in Site Health, naming the path
+  the loaded copy came from.
+- **`vendor/wordpress/` ships.** `.distignore` must not exclude it — that exclusion existed only
+  because scoping made the unscoped copy dangerous. Shipping it is what lets Albert take part in
+  the negotiation.
+- **Bumping the adapter:** `composer update wordpress/mcp-adapter`. Nothing to regenerate; the
+  lock and the Jetpack manifests are rebuilt by Composer's own hook.
+- **Verify a shared install:** exactly one adapter class, one firing, both servers present.
+
+```bash
+wp eval '
+$loaded = array_filter( get_declared_classes(), fn( $c ) => str_ends_with( $c, "\\MCP\\Core\\McpAdapter" ) );
+echo implode( ", ", $loaded ), "\n";'
+```
 
 ## Development Guidelines
 

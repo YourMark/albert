@@ -212,9 +212,10 @@ class UploadLinkController implements Hookable {
 		}
 
 		if ( $file !== null && ! empty( $file['tmp_name'] ) && is_string( $file['tmp_name'] ) ) {
-			// wp_filesize(), not filesize(): 0 rather than false-with-a-warning
-			// for an unreadable path, and no silenced error to explain away.
-			$size = isset( $file['size'] ) ? (int) $file['size'] : wp_filesize( $file['tmp_name'] );
+			// PHP populates `size` for every entry it puts in $_FILES, including
+			// its own rejections, where it is 0 — which the check below already
+			// treats as "no data". There is nothing for a fallback to do.
+			$size = (int) $file['size'];
 
 			if ( $size === 0 ) {
 				TempFile::delete( $file['tmp_name'] );
@@ -230,7 +231,7 @@ class UploadLinkController implements Hookable {
 
 			return [
 				'tmp_path' => $file['tmp_name'],
-				'filename' => is_string( $file['name'] ?? null ) ? $file['name'] : '',
+				'filename' => $file['name'],
 			];
 		}
 

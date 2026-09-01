@@ -17,13 +17,13 @@ use Albert\Core\Plugin;
 use Albert\Logging\ObservabilityHandler;
 use Albert\MCP\Skills\SkillLoader;
 use Albert\OAuth\Server\TokenValidator;
-use Albert\Vendor\WP\MCP\Core\McpAdapter;
-use Albert\Vendor\WP\MCP\Core\McpServer;
-use Albert\Vendor\WP\MCP\Domain\Prompts\McpPrompt;
-use Albert\Vendor\WP\MCP\Domain\Resources\McpResource;
-use Albert\Vendor\WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
-use Albert\Vendor\WP\MCP\Infrastructure\Observability\Contracts\McpObservabilityHandlerInterface;
-use Albert\Vendor\WP\MCP\Transport\HttpTransport;
+use WP\MCP\Core\McpAdapter;
+use WP\MCP\Core\McpServer;
+use WP\MCP\Domain\Prompts\McpPrompt;
+use WP\MCP\Domain\Resources\McpResource;
+use WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
+use WP\MCP\Infrastructure\Observability\Contracts\McpObservabilityHandlerInterface;
+use WP\MCP\Transport\HttpTransport;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -77,8 +77,6 @@ class Server implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function register_hooks(): void {
-		$this->detect_conflicting_adapter();
-
 		add_action( 'mcp_adapter_init', [ $this, 'create_server' ] );
 		// Bound to *_after_ callbacks, not before: the header depends on whether
 		// authentication actually failed (and how), which is only known once the
@@ -259,88 +257,6 @@ class Server implements Hookable {
 		}
 
 		return 200;
-	}
-
-	/**
-	 * Detect a foreign, unscoped copy of the MCP adapter and warn about it.
-	 *
-	 * WooCommerce bundles the same package unscoped too, and that combination is
-	 * already handled (Mozart scoping keeps Albert on its own copy regardless).
-	 * This guards against a different failure: a THIRD, unrelated plugin (e.g. a
-	 * standalone "MCP Adapter" plugin) also loading the raw `WP\MCP\*` namespace.
-	 * The adapter's own `DefaultServerFactory::create()` then throws
-	 * `duplicate_server_id`, no MCP server ever registers, and every request to
-	 * our MCP endpoint returns a generic 401 that looks exactly like an auth
-	 * failure — the only clue is an `x-wp-doingitwrong` response header. A 401 is
-	 * the worst possible symptom for a plugin conflict, so this surfaces the real
-	 * cause directly instead of leaving it to be diagnosed from the outside.
-	 *
-	 * @return void
-	 * @since 1.4.0
-	 */
-	private function detect_conflicting_adapter(): void {
-		$source = self::declaring_file( 'WP\MCP\Core\McpAdapter' );
-
-		if ( ! is_string( $source ) ) {
-			return;
-		}
-
-		$source = wp_normalize_path( $source );
-
-		// The known-safe case: WooCommerce's own bundled (unscoped) copy.
-		if ( strpos( $source, '/woocommerce/' ) !== false ) {
-			return;
-		}
-
-		$relative = str_replace( trailingslashit( wp_normalize_path( WP_PLUGIN_DIR ) ), '', $source );
-		$slug     = strtok( $relative, '/' );
-
-		if ( ! is_string( $slug ) ) {
-			return;
-		}
-
-		add_action(
-			'admin_notices',
-			static function () use ( $slug ): void {
-				printf(
-					'<div class="notice notice-error"><p>%s</p></div>',
-					wp_kses_post(
-						sprintf(
-							/* translators: %s: the conflicting plugin's folder name */
-							__( '<strong>Albert:</strong> another active plugin (folder: <code>%s</code>) bundles its own copy of the MCP adapter library outside of Albert\'s. This stops Albert\'s MCP server from registering, and every request to it fails with an unrelated-looking authentication error. Deactivate the other plugin, or ask its author to namespace-scope its bundled dependency.', 'albert-ai-butler' ),
-							esc_html( $slug )
-						)
-					)
-				);
-			}
-		);
-	}
-
-	/**
-	 * The file a class was declared in, if that class is currently loaded.
-	 *
-	 * A plain `string` parameter, deliberately not `class-string`: the whole
-	 * point is inspecting a class Albert has no static knowledge of (a
-	 * potentially foreign, unscoped copy of `WP\MCP\Core\McpAdapter`) without
-	 * ever asserting it is *our* `WP\MCP\Core\McpAdapter`.
-	 *
-	 * @param string $class_name Fully-qualified class name.
-	 *
-	 * @return string|null The declaring file, or null when the class isn't loaded.
-	 * @since 1.4.0
-	 */
-	private static function declaring_file( string $class_name ): ?string {
-		if ( ! class_exists( $class_name ) ) {
-			return null;
-		}
-
-		try {
-			$file = ( new \ReflectionClass( $class_name ) )->getFileName();
-		} catch ( \ReflectionException $e ) {
-			return null;
-		}
-
-		return is_string( $file ) ? $file : null;
 	}
 
 	/**

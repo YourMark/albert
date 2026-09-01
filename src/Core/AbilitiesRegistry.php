@@ -13,7 +13,7 @@
 namespace Albert\Core;
 
 use Albert\MCP\Server;
-use Albert\Vendor\WP\MCP\Abilities\McpAbilityExposure;
+use WP\MCP\Abilities\McpAbilityExposure;
 
 /**
  * Abilities Registry class

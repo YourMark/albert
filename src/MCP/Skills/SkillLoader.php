@@ -11,7 +11,7 @@ namespace Albert\MCP\Skills;
 
 defined( 'ABSPATH' ) || exit;
 
-use Albert\Vendor\WP\MCP\Domain\Prompts\McpPrompt;
+use WP\MCP\Domain\Prompts\McpPrompt;
 
 /**
  * SkillLoader class

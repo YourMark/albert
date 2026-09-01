@@ -121,6 +121,13 @@ Never rename the legacy IDs: they are part of the public API.
     If the confirmation is refused, the refusal is the rule working. Never
     route around it with `gh api`, a git merge-and-push, or the web UI, and
     never edit this rule to avoid the prompt.
+- **Branch names are `feature/` or `fix/`. Nothing else.** Not `chore/`, not
+  `feat/`, not `refactor/`, not `docs/`. A tidy-up, a CI change, a docs change:
+  if it corrects something that is wrong, it is `fix/`; if it adds something
+  that was not there, it is `feature/`. Commit-message *types* are a separate
+  convention and `chore:` is fine there — this rule is about branch names only.
+  Renaming a branch on GitHub closes its PR rather than retargeting it, so get
+  it right when the branch is created.
 - **NEVER bump version without approval.**
 - **Version bumps only happen in release branches**, never on `development`, feature branches, or `main`.
 - **PR titles are plain, human-readable sentences**: NEVER use conventional-commit prefixes like `chore(deps):`, `feat(logging):`, `fix:`. Those belong in commit messages, not PR titles. Example: "Upgrade MCP adapter to 0.5.0", not "chore(deps): upgrade...".

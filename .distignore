@@ -41,9 +41,13 @@ CLAUDE.md
 DEVELOPER_GUIDE.md
 plan.md
 
-# Build-only: bundled (Mozart-scoped into src/Dependencies/). Never ship the
-# unscoped copy — it would re-collide with WooCommerce's WP\MCP\ namespace.
-vendor/wordpress/
+# The MCP adapter also ships as a standalone plugin, so the package carries its
+# own bootstrap and its own wordpress.org readme. Albert autoloads PSR-4 from
+# includes/ and never touches either, so they are dead weight — and a second
+# `Plugin Name:` and `Stable tag:` inside our SVN trunk invites a question at
+# review for no benefit.
+vendor/wordpress/mcp-adapter/mcp-adapter.php
+vendor/wordpress/mcp-adapter/readme.txt
 
 # Non-permitted vendor files
 vendor/bin/

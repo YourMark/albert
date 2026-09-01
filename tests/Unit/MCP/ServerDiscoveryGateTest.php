@@ -11,8 +11,8 @@ namespace Albert\Tests\Unit\MCP;
 require_once dirname( __DIR__ ) . '/stubs/wordpress.php';
 
 use Albert\MCP\Server;
-use Albert\Vendor\WP\MCP\Core\McpServer;
-use Albert\Vendor\WP\MCP\Domain\Tools\McpTool;
+use WP\MCP\Core\McpServer;
+use WP\MCP\Domain\Tools\McpTool;
 use PHPUnit\Framework\TestCase;
 use WP_Error;
 
