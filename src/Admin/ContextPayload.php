@@ -13,7 +13,6 @@ defined( 'ABSPATH' ) || exit;
 
 use Albert\Context\ContextSettings;
 use Albert\Context\Payload;
-use Albert\Context\PayloadRenderer;
 use Albert\Context\SiteContext;
 use Albert\Context\SkillIndex;
 use Albert\Core\AbilitiesState;

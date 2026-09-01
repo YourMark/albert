@@ -14,7 +14,6 @@ use Albert\Blocks\ContentFormatter;
 use Albert\Blocks\EditorMode;
 use Albert\Core\Annotations;
 use WP_Error;
-use WP_REST_Request;
 
 /**
  * View Post Ability class
