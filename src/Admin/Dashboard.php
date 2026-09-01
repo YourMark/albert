@@ -62,6 +62,17 @@ class Dashboard implements Hookable {
 	private LoggingRepository $logging_repository;
 
 	/**
+	 * How many activity rows are meant to be read.
+	 *
+	 * A sixth is rendered when there is one, purely to sit under the fade —
+	 * see {@see self::get_recent_activity()}.
+	 *
+	 * @since 1.4.0
+	 * @var int
+	 */
+	private const ACTIVITY_ROWS = 5;
+
+	/**
 	 * Whether the activity list had more events than it shows.
 	 *
 	 * Set by {@see self::get_recent_activity()}, read when deciding to draw the
@@ -680,7 +691,21 @@ class Dashboard implements Hookable {
 				</div>
 			</div>
 			<?php if ( ! empty( $recent_activity ) ) { ?>
-				<div class="albert-card__body albert-card__body--flush albert-activity-card__body">
+				<?php
+				/*
+				 * overflow-x with no way in. Chrome, Edge and Safari do not
+				 * focus a scroll container, and nothing inside this table is
+				 * focusable, so on a narrow viewport the columns that overflow
+				 * were unreachable without a mouse. Context's PreviewCard
+				 * already solves this the same way.
+				 */
+				?>
+				<div
+					class="albert-card__body albert-card__body--flush albert-activity-card__body"
+					tabindex="0"
+					role="region"
+					aria-label="<?php esc_attr_e( 'Recent activity', 'albert-ai-butler' ); ?>"
+				>
 					<table class="albert-log-table">
 						<caption class="screen-reader-text"><?php esc_html_e( 'The most recent ability executions and connections', 'albert-ai-butler' ); ?></caption>
 						<thead>
@@ -870,7 +895,30 @@ class Dashboard implements Hookable {
 		$items = ( new Attention() )->items();
 		?>
 		<?php $empty_text = __( 'Nothing right now. Anything that needs a decision from you shows up here.', 'albert-ai-butler' ); ?>
-		<section class="albert-card albert-attention" data-empty-text="<?php echo esc_attr( $empty_text ); ?>">
+		<?php
+		/*
+		 * The count sentence and the dismissal announcement are rewritten in JS
+		 * after an item goes, so their translations have to travel with the
+		 * markup: this script is not a wp-i18n consumer, and hardcoding English
+		 * in it would leave every non-English site with a stale count in one
+		 * language and a heading in another.
+		 */
+
+		/* translators: %d: how many things need attention */
+		$count_one = __( '%d thing Albert noticed on this site.', 'albert-ai-butler' );
+
+		/* translators: %d: how many things need attention */
+		$count_many = __( '%d things Albert noticed on this site.', 'albert-ai-butler' );
+
+		$dismissed_text = __( 'Item dismissed.', 'albert-ai-butler' );
+		?>
+		<section
+			class="albert-card albert-attention"
+			data-empty-text="<?php echo esc_attr( $empty_text ); ?>"
+			data-count-one="<?php echo esc_attr( $count_one ); ?>"
+			data-count-many="<?php echo esc_attr( $count_many ); ?>"
+			data-dismissed-text="<?php echo esc_attr( $dismissed_text ); ?>"
+		>
 			<div class="albert-card__header">
 				<div class="albert-card__text">
 					<h2 class="albert-card__title"><?php esc_html_e( 'Needs your attention', 'albert-ai-butler' ); ?></h2>
@@ -1490,9 +1538,16 @@ class Dashboard implements Hookable {
 		// is true, so it always means "there is more" rather than decorating the
 		// bottom of a complete list, which is what it did before: it sat over
 		// the last real row and implied rows that did not exist.
-		$this->activity_truncated = count( $events ) > 5;
+		$this->activity_truncated = count( $events ) > self::ACTIVITY_ROWS;
 
-		$events = array_slice( $events, 0, 5 );
+		// One row past the five, when there is one. The fade is 56px of opaque
+		// gradient pulled up over the bottom of the table, so whichever row
+		// ends up underneath it cannot be read — at the gradient's midpoint the
+		// text is down to about 2:1. Giving it a sixth row to cover means the
+		// five that are meant to be read stay legible, and the fade stops being
+		// a thing that hides information and becomes what it claims to be: the
+		// next entry, half-visible, and Premium is how you see the rest.
+		$events = array_slice( $events, 0, $this->activity_truncated ? self::ACTIVITY_ROWS + 1 : self::ACTIVITY_ROWS );
 
 		$now      = time();
 		$activity = [];

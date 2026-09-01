@@ -568,6 +568,7 @@
  */
 .albert-tip {
 	--albert-tip-trigger-size: 18px;
+	--albert-tip-trigger-target: 24px;
 
 	position: relative;
 	display: inline-flex;
@@ -581,6 +582,13 @@
 	background: none;
 	border: none;
 	padding: 0;
+
+	/* The glyph stays 18px; the target does not. WCAG 2.2 SC 2.5.8 asks for
+	   24x24 CSS px, and this button sits beside every settings label, every
+	   card title and every fly-in section heading — too many places to rely on
+	   the spacing exception, which the adjacent label eats into anyway. */
+	min-inline-size: var(--albert-tip-trigger-target);
+	min-block-size: var(--albert-tip-trigger-target);
 	margin-inline-start: var(--albert-space-100);
 	cursor: pointer;
 	vertical-align: middle;
@@ -951,12 +959,15 @@
 	color: var(--albert-color-text);
 }
 
+/* 24x24 rather than 20x20: two adjacent remove buttons sit 8px apart, close
+   enough that their exception circles overlap, so SC 2.5.8's spacing get-out
+   does not apply here. */
 .albert-chip__remove {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	inline-size: 20px;
-	block-size: 20px;
+	inline-size: 24px;
+	block-size: 24px;
 	padding: 0;
 	border: 0;
 	border-radius: 50%;
@@ -1903,6 +1914,14 @@ input.albert-endpoint__field {
  * instant-save screens — here the button stays real, this only keeps it in
  * view.
  */
+/* The save bar is sticky and opaque, and browsers scroll a newly focused
+   control minimally into view without accounting for it — so tabbing down a
+   long form landed a 32px input underneath a ~46px bar. WCAG 2.2 SC 2.4.11.
+   Declared on :root so it applies to whichever element ends up scrolling. */
+:root {
+	scroll-padding-block-end: calc(var(--albert-control-height) + var(--albert-space-500));
+}
+
 .albert-savebar {
 	position: sticky;
 	inset-block-end: 0;
