@@ -1585,16 +1585,7 @@ class Dashboard implements Hookable {
 	 * @since 1.2.0
 	 */
 	private function resolve_ability_label( string $slug ): string {
-		$manager = Plugin::get_instance()->get_abilities_manager();
-
-		if ( $manager !== null ) {
-			$label = $manager->get_label( $slug );
-			if ( $label !== null && $label !== '' ) {
-				return $label;
-			}
-		}
-
-		return AbilitiesRegistry::label_for( $slug );
+		return AbilitiesRegistry::resolve_label( $slug );
 	}
 
 	/**

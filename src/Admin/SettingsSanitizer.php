@@ -67,8 +67,22 @@ class SettingsSanitizer {
 				$attributes = isset( $field['attributes'] ) && is_array( $field['attributes'] ) ? $field['attributes'] : [];
 				$step       = $attributes['step'] ?? null;
 				$is_decimal = is_string( $step ) && strpos( $step, '.' ) !== false;
+				$has_min    = isset( $field['min'] ) && is_numeric( $field['min'] );
+				$has_min    = $has_min || ( isset( $attributes['min'] ) && is_numeric( $attributes['min'] ) );
+
 				if ( $is_decimal ) {
-					return $this->clamp( $field, is_scalar( $raw_value ) ? (float) $raw_value : 0.0 );
+					$decimal = is_scalar( $raw_value ) ? (float) $raw_value : 0.0;
+
+					// The integer branch below keeps its absint() floor when no
+					// `min` is declared. Without the same floor here, a decimal
+					// field declaring only a `max` stored an unbounded negative
+					// silently — the one shape of number field where a missing
+					// lower bound was not caught by anything.
+					if ( ! $has_min && $decimal < 0.0 ) {
+						$decimal = 0.0;
+					}
+
+					return $this->clamp( $field, $decimal );
 				}
 
 				// absint() takes the *absolute* value, so -5 arrives as 5 — a
@@ -78,9 +92,6 @@ class SettingsSanitizer {
 				// plainly and let the clamp do its job. Without one, absint()
 				// stays: it is what has kept these fields non-negative since
 				// 1.1.0 and nothing should start storing negatives now.
-				$has_min = isset( $field['min'] ) && is_numeric( $field['min'] );
-				$has_min = $has_min || ( isset( $attributes['min'] ) && is_numeric( $attributes['min'] ) );
-
 				if ( ! is_scalar( $raw_value ) ) {
 					return $this->clamp( $field, 0 );
 				}

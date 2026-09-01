@@ -310,14 +310,7 @@ class Attention {
 	 * @return string
 	 */
 	private function ability_label( string $ability_name ): string {
-		$manager = Plugin::get_instance()->get_abilities_manager();
-		$label   = $manager !== null ? $manager->get_label( $ability_name ) : null;
-
-		if ( is_string( $label ) && $label !== '' ) {
-			return $label;
-		}
-
-		return AbilitiesRegistry::label_for( $ability_name );
+		return AbilitiesRegistry::resolve_label( $ability_name );
 	}
 
 	/**
