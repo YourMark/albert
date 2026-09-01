@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "deny": [
+    "ask": [
       "Bash(gh pr merge:*)"
     ]
   }

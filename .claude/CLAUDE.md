@@ -113,10 +113,14 @@ Never rename the legacy IDs: they are part of the public API.
     not undo it — the PR stays "Merged" permanently and the work has to re-land
     under a new number. There is no clean undo, which is why the gate is before
     the merge, not after it.
-  - This is enforced, not merely written down: `.claude/settings.json` denies
-    `Bash(gh pr merge:*)` in this repository. If that command is refused, the
-    refusal is the rule working. Do not route around it with `gh api`, a git
-    merge-and-push, or the web UI — report the PR and its checks, and stop.
+  - This is enforced, not merely written down: `.claude/settings.json` puts
+    `Bash(gh pr merge:*)` behind an `ask` rule, so a merge always stops for an
+    explicit confirmation and can never happen silently. `ask`, not `deny`, on
+    purpose: the rule is "not until Mark says so", and a flat denial says
+    "never", which is a different and wrong rule — it blocks Mark himself.
+    If the confirmation is refused, the refusal is the rule working. Never
+    route around it with `gh api`, a git merge-and-push, or the web UI, and
+    never edit this rule to avoid the prompt.
 - **NEVER bump version without approval.**
 - **Version bumps only happen in release branches**, never on `development`, feature branches, or `main`.
 - **PR titles are plain, human-readable sentences**: NEVER use conventional-commit prefixes like `chore(deps):`, `feat(logging):`, `fix:`. Those belong in commit messages, not PR titles. Example: "Upgrade MCP adapter to 0.5.0", not "chore(deps): upgrade...".
