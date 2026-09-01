@@ -194,6 +194,34 @@ if ( document.readyState === 'loading' ) {
 		}
 	};
 
+	/**
+	 * Rewrite the count sentence to match the list under it.
+	 *
+	 * Hiding the sentence when the list empties was never the whole job: after
+	 * dismissing one of three, the heading still claimed three while the list
+	 * showed two, and only the list was right.
+	 */
+	const syncCount = () => {
+		if ( ! description || ! list ) {
+			return;
+		}
+
+		const remaining = list.querySelectorAll( '.albert-attention__item' ).length;
+
+		if ( remaining === 0 ) {
+			return;
+		}
+
+		const template =
+			remaining === 1
+				? card.getAttribute( 'data-count-one' )
+				: card.getAttribute( 'data-count-many' );
+
+		if ( template ) {
+			description.textContent = template.replace( '%d', String( remaining ) );
+		}
+	};
+
 	card.addEventListener( 'click', ( event ) => {
 		const button = event.target.closest( '[data-albert-dismiss-attention]' );
 
@@ -210,11 +238,40 @@ if ( document.readyState === 'loading' ) {
 
 		const next = item.nextElementSibling;
 
+		// Where focus goes once this row is gone. Removing the element that
+		// currently holds focus drops it to <body>, which sends a keyboard user
+		// back to the top of the admin and tells a screen-reader user nothing.
+		const successor =
+			( next && next.querySelector( '[data-albert-dismiss-attention]' ) ) ||
+			( item.previousElementSibling &&
+				item.previousElementSibling.querySelector(
+					'[data-albert-dismiss-attention]'
+				) ) ||
+			card.querySelector( '.albert-card__title' );
+
 		button.disabled = true;
 		item.remove();
 
 		if ( ! list.querySelector( '.albert-attention__item' ) ) {
 			setEmpty( true );
+		}
+
+		syncCount();
+
+		if ( successor ) {
+			// The heading is not focusable by default; make it so only for as
+			// long as it needs to receive focus.
+			if ( ! successor.hasAttribute( 'tabindex' ) && successor.tagName === 'H2' ) {
+				successor.setAttribute( 'tabindex', '-1' );
+			}
+
+			successor.focus();
+		}
+
+		if ( window.Albert && window.Albert.liveRegion ) {
+			window.Albert.liveRegion.announce(
+				card.getAttribute( 'data-dismissed-text' ) || ''
+			);
 		}
 
 		const body = new FormData();
@@ -242,6 +299,38 @@ if ( document.readyState === 'loading' ) {
 				button.disabled = false;
 				list.insertBefore( item, next );
 				setEmpty( false );
+				syncCount();
 			} );
+	} );
+} )();
+
+/**
+ * Keep a locked radio group readable without letting it be changed.
+ *
+ * HTML radios have no `readonly`, and `disabled` takes the whole group out of
+ * the tab order — which loses the two things a locked field most needs to
+ * convey: which value is in force, and what owns it. So the radios stay
+ * focusable and carry `aria-disabled`, and this puts back any change.
+ */
+( function () {
+	'use strict';
+
+	document.addEventListener( 'change', ( event ) => {
+		const input = event.target;
+
+		if ( ! input || input.type !== 'radio' || ! input.dataset.albertLocked ) {
+			return;
+		}
+
+		const group = document.querySelectorAll(
+			'input[type="radio"][name="' + CSS.escape( input.name ) + '"]'
+		);
+
+		group.forEach( ( radio ) => {
+			// defaultChecked is the value the server rendered, which is the one
+			// actually in force — restoring from it means a second attempt
+			// cannot drift further from the truth.
+			radio.checked = radio.defaultChecked;
+		} );
 	} );
 } )();
