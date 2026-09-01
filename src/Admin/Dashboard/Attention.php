@@ -113,6 +113,7 @@ class Attention {
 	 */
 	private const REFUSAL_CODES = [
 		'ability_permission_denied',
+		'ability_invalid_input',
 		'rest_forbidden',
 	];
 
@@ -340,13 +341,7 @@ class Attention {
 		// measure. Since 1.4.0 those codes are classified as `success` and
 		// `warning` upstream and never reach this method, but a row written by
 		// an older Free — or by a caller that forced the status — still can.
-		//
-		// `_invalid_input` and `_invalid_id` are deliberately absent. Outcome
-		// keeps `ability_invalid_input` and `rest_post_invalid_id` as errors on
-		// purpose — a malformed request is a fault, not the ability saying no —
-		// and matching them here quietly undid that two files away, hiding a
-		// broken client integration from the one card built to surface it.
-		foreach ( [ '_permission_denied', '_not_found', '_exists' ] as $suffix ) {
+		foreach ( [ '_permission_denied', '_not_found', '_invalid_id', '_invalid_input', '_exists' ] as $suffix ) {
 			if ( str_ends_with( $code, $suffix ) ) {
 				return true;
 			}
