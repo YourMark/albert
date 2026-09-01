@@ -11,7 +11,10 @@ namespace Albert\Admin\Dashboard;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Context\SkillIndex;
+use Albert\Core\AbilitiesState;
 use Albert\MCP\Server as McpServer;
+use Albert\MCP\Skills\SkillRegistry;
 
 /**
  * What on this site needs the owner to do something.
@@ -92,7 +95,10 @@ class Attention {
 	public function items( int $user_id = 0 ): array {
 		$user_id = $user_id > 0 ? $user_id : get_current_user_id();
 
-		$items = $this->broken_endpoint_override();
+		$items = array_merge(
+			$this->unreachable_skills(),
+			$this->broken_endpoint_override()
+		);
 
 		/**
 		 * Filters the Dashboard's attention items.
@@ -145,6 +151,62 @@ class Attention {
 		);
 
 		return $items;
+	}
+
+	/**
+	 * Skills that apply here but that no assistant can actually fetch.
+	 *
+	 * Switching off `albert/get-skill` does not just disable one ability: it
+	 * suppresses the whole skills index, so every skill the site ships stops
+	 * reaching every assistant. That is a bigger consequence than the toggle
+	 * suggests, and the Abilities screen shows the switch without showing what
+	 * it costs.
+	 *
+	 * Said here as well as on the Skills screen on purpose. Skills is where
+	 * somebody goes to ask whether their skills are working; the Dashboard is
+	 * where they find out without having gone looking. Dismissible, because
+	 * switching it off can be deliberate.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function unreachable_skills(): array {
+		$available = SkillRegistry::available();
+
+		if ( $available === [] || AbilitiesState::is_enabled( SkillIndex::FETCH_ABILITY ) ) {
+			return [];
+		}
+
+		return [
+			[
+				'id'          => 'skills-unreachable',
+				'tone'        => 'info',
+				'tone_label'  => __( 'Unreachable', 'albert-ai-butler' ),
+				'title'       => sprintf(
+					/* translators: %d: how many skills apply to this site */
+					_n(
+						'%d skill applies to this site but no assistant can read it',
+						'%d skills apply to this site but no assistant can read them',
+						count( $available ),
+						'albert-ai-butler'
+					),
+					count( $available )
+				),
+				'detail'      => __( 'Fetching a skill needs the Get skill ability, which is switched off.', 'albert-ai-butler' ),
+				'action'      => [
+					'label' => __( 'Switch it on', 'albert-ai-butler' ),
+					// Straight to the ability, not the list. The screen reads an
+					// `ability` query arg and opens that detail panel.
+					'url'   => add_query_arg(
+						'ability',
+						rawurlencode( SkillIndex::FETCH_ABILITY ),
+						admin_url( 'admin.php?page=albert-abilities' )
+					),
+				],
+				'dismissible' => true,
+			],
+		];
 	}
 
 	/**
