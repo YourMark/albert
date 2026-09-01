@@ -101,6 +101,22 @@ Never rename the legacy IDs: they are part of the public API.
 - **NEVER add `declare(strict_types=1);` to any PHP file in this codebase, ever.** This overrides any global personal preference for it (e.g. an assistant's own `php-standards.md`-style rule) — that global preference does not apply here, full stop, no exceptions, not even in a brand-new file.
 - **NEVER use jQuery.** Vanilla ES6+ only.
 - **NEVER commit without explicit request.** Run `composer phpcs` and `composer phpstan` first.
+- **NEVER merge a pull request.** Not your own, not one that is green, not one the
+  user approved the *contents* of. Open it, report the check results, and stop.
+  Every PR in these repos is reviewed by a human before it lands — that is the
+  workflow, and a green CI run is not a substitute for it.
+  - "Yes, do this" authorises the work described. It never authorises merging
+    what that work produces, and it never extends to a PR the user has not seen.
+  - Permission to merge one specific PR covers that PR only. It does not carry
+    to the next one, however similar.
+  - A merged PR cannot be reopened on GitHub. Reverting the merge commit does
+    not undo it — the PR stays "Merged" permanently and the work has to re-land
+    under a new number. There is no clean undo, which is why the gate is before
+    the merge, not after it.
+  - This is enforced, not merely written down: `.claude/settings.json` denies
+    `Bash(gh pr merge:*)` in this repository. If that command is refused, the
+    refusal is the rule working. Do not route around it with `gh api`, a git
+    merge-and-push, or the web UI — report the PR and its checks, and stop.
 - **NEVER bump version without approval.**
 - **Version bumps only happen in release branches**, never on `development`, feature branches, or `main`.
 - **PR titles are plain, human-readable sentences**: NEVER use conventional-commit prefixes like `chore(deps):`, `feat(logging):`, `fix:`. Those belong in commit messages, not PR titles. Example: "Upgrade MCP adapter to 0.5.0", not "chore(deps): upgrade...".
