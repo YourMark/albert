@@ -67,10 +67,12 @@ class DiscoveryContext implements Hookable {
 	 * and a field silently dropped in transit is the hardest kind of bug to see
 	 * from this end.
 	 *
-	 * `wp_register_ability_args` is WordPress 7.1 and later. Below that the hook
-	 * never fires, the schema stays as the adapter wrote it, and the fields are
-	 * still delivered, undocumented, which is the pre-7.1 status quo for
-	 * everything else about this response.
+	 * `wp_register_ability_args` ships with the Abilities API itself in WordPress
+	 * 6.9, so this fires on every version Albert supports and needs no guard —
+	 * registration is the only path to an ability, and it runs through this
+	 * filter. A host that filters the hook away loses the two declarations, not
+	 * the fields: they are appended to the response by {@see self::add_context()}
+	 * either way.
 	 *
 	 * @param array<string, mixed> $args The registration arguments.
 	 * @param string               $name The ability being registered.
