@@ -698,6 +698,88 @@ class ToolCallObserverTest extends TestCase {
 	}
 
 	/**
+	 * A key refused by a nested object is named with the path to it.
+	 *
+	 * Core's message drops the path — `company is not a valid property of
+	 * Object` — so a caller cannot tell which object refused it, nor that the
+	 * top level would refuse it too.
+	 *
+	 * @return void
+	 */
+	public function test_nested_unrecognised_keys_are_named_with_their_path(): void {
+		$this->register_ability(
+			'albert/update-order',
+			[
+				'type'                 => 'object',
+				'properties'           => [
+					'order_id' => [ 'type' => 'integer' ],
+					'billing'  => [
+						'type'                 => 'object',
+						'properties'           => [
+							'city'  => [ 'type' => 'string' ],
+							'phone' => [ 'type' => 'string' ],
+						],
+						'additionalProperties' => false,
+					],
+				],
+				'required'             => [ 'order_id' ],
+				'additionalProperties' => false,
+			]
+		);
+
+		$out = $this->observer->handle(
+			new WP_Error( 'ability_invalid_input', 'Ability "albert/update-order" has invalid input. Reason: company is not a valid property of Object.' ),
+			[
+				'order_id' => 1,
+				'billing'  => [
+					'company' => 'Acme BV',
+					'city'    => 'Utrecht',
+				],
+			],
+			'albert-update-order'
+		);
+
+		$this->assertSame(
+			'Unrecognised parameters: `billing.company`. '
+			. 'Accepted parameters for `billing`: `city` (string), `phone` (string).',
+			$out->get_error_message()
+		);
+	}
+
+	/**
+	 * A key refused inside an array of objects carries its index.
+	 *
+	 * @return void
+	 */
+	public function test_unrecognised_keys_in_a_list_carry_their_index(): void {
+		$this->register_ability(
+			'albert/create-thing',
+			[
+				'type'                 => 'object',
+				'properties'           => [
+					'blocks' => [
+						'type'  => 'array',
+						'items' => [
+							'type'                 => 'object',
+							'properties'           => [ 'name' => [ 'type' => 'string' ] ],
+							'additionalProperties' => false,
+						],
+					],
+				],
+				'additionalProperties' => false,
+			]
+		);
+
+		$out = $this->observer->handle(
+			new WP_Error( 'ability_invalid_input', 'Ability "albert/create-thing" has invalid input. Reason: whatever.' ),
+			[ 'blocks' => [ [ 'name' => 'core/paragraph' ], [ 'name' => 'core/heading', 'content' => 'Hi' ] ] ],
+			'albert-create-thing'
+		);
+
+		$this->assertStringContainsString( 'Unrecognised parameters: `blocks[1].content`.', $out->get_error_message() );
+	}
+
+	/**
 	 * The ability is taken from the adapter's tool, not guessed from its name.
 	 *
 	 * A namespace may contain hyphens of its own, so unpicking the first hyphen

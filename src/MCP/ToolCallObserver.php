@@ -249,20 +249,16 @@ class ToolCallObserver {
 		$required = isset( $schema['required'] ) && is_array( $schema['required'] ) ? $schema['required'] : [];
 		$missing  = array_values( array_diff( $required, array_keys( $supplied ) ) );
 
-		// A closed schema with no properties takes nothing at all, so everything
-		// sent to it is unrecognised.
+		// Walked, not diffed at the root: a nested object refuses its own keys,
+		// and core's message drops the path, so `billing.company` would arrive as
+		// a bare "company" the caller cannot place.
 		$closed       = ( $schema['additionalProperties'] ?? null ) === false;
-		$unrecognised = $closed
-			? array_values( array_diff( array_keys( $supplied ), array_keys( $properties ) ) )
-			: [];
+		$unrecognised = $this->unrecognised_keys( $supplied, $schema );
 
-		// Minus the names reported below, so the reason describes a wrong *value*
-		// rather than restating a wrong name. Core stops at whichever it hit
-		// first; this reports both.
-		$reason = $this->validation_reason(
-			$ability,
-			array_diff_key( $supplied, array_flip( $unrecognised ) )
-		);
+		// Minus every name reported below, at any depth, so the reason describes
+		// a wrong *value* rather than restating a wrong name. Core stops at
+		// whichever it hit first; this reports both.
+		$reason = $this->validation_reason( $ability, $this->without( $supplied, $unrecognised ) );
 
 		$lines = [];
 
@@ -293,7 +289,18 @@ class ToolCallObserver {
 			);
 		}
 
-		if ( $lines !== [] && $properties !== [] ) {
+		// Name the accepted parameters of the object that did the refusing, not
+		// the root's, or the caller is handed a list its own mistake is not in.
+		$nested = $this->deepest_offending_object( $unrecognised, $schema );
+
+		if ( $lines !== [] && $nested !== null ) {
+			$lines[] = sprintf(
+				/* translators: 1: parameter name, 2: comma-separated list of accepted parameters */
+				__( 'Accepted parameters for `%1$s`: %2$s.', 'albert-ai-butler' ),
+				$nested['path'],
+				implode( ', ', $nested['properties'] )
+			);
+		} elseif ( $lines !== [] && $properties !== [] ) {
 			$lines[] = sprintf(
 				/* translators: %s: comma-separated list of accepted parameters */
 				__( 'Accepted parameters: %s.', 'albert-ai-butler' ),
@@ -304,6 +311,140 @@ class ToolCallObserver {
 		}
 
 		return implode( ' ', $lines );
+	}
+
+	/**
+	 * Every supplied key a closed schema does not declare, with its path.
+	 *
+	 * Walks objects and arrays of objects so a key refused three levels down is
+	 * named `blocks[0].bogus` rather than `bogus`. Only closed schemas are
+	 * reported: elsewhere an undeclared key is legal.
+	 *
+	 * @param mixed                $value  The input at this level.
+	 * @param array<string, mixed> $schema The schema at this level.
+	 * @param string               $path   The path walked so far.
+	 *
+	 * @return array<int, string> Dotted paths of the unrecognised keys.
+	 * @since 1.4.0
+	 */
+	private function unrecognised_keys( $value, array $schema, string $path = '' ): array {
+		if ( ! is_array( $value ) ) {
+			return [];
+		}
+
+		if ( ( $schema['type'] ?? null ) === 'array' ) {
+			$items = $this->as_array( $schema['items'] ?? [] );
+			$found = [];
+			foreach ( $value as $index => $item ) {
+				$found = array_merge( $found, $this->unrecognised_keys( $item, $items, $path . '[' . $index . ']' ) );
+			}
+
+			return $found;
+		}
+
+		if ( ( $schema['type'] ?? null ) !== 'object' ) {
+			return [];
+		}
+
+		$properties = $this->as_array( $schema['properties'] ?? [] );
+		$closed     = ( $schema['additionalProperties'] ?? null ) === false;
+
+		$found = [];
+		foreach ( $value as $key => $sub ) {
+			$here = $path === '' ? (string) $key : $path . '.' . $key;
+
+			if ( ! array_key_exists( $key, $properties ) ) {
+				if ( $closed ) {
+					$found[] = $here;
+				}
+				continue;
+			}
+
+			$found = array_merge( $found, $this->unrecognised_keys( $sub, $this->as_array( $properties[ $key ] ), $here ) );
+		}
+
+		return $found;
+	}
+
+	/**
+	 * The input with the given paths removed, however deeply they are nested.
+	 *
+	 * @param array<array-key, mixed> $value The input to prune.
+	 * @param array<int, string>      $paths Dotted/indexed paths to remove.
+	 *
+	 * @return array<array-key, mixed> The pruned input.
+	 * @since 1.4.0
+	 */
+	private function without( array $value, array $paths ): array {
+		foreach ( $paths as $path ) {
+			$split = preg_split( '/\.|(?=\[)/', $path );
+			$steps = array_values( array_filter( is_array( $split ) ? $split : [] ) );
+			$last  = array_pop( $steps );
+			if ( $last === null ) {
+				continue;
+			}
+
+			$cursor = &$value;
+			foreach ( $steps as $step ) {
+				$key = str_starts_with( $step, '[' ) ? (int) trim( $step, '[]' ) : $step;
+				if ( ! is_array( $cursor ) || ! array_key_exists( $key, $cursor ) ) {
+					continue 2;
+				}
+				$cursor = &$cursor[ $key ];
+			}
+
+			if ( is_array( $cursor ) ) {
+				unset( $cursor[ str_starts_with( $last, '[' ) ? (int) trim( $last, '[]' ) : $last ] );
+			}
+			unset( $cursor );
+		}
+
+		return $value;
+	}
+
+	/**
+	 * The nested object an unrecognised key was refused by, if it was nested.
+	 *
+	 * @param array<int, string>   $unrecognised Paths of the unrecognised keys.
+	 * @param array<string, mixed> $schema       The root input schema.
+	 *
+	 * @return array{path: string, properties: array<string, string>}|null The object, or null at the root.
+	 * @since 1.4.0
+	 */
+	private function deepest_offending_object( array $unrecognised, array $schema ): ?array {
+		$parents = [];
+		foreach ( $unrecognised as $found ) {
+			$parent = preg_replace( '/(\.[^.\[]+|\[\d+\])$/', '', $found );
+			if ( is_string( $parent ) && $parent !== '' && $parent !== $found ) {
+				$parents[ $parent ] = true;
+			}
+		}
+
+		// Only when every offender shares one parent: two lists confuse more
+		// than they help, and the root list below still names the top level.
+		if ( count( $parents ) !== 1 ) {
+			return null;
+		}
+
+		$path   = (string) array_key_first( $parents );
+		$cursor = $schema;
+		$split  = preg_split( '/\.|(?=\[)/', $path );
+		foreach ( is_array( $split ) ? $split : [] as $step ) {
+			if ( $step === '' ) {
+				continue;
+			}
+
+			$cursor = str_starts_with( $step, '[' )
+				? $this->as_array( $cursor['items'] ?? [] )
+				: $this->as_array( $this->as_array( $cursor['properties'] ?? [] )[ $step ] ?? [] );
+		}
+
+		$properties = $this->get_input_properties( $cursor );
+
+		return $properties === [] ? null : [
+			'path'       => $path,
+			'properties' => $properties,
+		];
 	}
 
 	/**

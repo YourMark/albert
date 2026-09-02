@@ -10,6 +10,7 @@
 namespace Albert\Abilities\WordPress\Posts;
 
 use Albert\Abstracts\BaseAbility;
+use Albert\Blocks\BlockSpecSchema;
 use Albert\Blocks\WriteContentResolver;
 use Albert\Core\Annotations;
 use WP_Error;
@@ -83,7 +84,7 @@ class Update extends BaseAbility {
 				'blocks'     => [
 					'type'        => 'array',
 					'description' => 'Structured block specs (preferred over "content"). Replaces the entire post body. Each item is { "name": "core/paragraph", "attributes": { ... }, "innerBlocks": [ ... ] }; innerBlocks is the same shape recursively for layout blocks (e.g. core/columns > core/column). Put text in attributes (content/text/value) or in "plaintext". Example: [ { "name": "core/heading", "attributes": { "level": 2, "content": "Intro" } }, { "name": "core/paragraph", "attributes": { "content": "Hello world." } } ]',
-					'items'       => [ 'type' => 'object' ],
+					'items'       => BlockSpecSchema::spec(),
 				],
 				'status'     => [
 					'type'        => 'string',
