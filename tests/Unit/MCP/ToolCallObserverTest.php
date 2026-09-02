@@ -308,7 +308,7 @@ class ToolCallObserverTest extends TestCase {
 		);
 
 		$this->assertSame(
-			'Missing required parameter: `id`. Unrecognised parameters, ignored: `term_id`, `fields`. '
+			'Missing required parameter: `id`. Unrecognised parameters: `term_id`, `fields`. '
 			. 'Accepted parameters: `id` (integer, required), `taxonomy` (string).',
 			$out->get_error_message()
 		);
@@ -362,12 +362,15 @@ class ToolCallObserverTest extends TestCase {
 				'ability_invalid_input',
 				'Ability "albert/view-term" has invalid input. Reason: id is not of type integer.'
 			),
-			[ 'id' => 'seventy-six', 'fields' => 'all' ],
+			[
+				'id'     => 'seventy-six',
+				'fields' => 'all',
+			],
 			'albert-view-term'
 		);
 
 		$this->assertStringContainsString( 'Invalid parameters: id is not of type integer.', $out->get_error_message() );
-		$this->assertStringContainsString( 'Unrecognised parameters, ignored: `fields`.', $out->get_error_message() );
+		$this->assertStringContainsString( 'Unrecognised parameters: `fields`.', $out->get_error_message() );
 	}
 
 	/**
@@ -395,7 +398,7 @@ class ToolCallObserverTest extends TestCase {
 		);
 
 		$this->assertSame(
-			'Missing required parameter: `id`. Unrecognised parameters, ignored: `term_id`. '
+			'Missing required parameter: `id`. Unrecognised parameters: `term_id`. '
 			. 'Accepted parameters: `id` (integer, required), `taxonomy` (string).',
 			$out['error']
 		);
@@ -423,7 +426,10 @@ class ToolCallObserverTest extends TestCase {
 	 * @return void
 	 */
 	public function test_meta_tool_success_passthrough(): void {
-		$result = [ 'success' => true, 'data' => [ 'term' => [ 'id' => 76 ] ] ];
+		$result = [
+			'success' => true,
+			'data'    => [ 'term' => [ 'id' => 76 ] ],
+		];
 
 		$out = $this->observer->handle( $result, [], 'mcp-adapter-execute-ability' );
 
@@ -481,5 +487,58 @@ class ToolCallObserverTest extends TestCase {
 			}
 		);
 		$this->assertCount( 0, $fired );
+	}
+
+	/**
+	 * A call whose only fault is an unrecognised parameter says just that.
+	 *
+	 * Core stops at the first property it does not recognise and phrases it as
+	 * "fields is not a valid property of Object", which names one of them and
+	 * offers no alternative. The message names them all, and what is accepted.
+	 *
+	 * @return void
+	 */
+	public function test_only_unrecognised_parameters(): void {
+		$this->register_view_term();
+
+		$out = $this->observer->handle(
+			new WP_Error(
+				'ability_invalid_input',
+				'Ability "albert/view-term" has invalid input. Reason: fields is not a valid property of Object.'
+			),
+			[
+				'id'     => 76,
+				'fields' => 'all',
+				'depth'  => 2,
+			],
+			'albert-view-term'
+		);
+
+		$this->assertSame(
+			'Unrecognised parameters: `fields`, `depth`. '
+			. 'Accepted parameters: `id` (integer, required), `taxonomy` (string).',
+			$out->get_error_message()
+		);
+	}
+
+	/**
+	 * With no schema to diff against, core's own reason is kept rather than lost.
+	 *
+	 * @return void
+	 */
+	public function test_unrecognised_reason_kept_without_a_schema(): void {
+		$out = $this->observer->handle(
+			new WP_Error(
+				'ability_invalid_input',
+				'Ability "albert/view-term" has invalid input. Reason: fields is not a valid property of Object.'
+			),
+			[ 'fields' => 'all' ],
+			'albert-view-term'
+		);
+
+		$this->assertSame(
+			'Invalid parameters: fields is not a valid property of Object.',
+			$out->get_error_message()
+		);
 	}
 }

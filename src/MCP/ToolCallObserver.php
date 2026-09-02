@@ -193,10 +193,14 @@ class ToolCallObserver {
 	 * The reason names what is missing and nothing else, which is a dead end for
 	 * the commonest mistake of all: a parameter spelled the way a *different*
 	 * tool spells it. `{"term_id": 76}` on an ability that takes `id` was told
-	 * only that `id` was required — never that `term_id` had been sent and
-	 * dropped — so the caller had no way to see its own error and either retried
-	 * the same call or paid for a schema fetch. Anything the schema does not
-	 * recognise is therefore named too, along with what the ability does accept.
+	 * only that `id` was required — never that `term_id` had been sent and was
+	 * not a parameter this ability has — so the caller had no way to see its own
+	 * error and either retried the same call or paid for a schema fetch.
+	 * Anything the schema does not recognise is therefore named too, along with
+	 * what the ability does accept. Since 1.4.0 those are refused rather than
+	 * carried (see {@see \Albert\Abstracts\BaseAbility::prepare_input_schema()}),
+	 * which is what makes naming them worth doing: the caller learns the right
+	 * spelling at the moment the wrong one stops working.
 	 *
 	 * @param string               $raw          The raw validation message.
 	 * @param string               $ability_name The ability the call was for.
@@ -218,16 +222,20 @@ class ToolCallObserver {
 
 		$properties = $this->get_input_properties( $ability_name );
 
-		$lines = [ $this->describe_reason( $reason ) ];
-
 		$unrecognised = $properties === []
 			? []
 			: array_diff( array_keys( $supplied ), array_keys( $properties ) );
 
+		$lines       = [];
+		$reason_line = $this->describe_reason( $reason, $unrecognised !== [] );
+		if ( $reason_line !== '' ) {
+			$lines[] = $reason_line;
+		}
+
 		if ( $unrecognised !== [] ) {
 			$lines[] = sprintf(
 				/* translators: %s: comma-separated list of parameter names */
-				__( 'Unrecognised parameters, ignored: %s.', 'albert-ai-butler' ),
+				__( 'Unrecognised parameters: %s.', 'albert-ai-butler' ),
 				$this->name_list( $unrecognised )
 			);
 		}
@@ -246,12 +254,14 @@ class ToolCallObserver {
 	/**
 	 * Restate the validator's reason in the caller's own terms.
 	 *
-	 * @param string $reason The reason tail of the validation message.
+	 * @param string $reason      The reason tail of the validation message.
+	 * @param bool   $names_follow Whether the message goes on to name the
+	 *                             unrecognised parameters itself.
 	 *
-	 * @return string A single sentence.
+	 * @return string A single sentence, or empty when the next line says it better.
 	 * @since 1.4.0
 	 */
-	private function describe_reason( string $reason ): string {
+	private function describe_reason( string $reason, bool $names_follow ): string {
 		if ( preg_match_all( '/`?([\w-]+)`?\s+is a required property/', $reason, $mm ) ) {
 			$template = count( $mm[1] ) === 1
 				/* translators: %s: parameter name */
@@ -260,6 +270,14 @@ class ToolCallObserver {
 				: __( 'Missing required parameters: %s.', 'albert-ai-butler' );
 
 			return sprintf( $template, $this->name_list( $mm[1] ) );
+		}
+
+		// Core stops at the first property it does not recognise and phrases it
+		// as "x is not a valid property of Object." The line after this one
+		// names every one of them against the schema, so repeating core's
+		// half-answer here would only bury it.
+		if ( $names_follow && str_contains( $reason, 'is not a valid property of' ) ) {
+			return '';
 		}
 
 		return sprintf(

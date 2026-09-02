@@ -245,7 +245,7 @@ class SchemaPreparerTest extends TestCase {
 	}
 
 	/**
-	 * get-ability-info is recognised by the name a client actually sends.
+	 * The get-ability-info tool is recognised by the name a client actually sends.
 	 *
 	 * A slash is not legal in an MCP tool name, so the adapter advertises the
 	 * meta-tool as `mcp-adapter-get-ability-info` and that is the name that

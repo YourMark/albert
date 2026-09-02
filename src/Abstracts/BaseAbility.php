@@ -154,28 +154,47 @@ abstract class BaseAbility implements Ability {
 	/**
 	 * Prepare the input schema for registration.
 	 *
-	 * Ensures an object-typed root schema carries a `default` of an empty
-	 * object so WP_Ability::normalize_input() can rescue calls that arrive
-	 * with a null payload. The mcp-adapter ExecuteAbilityAbility coerces
-	 * empty `{}` parameters to null via `empty()` before invoking
-	 * `WP_Ability::execute()`; without a root default, validate_input(null)
-	 * fails with "input is not of type object" and the assistant sees an
-	 * unhelpful error for any tool call made without arguments.
+	 * Two things are added to an object-typed root schema, and a child class
+	 * that declares either of them keeps its own.
 	 *
-	 * Child classes that already declare a root `default` keep theirs.
+	 * A `default` of an empty object, so WP_Ability::normalize_input() can
+	 * rescue calls that arrive with a null payload. The core REST run route
+	 * passes null whenever `input` is omitted; without a root default,
+	 * validate_input(null) fails with "input is not of type object" and the
+	 * assistant sees an unhelpful error for any call made without arguments.
+	 *
+	 * And `additionalProperties => false`, so input the schema does not
+	 * describe is refused instead of silently carried. JSON Schema is
+	 * permissive by default, and that default was the wrong one here: an
+	 * ability is reachable only through its schema, so a caller sending
+	 * `fields` to an ability that has no `fields` got a successful,
+	 * *unfiltered* answer and no way to know its parameter had been dropped.
+	 * A rejection costs one round trip; a wrong answer the caller trusts costs
+	 * more than that. The rejection is worth having only because it is
+	 * legible: {@see \Albert\MCP\ToolCallObserver} turns it into a message
+	 * naming every unrecognised parameter and every accepted one.
+	 *
+	 * Nothing is lost by being strict. No ability in Albert or its add-ons
+	 * reads an input key its own schema does not declare, and strictness is
+	 * far easier to relax later than to introduce.
 	 *
 	 * @param array<string, mixed> $schema Input schema declared by the ability.
 	 *
 	 * @return array<string, mixed> Schema safe to pass through the registry.
 	 * @since 1.2.0
+	 * @since 1.4.0 Refuses input the schema does not describe.
 	 */
 	protected function prepare_input_schema( array $schema ): array {
-		if ( empty( $schema ) ) {
+		if ( empty( $schema ) || ( $schema['type'] ?? null ) !== 'object' ) {
 			return $schema;
 		}
 
-		if ( ( $schema['type'] ?? null ) === 'object' && ! array_key_exists( 'default', $schema ) ) {
+		if ( ! array_key_exists( 'default', $schema ) ) {
 			$schema['default'] = [];
+		}
+
+		if ( ! array_key_exists( 'additionalProperties', $schema ) ) {
+			$schema['additionalProperties'] = false;
 		}
 
 		return $schema;

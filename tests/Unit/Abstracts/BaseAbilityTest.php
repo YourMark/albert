@@ -365,6 +365,34 @@ class BaseAbilityTest extends TestCase {
 	 *
 	 * @return void
 	 */
+	public function test_register_ability_refuses_undeclared_input(): void {
+		$ability = new ObjectSchemaAbility();
+		$ability->register_ability();
+
+		$schema = $GLOBALS['albert_test_registered_abilities']['albert/object-schema']['input_schema'];
+
+		$this->assertFalse( $schema['additionalProperties'] );
+	}
+
+	public function test_register_ability_keeps_an_explicit_additional_properties(): void {
+		$ability = new OpenSchemaAbility();
+		$ability->register_ability();
+
+		$schema = $GLOBALS['albert_test_registered_abilities']['albert/open-schema']['input_schema'];
+
+		$this->assertTrue( $schema['additionalProperties'] );
+	}
+
+	public function test_register_ability_leaves_a_non_object_schema_alone(): void {
+		$ability = new ArraySchemaAbility();
+		$ability->register_ability();
+
+		$schema = $GLOBALS['albert_test_registered_abilities']['albert/array-schema']['input_schema'];
+
+		$this->assertArrayNotHasKey( 'additionalProperties', $schema );
+		$this->assertArrayNotHasKey( 'default', $schema );
+	}
+
 	public function test_register_ability_keeps_existing_root_default(): void {
 		$ability = new ExplicitDefaultAbility();
 		$ability->register_ability();
@@ -436,6 +464,99 @@ final class ObjectSchemaAbility extends \Albert\Abstracts\BaseAbility {
 			'properties' => [
 				'foo' => [ 'type' => 'string' ],
 			],
+		];
+
+		parent::__construct();
+	}
+
+	/**
+	 * Execute — unused by these tests.
+	 *
+	 * @param array<string, mixed> $args Input parameters.
+	 *
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	public function execute( array $args ): array|\WP_Error {
+		return [ 'ok' => true ];
+	}
+
+	/**
+	 * Permission callback — open for tests.
+	 *
+	 * @return bool
+	 */
+	public function check_permission(): bool|\WP_Error {
+		return true;
+	}
+}
+
+/**
+ * Ability that deliberately accepts input beyond its declared properties.
+ *
+ * Used to verify prepare_input_schema() does not overrule a schema that has
+ * made its own decision about undeclared input.
+ */
+final class OpenSchemaAbility extends \Albert\Abstracts\BaseAbility {
+
+	/**
+	 * Constructor.
+	 */
+	public function __construct() {
+		$this->id           = 'albert/open-schema';
+		$this->label        = 'Open Schema';
+		$this->description  = 'Object-typed schema that opts back into extra input.';
+		$this->category     = 'test';
+		$this->input_schema = [
+			'type'                 => 'object',
+			'properties'           => [
+				'foo' => [ 'type' => 'string' ],
+			],
+			'additionalProperties' => true,
+		];
+
+		parent::__construct();
+	}
+
+	/**
+	 * Execute — unused by these tests.
+	 *
+	 * @param array<string, mixed> $args Input parameters.
+	 *
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	public function execute( array $args ): array|\WP_Error {
+		return [ 'ok' => true ];
+	}
+
+	/**
+	 * Permission callback — open for tests.
+	 *
+	 * @return bool
+	 */
+	public function check_permission(): bool|\WP_Error {
+		return true;
+	}
+}
+
+/**
+ * Ability whose input schema is not an object.
+ *
+ * Used to verify prepare_input_schema() adds nothing to a schema where neither
+ * a root default nor an additionalProperties rule would mean anything.
+ */
+final class ArraySchemaAbility extends \Albert\Abstracts\BaseAbility {
+
+	/**
+	 * Constructor.
+	 */
+	public function __construct() {
+		$this->id           = 'albert/array-schema';
+		$this->label        = 'Array Schema';
+		$this->description  = 'Array-typed input schema.';
+		$this->category     = 'test';
+		$this->input_schema = [
+			'type'  => 'array',
+			'items' => [ 'type' => 'string' ],
 		];
 
 		parent::__construct();

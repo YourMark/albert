@@ -116,6 +116,58 @@ class InputValidationTest extends TestCase {
 	}
 
 	/**
+	 * A parameter the schema does not declare is refused, not carried.
+	 *
+	 * The reported case: `albert/view-term` takes `id`, and a call passing
+	 * `term_id` (or `fields`, or anything else) used to have the extra key
+	 * carried through validation and dropped by the implementation without a
+	 * word — a *successful*, unfiltered answer the caller had every reason to
+	 * think had been filtered. Every ability now declares
+	 * `additionalProperties: false`, so the call fails instead and the caller
+	 * is told which name it used and which names exist.
+	 *
+	 * @dataProvider provideAbilities
+	 *
+	 * @param class-string<BaseAbility> $ability_class Ability class.
+	 *
+	 * @return void
+	 */
+	public function test_undeclared_parameters_return_wp_error( string $ability_class ): void {
+		$ability = $this->get_registered_ability( $ability_class );
+		$schema  = $ability->get_input_schema();
+
+		if ( ( $schema['type'] ?? null ) !== 'object' ) {
+			$this->expectNotToPerformAssertions();
+			return;
+		}
+
+		$this->assertFalse(
+			$schema['additionalProperties'] ?? null,
+			sprintf( '%s should refuse input it does not declare.', $ability->get_name() )
+		);
+
+		$properties = $schema['properties'] ?? [];
+		$required   = $schema['required'] ?? [];
+
+		$args = $this->build_valid_args_from_schema( $properties, $required );
+		$args['albert_not_a_parameter'] = 'anything';
+
+		$result = $ability->execute( $args );
+
+		$this->assertInstanceOf(
+			WP_Error::class,
+			$result,
+			sprintf( 'Expected WP_Error for an undeclared parameter on %s.', $ability->get_name() )
+		);
+
+		$this->assertSame(
+			'ability_invalid_input',
+			$result->get_error_code(),
+			sprintf( 'Expected "ability_invalid_input" for an undeclared parameter on %s.', $ability->get_name() )
+		);
+	}
+
+	/**
 	 * Wrong types return WP_Error with ability_invalid_input code.
 	 *
 	 * Reads each ability's input_schema properties, and for each typed field,
