@@ -22,6 +22,8 @@ use WP_REST_Request;
  * @since 1.0.0
  */
 class UpdateTerm extends BaseAbility {
+	use ResolvesTaxonomyRoute;
+
 	/**
 	 * Constructor.
 	 *
@@ -191,50 +193,5 @@ class UpdateTerm extends BaseAbility {
 			'parent'      => $data['parent'] ?? 0,
 			'count'       => $data['count'] ?? 0,
 		];
-	}
-
-	/**
-	 * Get the REST base for a taxonomy.
-	 *
-	 * @param string $taxonomy Taxonomy slug.
-	 * @return string|WP_Error REST base or error.
-	 * @since 1.0.0
-	 */
-	private function get_taxonomy_rest_base( string $taxonomy ): string|WP_Error {
-		// Map common taxonomies to their REST bases.
-		$rest_bases = [
-			'category'  => 'categories',
-			'post_tag'  => 'tags',
-			'post_tags' => 'tags',
-		];
-
-		if ( isset( $rest_bases[ $taxonomy ] ) ) {
-			return $rest_bases[ $taxonomy ];
-		}
-
-		// Get taxonomy object.
-		$taxonomy_obj = get_taxonomy( $taxonomy );
-		if ( ! $taxonomy_obj ) {
-			return new WP_Error(
-				'invalid_taxonomy',
-				__( 'Invalid taxonomy.', 'albert-ai-butler' ),
-				[ 'status' => 404 ]
-			);
-		}
-
-		if ( empty( $taxonomy_obj->rest_base ) ) {
-			return new WP_Error(
-				'taxonomy_not_rest_enabled',
-				__( 'This taxonomy is not available via REST API.', 'albert-ai-butler' ),
-				[ 'status' => 400 ]
-			);
-		}
-
-		// If rest_base is true, use the taxonomy name as the REST base.
-		if ( $taxonomy_obj->rest_base === true ) {
-			return $taxonomy_obj->name;
-		}
-
-		return $taxonomy_obj->rest_base;
 	}
 }

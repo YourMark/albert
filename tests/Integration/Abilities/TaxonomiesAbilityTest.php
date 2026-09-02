@@ -564,4 +564,193 @@ class TaxonomiesAbilityTest extends TestCase {
 		$this->assertIsArray( $result );
 		$this->assertTrue( $result['deleted'] );
 	}
+	// ─── Route resolution ───────────────────────────────────────────
+
+	/**
+	 * Register a taxonomy and give it its REST route for this request.
+	 *
+	 * Taxonomy routes are created on `rest_api_init`, which has already run by
+	 * the time a test registers one, so it is re-fired here — otherwise the
+	 * ability would call a route that does not exist yet and the test would
+	 * prove nothing about route resolution.
+	 *
+	 * @param string               $taxonomy Taxonomy slug to register.
+	 * @param array<string, mixed> $args     Extra registration arguments.
+	 *
+	 * @return void
+	 */
+	private function register_routed_taxonomy( string $taxonomy, array $args = [] ): void {
+		register_taxonomy(
+			$taxonomy,
+			'post',
+			array_merge(
+				[
+					'show_in_rest' => true,
+					'public'       => true,
+				],
+				$args
+			)
+		);
+
+		do_action( 'rest_api_init' );
+	}
+
+	/**
+	 * A REST-enabled taxonomy with no explicit rest_base is readable.
+	 *
+	 * `register_taxonomy()` leaves `rest_base` false unless the caller sets it,
+	 * and WordPress then serves the taxonomy under its own slug. Reading
+	 * `rest_base` as the availability flag rejected every such taxonomy —
+	 * WooCommerce's `product_cat` among them — with "not available via REST API".
+	 *
+	 * @return void
+	 */
+	public function test_find_terms_taxonomy_without_explicit_rest_base(): void {
+		$this->register_routed_taxonomy( 'albert_no_base' );
+
+		self::factory()->term->create(
+			[
+				'taxonomy' => 'albert_no_base',
+				'name'     => 'Baseless Term',
+			]
+		);
+
+		$result = ( new FindTerms() )->execute( [ 'taxonomy' => 'albert_no_base' ] );
+
+		unregister_taxonomy( 'albert_no_base' );
+
+		$this->assertIsArray( $result );
+		$this->assertArrayHasKey( 'terms', $result );
+		$this->assertContains( 'Baseless Term', array_column( $result['terms'], 'name' ) );
+	}
+
+	/**
+	 * An explicit rest_base is still used when the taxonomy declares one.
+	 *
+	 * @return void
+	 */
+	public function test_find_terms_taxonomy_with_explicit_rest_base(): void {
+		$this->register_routed_taxonomy( 'albert_based', [ 'rest_base' => 'albert-based-things' ] );
+
+		self::factory()->term->create(
+			[
+				'taxonomy' => 'albert_based',
+				'name'     => 'Based Term',
+			]
+		);
+
+		$result = ( new FindTerms() )->execute( [ 'taxonomy' => 'albert_based' ] );
+
+		unregister_taxonomy( 'albert_based' );
+
+		$this->assertIsArray( $result );
+		$this->assertContains( 'Based Term', array_column( $result['terms'], 'name' ) );
+	}
+
+	/**
+	 * A taxonomy kept out of the REST API is refused, and says which one.
+	 *
+	 * @return void
+	 */
+	public function test_find_terms_rejects_taxonomy_hidden_from_rest(): void {
+		$this->register_routed_taxonomy(
+			'albert_private_tax',
+			[
+				'show_in_rest' => false,
+				'public'       => false,
+			]
+		);
+
+		$result = ( new FindTerms() )->execute( [ 'taxonomy' => 'albert_private_tax' ] );
+
+		unregister_taxonomy( 'albert_private_tax' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'taxonomy_not_rest_enabled', $result->get_error_code() );
+		$this->assertStringContainsString( 'albert_private_tax', $result->get_error_message() );
+	}
+
+	/**
+	 * An unregistered taxonomy is refused with a message naming it.
+	 *
+	 * @return void
+	 */
+	public function test_find_terms_rejects_unknown_taxonomy(): void {
+		$result = ( new FindTerms() )->execute( [ 'taxonomy' => 'no_such_taxonomy' ] );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'invalid_taxonomy', $result->get_error_code() );
+		$this->assertStringContainsString( 'no_such_taxonomy', $result->get_error_message() );
+	}
+
+	/**
+	 * The `post_tags` alias still resolves to the post_tag taxonomy.
+	 *
+	 * @return void
+	 */
+	public function test_find_terms_post_tags_alias(): void {
+		self::factory()->term->create(
+			[
+				'taxonomy' => 'post_tag',
+				'name'     => 'Aliased Tag',
+			]
+		);
+
+		$result = ( new FindTerms() )->execute( [ 'taxonomy' => 'post_tags' ] );
+
+		$this->assertIsArray( $result );
+		$this->assertContains( 'Aliased Tag', array_column( $result['terms'], 'name' ) );
+	}
+
+	/**
+	 * CreateTerm reaches a taxonomy that declares no rest_base.
+	 *
+	 * The four term abilities share one route resolver, so this checks the
+	 * write path gets the same corrected answer as the read path.
+	 *
+	 * @return void
+	 */
+	public function test_create_term_taxonomy_without_explicit_rest_base(): void {
+		$this->register_routed_taxonomy( 'albert_no_base_write' );
+
+		$result = ( new CreateTerm() )->execute(
+			[
+				'taxonomy' => 'albert_no_base_write',
+				'name'     => 'Written Term',
+			]
+		);
+
+		unregister_taxonomy( 'albert_no_base_write' );
+
+		$this->assertIsArray( $result );
+		$this->assertSame( 'Written Term', $result['name'] ?? null );
+	}
+	/**
+	 * WooCommerce's product_cat is readable.
+	 *
+	 * The reported symptom, kept as its own test because it is the taxonomy a
+	 * real site actually has: WooCommerce registers `product_cat` with
+	 * `show_in_rest => true` and no `rest_base`, and it was refused as "not
+	 * available via REST API".
+	 *
+	 * @return void
+	 */
+	public function test_find_terms_woocommerce_product_cat(): void {
+		if ( ! class_exists( 'WooCommerce' ) ) {
+			$this->markTestSkipped( 'WooCommerce is not installed on this run.' );
+		}
+
+		self::factory()->term->create(
+			[
+				'taxonomy' => 'product_cat',
+				'name'     => 'Shoes',
+			]
+		);
+
+		$result = ( new FindTerms() )->execute( [ 'taxonomy' => 'product_cat' ] );
+
+		$this->assertIsArray( $result );
+		$this->assertArrayHasKey( 'terms', $result );
+		$this->assertContains( 'Shoes', array_column( $result['terms'], 'name' ) );
+	}
 }
