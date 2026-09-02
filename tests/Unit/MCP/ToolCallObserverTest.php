@@ -8,6 +8,7 @@
 namespace Albert\Tests\Unit\MCP;
 
 require_once dirname( __DIR__ ) . '/stubs/wordpress.php';
+require_once dirname( __DIR__ ) . '/stubs/WP_Ability.php';
 
 use Albert\Logging\ExecutionLogMarker;
 use Albert\MCP\ToolCallObserver;
@@ -61,6 +62,8 @@ class ToolCallObserverTest extends TestCase {
 	 * @return void
 	 */
 	public function test_single_missing_required(): void {
+		$this->register_create_post();
+
 		$out = $this->observer->handle(
 			$this->invalid_input( 'title is a required property of input.' ),
 			[ 'content' => 'x' ],
@@ -68,7 +71,7 @@ class ToolCallObserverTest extends TestCase {
 		);
 
 		$this->assertInstanceOf( WP_Error::class, $out );
-		$this->assertSame( 'Missing required parameter: `title`.', $out->get_error_message() );
+		$this->assertStringStartsWith( 'Missing required parameter: `title`.', $out->get_error_message() );
 		$this->assertSame( 'ability_invalid_input', $out->get_error_code() );
 	}
 
@@ -78,13 +81,15 @@ class ToolCallObserverTest extends TestCase {
 	 * @return void
 	 */
 	public function test_multiple_missing_required(): void {
+		$this->register_create_post( [ 'title', 'status' ] );
+
 		$out = $this->observer->handle(
 			$this->invalid_input( 'title is a required property of input. status is a required property of input.' ),
 			[],
 			'albert/create-post'
 		);
 
-		$this->assertSame( 'Missing required parameters: `title`, `status`.', $out->get_error_message() );
+		$this->assertStringStartsWith( 'Missing required parameters: `title`, `status`.', $out->get_error_message() );
 	}
 
 	/**
@@ -93,13 +98,15 @@ class ToolCallObserverTest extends TestCase {
 	 * @return void
 	 */
 	public function test_other_validation_reason(): void {
+		$this->register_create_post();
+
 		$out = $this->observer->handle(
-			$this->invalid_input( 'status is not one of draft and publish' ),
-			[],
+			$this->invalid_input( 'input[title] is not of type string.' ),
+			[ 'title' => 123 ],
 			'albert/create-post'
 		);
 
-		$this->assertSame( 'Invalid parameters: status is not one of draft and publish.', $out->get_error_message() );
+		$this->assertStringStartsWith( 'Invalid parameters: input[title] is not of type string.', $out->get_error_message() );
 	}
 
 	/**
@@ -166,10 +173,12 @@ class ToolCallObserverTest extends TestCase {
 	 * @return void
 	 */
 	public function test_validation_rejection_improves_message_but_is_not_logged(): void {
+		$this->register_create_post();
+
 		$out = $this->observer->handle( $this->invalid_input( 'title is a required property of input.' ), [ 'a' => 1 ], 'albert/create-post' );
 
 		// Message is still improved for the assistant.
-		$this->assertSame( 'Missing required parameter: `title`.', $out->get_error_message() );
+		$this->assertStringStartsWith( 'Missing required parameter: `title`.', $out->get_error_message() );
 
 		// But nothing is logged.
 		$fired = array_filter(
@@ -201,6 +210,29 @@ class ToolCallObserverTest extends TestCase {
 	}
 
 	/**
+	 * Register a double shaped like albert/create-post.
+	 *
+	 * @param array<int, string> $required Required property names.
+	 *
+	 * @return void
+	 */
+	private function register_create_post( array $required = [ 'title' ] ): void {
+		$this->register_ability(
+			'albert/create-post',
+			[
+				'type'                 => 'object',
+				'properties'           => [
+					'title'   => [ 'type' => 'string' ],
+					'status'  => [ 'type' => 'string' ],
+					'content' => [ 'type' => 'string' ],
+				],
+				'required'             => $required,
+				'additionalProperties' => false,
+			]
+		);
+	}
+
+	/**
 	 * Register a test double for an ability with the given input schema.
 	 *
 	 * @param string               $name   Ability id.
@@ -209,50 +241,7 @@ class ToolCallObserverTest extends TestCase {
 	 * @return void
 	 */
 	private function register_ability( string $name, array $schema ): void {
-		$GLOBALS['albert_test_abilities'][] = new class( $name, $schema ) {
-			/**
-			 * Ability id.
-			 *
-			 * @var string
-			 */
-			private string $name;
-
-			/**
-			 * Input schema.
-			 *
-			 * @var array<string, mixed>
-			 */
-			private array $schema;
-
-			/**
-			 * Constructor.
-			 *
-			 * @param string               $name   Ability id.
-			 * @param array<string, mixed> $schema Input schema.
-			 */
-			public function __construct( string $name, array $schema ) {
-				$this->name   = $name;
-				$this->schema = $schema;
-			}
-
-			/**
-			 * The ability id.
-			 *
-			 * @return string
-			 */
-			public function get_name(): string {
-				return $this->name;
-			}
-
-			/**
-			 * The input schema.
-			 *
-			 * @return array<string, mixed>
-			 */
-			public function get_input_schema(): array {
-				return $this->schema;
-			}
-		};
+		$GLOBALS['albert_test_abilities'][] = new \WP_Ability( $name, [], $schema );
 	}
 
 	/**
@@ -264,12 +253,16 @@ class ToolCallObserverTest extends TestCase {
 		$this->register_ability(
 			'albert/view-term',
 			[
-				'type'       => 'object',
-				'properties' => [
+				'type'                 => 'object',
+				'properties'           => [
 					'id'       => [ 'type' => 'integer' ],
 					'taxonomy' => [ 'type' => 'string' ],
 				],
-				'required'   => [ 'id' ],
+				'required'             => [ 'id' ],
+				// As registered: BaseAbility::prepare_input_schema() closes
+				// every object-typed input schema, so a double that leaves it
+				// open is not the schema the observer meets in production.
+				'additionalProperties' => false,
 			]
 		);
 	}
@@ -335,18 +328,21 @@ class ToolCallObserverTest extends TestCase {
 	}
 
 	/**
-	 * An ability Albert cannot resolve simply says less, it does not guess.
+	 * An ability Albert cannot resolve keeps core's own message.
+	 *
+	 * The guidance is read off the registered schema, so without one there is
+	 * nothing to say that is not a guess. Core's message already names the
+	 * ability and the reason, so it is passed through rather than reworded from
+	 * — which is also the only answer that does not depend on core's wording.
 	 *
 	 * @return void
 	 */
-	public function test_unregistered_ability_keeps_the_short_message(): void {
-		$out = $this->observer->handle(
-			$this->view_term_invalid_input(),
-			[ 'term_id' => 76 ],
-			'albert-view-term'
-		);
+	public function test_unregistered_ability_keeps_cores_message(): void {
+		$raw = $this->view_term_invalid_input();
 
-		$this->assertSame( 'Missing required parameter: `id`.', $out->get_error_message() );
+		$out = $this->observer->handle( $raw, [ 'term_id' => 76 ], 'albert-view-term' );
+
+		$this->assertSame( $raw->get_error_message(), $out->get_error_message() );
 	}
 
 	/**
@@ -369,7 +365,7 @@ class ToolCallObserverTest extends TestCase {
 			'albert-view-term'
 		);
 
-		$this->assertStringContainsString( 'Invalid parameters: id is not of type integer.', $out->get_error_message() );
+		$this->assertStringContainsString( 'Invalid parameters: input[id] is not of type integer.', $out->get_error_message() );
 		$this->assertStringContainsString( 'Unrecognised parameters: `fields`.', $out->get_error_message() );
 	}
 
@@ -527,18 +523,218 @@ class ToolCallObserverTest extends TestCase {
 	 * @return void
 	 */
 	public function test_unrecognised_reason_kept_without_a_schema(): void {
-		$out = $this->observer->handle(
-			new WP_Error(
-				'ability_invalid_input',
-				'Ability "albert/view-term" has invalid input. Reason: fields is not a valid property of Object.'
-			),
-			[ 'fields' => 'all' ],
+		$raw = new WP_Error(
+			'ability_invalid_input',
+			'Ability "albert/view-term" has invalid input. Reason: fields is not a valid property of Object.'
+		);
+
+		$out = $this->observer->handle( $raw, [ 'fields' => 'all' ], 'albert-view-term' );
+
+		$this->assertSame( $raw->get_error_message(), $out->get_error_message() );
+	}
+
+	/**
+	 * What the guidance says does not depend on core's message being in English.
+	 *
+	 * Albert's own wording is translated like everything else it emits — the
+	 * stubbed `__()` here is the identity, which is exactly what isolates the
+	 * thing under test: with Albert's half held constant, two runs can only
+	 * differ if core's message leaked into the derivation. It used to. Core
+	 * translates every string this was once built by matching ("has invalid
+	 * input. Reason:", "is a required property of", "is not a valid property of
+	 * Object") and nl_NL ships all three, so a Dutch site got no guidance at all.
+	 *
+	 * @return void
+	 */
+	public function test_guidance_is_identical_for_a_translated_core_message(): void {
+		$this->register_view_term();
+
+		$english = $this->observer->handle(
+			$this->view_term_invalid_input(),
+			[ 'term_id' => 76 ],
 			'albert-view-term'
 		);
 
+		$dutch = $this->observer->handle(
+			new WP_Error(
+				'ability_invalid_input',
+				'Ability "albert/view-term" heeft ongeldige invoer. Reden: id is een vereiste eigenschap van invoer.'
+			),
+			[ 'term_id' => 76 ],
+			'albert-view-term'
+		);
+
+		$this->assertSame( $english->get_error_message(), $dutch->get_error_message() );
+		$this->assertStringContainsString( 'Unrecognised parameters: `term_id`.', $dutch->get_error_message() );
+	}
+
+	/**
+	 * The execute-ability path is improved for a translated message too.
+	 *
+	 * This is the path the issue was reported from, and the one that had no
+	 * error code to fall back on — whether it was an input rejection used to be
+	 * decided by matching English text, so it improved nothing on a translated
+	 * site.
+	 *
+	 * @return void
+	 */
+	public function test_meta_tool_result_improved_for_a_translated_message(): void {
+		$this->register_view_term();
+
+		$out = $this->observer->handle(
+			[
+				'success' => false,
+				'error'   => 'Ability "albert/view-term" heeft ongeldige invoer. Reden: id is een vereiste eigenschap van invoer.',
+			],
+			[
+				'ability_name' => 'albert/view-term',
+				'parameters'   => [ 'term_id' => 76 ],
+			],
+			'mcp-adapter-execute-ability'
+		);
+
 		$this->assertSame(
-			'Invalid parameters: fields is not a valid property of Object.',
+			'Missing required parameter: `id`. Unrecognised parameters: `term_id`. '
+			. 'Accepted parameters: `id` (integer, required), `taxonomy` (string).',
+			$out['error']
+		);
+	}
+
+	/**
+	 * An undeclared name on an open schema is not called unrecognised.
+	 *
+	 * Naming a parameter unrecognised is a claim about the contract. A schema
+	 * that opts back into extra input accepts it, so the claim would be false.
+	 *
+	 * @return void
+	 */
+	public function test_open_schema_does_not_name_extra_input_unrecognised(): void {
+		$this->register_ability(
+			'albert/open-term',
+			[
+				'type'                 => 'object',
+				'properties'           => [ 'id' => [ 'type' => 'integer' ] ],
+				'required'             => [ 'id' ],
+				'additionalProperties' => true,
+			]
+		);
+
+		$out = $this->observer->handle(
+			new WP_Error( 'ability_invalid_input', 'Ability "albert/open-term" has invalid input. Reason: id is a required property of input.' ),
+			[ 'term_id' => 76 ],
+			'albert-open-term'
+		);
+
+		$this->assertStringNotContainsString( 'Unrecognised', $out->get_error_message() );
+		$this->assertStringContainsString( 'Missing required parameter: `id`.', $out->get_error_message() );
+	}
+
+	/**
+	 * An enum is named by its values, not by the type it narrows.
+	 *
+	 * The value a caller gets wrong is `published` for `publish`, and being told
+	 * the parameter is a `string` does nothing to correct that.
+	 *
+	 * @return void
+	 */
+	public function test_accepted_parameters_name_enum_values(): void {
+		$this->register_ability(
+			'albert/create-thing',
+			[
+				'type'                 => 'object',
+				'properties'           => [
+					'title'  => [ 'type' => 'string' ],
+					'status' => [
+						'type' => 'string',
+						'enum' => [ 'draft', 'publish' ],
+					],
+				],
+				'required'             => [ 'title' ],
+				'additionalProperties' => false,
+			]
+		);
+
+		$out = $this->observer->handle(
+			new WP_Error( 'ability_invalid_input', 'Ability "albert/create-thing" has invalid input. Reason: whatever.' ),
+			[ 'status' => 'published' ],
+			'albert-create-thing'
+		);
+
+		$this->assertStringContainsString( '`status` (draft|publish)', $out->get_error_message() );
+		$this->assertStringNotContainsString( '`status` (string', $out->get_error_message() );
+	}
+
+	/**
+	 * An ability that takes nothing says so, rather than saying nothing.
+	 *
+	 * A no-parameter ability declares `properties` as an empty map so it encodes
+	 * as `{}` — which may reach us as a stdClass, and used to be read as "no
+	 * schema to describe". That silenced the guidance in the one case where it
+	 * is the entire answer: everything the caller sent is unrecognised.
+	 *
+	 * @return void
+	 */
+	public function test_an_ability_with_no_parameters_says_so(): void {
+		$GLOBALS['albert_test_abilities'][] = new \WP_Ability(
+			'albert/view-sessions',
+			[],
+			[
+				'type'                 => 'object',
+				'properties'           => new \stdClass(),
+				'additionalProperties' => false,
+			]
+		);
+
+		$out = $this->observer->handle(
+			new WP_Error( 'ability_invalid_input', 'Ability "albert/view-sessions" has invalid input. Reason: whatever.' ),
+			[ 'limit' => 10 ],
+			'albert-view-sessions'
+		);
+
+		$this->assertSame(
+			'Unrecognised parameters: `limit`. This ability accepts no parameters.',
 			$out->get_error_message()
 		);
+	}
+
+	/**
+	 * The ability is taken from the adapter's tool, not guessed from its name.
+	 *
+	 * A namespace may contain hyphens of its own, so unpicking the first hyphen
+	 * of a sanitised tool name is a guess. The adapter built the mapping at
+	 * registration time and hands its tool to this filter, so it is asked.
+	 *
+	 * @return void
+	 */
+	public function test_ability_comes_from_the_adapter_tool(): void {
+		$this->register_ability(
+			'albert-extra/view-term',
+			[
+				'type'                 => 'object',
+				'properties'           => [ 'id' => [ 'type' => 'integer' ] ],
+				'required'             => [ 'id' ],
+				'additionalProperties' => false,
+			]
+		);
+
+		$mcp_tool = new class() {
+			/**
+			 * The adapter's registration-time tags.
+			 *
+			 * @return array<string, mixed>
+			 */
+			public function get_observability_context(): array {
+				return [ 'ability_name' => 'albert-extra/view-term' ];
+			}
+		};
+
+		$out = $this->observer->handle(
+			new WP_Error( 'ability_invalid_input', 'Ability "albert-extra/view-term" has invalid input. Reason: id is a required property of input.' ),
+			[ 'term_id' => 76 ],
+			'albert-extra-view-term',
+			$mcp_tool
+		);
+
+		$this->assertStringContainsString( 'Unrecognised parameters: `term_id`.', $out->get_error_message() );
 	}
 }

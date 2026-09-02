@@ -2,8 +2,9 @@
 /**
  * Minimal WP_Ability stub for unit tests.
  *
- * Only the accessors AbilitiesRegistry::resolve_required_capability() reads
- * (get_name / get_meta) are implemented.
+ * Only the accessors Albert reads are implemented: get_name / get_meta for
+ * AbilitiesRegistry::resolve_required_capability(), and get_input_schema for
+ * MCP\ToolCallObserver.
  *
  * @package Albert\Tests
  */
@@ -31,14 +32,23 @@ if ( ! class_exists( 'WP_Ability' ) ) {
 		private array $meta;
 
 		/**
+		 * Input schema.
+		 *
+		 * @var array<string, mixed>
+		 */
+		private array $input_schema;
+
+		/**
 		 * Constructor.
 		 *
-		 * @param string               $name Ability name (ID).
-		 * @param array<string, mixed> $meta Ability meta.
+		 * @param string               $name         Ability name (ID).
+		 * @param array<string, mixed> $meta         Ability meta.
+		 * @param array<string, mixed> $input_schema Input schema.
 		 */
-		public function __construct( string $name, array $meta = [] ) {
-			$this->name = $name;
-			$this->meta = $meta;
+		public function __construct( string $name, array $meta = [], array $input_schema = [] ) {
+			$this->name         = $name;
+			$this->meta         = $meta;
+			$this->input_schema = $input_schema;
 		}
 
 		/**
@@ -57,6 +67,15 @@ if ( ! class_exists( 'WP_Ability' ) ) {
 		 */
 		public function get_meta(): array {
 			return $this->meta;
+		}
+
+		/**
+		 * Get the input schema.
+		 *
+		 * @return array<string, mixed>
+		 */
+		public function get_input_schema(): array {
+			return $this->input_schema;
 		}
 	}
 }

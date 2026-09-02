@@ -112,7 +112,9 @@ class SchemaPreparer {
 	 * Rebuild a single Tool DTO with its schemas prepared for the client.
 	 *
 	 * The Tool DTO is immutable from outside, so it is rebuilt from its array
-	 * form with the prepared schemas swapped in.
+	 * form with the prepared schemas swapped in. Every Albert schema needs it on
+	 * every version — `BaseAbility` gives each one a root `default` that has to
+	 * be re-objected — so there is nothing to gain from skipping the rebuild.
 	 *
 	 * @param Tool $tool The tool to prepare.
 	 *
@@ -153,8 +155,10 @@ class SchemaPreparer {
 	private function prepare_schema( array $schema ): array {
 		$normalised = array_map( [ $this, 'to_array_deep' ], $schema );
 
+		// Stripping server-only keys needs 7.1; below that they stay, since the
+		// function does not exist. 6.9/7.0 fallback — removable, see WpCompat.
+		// The object-default correction below runs on every version.
 		if ( WpCompat::supports_client_schema_prep() ) {
-			// 6.9/7.0 fallback — removable, see WpCompat: server-only keys stay.
 			$normalised = wp_prepare_json_schema_for_client( $normalised );
 		}
 

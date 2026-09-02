@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Albert\Core\AbilitiesRegistry;
 use Albert\Logging\ExecutionLogMarker;
+use WP_Ability;
 use WP_Error;
 
 /**
@@ -53,11 +54,15 @@ class ToolCallObserver {
 	/**
 	 * Register the adapter result filter.
 	 *
+	 * Four arguments: the fourth is the adapter's `McpTool`, the only place the
+	 * tool-name-to-ability mapping exists.
+	 *
 	 * @return void
 	 * @since 1.2.0
+	 * @since 1.4.0 Takes the McpTool argument.
 	 */
 	public function register_hooks(): void {
-		add_filter( 'mcp_adapter_tool_call_result', [ $this, 'handle' ], 10, 3 );
+		add_filter( 'mcp_adapter_tool_call_result', [ $this, 'handle' ], 10, 4 );
 	}
 
 	/**
@@ -65,12 +70,13 @@ class ToolCallObserver {
 	 *
 	 * @param mixed  $result    The tool execution result (may be WP_Error).
 	 * @param mixed  $args      The tool arguments used.
-	 * @param string $tool_name The tool (ability) name that was called.
+	 * @param string $tool_name The tool name that was called.
+	 * @param mixed  $mcp_tool  The adapter's tool instance, if it passed one.
 	 *
 	 * @return mixed The (possibly improved) result.
 	 * @since 1.2.0
 	 */
-	public function handle( $result, $args, string $tool_name ): mixed {
+	public function handle( $result, $args, string $tool_name, $mcp_tool = null ): mixed {
 		$args = is_array( $args ) ? $args : [];
 
 		// The adapter's own meta-tools are not real abilities. They proxy one,
@@ -84,8 +90,9 @@ class ToolCallObserver {
 			return $result;
 		}
 
-		$ability_name = $this->resolve_ability_name( $result->get_error_message(), $tool_name );
-		$improved     = $this->improve_message( $result, $ability_name, $args );
+		$ability      = $this->resolve_ability( $mcp_tool, $tool_name );
+		$ability_name = $ability !== null ? $ability->get_name() : $tool_name;
+		$improved     = $this->improve_message( $result, $ability, $ability_name, $args );
 
 		// A missing/invalid-parameter rejection is self-correcting — the assistant
 		// gets the improved message and retries — so it is NOT logged; doing so
@@ -109,16 +116,12 @@ class ToolCallObserver {
 	/**
 	 * Improve the validation message carried inside a meta-tool result.
 	 *
-	 * `mcp-adapter/execute-ability` calls the target ability itself and returns
-	 * `[ 'success' => false, 'error' => <message> ]` on failure — an ordinary
-	 * array, not a WP_Error, so the WP_Error path above never sees it. This is
-	 * the path an assistant that discovered an ability through the meta-tools
-	 * actually uses, and it was the one place the improved message never
-	 * reached.
-	 *
-	 * Only a message that is recognisably the Abilities API's input-validation
-	 * text is rewritten; every other failure is passed through untouched, since
-	 * the meta-tool reports permission refusals and ability errors the same way.
+	 * `mcp-adapter/execute-ability` reports failure as
+	 * `[ 'success' => false, 'error' => <message> ]`, so the error *code* the
+	 * path above relies on is gone. Re-validate instead: core validates before
+	 * permissions and before the callback, so input that fails the schema is
+	 * necessarily what is being reported. Input that passes is some other
+	 * failure, left untouched.
 	 *
 	 * @param mixed                $result The raw meta-tool result.
 	 * @param array<string, mixed> $args   The meta-tool arguments.
@@ -131,19 +134,21 @@ class ToolCallObserver {
 			return $result;
 		}
 
-		$raw = isset( $result['error'] ) && is_string( $result['error'] ) ? $result['error'] : '';
-		if ( $raw === '' || ! $this->is_validation_message( $raw ) ) {
+		// The meta-tool is told which ability to call, so the caller's own
+		// argument is the ability id — no unpicking of a tool name required.
+		$ability = $this->get_ability(
+			isset( $args['ability_name'] ) && is_string( $args['ability_name'] ) ? $args['ability_name'] : ''
+		);
+		if ( $ability === null ) {
 			return $result;
 		}
 
-		$ability_name = $this->resolve_ability_name(
-			$raw,
-			isset( $args['ability_name'] ) && is_string( $args['ability_name'] ) ? $args['ability_name'] : ''
-		);
-
 		$supplied = isset( $args['parameters'] ) && is_array( $args['parameters'] ) ? $args['parameters'] : [];
-		$improved = $this->format_validation_message( $raw, $ability_name, $supplied );
+		if ( $this->validation_reason( $ability, $supplied ) === null ) {
+			return $result;
+		}
 
+		$improved = $this->build_validation_message( $ability, $supplied );
 		if ( $improved !== '' ) {
 			$result['error'] = $improved;
 		}
@@ -155,19 +160,22 @@ class ToolCallObserver {
 	 * Build a clear, non-empty error from a raw tool-call WP_Error.
 	 *
 	 * @param WP_Error             $error        The raw error.
-	 * @param string               $ability_name The ability the call was for.
+	 * @param WP_Ability|null      $ability      The ability the call was for, when it resolves.
+	 * @param string               $ability_name The ability identifier, for the fallback message.
 	 * @param array<string, mixed> $supplied     The input the caller sent.
 	 *
 	 * @return WP_Error A new error carrying the original code/data and a clearer message.
 	 * @since 1.2.0
 	 */
-	private function improve_message( WP_Error $error, string $ability_name, array $supplied ): WP_Error {
+	private function improve_message( WP_Error $error, ?WP_Ability $ability, string $ability_name, array $supplied ): WP_Error {
 		$code    = (string) $error->get_error_code();
 		$raw     = trim( (string) $error->get_error_message() );
 		$message = '';
 
-		if ( in_array( $code, self::VALIDATION_REJECTION_CODES, true ) ) {
-			$message = $this->format_validation_message( $raw, $ability_name, $supplied );
+		// The code says this was an input rejection. No prose, so it holds in
+		// every locale — unlike the message, which core translates.
+		if ( $ability !== null && in_array( $code, self::VALIDATION_REJECTION_CODES, true ) ) {
+			$message = $this->build_validation_message( $ability, $supplied );
 		}
 
 		if ( $message === '' ) {
@@ -185,51 +193,96 @@ class ToolCallObserver {
 	}
 
 	/**
-	 * Turn the Abilities API validation message into actionable guidance.
+	 * Why the ability's schema rejects this input, or null if it does not.
 	 *
-	 * The core format is `Ability "X" has invalid input. Reason: <reason>`,
-	 * where <reason> is e.g. `title is a required property of input.`
+	 * The same function `WP_Ability::validate_input()` calls, so the answer is
+	 * core's rather than a reading of core's prose, and the reason comes back
+	 * bare rather than wrapped in `Ability "X" has invalid input. Reason: …`.
 	 *
-	 * The reason names what is missing and nothing else, which is a dead end for
-	 * the commonest mistake of all: a parameter spelled the way a *different*
-	 * tool spells it. `{"term_id": 76}` on an ability that takes `id` was told
-	 * only that `id` was required — never that `term_id` had been sent and was
-	 * not a parameter this ability has — so the caller had no way to see its own
-	 * error and either retried the same call or paid for a schema fetch.
-	 * Anything the schema does not recognise is therefore named too, along with
-	 * what the ability does accept. Since 1.4.0 those are refused rather than
-	 * carried (see {@see \Albert\Abstracts\BaseAbility::prepare_input_schema()}),
-	 * which is what makes naming them worth doing: the caller learns the right
-	 * spelling at the moment the wrong one stops working.
+	 * @param WP_Ability           $ability  The ability to validate against.
+	 * @param array<string, mixed> $supplied The input the caller sent.
 	 *
-	 * @param string               $raw          The raw validation message.
-	 * @param string               $ability_name The ability the call was for.
-	 * @param array<string, mixed> $supplied     The input the caller sent.
+	 * @return string|null The validator's reason, or null when the input is valid.
+	 * @since 1.4.0
+	 */
+	private function validation_reason( WP_Ability $ability, array $supplied ): ?string {
+		if ( ! function_exists( 'rest_validate_value_from_schema' ) ) {
+			return null;
+		}
+
+		$schema = $ability->get_input_schema();
+		if ( $schema === [] ) {
+			return null;
+		}
+
+		$valid = rest_validate_value_from_schema( $supplied, $schema, 'input' );
+		if ( ! is_wp_error( $valid ) ) {
+			return null;
+		}
+
+		return trim( (string) $valid->get_error_message() );
+	}
+
+	/**
+	 * Turn a rejected input into actionable guidance.
 	 *
-	 * @return string A concise, LLM-friendly message (empty if not parseable).
+	 * The validator names what is missing and stops: `{"term_id": 76}` on an
+	 * ability taking `id` heard only that `id` was required, never that
+	 * `term_id` was not a parameter at all. Both halves come from the schema and
+	 * the input, never the validator's sentence; only a value fault falls back
+	 * to its reason, as opaque text that is never matched on.
+	 *
+	 * Unrecognised names need a schema closed with `additionalProperties:
+	 * false` — on an open schema an undeclared key is legal.
+	 *
+	 * @param WP_Ability           $ability  The ability the call was for.
+	 * @param array<string, mixed> $supplied The input the caller sent.
+	 *
+	 * @return string A concise, LLM-friendly message (empty if there is nothing to say).
 	 * @since 1.2.0
 	 * @since 1.4.0 Names unrecognised input and the accepted parameters.
 	 */
-	private function format_validation_message( string $raw, string $ability_name = '', array $supplied = [] ): string {
-		$reason = $raw;
-		if ( preg_match( '/Reason:\s*(.+)$/s', $raw, $m ) ) {
-			$reason = trim( $m[1] );
-		}
+	private function build_validation_message( WP_Ability $ability, array $supplied ): string {
+		$schema     = $ability->get_input_schema();
+		$properties = $this->get_input_properties( $schema );
 
-		if ( $reason === '' ) {
-			return '';
-		}
+		$required = isset( $schema['required'] ) && is_array( $schema['required'] ) ? $schema['required'] : [];
+		$missing  = array_values( array_diff( $required, array_keys( $supplied ) ) );
 
-		$properties = $this->get_input_properties( $ability_name );
+		// A closed schema with no properties takes nothing at all, so everything
+		// sent to it is unrecognised.
+		$closed       = ( $schema['additionalProperties'] ?? null ) === false;
+		$unrecognised = $closed
+			? array_values( array_diff( array_keys( $supplied ), array_keys( $properties ) ) )
+			: [];
 
-		$unrecognised = $properties === []
-			? []
-			: array_diff( array_keys( $supplied ), array_keys( $properties ) );
+		// Minus the names reported below, so the reason describes a wrong *value*
+		// rather than restating a wrong name. Core stops at whichever it hit
+		// first; this reports both.
+		$reason = $this->validation_reason(
+			$ability,
+			array_diff_key( $supplied, array_flip( $unrecognised ) )
+		);
 
-		$lines       = [];
-		$reason_line = $this->describe_reason( $reason, $unrecognised !== [] );
-		if ( $reason_line !== '' ) {
-			$lines[] = $reason_line;
+		$lines = [];
+
+		if ( $missing !== [] ) {
+			$lines[] = sprintf(
+				count( $missing ) === 1
+					/* translators: %s: parameter name */
+					? __( 'Missing required parameter: %s.', 'albert-ai-butler' )
+					/* translators: %s: comma-separated list of parameter names */
+					: __( 'Missing required parameters: %s.', 'albert-ai-butler' ),
+				$this->name_list( $missing )
+			);
+		} elseif ( $reason !== null && $reason !== '' ) {
+			// Nothing is missing, so the fault is in a value rather than a name.
+			// Only the validator can say what is wrong with it.
+			$lines[] = sprintf(
+				/* translators: %s: the validator's reason */
+				__( 'Invalid parameters: %s', 'albert-ai-butler' ),
+				rtrim( $reason, '.' ) . '.'
+			);
 		}
 
 		if ( $unrecognised !== [] ) {
@@ -240,88 +293,48 @@ class ToolCallObserver {
 			);
 		}
 
-		if ( $properties !== [] ) {
+		if ( $lines !== [] && $properties !== [] ) {
 			$lines[] = sprintf(
 				/* translators: %s: comma-separated list of accepted parameters */
 				__( 'Accepted parameters: %s.', 'albert-ai-butler' ),
 				implode( ', ', $properties )
 			);
+		} elseif ( $lines !== [] && $closed ) {
+			$lines[] = __( 'This ability accepts no parameters.', 'albert-ai-butler' );
 		}
 
 		return implode( ' ', $lines );
 	}
 
 	/**
-	 * Restate the validator's reason in the caller's own terms.
+	 * Describe a schema's accepted input properties, keyed by name.
 	 *
-	 * @param string $reason      The reason tail of the validation message.
-	 * @param bool   $names_follow Whether the message goes on to name the
-	 *                             unrecognised parameters itself.
+	 * Read from the registered schema, never rebuilt, so the list cannot describe
+	 * something the validator does not enforce.
 	 *
-	 * @return string A single sentence, or empty when the next line says it better.
-	 * @since 1.4.0
-	 */
-	private function describe_reason( string $reason, bool $names_follow ): string {
-		if ( preg_match_all( '/`?([\w-]+)`?\s+is a required property/', $reason, $mm ) ) {
-			$template = count( $mm[1] ) === 1
-				/* translators: %s: parameter name */
-				? __( 'Missing required parameter: %s.', 'albert-ai-butler' )
-				/* translators: %s: comma-separated list of parameter names */
-				: __( 'Missing required parameters: %s.', 'albert-ai-butler' );
-
-			return sprintf( $template, $this->name_list( $mm[1] ) );
-		}
-
-		// Core stops at the first property it does not recognise and phrases it
-		// as "x is not a valid property of Object." The line after this one
-		// names every one of them against the schema, so repeating core's
-		// half-answer here would only bury it.
-		if ( $names_follow && str_contains( $reason, 'is not a valid property of' ) ) {
-			return '';
-		}
-
-		return sprintf(
-			/* translators: %s: validation reason */
-			__( 'Invalid parameters: %s', 'albert-ai-butler' ),
-			rtrim( $reason, '.' ) . '.'
-		);
-	}
-
-	/**
-	 * Describe an ability's accepted input properties, keyed by name.
-	 *
-	 * Read from the registered schema rather than rebuilt, so the list can never
-	 * describe something the validator does not enforce. An ability with no
-	 * input schema, or one Albert cannot resolve, yields an empty list and the
-	 * message simply says less.
-	 *
-	 * @param string $ability_name The ability identifier.
+	 * @param array<string, mixed> $schema The registered input schema.
 	 *
 	 * @return array<string, string> Property name => rendered description.
 	 * @since 1.4.0
 	 */
-	private function get_input_properties( string $ability_name ): array {
-		if ( $ability_name === '' || ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( $ability_name ) ) {
-			return [];
-		}
-
-		$ability = wp_get_ability( $ability_name );
-		if ( $ability === null ) {
-			return [];
-		}
-
-		$schema     = $ability->get_input_schema();
-		$properties = isset( $schema['properties'] ) && is_array( $schema['properties'] ) ? $schema['properties'] : [];
-		$required   = isset( $schema['required'] ) && is_array( $schema['required'] ) ? $schema['required'] : [];
+	private function get_input_properties( array $schema ): array {
+		$properties = $this->as_array( $schema['properties'] ?? [] );
+		$required   = $this->as_array( $schema['required'] ?? [] );
 
 		$described = [];
 		foreach ( $properties as $name => $definition ) {
-			$type = is_array( $definition ) && isset( $definition['type'] ) ? $definition['type'] : '';
+			$definition = $this->as_array( $definition );
+
+			$type = $definition['type'] ?? '';
 			$type = is_array( $type ) ? implode( '|', $type ) : (string) $type;
+
+			// An enum beats the type it narrows: `published` for `publish` is not
+			// fixed by being told the parameter is a string.
+			$enum = $this->as_array( $definition['enum'] ?? [] );
 
 			$notes = array_filter(
 				[
-					$type,
+					$enum === [] ? $type : implode( '|', array_map( 'strval', $enum ) ),
 					in_array( $name, $required, true ) ? __( 'required', 'albert-ai-butler' ) : '',
 				]
 			);
@@ -332,6 +345,26 @@ class ToolCallObserver {
 		}
 
 		return $described;
+	}
+
+	/**
+	 * Read a schema node that may be an array or, for an empty map, a stdClass.
+	 *
+	 * A no-parameter ability may declare `properties` as `new stdClass()` so it
+	 * encodes as `{}`; reading that as "nothing to describe" silenced the one
+	 * case where "this takes nothing" is the whole answer.
+	 *
+	 * @param mixed $value The schema node.
+	 *
+	 * @return array<array-key, mixed> The node as an array, empty when it is neither.
+	 * @since 1.4.0
+	 */
+	private function as_array( $value ): array {
+		if ( is_object( $value ) ) {
+			return get_object_vars( $value );
+		}
+
+		return is_array( $value ) ? $value : [];
 	}
 
 	/**
@@ -355,53 +388,79 @@ class ToolCallObserver {
 	}
 
 	/**
-	 * Whether a message is the Abilities API's input-validation text.
+	 * Work out which ability a failed tool call was for.
 	 *
-	 * @param string $message The message to inspect.
+	 * The tool name here is the sanitised spelling (`albert-view-term`), not the
+	 * ability id (`albert/view-term`), so it looks up nothing. The adapter built
+	 * that mapping at registration, so ask its `McpTool`; failing that, search
+	 * the registry for the id that sanitises to this name — exact, where
+	 * unpicking the first hyphen guesses, since a namespace may contain hyphens.
 	 *
-	 * @return bool True when the message came from input validation.
+	 * @param mixed  $mcp_tool  The adapter's tool instance, if it passed one.
+	 * @param string $tool_name The tool name as the client sent it.
+	 *
+	 * @return WP_Ability|null The ability, or null when it cannot be resolved.
 	 * @since 1.4.0
 	 */
-	private function is_validation_message( string $message ): bool {
-		return (bool) preg_match( '/has invalid input\.\s*Reason:/', $message );
+	private function resolve_ability( $mcp_tool, string $tool_name ): ?WP_Ability {
+		if ( is_object( $mcp_tool ) && method_exists( $mcp_tool, 'get_observability_context' ) ) {
+			$context = $mcp_tool->get_observability_context();
+			$name    = is_array( $context ) && isset( $context['ability_name'] ) && is_string( $context['ability_name'] )
+				? $context['ability_name']
+				: '';
+
+			$ability = $this->get_ability( $name );
+			if ( $ability !== null ) {
+				return $ability;
+			}
+		}
+
+		$ability = $this->get_ability( $tool_name );
+		if ( $ability !== null ) {
+			return $ability;
+		}
+
+		return $this->find_ability_by_tool_name( $tool_name );
 	}
 
 	/**
-	 * Work out which ability a failed tool call was for.
+	 * Look an ability up by its exact registered id.
 	 *
-	 * The tool name on this filter is the MCP-sanitised spelling the client
-	 * sent (`albert-view-term`), not the ability id (`albert/view-term`), so it
-	 * cannot be used to look a schema up — or to attribute a log row. The
-	 * Abilities API names the ability in its own message, which is the one
-	 * spelling guaranteed to be the real id; the sanitised name is unpicked only
-	 * as a fallback, and only when it resolves to a registered ability.
+	 * `wp_has_ability()` is the quiet check; `wp_get_ability()` complains about
+	 * an id it does not know, so it is never called blind.
 	 *
-	 * @param string $message   The raw error message.
-	 * @param string $tool_name The tool name as the client sent it.
+	 * @param string $ability_name The ability identifier.
 	 *
-	 * @return string The ability id, or the tool name when nothing better exists.
+	 * @return WP_Ability|null The ability, or null when it is not registered.
 	 * @since 1.4.0
 	 */
-	private function resolve_ability_name( string $message, string $tool_name ): string {
-		if ( preg_match( '/Ability "([^"]+)"/', $message, $m ) ) {
-			return $m[1];
+	private function get_ability( string $ability_name ): ?WP_Ability {
+		if ( $ability_name === '' || ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( $ability_name ) ) {
+			return null;
 		}
 
-		if ( $tool_name === '' || ! function_exists( 'wp_has_ability' ) ) {
-			return $tool_name;
+		return wp_get_ability( $ability_name );
+	}
+
+	/**
+	 * Find the registered ability whose id sanitises to a given tool name.
+	 *
+	 * @param string $tool_name The MCP tool name.
+	 *
+	 * @return WP_Ability|null The ability, or null when nothing matches.
+	 * @since 1.4.0
+	 */
+	private function find_ability_by_tool_name( string $tool_name ): ?WP_Ability {
+		if ( $tool_name === '' || ! function_exists( 'wp_get_abilities' ) ) {
+			return null;
 		}
 
-		if ( wp_has_ability( $tool_name ) ) {
-			return $tool_name;
+		foreach ( wp_get_abilities() as $ability ) {
+			if ( str_replace( '/', '-', $ability->get_name() ) === $tool_name ) {
+				return $ability;
+			}
 		}
 
-		// `albert-view-term` is `albert/view-term` sanitised: the namespace
-		// separator is the first hyphen, and only the first.
-		$unsanitised = preg_replace( '/-/', '/', $tool_name, 1 );
-		if ( is_string( $unsanitised ) && wp_has_ability( $unsanitised ) ) {
-			return $unsanitised;
-		}
-
-		return $tool_name;
+		return null;
 	}
 }
