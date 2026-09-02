@@ -434,7 +434,11 @@ class ToolCallObserver {
 				return null;
 			}
 
-			$parents[ $parent ] = true;
+			// Array indices are dropped when grouping. `blocks[0]` and `blocks[1]`
+			// are different inputs but the same schema node, so one list explains
+			// both; keeping the indices apart sent the caller to the root list,
+			// which names neither key.
+			$parents[ (string) preg_replace( '/\[\d+\]/', '[]', $parent ) ] = true;
 		}
 
 		// Only when every offender shares one parent: two lists confuse more

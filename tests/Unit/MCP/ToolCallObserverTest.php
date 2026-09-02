@@ -855,6 +855,54 @@ class ToolCallObserverTest extends TestCase {
 	}
 
 	/**
+	 * Offenders under different indices of one array share one accepted list.
+	 *
+	 * `blocks[0]` and `blocks[1]` are different inputs but the same schema node,
+	 * so one list explains both. Grouping on the literal path treated them as two
+	 * parents and fell back to the root's list, which names neither offending key.
+	 *
+	 * @return void
+	 */
+	public function test_offenders_under_different_indices_share_one_list(): void {
+		$this->register_ability(
+			'albert/create-thing',
+			[
+				'type'                 => 'object',
+				'properties'           => [
+					'title'  => [ 'type' => 'string' ],
+					'blocks' => [
+						'type'  => 'array',
+						'items' => [
+							'type'                 => 'object',
+							'properties'           => [ 'name' => [ 'type' => 'string' ] ],
+							'additionalProperties' => false,
+						],
+					],
+				],
+				'additionalProperties' => false,
+			]
+		);
+
+		$out = $this->handle(
+			new WP_Error( 'ability_invalid_input', 'Ability "albert/create-thing" has invalid input. Reason: whatever.' ),
+			[
+				'title'  => 'T',
+				'blocks' => [
+					[ 'name' => 'core/paragraph', 'x' => 1 ],
+					[ 'name' => 'core/heading', 'y' => 2 ],
+				],
+			],
+			'albert-create-thing'
+		);
+
+		$message = $out->get_error_message();
+
+		$this->assertStringContainsString( 'Unrecognised parameters: `blocks[0].x`, `blocks[1].y`.', $message );
+		$this->assertStringContainsString( 'Accepted parameters for `blocks[]`: `name` (string).', $message );
+		$this->assertStringNotContainsString( '`title`', $message );
+	}
+
+	/**
 	 * The ability is taken from the adapter's tool, not guessed from its name.
 	 *
 	 * A namespace may contain hyphens of its own, so unpicking the first hyphen
