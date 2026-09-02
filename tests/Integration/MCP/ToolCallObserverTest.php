@@ -153,11 +153,23 @@ class ToolCallObserverTest extends TestCase {
 	 *
 	 * Permission refusals and errors from the ability itself are reported by
 	 * `execute-ability` in the same shape as a rejection, so the only thing that
-	 * separates them is whether the input actually fails the schema.
+	 * separates them is whether the input actually fails the schema. The input
+	 * here has to be genuinely valid for the ability, or the message is improved
+	 * and rightly so.
 	 *
 	 * @return void
 	 */
 	public function test_a_non_validation_meta_tool_failure_is_untouched(): void {
+		$schema   = wp_get_ability( $this->ability() )->get_input_schema();
+		$valid    = [
+			'id'       => 1,
+			'taxonomy' => 'category',
+		];
+		$this->assertTrue(
+			rest_validate_value_from_schema( $valid, $schema, 'input' ),
+			'This test only means anything while its input satisfies the real schema.'
+		);
+
 		$result = [
 			'success' => false,
 			'error'   => 'Sorry, you are not allowed to do that.',
@@ -167,7 +179,7 @@ class ToolCallObserverTest extends TestCase {
 			$result,
 			[
 				'ability_name' => $this->ability(),
-				'parameters'   => [ 'id' => 1 ],
+				'parameters'   => $valid,
 			],
 			'mcp-adapter-execute-ability'
 		);
