@@ -228,6 +228,15 @@ class BlockSerializer {
 		$name = is_string( $name ) ? trim( $name ) : '';
 
 		if ( $name === '' ) {
+			// An explicit null name is what BlockReader emits for genuine classic
+			// (pre-block-editor) content, which it preserves on purpose. Refusing it
+			// here broke the read -> write loop for every post never opened in the
+			// block editor, with no name the caller could legally supply to fix it.
+			// An *absent* name is still an error: that is a forgotten field.
+			if ( array_key_exists( 'name', $spec ) && $spec['name'] === null ) {
+				return $this->classic_block( $spec );
+			}
+
 			$issues[] = $this->issue( self::SEVERITY_ERROR, "{$path}.name is required (e.g. 'core/paragraph')." );
 			return null;
 		}
@@ -339,6 +348,45 @@ class BlockSerializer {
 		}
 
 		return $raw;
+	}
+
+	/**
+	 * Rebuild a classic-content block from a spec whose name is explicitly null.
+	 *
+	 * Freeform content is the raw HTML with no block delimiters, so it is built
+	 * here rather than through {@see self::make_block()}, which types its name as
+	 * a string. Empty content yields null: that is the whitespace separator the
+	 * parser emits between blocks, and {@see BlockReader::is_empty_separator()}
+	 * already drops it on the way out, so re-emitting it would only add noise.
+	 *
+	 * @param array<string, mixed> $spec Block spec with a null `name`.
+	 * @return ParsedBlock|null Freeform block, or null when there is nothing to keep.
+	 *
+	 * @since 1.4.0
+	 */
+	private function classic_block( array $spec ): ?array {
+		// Emptiness is decided on the source values rather than through
+		// raw_html_from_spec(), which wraps plaintext in a <p> — whitespace-only
+		// text would come back through it looking like content.
+		$html = $spec['attributes']['html'] ?? $spec['html'] ?? null;
+		$raw  = is_string( $html ) && trim( $html ) !== '' ? $html : '';
+
+		if ( $raw === '' ) {
+			$text = trim( isset( $spec['plaintext'] ) ? (string) $spec['plaintext'] : '' );
+			$raw  = $text === '' ? '' : '<p>' . esc_html( $text ) . '</p>';
+		}
+
+		if ( $raw === '' ) {
+			return null;
+		}
+
+		return [
+			'blockName'    => null,
+			'attrs'        => [],
+			'innerBlocks'  => [],
+			'innerHTML'    => $raw,
+			'innerContent' => [ $raw ],
+		];
 	}
 
 	/**

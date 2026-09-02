@@ -12,6 +12,7 @@
 namespace Albert\Tests\Integration\Abilities;
 
 use Albert\Abstracts\BaseAbility;
+use Albert\Blocks\BlockReader;
 use Albert\Tests\TestCase;
 use Albert\Tests\Traits\ProvidesAbilities;
 use WP_Error;
@@ -252,6 +253,53 @@ class InputValidationTest extends TestCase {
 
 		$schema = wp_get_ability( 'albert/edit-post-block' )->get_input_schema();
 
+		// Built by running the reader, not by hand: a hand-written fixture asserts
+		// the loop closes on a shape nothing produces, and would not notice
+		// BlockReader's output drifting away from what the write side accepts.
+		$read = ( new BlockReader() )->read(
+			'<!-- wp:paragraph --><p>Hello</p><!-- /wp:paragraph -->'
+			. '<!-- wp:group --><div class="wp-block-group">'
+			. '<!-- wp:paragraph --><p>Nested</p><!-- /wp:paragraph -->'
+			. '</div><!-- /wp:group -->'
+		);
+
+		$this->assertNotSame( [], $read, 'The reader must produce blocks to round-trip.' );
+
+		foreach ( $read as $block ) {
+			$this->assertTrue(
+				rest_validate_value_from_schema(
+					[
+						'id'    => 1,
+						'path'  => $block['path'],
+						'block' => $block,
+					],
+					$schema,
+					'input'
+				),
+				'A block as a view-* read returns it must be accepted back: ' . wp_json_encode( $block )
+			);
+		}
+
+		// Classic (pre-block-editor) content reads back with a null name, which
+		// BlockReader preserves on purpose. The write side has to accept it or the
+		// loop is broken for every post never opened in the block editor.
+		$classic = ( new BlockReader() )->read( 'An old post written in the classic editor.' );
+
+		$this->assertSame( [ null ], array_column( $classic, 'name' ) );
+
+		$this->assertTrue(
+			rest_validate_value_from_schema(
+				[
+					'id'    => 1,
+					'path'  => [ 0 ],
+					'block' => $classic[0],
+				],
+				$schema,
+				'input'
+			),
+			'Classic content read by view-post must be accepted back.'
+		);
+
 		$round_trip = [
 			'id'    => 1,
 			'path'  => [ 0 ],
@@ -263,11 +311,6 @@ class InputValidationTest extends TestCase {
 				'path'        => [ 0 ],
 			],
 		];
-
-		$this->assertTrue(
-			rest_validate_value_from_schema( $round_trip, $schema, 'input' ),
-			'A block as a view-* read returns it must be accepted back.'
-		);
 
 		// Free-form attributes stay free-form: a block may carry any attribute.
 		$round_trip['block']['attributes'] = [ 'anythingAtAll' => [ 'nested' => true ] ];
