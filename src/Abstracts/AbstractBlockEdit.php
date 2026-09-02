@@ -341,6 +341,30 @@ abstract class AbstractBlockEdit extends BaseAbility {
 				],
 				'attributes'  => [ 'type' => 'object' ],
 				'innerBlocks' => [ 'type' => 'array' ],
+				'plaintext'   => [
+					'type'        => 'string',
+					'description' => 'Text content, when the block\'s own text attribute is not set. Used as the fallback for content/text/value.',
+				],
+				'html'        => [
+					'type'        => 'string',
+					'description' => 'Raw HTML, for core/html and for preserving a block this server cannot regenerate.',
+				],
+				'blockName'   => [
+					'type'        => 'string',
+					'description' => 'Alias of `name`, the spelling the WordPress block parser uses.',
+				],
+				'attrs'       => [
+					'type'        => 'object',
+					'description' => 'Alias of `attributes`, the spelling the WordPress block parser uses.',
+				],
+				'path'        => [
+					'type'        => 'array',
+					'items'       => [
+						'type'    => 'integer',
+						'minimum' => 0,
+					],
+					'description' => 'Ignored on write. Accepted so a block read from a view-* call can be sent straight back without stripping it.',
+				],
 			],
 			'required'    => [ 'name' ],
 		];

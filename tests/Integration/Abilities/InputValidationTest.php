@@ -168,6 +168,131 @@ class InputValidationTest extends TestCase {
 	}
 
 	/**
+	 * A nested object that declares a contract is held to it too.
+	 *
+	 * `additionalProperties` governs one object and is not inherited, so closing
+	 * the root closes only the parameter list. Left open, a nested object
+	 * reproduces the same bug one level down: a block spec carrying `content`
+	 * where the block wants `attributes.content` validated, ran, and saved an
+	 * empty paragraph.
+	 *
+	 * A map that declares no properties is a free-form bag by design — a
+	 * block's `attributes`, an item's `meta` — and is deliberately left open.
+	 *
+	 * @dataProvider provideAbilities
+	 *
+	 * @param class-string<BaseAbility> $ability_class Ability class.
+	 *
+	 * @return void
+	 */
+	public function test_nested_object_schemas_are_closed( string $ability_class ): void {
+		$ability = $this->get_registered_ability( $ability_class );
+		$open    = $this->find_open_object_schemas( $ability->get_input_schema(), 'input' );
+
+		$this->assertSame(
+			[],
+			$open,
+			sprintf(
+				'%s leaves these declared object schemas open: %s',
+				$ability->get_name(),
+				implode( ', ', $open )
+			)
+		);
+	}
+
+	/**
+	 * Paths of every object subschema that declares properties but stays open.
+	 *
+	 * @param array<string, mixed> $schema The schema to walk.
+	 * @param string               $path   The path walked so far, for the message.
+	 *
+	 * @return array<int, string> Paths of the open schemas.
+	 */
+	private function find_open_object_schemas( array $schema, string $path ): array {
+		$open = [];
+
+		if ( ( $schema['type'] ?? null ) === 'object'
+			&& ! empty( $schema['properties'] )
+			&& is_array( $schema['properties'] )
+			&& ( $schema['additionalProperties'] ?? null ) !== false
+		) {
+			$open[] = $path;
+		}
+
+		if ( isset( $schema['properties'] ) && is_array( $schema['properties'] ) ) {
+			foreach ( $schema['properties'] as $name => $subschema ) {
+				if ( is_array( $subschema ) ) {
+					$open = array_merge( $open, $this->find_open_object_schemas( $subschema, $path . '.' . $name ) );
+				}
+			}
+		}
+
+		if ( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+			$open = array_merge( $open, $this->find_open_object_schemas( $schema['items'], $path . '[]' ) );
+		}
+
+		return $open;
+	}
+
+	/**
+	 * A block read from a view-* call is accepted back unchanged.
+	 *
+	 * The documented edit loop is read the tree, change one block, send it back.
+	 * What a read returns carries `plaintext` and `path`, and the write side has
+	 * always accepted `html` as well — none of which the block spec declared, so
+	 * closing it without declaring them would have refused the loop it exists
+	 * to serve.
+	 *
+	 * @return void
+	 */
+	public function test_a_block_spec_accepts_what_a_read_returns(): void {
+		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( 'albert/edit-post-block' ) ) {
+			$this->markTestSkipped( 'albert/edit-post-block is not registered.' );
+		}
+
+		$schema = wp_get_ability( 'albert/edit-post-block' )->get_input_schema();
+
+		$round_trip = [
+			'id'    => 1,
+			'path'  => [ 0 ],
+			'block' => [
+				'name'        => 'core/paragraph',
+				'attributes'  => [ 'content' => 'Hello' ],
+				'innerBlocks' => [],
+				'plaintext'   => 'Hello',
+				'path'        => [ 0 ],
+			],
+		];
+
+		$this->assertTrue(
+			rest_validate_value_from_schema( $round_trip, $schema, 'input' ),
+			'A block as a view-* read returns it must be accepted back.'
+		);
+
+		// Free-form attributes stay free-form: a block may carry any attribute.
+		$round_trip['block']['attributes'] = [ 'anythingAtAll' => [ 'nested' => true ] ];
+		$this->assertTrue(
+			rest_validate_value_from_schema( $round_trip, $schema, 'input' ),
+			'A block attribute map declares no properties and must stay open.'
+		);
+
+		// But a key the block spec does not have is refused, not dropped.
+		$mistake = [
+			'id'    => 1,
+			'path'  => [ 0 ],
+			'block' => [
+				'name'    => 'core/paragraph',
+				'content' => 'Hello',
+			],
+		];
+
+		$this->assertWPError(
+			rest_validate_value_from_schema( $mistake, $schema, 'input' ),
+			'Text at block level belongs in attributes and must be refused, not silently dropped.'
+		);
+	}
+
+	/**
 	 * Wrong types return WP_Error with ability_invalid_input code.
 	 *
 	 * Reads each ability's input_schema properties, and for each typed field,

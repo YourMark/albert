@@ -163,26 +163,21 @@ abstract class BaseAbility implements Ability {
 	 * validate_input(null) fails with "input is not of type object" and the
 	 * assistant sees an unhelpful error for any call made without arguments.
 	 *
-	 * And `additionalProperties => false`, so input the schema does not
-	 * describe is refused instead of silently carried. JSON Schema is
-	 * permissive by default, and that default was the wrong one here: an
-	 * ability is reachable only through its schema, so a caller sending
-	 * `fields` to an ability that has no `fields` got a successful,
-	 * *unfiltered* answer and no way to know its parameter had been dropped.
-	 * A rejection costs one round trip; a wrong answer the caller trusts costs
-	 * more than that. The rejection is worth having only because it is
-	 * legible: {@see \Albert\MCP\ToolCallObserver} turns it into a message
-	 * naming every unrecognised parameter and every accepted one.
+	 * And `additionalProperties => false`, so input the schema does not describe
+	 * is refused instead of silently carried. JSON Schema's permissive default
+	 * was the wrong one here: `fields` sent to an ability with no `fields` got a
+	 * successful, *unfiltered* answer and no way to know. A rejection costs one
+	 * round trip; a wrong answer the caller trusts costs more.
+	 * {@see \Albert\MCP\ToolCallObserver} makes that rejection legible.
 	 *
-	 * Nothing is lost by being strict. No ability in Albert or its add-ons
-	 * reads an input key its own schema does not declare, and strictness is
-	 * far easier to relax later than to introduce.
+	 * `additionalProperties` is not inherited, so this closes only the parameter
+	 * list; {@see self::walk_subschemas()} carries the rule down.
 	 *
 	 * @param array<string, mixed> $schema Input schema declared by the ability.
 	 *
 	 * @return array<string, mixed> Schema safe to pass through the registry.
 	 * @since 1.2.0
-	 * @since 1.4.0 Refuses input the schema does not describe.
+	 * @since 1.4.0 Refuses input the schema does not describe, at every level.
 	 */
 	protected function prepare_input_schema( array $schema ): array {
 		if ( empty( $schema ) || ( $schema['type'] ?? null ) !== 'object' ) {
@@ -191,6 +186,69 @@ abstract class BaseAbility implements Ability {
 
 		if ( ! array_key_exists( 'default', $schema ) ) {
 			$schema['default'] = [];
+		}
+
+		if ( ! array_key_exists( 'additionalProperties', $schema ) ) {
+			$schema['additionalProperties'] = false;
+		}
+
+		return $this->walk_subschemas( $schema );
+	}
+
+	/**
+	 * Apply the same rule to every subschema under a prepared root.
+	 *
+	 * Left open, a nested object reproduces the root bug one level down:
+	 * `{"block": {"name": "core/paragraph", "content": "Hello"}}` validates, runs
+	 * and saves an empty paragraph — `content` belongs in `attributes`, and
+	 * nothing refused it.
+	 *
+	 * @param array<string, mixed> $schema The schema whose subschemas to walk.
+	 *
+	 * @return array<string, mixed> The schema with nested object contracts closed.
+	 * @since 1.4.0
+	 */
+	private function walk_subschemas( array $schema ): array {
+		foreach ( [ 'properties', 'patternProperties' ] as $map ) {
+			if ( ! isset( $schema[ $map ] ) || ! is_array( $schema[ $map ] ) ) {
+				continue;
+			}
+
+			foreach ( $schema[ $map ] as $name => $subschema ) {
+				if ( is_array( $subschema ) ) {
+					$schema[ $map ][ $name ] = $this->close_subschema( $subschema );
+				}
+			}
+		}
+
+		if ( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+			$schema['items'] = $this->close_subschema( $schema['items'] );
+		}
+
+		return $schema;
+	}
+
+	/**
+	 * Close one subschema, and everything below it, when it declares a contract.
+	 *
+	 * Closed only when it declares `properties`. A map that declares none is a
+	 * free-form bag by design — a block's `attributes`, an item's `meta` — with
+	 * no contract to hold it to. A schema stating its own value keeps it.
+	 *
+	 * @param array<string, mixed> $schema The subschema to close.
+	 *
+	 * @return array<string, mixed> The closed subschema.
+	 * @since 1.4.0
+	 */
+	private function close_subschema( array $schema ): array {
+		$schema = $this->walk_subschemas( $schema );
+
+		if ( ( $schema['type'] ?? null ) !== 'object' ) {
+			return $schema;
+		}
+
+		if ( empty( $schema['properties'] ) || ! is_array( $schema['properties'] ) ) {
+			return $schema;
 		}
 
 		if ( ! array_key_exists( 'additionalProperties', $schema ) ) {
