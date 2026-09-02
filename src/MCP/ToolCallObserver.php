@@ -415,9 +415,14 @@ class ToolCallObserver {
 		$parents = [];
 		foreach ( $unrecognised as $found ) {
 			$parent = preg_replace( '/(\.[^.\[]+|\[\d+\])$/', '', $found );
-			if ( is_string( $parent ) && $parent !== '' && $parent !== $found ) {
-				$parents[ $parent ] = true;
+
+			// A root-level offender needs the root's list, so once one is present
+			// the nested list alone would leave it unexplained.
+			if ( ! is_string( $parent ) || $parent === '' || $parent === $found ) {
+				return null;
 			}
+
+			$parents[ $parent ] = true;
 		}
 
 		// Only when every offender shares one parent: two lists confuse more

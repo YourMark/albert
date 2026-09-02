@@ -747,6 +747,47 @@ class ToolCallObserverTest extends TestCase {
 	}
 
 	/**
+	 * A root-level offender gets the root's list, not a nested one.
+	 *
+	 * Naming only the nested object's parameters would leave the root-level
+	 * mistake named but unexplained.
+	 *
+	 * @return void
+	 */
+	public function test_offenders_at_two_levels_fall_back_to_the_root_list(): void {
+		$this->register_ability(
+			'albert/update-order',
+			[
+				'type'                 => 'object',
+				'properties'           => [
+					'order_id' => [ 'type' => 'integer' ],
+					'billing'  => [
+						'type'                 => 'object',
+						'properties'           => [ 'city' => [ 'type' => 'string' ] ],
+						'additionalProperties' => false,
+					],
+				],
+				'additionalProperties' => false,
+			]
+		);
+
+		$out = $this->observer->handle(
+			new WP_Error( 'ability_invalid_input', 'Ability "albert/update-order" has invalid input. Reason: whatever.' ),
+			[
+				'orderid' => 1,
+				'billing' => [ 'company' => 'Acme BV' ],
+			],
+			'albert-update-order'
+		);
+
+		$message = $out->get_error_message();
+		$this->assertStringContainsString( '`orderid`', $message );
+		$this->assertStringContainsString( '`billing.company`', $message );
+		$this->assertStringContainsString( 'Accepted parameters: `order_id` (integer), `billing` (object).', $message );
+		$this->assertStringNotContainsString( 'Accepted parameters for', $message );
+	}
+
+	/**
 	 * A key refused inside an array of objects carries its index.
 	 *
 	 * @return void
