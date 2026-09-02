@@ -228,11 +228,10 @@ class BlockSerializer {
 		$name = is_string( $name ) ? trim( $name ) : '';
 
 		if ( $name === '' ) {
-			// An explicit null name is what BlockReader emits for genuine classic
-			// (pre-block-editor) content, which it preserves on purpose. Refusing it
-			// here broke the read -> write loop for every post never opened in the
-			// block editor, with no name the caller could legally supply to fix it.
-			// An *absent* name is still an error: that is a forgotten field.
+			// An explicit null name is classic (pre-block-editor) content, the
+			// spelling BlockReader emits for it, so a block read from a view-* call
+			// can be written back unchanged. An *absent* name is a forgotten field
+			// and stays an error.
 			if ( array_key_exists( 'name', $spec ) && $spec['name'] === null ) {
 				return $this->classic_block( $spec );
 			}

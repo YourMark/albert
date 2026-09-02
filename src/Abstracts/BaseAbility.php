@@ -198,10 +198,8 @@ abstract class BaseAbility implements Ability {
 	/**
 	 * Apply the same rule to every subschema under a prepared root.
 	 *
-	 * Left open, a nested object reproduces the root bug one level down:
-	 * `{"block": {"name": "core/paragraph", "content": "Hello"}}` validates, runs
-	 * and saves an empty paragraph — `content` belongs in `attributes`, and
-	 * nothing refused it.
+	 * `additionalProperties` is not inherited, so every nested object has to be
+	 * closed in its own right for the contract to reach below the parameter list.
 	 *
 	 * @param array<string, mixed> $schema The schema whose subschemas to walk.
 	 *

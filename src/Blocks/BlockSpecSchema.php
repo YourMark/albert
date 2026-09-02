@@ -48,11 +48,10 @@ final class BlockSpecSchema {
 	 * unrolled tree tripled the schema an MCP client is sent without telling it
 	 * anything new; the nested levels exist to be validated, not read.
 	 *
-	 * `name` is not listed as required, deliberately. It accepts the `blockName`
-	 * spelling too, and classic content legitimately carries a null name, so a
-	 * schema-level `required` refused two shapes that are valid. Naming is
-	 * enforced by {@see BlockSerializer::build_block()} instead, which sees both
-	 * spellings and reports the block that is actually at fault.
+	 * `name` is deliberately not required here. The serializer accepts the
+	 * `blockName` spelling as an alias, and classic content carries a null name,
+	 * so naming is enforced by {@see BlockSerializer::build_block()} — it sees
+	 * both spellings and names the block at fault.
 	 *
 	 * @param int  $depth     How many levels of innerBlocks to describe.
 	 * @param bool $described Whether to carry per-property descriptions.

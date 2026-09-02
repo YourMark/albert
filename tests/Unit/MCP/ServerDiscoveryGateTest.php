@@ -169,11 +169,10 @@ class ServerDiscoveryGateTest extends TestCase {
 	 * A foreign (non-Albert) MCP server firing the same global hook is left
 	 * untouched — the gate only acts on Albert's own server.
 	 *
-	 * The foreign server is a real McpServer mock with a different id, not a
-	 * stand-in of another class. That is the whole point: WooCommerce, Novamira
-	 * and Albert all bundle the adapter unscoped, so one class definition serves
-	 * every plugin and every server passes `instanceof`. A `stdClass` here would
-	 * pass just as happily against the old, broken class-only guard.
+	 * The foreign server is a real McpServer mock with a different id rather than
+	 * a stand-in of another class: every plugin bundles the adapter unscoped, so
+	 * one class definition serves them all and every server passes `instanceof`.
+	 * Only a differing id distinguishes them, so only that tests the guard.
 	 *
 	 * @return void
 	 */
