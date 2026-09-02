@@ -99,6 +99,7 @@ class ServerDiscoveryGateTest extends TestCase {
 		];
 
 		$server = $this->createMock( McpServer::class );
+		$server->method( 'get_server_id' )->willReturn( Server::SERVER_ID );
 		$server->method( 'get_mcp_tool' )->willReturnCallback(
 			static fn( string $name ) => $mcp_tools[ $name ] ?? null
 		);
@@ -141,6 +142,7 @@ class ServerDiscoveryGateTest extends TestCase {
 		];
 
 		$server = $this->createMock( McpServer::class );
+		$server->method( 'get_server_id' )->willReturn( Server::SERVER_ID );
 		$server->method( 'get_mcp_tool' )->willReturnCallback(
 			static fn( string $name ) => $mcp_tools[ $name ] ?? null
 		);
@@ -186,6 +188,7 @@ class ServerDiscoveryGateTest extends TestCase {
 		$GLOBALS['albert_test_filter_returns']['albert/mcp/hide_unauthorized_tools'] = false;
 
 		$server = $this->createMock( McpServer::class );
+		$server->method( 'get_server_id' )->willReturn( Server::SERVER_ID );
 		$server->expects( $this->never() )->method( 'get_mcp_tool' );
 
 		$tools  = [ $this->tool( 'albert/create-post' ) ];

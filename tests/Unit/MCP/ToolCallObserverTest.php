@@ -534,51 +534,50 @@ class ToolCallObserverTest extends TestCase {
 	}
 
 	/**
-	 * What the guidance says does not depend on core's message being in English.
+	 * The guidance does not depend on the error message at all.
 	 *
-	 * Albert's own wording is translated like everything else it emits — the
-	 * stubbed `__()` here is the identity, which is exactly what isolates the
-	 * thing under test: with Albert's half held constant, two runs can only
-	 * differ if core's message leaked into the derivation. It used to. Core
-	 * translates every string this was once built by matching ("has invalid
-	 * input. Reason:", "is a required property of", "is not a valid property of
-	 * Object") and nl_NL ships all three, so a Dutch site got no guidance at all.
+	 * Everything it says is read off the schema and the input, so two calls that
+	 * differ only in the text WordPress happened to produce must be identical.
+	 * This is the regression test for building the message by matching core's
+	 * prose: core translates every string that was once matched, so on a Dutch
+	 * site the guidance disappeared entirely.
 	 *
 	 * @return void
 	 */
-	public function test_guidance_is_identical_for_a_translated_core_message(): void {
+	public function test_guidance_ignores_the_error_message_text(): void {
 		$this->register_view_term();
 
-		$english = $this->observer->handle(
-			$this->view_term_invalid_input(),
-			[ 'term_id' => 76 ],
-			'albert-view-term'
+		$messages = [
+			'Ability "albert/view-term" has invalid input. Reason: id is a required property of input.',
+			'Ability "albert/view-term" heeft ongeldige invoer. Reden: id is een vereiste eigenschap van invoer.',
+			'',
+		];
+
+		$guidance = array_map(
+			function ( string $message ): string {
+				return $this->observer->handle(
+					new WP_Error( 'ability_invalid_input', $message ),
+					[ 'term_id' => 76 ],
+					'albert-view-term'
+				)->get_error_message();
+			},
+			$messages
 		);
 
-		$dutch = $this->observer->handle(
-			new WP_Error(
-				'ability_invalid_input',
-				'Ability "albert/view-term" heeft ongeldige invoer. Reden: id is een vereiste eigenschap van invoer.'
-			),
-			[ 'term_id' => 76 ],
-			'albert-view-term'
-		);
-
-		$this->assertSame( $english->get_error_message(), $dutch->get_error_message() );
-		$this->assertStringContainsString( 'Unrecognised parameters: `term_id`.', $dutch->get_error_message() );
+		$this->assertCount( 1, array_unique( $guidance ) );
+		$this->assertStringContainsString( 'Unrecognised parameters: `term_id`.', $guidance[0] );
 	}
 
 	/**
-	 * The execute-ability path is improved for a translated message too.
+	 * The execute-ability path ignores the message text too.
 	 *
-	 * This is the path the issue was reported from, and the one that had no
-	 * error code to fall back on — whether it was an input rejection used to be
-	 * decided by matching English text, so it improved nothing on a translated
-	 * site.
+	 * This is the path the issue was reported from, and the one with no error
+	 * code to fall back on — whether it was an input rejection used to be decided
+	 * by matching English text, so it improved nothing once that text changed.
 	 *
 	 * @return void
 	 */
-	public function test_meta_tool_result_improved_for_a_translated_message(): void {
+	public function test_meta_tool_result_ignores_the_error_message_text(): void {
 		$this->register_view_term();
 
 		$out = $this->observer->handle(

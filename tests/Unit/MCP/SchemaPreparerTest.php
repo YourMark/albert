@@ -51,6 +51,7 @@ require_once dirname( __DIR__, 2 ) . '/wp-function-stubs.php';
 require_once dirname( __DIR__ ) . '/stubs/function-exists-shadow.php';
 
 use Albert\MCP\SchemaPreparer;
+use Albert\MCP\Server;
 use WP\MCP\Core\McpServer;
 use WP\McpSchema\Server\Tools\DTO\Tool;
 use PHPUnit\Framework\TestCase;
@@ -85,6 +86,29 @@ class SchemaPreparerTest extends TestCase {
 	}
 
 	/**
+	 * Another plugin's MCP server is left alone.
+	 *
+	 * WooCommerce and others bundle the same adapter under the same namespace, so
+	 * every server is an `instanceof McpServer` and only the id tells them apart.
+	 * Matching on the class alone meant Albert rewrote their tool schemas.
+	 *
+	 * @return void
+	 */
+	public function test_another_plugins_server_is_untouched(): void {
+		$this->set_71( true );
+
+		$tool   = Tool::fromArray(
+			[
+				'name'        => 'wc-get-orders',
+				'inputSchema' => $this->schema_with_server_keys(),
+			]
+		);
+		$result = ( new SchemaPreparer() )->prepare_tools_list( [ $tool ], $this->server( 'woo' ) );
+
+		$this->assertSame( $tool, $result[0] );
+	}
+
+	/**
 	 * Make WpCompat report the 7.1 schema-prep capability as present/absent.
 	 *
 	 * @param bool $available Whether the 7.1 function should be seen.
@@ -100,8 +124,11 @@ class SchemaPreparerTest extends TestCase {
 	 *
 	 * @return McpServer
 	 */
-	private function server(): McpServer {
-		return $this->createMock( McpServer::class );
+	private function server( string $id = Server::SERVER_ID ): McpServer {
+		$server = $this->createMock( McpServer::class );
+		$server->method( 'get_server_id' )->willReturn( $id );
+
+		return $server;
 	}
 
 	/**

@@ -12,7 +12,6 @@ namespace Albert\MCP;
 defined( 'ABSPATH' ) || exit;
 
 use Albert\Support\WpCompat;
-use WP\MCP\Core\McpServer;
 use WP\McpSchema\Server\Tools\DTO\Tool;
 
 /**
@@ -91,7 +90,7 @@ class SchemaPreparer {
 	 * @since 1.4.0
 	 */
 	public function prepare_tools_list( $tools, $server = null ) {
-		if ( ! $server instanceof McpServer ) {
+		if ( ! Server::is_albert_server( $server ) ) {
 			return $tools;
 		}
 
@@ -300,7 +299,7 @@ class SchemaPreparer {
 	 * @since 1.4.0
 	 */
 	public function prepare_ability_info_result( $result, $args, string $tool_name, $mcp_tool = null, $server = null ) {
-		if ( ! $server instanceof McpServer ) {
+		if ( ! Server::is_albert_server( $server ) ) {
 			return $result;
 		}
 

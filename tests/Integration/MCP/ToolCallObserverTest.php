@@ -14,6 +14,7 @@ namespace Albert\Tests\Integration\MCP;
 
 use Albert\MCP\ToolCallObserver;
 use Albert\Tests\TestCase;
+use WP_Error;
 
 /**
  * Tool-call guidance, against the validator that produced the rejection.
@@ -109,43 +110,32 @@ class ToolCallObserverTest extends TestCase {
 	}
 
 	/**
-	 * A translated core message still produces the same guidance.
+	 * The guidance is unchanged when the error message text changes.
 	 *
-	 * Core translates every string this used to be built by matching — "has
-	 * invalid input. Reason:", "is a required property of", "is not a valid
-	 * property of Object" — and nl_NL ships all three, which is how the
-	 * execute-ability path came to improve nothing at all on a translated site.
-	 *
-	 * What is asserted is the parameter names, not the whole sentence: the
-	 * guidance itself is translatable like everything else Albert emits, so it
-	 * may legitimately differ between locales. The names cannot — they are
-	 * identifiers read off the schema and the caller's own input, and their
-	 * presence is what proves the message was derived rather than parsed.
+	 * Against real core, real validation and a real registered schema: what the
+	 * message says is read off the schema and the caller's input, never out of
+	 * the text WordPress produced. Core translates that text, which is how the
+	 * execute-ability path came to improve nothing on a non-English site — so
+	 * this varies the text directly rather than needing a language pack.
 	 *
 	 * @return void
 	 */
-	public function test_a_translated_core_message_still_names_the_parameters(): void {
-		$english = $this->guidance_for_a_misspelled_parameter();
+	public function test_guidance_ignores_the_error_message_text(): void {
+		$real = $this->guidance_for_a_misspelled_parameter();
 
-		switch_to_locale( 'nl_NL' );
-		try {
-			$dutch = $this->guidance_for_a_misspelled_parameter();
-		} finally {
-			restore_previous_locale();
-		}
+		$supplied = [
+			'term_id' => 76,
+			'fields'  => 'all',
+		];
 
-		if ( $dutch['core'] === $english['core'] ) {
-			$this->markTestSkipped( 'nl_NL translations for core are not installed, so there is nothing to prove.' );
-		}
+		$replaced = $this->observer->handle(
+			new WP_Error( 'ability_invalid_input', 'iets heel anders' ),
+			$supplied,
+			'albert-view-term'
+		)->get_error_message();
 
-		foreach ( [ 'direct', 'proxied' ] as $path ) {
-			$this->assertStringContainsString( '`term_id`', $dutch[ $path ], $path );
-			$this->assertStringContainsString( '`fields`', $dutch[ $path ], $path );
-			$this->assertStringContainsString( '`id`', $dutch[ $path ], $path );
-
-			// And it is guidance, not core's sentence handed back unchanged.
-			$this->assertNotSame( $dutch['core'], $dutch[ $path ], $path );
-		}
+		$this->assertSame( $real['direct'], $replaced );
+		$this->assertStringContainsString( '`term_id`', $replaced );
 	}
 
 	/**

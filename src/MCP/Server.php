@@ -102,6 +102,24 @@ class Server implements Hookable {
 	}
 
 	/**
+	 * Whether the server firing a global adapter hook is Albert's own.
+	 *
+	 * `instanceof McpServer` is not enough. WooCommerce and other plugins bundle
+	 * their own copy of the adapter under the same `WP\MCP\Core` namespace, so
+	 * whichever autoloads first defines the class for all of them and every
+	 * server is an instance of it. Only the server id tells them apart.
+	 *
+	 * @param mixed $server The server firing the hook.
+	 *
+	 * @return bool True when this is Albert's own server.
+	 * @phpstan-assert-if-true McpServer $server
+	 * @since 1.4.0
+	 */
+	public static function is_albert_server( $server ): bool {
+		return $server instanceof McpServer && $server->get_server_id() === self::SERVER_ID;
+	}
+
+	/**
 	 * Hide tools the connected user cannot execute from tools/list.
 	 *
 	 * The adapter lists every registered tool regardless of permission — only
@@ -112,9 +130,9 @@ class Server implements Hookable {
 	 * permission_callback), so it honours both the baseline capability and Albert
 	 * Premium's advanced permission rules without knowing about either.
 	 *
-	 * Bound to the global `mcp_adapter_tools_list` filter. Guarded by an instanceof
-	 * check so it only touches Albert's own server, never another plugin's (e.g.
-	 * WooCommerce's) MCP server that fires the same hook.
+	 * Bound to the global `mcp_adapter_tools_list` filter, so it is matched on the
+	 * server id — see {@see self::is_albert_server()} for why `instanceof` alone
+	 * is not enough.
 	 *
 	 * @param array<int, object> $tools  Tool DTOs about to be returned to the client.
 	 * @param object             $server The MCP server firing the filter.
@@ -123,7 +141,7 @@ class Server implements Hookable {
 	 * @since 1.3.0
 	 */
 	public function hide_unauthorized_tools( array $tools, object $server ): array {
-		if ( ! $server instanceof McpServer ) {
+		if ( ! self::is_albert_server( $server ) ) {
 			return $tools;
 		}
 
