@@ -684,22 +684,20 @@ class TaxonomiesAbilityTest extends TestCase {
 	}
 
 	/**
-	 * The `post_tags` alias still resolves to the post_tag taxonomy.
+	 * `post_tags` is not a taxonomy, and is no longer quietly treated as one.
+	 *
+	 * The alias made the advertised contract false — the ability says
+	 * `post_tag` — and there is no end to the list of plausible second
+	 * spellings. The refusal names the slug and points at find-taxonomies.
 	 *
 	 * @return void
 	 */
-	public function test_find_terms_post_tags_alias(): void {
-		self::factory()->term->create(
-			[
-				'taxonomy' => 'post_tag',
-				'name'     => 'Aliased Tag',
-			]
-		);
-
+	public function test_find_terms_rejects_the_post_tags_misspelling(): void {
 		$result = ( new FindTerms() )->execute( [ 'taxonomy' => 'post_tags' ] );
 
-		$this->assertIsArray( $result );
-		$this->assertContains( 'Aliased Tag', array_column( $result['terms'], 'name' ) );
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'invalid_taxonomy', $result->get_error_code() );
+		$this->assertStringContainsString( 'find-taxonomies', $result->get_error_message() );
 	}
 
 	/**

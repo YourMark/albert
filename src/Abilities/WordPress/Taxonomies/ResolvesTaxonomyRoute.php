@@ -26,20 +26,6 @@ use WP_Error;
 trait ResolvesTaxonomyRoute {
 
 	/**
-	 * Slugs an assistant is likely to guess, mapped to the real taxonomy.
-	 *
-	 * `post_tags` is not a taxonomy on any site; it is the plural an assistant
-	 * reaches for after seeing `tags` in a post payload. Accepting it costs a
-	 * lookup and saves a round trip.
-	 *
-	 * @since 1.4.0
-	 * @var array<string, string>
-	 */
-	private static array $taxonomy_aliases = [
-		'post_tags' => 'post_tag',
-	];
-
-	/**
 	 * Get the REST route segment for a taxonomy.
 	 *
 	 * Two things decide the answer, and until 1.4.0 this asked neither of them.
@@ -57,14 +43,20 @@ trait ResolvesTaxonomyRoute {
 	 * The base therefore falls back to the taxonomy name, matching what
 	 * `WP_REST_Terms_Controller` does when it registers the route.
 	 *
+	 * A `post_tags => post_tag` alias used to live here, quietly accepting a
+	 * slug that is not a taxonomy on any site. It is gone on purpose. A tool is
+	 * reachable only through what it advertises, and quietly accepting a second
+	 * spelling makes the advertised contract false: the next caller guesses
+	 * `tags`, then `posttag`, and there is no version of that list that ends.
+	 * The refusal below names the taxonomy and points at `find-taxonomies`, so
+	 * a wrong guess costs one round trip and teaches the right slug.
+	 *
 	 * @param string $taxonomy Taxonomy slug.
 	 *
 	 * @return string|WP_Error Route segment, or an error naming the taxonomy.
 	 * @since 1.4.0
 	 */
 	private function get_taxonomy_rest_base( string $taxonomy ): string|WP_Error {
-		$taxonomy = self::$taxonomy_aliases[ $taxonomy ] ?? $taxonomy;
-
 		$taxonomy_obj = get_taxonomy( $taxonomy );
 		if ( ! $taxonomy_obj ) {
 			return new WP_Error(
