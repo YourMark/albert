@@ -248,8 +248,14 @@ class BlockRoundTripTest extends TestCase {
 	public function test_an_empty_classic_block_is_dropped(): void {
 		$serialized = $this->serializer->serialize_with_issues(
 			[
-				[ 'name' => null, 'plaintext' => '   ' ],
-				[ 'name' => 'core/paragraph', 'attributes' => [ 'content' => 'Kept' ] ],
+				[
+					'name'      => null,
+					'plaintext' => '   ',
+				],
+				[
+					'name'       => 'core/paragraph',
+					'attributes' => [ 'content' => 'Kept' ],
+				],
 			]
 		);
 
@@ -268,7 +274,10 @@ class BlockRoundTripTest extends TestCase {
 	public function test_the_blockName_alias_is_accepted(): void {
 		$serialized = $this->serializer->serialize_with_issues(
 			[
-				[ 'blockName' => 'core/paragraph', 'attrs' => [ 'content' => 'Aliased' ] ],
+				[
+					'blockName' => 'core/paragraph',
+					'attrs'     => [ 'content' => 'Aliased' ],
+				],
 			]
 		);
 

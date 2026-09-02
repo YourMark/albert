@@ -12,8 +12,10 @@
 
 namespace Albert\Tests\Integration\MCP;
 
+use Albert\MCP\Server;
 use Albert\MCP\ToolCallObserver;
 use Albert\Tests\TestCase;
+use WP\MCP\Core\McpServer;
 use WP_Error;
 
 /**
@@ -73,9 +75,9 @@ class ToolCallObserverTest extends TestCase {
 		$raw = wp_get_ability( $this->ability() )->execute( $supplied );
 		$this->assertWPError( $raw, 'Expected the Abilities API to reject an undeclared parameter.' );
 
-		$direct = $this->observer->handle( $raw, $supplied, 'albert-view-term' );
+		$direct = $this->handle( $raw, $supplied, 'albert-view-term' );
 
-		$proxied = $this->observer->handle(
+		$proxied = $this->handle(
 			[
 				'success' => false,
 				'error'   => $raw->get_error_message(),
@@ -128,7 +130,7 @@ class ToolCallObserverTest extends TestCase {
 			'fields'  => 'all',
 		];
 
-		$replaced = $this->observer->handle(
+		$replaced = $this->handle(
 			new WP_Error( 'ability_invalid_input', 'iets heel anders' ),
 			$supplied,
 			'albert-view-term'
@@ -165,7 +167,7 @@ class ToolCallObserverTest extends TestCase {
 			'error'   => 'Sorry, you are not allowed to do that.',
 		];
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			$result,
 			[
 				'ability_name' => $this->ability(),
@@ -175,5 +177,37 @@ class ToolCallObserverTest extends TestCase {
 		);
 
 		$this->assertSame( $result, $out );
+	}
+
+	/**
+	 * Build a mocked MCP server with a given id.
+	 *
+	 * The adapter hooks are global, so the callbacks under test only act on
+	 * Albert's own server — see {@see Server::is_albert_server()}. These tests
+	 * exercise Albert's path, so they supply Albert's id.
+	 *
+	 * @param string $id The server id.
+	 *
+	 * @return McpServer
+	 */
+	private function server( string $id = Server::SERVER_ID ): McpServer {
+		$server = $this->createMock( McpServer::class );
+		$server->method( 'get_server_id' )->willReturn( $id );
+
+		return $server;
+	}
+
+	/**
+	 * Call the observer as the adapter does, on Albert's own server.
+	 *
+	 * @param mixed  $result    The tool result.
+	 * @param mixed  $args      The tool arguments.
+	 * @param string $tool_name The tool name.
+	 * @param mixed  $mcp_tool  The adapter tool instance, if any.
+	 *
+	 * @return mixed
+	 */
+	private function handle( $result, $args, string $tool_name, $mcp_tool = null ): mixed {
+		return $this->observer->handle( $result, $args, $tool_name, $mcp_tool, $this->server() );
 	}
 }

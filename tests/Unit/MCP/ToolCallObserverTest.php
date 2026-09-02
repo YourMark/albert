@@ -847,7 +847,15 @@ class ToolCallObserverTest extends TestCase {
 
 		$out = $this->handle(
 			new WP_Error( 'ability_invalid_input', 'Ability "albert/create-thing" has invalid input. Reason: whatever.' ),
-			[ 'blocks' => [ [ 'name' => 'core/paragraph' ], [ 'name' => 'core/heading', 'content' => 'Hi' ] ] ],
+			[
+				'blocks' => [
+					[ 'name' => 'core/paragraph' ],
+					[
+						'name'    => 'core/heading',
+						'content' => 'Hi',
+					],
+				],
+			],
 			'albert-create-thing'
 		);
 
@@ -888,8 +896,14 @@ class ToolCallObserverTest extends TestCase {
 			[
 				'title'  => 'T',
 				'blocks' => [
-					[ 'name' => 'core/paragraph', 'x' => 1 ],
-					[ 'name' => 'core/heading', 'y' => 2 ],
+					[
+						'name' => 'core/paragraph',
+						'x'    => 1,
+					],
+					[
+						'name' => 'core/heading',
+						'y'    => 2,
+					],
 				],
 			],
 			'albert-create-thing'
