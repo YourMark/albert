@@ -109,6 +109,11 @@ class Server implements Hookable {
 	 * whichever autoloads first defines the class for all of them and every
 	 * server is an instance of it. Only the server id tells them apart.
 	 *
+	 * `get_server_id()` is checked rather than assumed for the same reason: the
+	 * class that wins the race may come from an adapter version older than ours.
+	 * A copy without the method is treated as "not Albert's", which is the safe
+	 * direction — Albert leaves a server it cannot identify alone.
+	 *
 	 * @param mixed $server The server firing the hook.
 	 *
 	 * @return bool True when this is Albert's own server.
@@ -116,6 +121,13 @@ class Server implements Hookable {
 	 * @since 1.4.0
 	 */
 	public static function is_albert_server( $server ): bool {
+		// Checked before the instanceof narrows $server: the class that wins the
+		// autoload race may come from an adapter version older than ours, and
+		// method_exists() on our own copy would be a tautology.
+		if ( ! is_object( $server ) || ! method_exists( $server, 'get_server_id' ) ) {
+			return false;
+		}
+
 		return $server instanceof McpServer && $server->get_server_id() === self::SERVER_ID;
 	}
 
@@ -280,13 +292,16 @@ class Server implements Hookable {
 	/**
 	 * Create the MCP server.
 	 *
-	 * Bound to the global `mcp_adapter_init` action, which is fired by EVERY loaded
-	 * copy of the MCP adapter — including the unscoped `WP\MCP\…` copy WooCommerce
-	 * bundles. Mozart only rewrites class names, not the literal hook string, so
-	 * both our scoped adapter and a foreign one fire the same action. We must build
-	 * the Albert server only against our own Mozart-scoped adapter; any other
-	 * instance is ignored (otherwise a foreign copy triggers a TypeError here, or
-	 * we'd build our server against the wrong adapter).
+	 * Bound to the global `mcp_adapter_init` action. Every plugin that bundles the
+	 * adapter ships it unscoped under the same `WP\MCP\…` namespace, so whichever
+	 * copy autoloads first defines the classes for all of them and `McpAdapter` is
+	 * a single shared singleton — this action fires once, with that one instance.
+	 * The `instanceof` check is therefore a type guard, not a way of telling our
+	 * adapter from someone else's: there is only one, and it is shared.
+	 *
+	 * Telling servers apart is a different problem, and the shared adapter is
+	 * exactly why it exists — see {@see self::is_albert_server()}, which every
+	 * callback on a global adapter hook must use.
 	 *
 	 * @param object $adapter The MCP adapter instance fired on the global hook.
 	 *

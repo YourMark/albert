@@ -11,8 +11,10 @@ require_once dirname( __DIR__ ) . '/stubs/wordpress.php';
 require_once dirname( __DIR__ ) . '/stubs/WP_Ability.php';
 
 use Albert\Logging\ExecutionLogMarker;
+use Albert\MCP\Server;
 use Albert\MCP\ToolCallObserver;
 use PHPUnit\Framework\TestCase;
+use WP\MCP\Core\McpServer;
 use WP_Error;
 
 /**
@@ -43,6 +45,39 @@ class ToolCallObserverTest extends TestCase {
 	}
 
 	/**
+	 * Build a mocked MCP server with a given id.
+	 *
+	 * Every plugin's server is an `instanceof McpServer` — they share one class —
+	 * so a foreign server must be a real mock with a different id, not a stand-in
+	 * object of another type, or the test passes against a guard that only checks
+	 * the class.
+	 *
+	 * @param string $id The server id.
+	 *
+	 * @return McpServer
+	 */
+	private function server( string $id = Server::SERVER_ID ): McpServer {
+		$server = $this->createMock( McpServer::class );
+		$server->method( 'get_server_id' )->willReturn( $id );
+
+		return $server;
+	}
+
+	/**
+	 * Call the observer as the adapter does, on Albert's own server.
+	 *
+	 * @param mixed  $result    The tool result.
+	 * @param mixed  $args      The tool arguments.
+	 * @param string $tool_name The tool name.
+	 * @param mixed  $mcp_tool  The adapter tool instance, if any.
+	 *
+	 * @return mixed
+	 */
+	private function handle( $result, $args, string $tool_name, $mcp_tool = null ): mixed {
+		return $this->observer->handle( $result, $args, $tool_name, $mcp_tool, $this->server() );
+	}
+
+	/**
 	 * Build the validation WP_Error the Abilities API produces.
 	 *
 	 * @param string $reason The "Reason: …" tail.
@@ -64,7 +99,7 @@ class ToolCallObserverTest extends TestCase {
 	public function test_single_missing_required(): void {
 		$this->register_create_post();
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			$this->invalid_input( 'title is a required property of input.' ),
 			[ 'content' => 'x' ],
 			'albert/create-post'
@@ -83,7 +118,7 @@ class ToolCallObserverTest extends TestCase {
 	public function test_multiple_missing_required(): void {
 		$this->register_create_post( [ 'title', 'status' ] );
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			$this->invalid_input( 'title is a required property of input. status is a required property of input.' ),
 			[],
 			'albert/create-post'
@@ -100,7 +135,7 @@ class ToolCallObserverTest extends TestCase {
 	public function test_other_validation_reason(): void {
 		$this->register_create_post();
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			$this->invalid_input( 'input[title] is not of type string.' ),
 			[ 'title' => 123 ],
 			'albert/create-post'
@@ -115,7 +150,7 @@ class ToolCallObserverTest extends TestCase {
 	 * @return void
 	 */
 	public function test_empty_message_fallback(): void {
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			new WP_Error( 'ability_invalid_input', '' ),
 			[],
 			'albert/create-post'
@@ -131,7 +166,7 @@ class ToolCallObserverTest extends TestCase {
 	 */
 	public function test_success_passthrough(): void {
 		$result = [ 'id' => 5 ];
-		$out    = $this->observer->handle( $result, [], 'albert/create-post' );
+		$out    = $this->handle( $result, [], 'albert/create-post' );
 
 		$this->assertSame( $result, $out );
 	}
@@ -143,7 +178,7 @@ class ToolCallObserverTest extends TestCase {
 	 */
 	public function test_meta_tool_passthrough(): void {
 		$error = new WP_Error( 'whatever', 'raw' );
-		$out   = $this->observer->handle( $error, [], 'mcp-adapter/execute-ability' );
+		$out   = $this->handle( $error, [], 'mcp-adapter/execute-ability' );
 
 		$this->assertSame( $error, $out );
 	}
@@ -155,7 +190,7 @@ class ToolCallObserverTest extends TestCase {
 	 * @return void
 	 */
 	public function test_fires_after_execute_when_unmarked(): void {
-		$this->observer->handle( new WP_Error( 'rest_cannot_create', 'Sorry, you are not allowed to create posts.' ), [ 'a' => 1 ], 'albert/create-post' );
+		$this->handle( new WP_Error( 'rest_cannot_create', 'Sorry, you are not allowed to create posts.' ), [ 'a' => 1 ], 'albert/create-post' );
 
 		$fired = array_filter(
 			$GLOBALS['albert_test_hooks'],
@@ -175,7 +210,7 @@ class ToolCallObserverTest extends TestCase {
 	public function test_validation_rejection_improves_message_but_is_not_logged(): void {
 		$this->register_create_post();
 
-		$out = $this->observer->handle( $this->invalid_input( 'title is a required property of input.' ), [ 'a' => 1 ], 'albert/create-post' );
+		$out = $this->handle( $this->invalid_input( 'title is a required property of input.' ), [ 'a' => 1 ], 'albert/create-post' );
 
 		// Message is still improved for the assistant.
 		$this->assertStringStartsWith( 'Missing required parameter: `title`.', $out->get_error_message() );
@@ -198,7 +233,7 @@ class ToolCallObserverTest extends TestCase {
 	public function test_skips_after_execute_when_marked(): void {
 		ExecutionLogMarker::mark( 'albert/create-post' );
 
-		$this->observer->handle( new WP_Error( 'rest_cannot_create', 'Sorry.' ), [], 'albert/create-post' );
+		$this->handle( new WP_Error( 'rest_cannot_create', 'Sorry.' ), [], 'albert/create-post' );
 
 		$fired = array_filter(
 			$GLOBALS['albert_test_hooks'],
@@ -290,7 +325,7 @@ class ToolCallObserverTest extends TestCase {
 	public function test_unrecognised_parameters_are_named(): void {
 		$this->register_view_term();
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			$this->view_term_invalid_input(),
 			[
 				'term_id'  => 76,
@@ -315,7 +350,7 @@ class ToolCallObserverTest extends TestCase {
 	public function test_accepted_parameters_listed_without_unrecognised_line(): void {
 		$this->register_view_term();
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			$this->view_term_invalid_input(),
 			[ 'taxonomy' => 'category' ],
 			'albert-view-term'
@@ -340,7 +375,7 @@ class ToolCallObserverTest extends TestCase {
 	public function test_unregistered_ability_keeps_cores_message(): void {
 		$raw = $this->view_term_invalid_input();
 
-		$out = $this->observer->handle( $raw, [ 'term_id' => 76 ], 'albert-view-term' );
+		$out = $this->handle( $raw, [ 'term_id' => 76 ], 'albert-view-term' );
 
 		$this->assertSame( $raw->get_error_message(), $out->get_error_message() );
 	}
@@ -353,7 +388,7 @@ class ToolCallObserverTest extends TestCase {
 	public function test_other_reason_gains_parameter_guidance(): void {
 		$this->register_view_term();
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			new WP_Error(
 				'ability_invalid_input',
 				'Ability "albert/view-term" has invalid input. Reason: id is not of type integer.'
@@ -381,7 +416,7 @@ class ToolCallObserverTest extends TestCase {
 	public function test_meta_tool_result_message_is_improved(): void {
 		$this->register_view_term();
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			[
 				'success' => false,
 				'error'   => 'Ability "albert/view-term" has invalid input. Reason: id is a required property of input.',
@@ -411,7 +446,7 @@ class ToolCallObserverTest extends TestCase {
 			'error'   => "Ability 'albert/view-term' not found",
 		];
 
-		$out = $this->observer->handle( $result, [ 'ability_name' => 'albert/view-term' ], 'mcp-adapter-execute-ability' );
+		$out = $this->handle( $result, [ 'ability_name' => 'albert/view-term' ], 'mcp-adapter-execute-ability' );
 
 		$this->assertSame( $result, $out );
 	}
@@ -427,7 +462,7 @@ class ToolCallObserverTest extends TestCase {
 			'data'    => [ 'term' => [ 'id' => 76 ] ],
 		];
 
-		$out = $this->observer->handle( $result, [], 'mcp-adapter-execute-ability' );
+		$out = $this->handle( $result, [], 'mcp-adapter-execute-ability' );
 
 		$this->assertSame( $result, $out );
 	}
@@ -445,7 +480,7 @@ class ToolCallObserverTest extends TestCase {
 	public function test_logs_against_the_ability_id(): void {
 		$this->register_ability( 'albert/create-post', [ 'type' => 'object' ] );
 
-		$this->observer->handle(
+		$this->handle(
 			new WP_Error( 'rest_cannot_create', 'Sorry, you are not allowed to create posts.' ),
 			[ 'a' => 1 ],
 			'albert-create-post'
@@ -474,7 +509,7 @@ class ToolCallObserverTest extends TestCase {
 		$this->register_ability( 'albert/create-post', [ 'type' => 'object' ] );
 		ExecutionLogMarker::mark( 'albert/create-post' );
 
-		$this->observer->handle( new WP_Error( 'rest_cannot_create', 'Sorry.' ), [], 'albert-create-post' );
+		$this->handle( new WP_Error( 'rest_cannot_create', 'Sorry.' ), [], 'albert-create-post' );
 
 		$fired = array_filter(
 			$GLOBALS['albert_test_hooks'],
@@ -497,7 +532,7 @@ class ToolCallObserverTest extends TestCase {
 	public function test_only_unrecognised_parameters(): void {
 		$this->register_view_term();
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			new WP_Error(
 				'ability_invalid_input',
 				'Ability "albert/view-term" has invalid input. Reason: fields is not a valid property of Object.'
@@ -528,7 +563,7 @@ class ToolCallObserverTest extends TestCase {
 			'Ability "albert/view-term" has invalid input. Reason: fields is not a valid property of Object.'
 		);
 
-		$out = $this->observer->handle( $raw, [ 'fields' => 'all' ], 'albert-view-term' );
+		$out = $this->handle( $raw, [ 'fields' => 'all' ], 'albert-view-term' );
 
 		$this->assertSame( $raw->get_error_message(), $out->get_error_message() );
 	}
@@ -555,7 +590,7 @@ class ToolCallObserverTest extends TestCase {
 
 		$guidance = array_map(
 			function ( string $message ): string {
-				return $this->observer->handle(
+				return $this->handle(
 					new WP_Error( 'ability_invalid_input', $message ),
 					[ 'term_id' => 76 ],
 					'albert-view-term'
@@ -580,7 +615,7 @@ class ToolCallObserverTest extends TestCase {
 	public function test_meta_tool_result_ignores_the_error_message_text(): void {
 		$this->register_view_term();
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			[
 				'success' => false,
 				'error'   => 'Ability "albert/view-term" heeft ongeldige invoer. Reden: id is een vereiste eigenschap van invoer.',
@@ -618,7 +653,7 @@ class ToolCallObserverTest extends TestCase {
 			]
 		);
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			new WP_Error( 'ability_invalid_input', 'Ability "albert/open-term" has invalid input. Reason: id is a required property of input.' ),
 			[ 'term_id' => 76 ],
 			'albert-open-term'
@@ -653,7 +688,7 @@ class ToolCallObserverTest extends TestCase {
 			]
 		);
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			new WP_Error( 'ability_invalid_input', 'Ability "albert/create-thing" has invalid input. Reason: whatever.' ),
 			[ 'status' => 'published' ],
 			'albert-create-thing'
@@ -684,7 +719,7 @@ class ToolCallObserverTest extends TestCase {
 			]
 		);
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			new WP_Error( 'ability_invalid_input', 'Ability "albert/view-sessions" has invalid input. Reason: whatever.' ),
 			[ 'limit' => 10 ],
 			'albert-view-sessions'
@@ -726,7 +761,7 @@ class ToolCallObserverTest extends TestCase {
 			]
 		);
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			new WP_Error( 'ability_invalid_input', 'Ability "albert/update-order" has invalid input. Reason: company is not a valid property of Object.' ),
 			[
 				'order_id' => 1,
@@ -770,7 +805,7 @@ class ToolCallObserverTest extends TestCase {
 			]
 		);
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			new WP_Error( 'ability_invalid_input', 'Ability "albert/update-order" has invalid input. Reason: whatever.' ),
 			[
 				'orderid' => 1,
@@ -810,7 +845,7 @@ class ToolCallObserverTest extends TestCase {
 			]
 		);
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			new WP_Error( 'ability_invalid_input', 'Ability "albert/create-thing" has invalid input. Reason: whatever.' ),
 			[ 'blocks' => [ [ 'name' => 'core/paragraph' ], [ 'name' => 'core/heading', 'content' => 'Hi' ] ] ],
 			'albert-create-thing'
@@ -850,7 +885,7 @@ class ToolCallObserverTest extends TestCase {
 			}
 		};
 
-		$out = $this->observer->handle(
+		$out = $this->handle(
 			new WP_Error( 'ability_invalid_input', 'Ability "albert-extra/view-term" has invalid input. Reason: id is a required property of input.' ),
 			[ 'term_id' => 76 ],
 			'albert-extra-view-term',
@@ -858,5 +893,75 @@ class ToolCallObserverTest extends TestCase {
 		);
 
 		$this->assertStringContainsString( 'Unrecognised parameters: `term_id`.', $out->get_error_message() );
+	}
+
+	/**
+	 * Another plugin's MCP server firing the same global filter is left alone.
+	 *
+	 * Its error text is not rewritten into Albert's format and, just as
+	 * importantly, its failure is not fired at `albert/abilities/after_execute`,
+	 * which is what puts a row in the owner-facing activity log. A call Albert
+	 * never served has no business appearing there.
+	 *
+	 * @return void
+	 */
+	public function test_a_foreign_server_is_left_alone(): void {
+		$this->register_create_post();
+
+		$error = new WP_Error( 'rest_cannot_create', 'Sorry, you are not allowed to create posts.' );
+
+		$out = $this->observer->handle(
+			$error,
+			[ 'a' => 1 ],
+			'albert/create-post',
+			null,
+			$this->server( 'woocommerce' )
+		);
+
+		$this->assertSame( $error, $out );
+		$this->assertSame( [], $GLOBALS['albert_test_hooks'] );
+	}
+
+	/**
+	 * A foreign server's proxied meta-tool failure keeps its own error text.
+	 *
+	 * The meta-tool branch runs before the WP_Error check, so without the server
+	 * guard this is the one path that rewrote a plain array result belonging to
+	 * someone else's server.
+	 *
+	 * @return void
+	 */
+	public function test_a_foreign_servers_proxied_result_is_not_rewritten(): void {
+		$result = [
+			'success' => false,
+			'error'   => 'Ability "someplugin/do-thing" has invalid input. Reason: whatever.',
+		];
+
+		$this->assertSame(
+			$result,
+			$this->observer->handle(
+				$result,
+				[ 'ability_name' => 'someplugin/do-thing' ],
+				'mcp-adapter-execute-ability',
+				null,
+				$this->server( 'woocommerce' )
+			)
+		);
+	}
+
+	/**
+	 * A server the adapter did not pass at all is treated as foreign.
+	 *
+	 * Albert cannot tell whose call it is, so it does not touch it.
+	 *
+	 * @return void
+	 */
+	public function test_an_unidentified_server_is_left_alone(): void {
+		$this->register_create_post();
+
+		$error = new WP_Error( 'rest_cannot_create', 'Sorry.' );
+
+		$this->assertSame( $error, $this->observer->handle( $error, [], 'albert/create-post' ) );
+		$this->assertSame( [], $GLOBALS['albert_test_hooks'] );
 	}
 }

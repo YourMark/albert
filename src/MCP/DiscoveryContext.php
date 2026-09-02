@@ -53,7 +53,7 @@ class DiscoveryContext implements Hookable {
 	 * @since 1.4.0
 	 */
 	public function register_hooks(): void {
-		add_filter( 'mcp_adapter_tool_call_result', [ $this, 'add_context' ], 20, 3 );
+		add_filter( 'mcp_adapter_tool_call_result', [ $this, 'add_context' ], 20, 5 );
 		add_filter( 'wp_register_ability_args', [ $this, 'describe_fields' ], 10, 2 );
 	}
 
@@ -106,11 +106,20 @@ class DiscoveryContext implements Hookable {
 	 * @param mixed  $result    The tool execution result.
 	 * @param mixed  $args      The tool arguments used (unused, discovery takes none).
 	 * @param string $tool_name The tool that was called.
+	 * @param mixed  $mcp_tool  The adapter's tool instance (unused, the name is enough).
+	 * @param mixed  $server    The MCP server firing the filter.
 	 *
 	 * @return mixed The result, with `site` and `skills` added when there is context to add.
 	 * @since 1.4.0
 	 */
-	public function add_context( $result, $args, string $tool_name ): mixed {
+	public function add_context( $result, $args, string $tool_name, $mcp_tool = null, $server = null ): mixed {
+		// This filter is global and every plugin's server fires it. Albert's site
+		// context describes Albert's site to Albert's clients; appending it to
+		// another server's discovery response leaks it where it does not belong.
+		if ( ! Server::is_albert_server( $server ) ) {
+			return $result;
+		}
+
 		// The tool name arrives in the MCP-sanitised spelling
 		// (`mcp-adapter-discover-abilities`) on some paths and as the raw
 		// ability id on others, so both are matched rather than assuming one.

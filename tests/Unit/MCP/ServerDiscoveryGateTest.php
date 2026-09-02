@@ -169,9 +169,31 @@ class ServerDiscoveryGateTest extends TestCase {
 	 * A foreign (non-Albert) MCP server firing the same global hook is left
 	 * untouched — the gate only acts on Albert's own server.
 	 *
+	 * The foreign server is a real McpServer mock with a different id, not a
+	 * stand-in of another class. That is the whole point: WooCommerce, Novamira
+	 * and Albert all bundle the adapter unscoped, so one class definition serves
+	 * every plugin and every server passes `instanceof`. A `stdClass` here would
+	 * pass just as happily against the old, broken class-only guard.
+	 *
 	 * @return void
 	 */
 	public function test_ignores_non_albert_server(): void {
+		$server = $this->createMock( McpServer::class );
+		$server->method( 'get_server_id' )->willReturn( 'woocommerce' );
+		$server->expects( $this->never() )->method( 'get_mcp_tool' );
+
+		$tools  = [ $this->tool( 'albert/create-post' ) ];
+		$result = ( new Server() )->hide_unauthorized_tools( $tools, $server );
+
+		$this->assertSame( $tools, $result );
+	}
+
+	/**
+	 * A server that is not an McpServer at all is also left alone.
+	 *
+	 * @return void
+	 */
+	public function test_ignores_a_server_of_another_type(): void {
 		$tools  = [ $this->tool( 'albert/create-post' ) ];
 		$result = ( new Server() )->hide_unauthorized_tools( $tools, new \stdClass() );
 

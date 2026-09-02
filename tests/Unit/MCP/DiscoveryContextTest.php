@@ -8,7 +8,9 @@
 namespace Albert\Tests\Unit\MCP;
 
 use Albert\MCP\DiscoveryContext;
+use Albert\MCP\Server;
 use PHPUnit\Framework\TestCase;
+use WP\MCP\Core\McpServer;
 use WP_Error;
 
 require_once dirname( __DIR__ ) . '/stubs/wordpress.php';
@@ -50,7 +52,7 @@ class DiscoveryContextTest extends TestCase {
 
 		$this->assertSame(
 			$result,
-			$this->context->add_context( $result, [], 'albert/create-post' )
+			$this->add_context( $result, [], 'albert/create-post' )
 		);
 	}
 
@@ -67,7 +69,7 @@ class DiscoveryContextTest extends TestCase {
 
 		$this->assertSame(
 			$error,
-			$this->context->add_context( $error, [], 'mcp-adapter/discover-abilities' )
+			$this->add_context( $error, [], 'mcp-adapter/discover-abilities' )
 		);
 	}
 
@@ -79,7 +81,7 @@ class DiscoveryContextTest extends TestCase {
 	public function test_unexpected_shapes_pass_through(): void {
 		$this->assertSame(
 			[ 'something' => 'else' ],
-			$this->context->add_context( [ 'something' => 'else' ], [], 'mcp-adapter/discover-abilities' )
+			$this->add_context( [ 'something' => 'else' ], [], 'mcp-adapter/discover-abilities' )
 		);
 	}
 
@@ -91,7 +93,7 @@ class DiscoveryContextTest extends TestCase {
 	public function test_the_ability_list_is_preserved(): void {
 		$result = [ 'abilities' => [ [ 'name' => 'albert/find-posts' ] ] ];
 
-		$filtered = $this->context->add_context( $result, [], 'mcp-adapter/discover-abilities' );
+		$filtered = $this->add_context( $result, [], 'mcp-adapter/discover-abilities' );
 
 		$this->assertSame( $result['abilities'], $filtered['abilities'] );
 	}
@@ -108,7 +110,7 @@ class DiscoveryContextTest extends TestCase {
 		$result = [ 'abilities' => [] ];
 
 		foreach ( [ 'mcp-adapter/discover-abilities', 'mcp-adapter-discover-abilities' ] as $name ) {
-			$filtered = $this->context->add_context( $result, [], $name );
+			$filtered = $this->add_context( $result, [], $name );
 
 			// With no WordPress behind it the payload is empty, so the result
 			// comes back unchanged, but it must have been recognised, which the
@@ -163,5 +165,70 @@ class DiscoveryContextTest extends TestCase {
 		$args = [ 'label' => 'Discover Abilities' ];
 
 		$this->assertSame( $args, $this->context->describe_fields( $args, 'mcp-adapter/discover-abilities' ) );
+	}
+
+	/**
+	 * Build a mocked MCP server with a given id.
+	 *
+	 * @param string $id The server id.
+	 *
+	 * @return McpServer
+	 */
+	private function server( string $id = Server::SERVER_ID ): McpServer {
+		$server = $this->createMock( McpServer::class );
+		$server->method( 'get_server_id' )->willReturn( $id );
+
+		return $server;
+	}
+
+	/**
+	 * Call the filter as the adapter does, on Albert's own server.
+	 *
+	 * @param mixed  $result    The tool result.
+	 * @param mixed  $args      The tool arguments.
+	 * @param string $tool_name The tool name.
+	 *
+	 * @return mixed
+	 */
+	private function add_context( $result, $args, string $tool_name ): mixed {
+		return $this->context->add_context( $result, $args, $tool_name, null, $this->server() );
+	}
+
+	/**
+	 * Another plugin's server asking for its own abilities gets its own answer.
+	 *
+	 * The filter is global, so every MCP server on the site fires it. Albert's
+	 * site context describes Albert's site to Albert's clients; appending it to
+	 * a foreign server's discovery response leaks it where it does not belong.
+	 *
+	 * @return void
+	 */
+	public function test_a_foreign_server_gets_no_albert_context(): void {
+		$result = [ 'abilities' => [ 'woocommerce/list-orders' ] ];
+
+		$filtered = $this->context->add_context(
+			$result,
+			[],
+			'mcp-adapter/discover-abilities',
+			null,
+			$this->server( 'woocommerce' )
+		);
+
+		$this->assertSame( $result, $filtered );
+		$this->assertArrayNotHasKey( 'site', $filtered );
+	}
+
+	/**
+	 * A server the adapter did not identify is left alone too.
+	 *
+	 * @return void
+	 */
+	public function test_an_unidentified_server_gets_no_albert_context(): void {
+		$result = [ 'abilities' => [ 'someplugin/do-thing' ] ];
+
+		$this->assertSame(
+			$result,
+			$this->context->add_context( $result, [], 'mcp-adapter/discover-abilities' )
+		);
 	}
 }

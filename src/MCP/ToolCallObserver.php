@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Albert\Core\AbilitiesRegistry;
 use Albert\Logging\ExecutionLogMarker;
+use Albert\MCP\Server;
 use WP_Ability;
 use WP_Error;
 
@@ -54,15 +55,17 @@ class ToolCallObserver {
 	/**
 	 * Register the adapter result filter.
 	 *
-	 * Four arguments: the fourth is the adapter's `McpTool`, the only place the
-	 * tool-name-to-ability mapping exists.
+	 * Five arguments: the fourth is the adapter's `McpTool`, the only place the
+	 * tool-name-to-ability mapping exists, and the fifth is the server, which
+	 * {@see handle()} needs because this filter is global — see
+	 * {@see Server::is_albert_server()}.
 	 *
 	 * @return void
 	 * @since 1.2.0
-	 * @since 1.4.0 Takes the McpTool argument.
+	 * @since 1.4.0 Takes the McpTool and McpServer arguments.
 	 */
 	public function register_hooks(): void {
-		add_filter( 'mcp_adapter_tool_call_result', [ $this, 'handle' ], 10, 4 );
+		add_filter( 'mcp_adapter_tool_call_result', [ $this, 'handle' ], 10, 5 );
 	}
 
 	/**
@@ -72,11 +75,20 @@ class ToolCallObserver {
 	 * @param mixed  $args      The tool arguments used.
 	 * @param string $tool_name The tool name that was called.
 	 * @param mixed  $mcp_tool  The adapter's tool instance, if it passed one.
+	 * @param mixed  $server    The MCP server firing the filter.
 	 *
 	 * @return mixed The (possibly improved) result.
 	 * @since 1.2.0
+	 * @since 1.4.0 Ignores servers that are not Albert's own.
 	 */
-	public function handle( $result, $args, string $tool_name, $mcp_tool = null ): mixed {
+	public function handle( $result, $args, string $tool_name, $mcp_tool = null, $server = null ): mixed {
+		// This filter is global: every MCP server on the site fires it, including
+		// ones belonging to other plugins. Rewriting their error text or logging
+		// their calls to Albert's activity log would be plain interference.
+		if ( ! Server::is_albert_server( $server ) ) {
+			return $result;
+		}
+
 		$args = is_array( $args ) ? $args : [];
 
 		// The adapter's own meta-tools are not real abilities. They proxy one,
