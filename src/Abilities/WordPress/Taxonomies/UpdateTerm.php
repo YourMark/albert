@@ -140,14 +140,14 @@ class UpdateTerm extends BaseAbility {
 		$taxonomy = $args['taxonomy'] ?? 'category';
 		$term_id  = absint( $args['id'] );
 
-		// Determine REST base for taxonomy.
-		$rest_base = $this->get_taxonomy_rest_base( $taxonomy );
-		if ( is_wp_error( $rest_base ) ) {
-			return $rest_base;
+		// Determine the REST route WordPress serves this taxonomy's terms on.
+		$route = $this->get_taxonomy_route( $taxonomy );
+		if ( is_wp_error( $route ) ) {
+			return $route;
 		}
 
 		// Create REST request.
-		$request = new WP_REST_Request( 'POST', '/wp/v2/' . $rest_base . '/' . $term_id );
+		$request = new WP_REST_Request( 'POST', $route . '/' . $term_id );
 
 		// Set parameters (only include provided fields).
 		if ( isset( $args['name'] ) ) {

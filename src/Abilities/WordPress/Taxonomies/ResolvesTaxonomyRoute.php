@@ -14,67 +14,77 @@ defined( 'ABSPATH' ) || exit;
 use WP_Error;
 
 /**
- * Resolves a taxonomy slug to the `/wp/v2/` route segment WordPress serves it on.
+ * Resolves a taxonomy slug to the REST route WordPress serves its terms on.
  *
  * FindTerms, CreateTerm, UpdateTerm and DeleteTerm all reach their taxonomy
  * through `rest_do_request()`, and each carried its own byte-identical copy of
- * this method. One trait instead of four copies, so the next correction happens
- * once.
+ * this resolution. One trait instead of four copies, so the next correction
+ * happens once.
  *
  * @since 1.4.0
  */
 trait ResolvesTaxonomyRoute {
 
 	/**
-	 * Get the REST route segment for a taxonomy.
+	 * Get the REST route for a taxonomy's terms.
 	 *
-	 * Two things decide the answer, and until 1.4.0 this asked neither of them.
+	 * The answer is `rest_get_route_for_taxonomy_items()`. WordPress has
+	 * resolved its own routes since 5.9, and this plugin requires 6.9, so
+	 * asking core is both available and the only way to be right: it reads
+	 * `show_in_rest`, `rest_namespace` and `rest_base` in the same breath the
+	 * route registration does, and passes the result through the
+	 * `rest_route_for_taxonomy_items` filter that a site uses to move a route.
+	 * A hand-rolled copy is a second answer to a question that already has one,
+	 * and it drifts.
 	 *
-	 * Whether the taxonomy is reachable over REST at all is `show_in_rest`.
-	 * `rest_base` is only the route *name*, and `register_taxonomy()` leaves it
-	 * `false` unless the caller sets it — WordPress then serves the taxonomy
-	 * under its own slug. Reading `rest_base` as the gate rejected every
-	 * REST-enabled taxonomy that had not been given an explicit base, which is
-	 * the common case for custom taxonomies: WooCommerce's `product_cat` is
-	 * registered with `show_in_rest => true` and no `rest_base`, and came back
-	 * as "not available via REST API" from an ability whose whole job was to
-	 * read it.
+	 * Until 1.4.0 there was such a copy, and it asked the wrong question.
+	 * `rest_base` was read as "is this taxonomy in the REST API", but it is the
+	 * route *name*: `register_taxonomy()` leaves it `false` unless the caller
+	 * sets one, and WordPress then serves the taxonomy under its own slug.
+	 * Every REST-enabled taxonomy without an explicit base was refused, which
+	 * is the common case for a custom taxonomy — WooCommerce registers
+	 * `product_cat` with `show_in_rest => true` and no `rest_base`, and it came
+	 * back as "not available via REST API" from an ability whose whole job was
+	 * to read it.
 	 *
-	 * The base therefore falls back to the taxonomy name, matching what
-	 * `WP_REST_Terms_Controller` does when it registers the route.
-	 *
-	 * A `post_tags => post_tag` alias used to live here, quietly accepting a
-	 * slug that is not a taxonomy on any site. It is gone on purpose. A tool is
-	 * reachable only through what it advertises, and quietly accepting a second
-	 * spelling makes the advertised contract false: the next caller guesses
-	 * `tags`, then `posttag`, and there is no version of that list that ends.
-	 * The refusal below names the taxonomy and points at `find-taxonomies`, so
-	 * a wrong guess costs one round trip and teaches the right slug.
+	 * A `post_tags => post_tag` alias used to live here too, quietly accepting
+	 * a slug that is not a taxonomy on any site. It is gone on purpose. A tool
+	 * is reachable only through what it advertises, and quietly accepting a
+	 * second spelling makes the advertised contract false: the next caller
+	 * guesses `tags`, then `posttag`, and there is no version of that list that
+	 * ends. The refusals below name the taxonomy and point at
+	 * `find-taxonomies`, so a wrong guess costs one round trip and teaches the
+	 * right slug.
 	 *
 	 * @param string $taxonomy Taxonomy slug.
 	 *
-	 * @return string|WP_Error Route segment, or an error naming the taxonomy.
+	 * @return string|WP_Error Route with a leading slash, or an error naming the taxonomy.
 	 * @since 1.4.0
 	 */
-	private function get_taxonomy_rest_base( string $taxonomy ): string|WP_Error {
-		$taxonomy_obj = get_taxonomy( $taxonomy );
-		if ( ! $taxonomy_obj ) {
+	private function get_taxonomy_route( string $taxonomy ): string|WP_Error {
+		// Core returns '' for both "no such taxonomy" and "not in the REST API",
+		// and the caller can act on one but not the other, so they are separated
+		// here before core is asked.
+		if ( ! get_taxonomy( $taxonomy ) ) {
 			return new WP_Error(
 				'invalid_taxonomy',
 				sprintf(
-					/* translators: %s: taxonomy slug that was requested */
-					__( 'No taxonomy named "%s" is registered on this site. Use albert/find-taxonomies to list the ones that are.', 'albert-ai-butler' ),
-					$taxonomy
+					/* translators: 1: taxonomy slug that was requested, 2: the ability to call instead. */
+					__( 'No taxonomy named "%1$s" is registered on this site. Use %2$s to list the ones that are.', 'albert-ai-butler' ),
+					$taxonomy,
+					'albert/find-taxonomies'
 				),
 				[ 'status' => 404 ]
 			);
 		}
 
-		if ( empty( $taxonomy_obj->show_in_rest ) ) {
+		$route = rest_get_route_for_taxonomy_items( $taxonomy );
+
+		if ( $route === '' ) {
 			return new WP_Error(
 				'taxonomy_not_rest_enabled',
 				sprintf(
-					/* translators: %s: taxonomy slug that was requested */
+					/* translators: %s: taxonomy slug that was requested. */
 					__( 'The "%s" taxonomy is registered on this site but is not exposed over the REST API, so Albert cannot read or change its terms.', 'albert-ai-butler' ),
 					$taxonomy
 				),
@@ -82,10 +92,6 @@ trait ResolvesTaxonomyRoute {
 			);
 		}
 
-		// `rest_base` is the route name, not a flag: false or '' means WordPress
-		// serves the taxonomy under its own slug.
-		return is_string( $taxonomy_obj->rest_base ) && $taxonomy_obj->rest_base !== ''
-			? $taxonomy_obj->rest_base
-			: $taxonomy_obj->name;
+		return $route;
 	}
 }
