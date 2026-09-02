@@ -99,6 +99,7 @@ class ServerDiscoveryGateTest extends TestCase {
 		];
 
 		$server = $this->createMock( McpServer::class );
+		$server->method( 'get_server_id' )->willReturn( Server::SERVER_ID );
 		$server->method( 'get_mcp_tool' )->willReturnCallback(
 			static fn( string $name ) => $mcp_tools[ $name ] ?? null
 		);
@@ -141,6 +142,7 @@ class ServerDiscoveryGateTest extends TestCase {
 		];
 
 		$server = $this->createMock( McpServer::class );
+		$server->method( 'get_server_id' )->willReturn( Server::SERVER_ID );
 		$server->method( 'get_mcp_tool' )->willReturnCallback(
 			static fn( string $name ) => $mcp_tools[ $name ] ?? null
 		);
@@ -167,9 +169,30 @@ class ServerDiscoveryGateTest extends TestCase {
 	 * A foreign (non-Albert) MCP server firing the same global hook is left
 	 * untouched — the gate only acts on Albert's own server.
 	 *
+	 * The foreign server is a real McpServer mock with a different id rather than
+	 * a stand-in of another class: every plugin bundles the adapter unscoped, so
+	 * one class definition serves them all and every server passes `instanceof`.
+	 * Only a differing id distinguishes them, so only that tests the guard.
+	 *
 	 * @return void
 	 */
 	public function test_ignores_non_albert_server(): void {
+		$server = $this->createMock( McpServer::class );
+		$server->method( 'get_server_id' )->willReturn( 'woocommerce' );
+		$server->expects( $this->never() )->method( 'get_mcp_tool' );
+
+		$tools  = [ $this->tool( 'albert/create-post' ) ];
+		$result = ( new Server() )->hide_unauthorized_tools( $tools, $server );
+
+		$this->assertSame( $tools, $result );
+	}
+
+	/**
+	 * A server that is not an McpServer at all is also left alone.
+	 *
+	 * @return void
+	 */
+	public function test_ignores_a_server_of_another_type(): void {
 		$tools  = [ $this->tool( 'albert/create-post' ) ];
 		$result = ( new Server() )->hide_unauthorized_tools( $tools, new \stdClass() );
 
@@ -186,6 +209,7 @@ class ServerDiscoveryGateTest extends TestCase {
 		$GLOBALS['albert_test_filter_returns']['albert/mcp/hide_unauthorized_tools'] = false;
 
 		$server = $this->createMock( McpServer::class );
+		$server->method( 'get_server_id' )->willReturn( Server::SERVER_ID );
 		$server->expects( $this->never() )->method( 'get_mcp_tool' );
 
 		$tools  = [ $this->tool( 'albert/create-post' ) ];

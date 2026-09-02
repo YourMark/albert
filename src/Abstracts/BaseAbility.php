@@ -154,28 +154,103 @@ abstract class BaseAbility implements Ability {
 	/**
 	 * Prepare the input schema for registration.
 	 *
-	 * Ensures an object-typed root schema carries a `default` of an empty
-	 * object so WP_Ability::normalize_input() can rescue calls that arrive
-	 * with a null payload. The mcp-adapter ExecuteAbilityAbility coerces
-	 * empty `{}` parameters to null via `empty()` before invoking
-	 * `WP_Ability::execute()`; without a root default, validate_input(null)
-	 * fails with "input is not of type object" and the assistant sees an
-	 * unhelpful error for any tool call made without arguments.
+	 * Two things are added to an object-typed root schema, and a child class
+	 * that declares either of them keeps its own.
 	 *
-	 * Child classes that already declare a root `default` keep theirs.
+	 * A `default` of an empty object, so WP_Ability::normalize_input() can
+	 * rescue calls that arrive with a null payload. The core REST run route
+	 * passes null whenever `input` is omitted; without a root default,
+	 * validate_input(null) fails with "input is not of type object" and the
+	 * assistant sees an unhelpful error for any call made without arguments.
+	 *
+	 * And `additionalProperties => false`, so input the schema does not describe
+	 * is refused instead of silently carried. JSON Schema's permissive default
+	 * was the wrong one here: `fields` sent to an ability with no `fields` got a
+	 * successful, *unfiltered* answer and no way to know. A rejection costs one
+	 * round trip; a wrong answer the caller trusts costs more.
+	 * {@see \Albert\MCP\ToolCallObserver} makes that rejection legible.
+	 *
+	 * `additionalProperties` is not inherited, so this closes only the parameter
+	 * list; {@see self::walk_subschemas()} carries the rule down.
 	 *
 	 * @param array<string, mixed> $schema Input schema declared by the ability.
 	 *
 	 * @return array<string, mixed> Schema safe to pass through the registry.
 	 * @since 1.2.0
+	 * @since 1.4.0 Refuses input the schema does not describe, at every level.
 	 */
 	protected function prepare_input_schema( array $schema ): array {
-		if ( empty( $schema ) ) {
+		if ( empty( $schema ) || ( $schema['type'] ?? null ) !== 'object' ) {
 			return $schema;
 		}
 
-		if ( ( $schema['type'] ?? null ) === 'object' && ! array_key_exists( 'default', $schema ) ) {
+		if ( ! array_key_exists( 'default', $schema ) ) {
 			$schema['default'] = [];
+		}
+
+		if ( ! array_key_exists( 'additionalProperties', $schema ) ) {
+			$schema['additionalProperties'] = false;
+		}
+
+		return $this->walk_subschemas( $schema );
+	}
+
+	/**
+	 * Apply the same rule to every subschema under a prepared root.
+	 *
+	 * `additionalProperties` is not inherited, so every nested object has to be
+	 * closed in its own right for the contract to reach below the parameter list.
+	 *
+	 * @param array<string, mixed> $schema The schema whose subschemas to walk.
+	 *
+	 * @return array<string, mixed> The schema with nested object contracts closed.
+	 * @since 1.4.0
+	 */
+	private function walk_subschemas( array $schema ): array {
+		foreach ( [ 'properties', 'patternProperties' ] as $map ) {
+			if ( ! isset( $schema[ $map ] ) || ! is_array( $schema[ $map ] ) ) {
+				continue;
+			}
+
+			foreach ( $schema[ $map ] as $name => $subschema ) {
+				if ( is_array( $subschema ) ) {
+					$schema[ $map ][ $name ] = $this->close_subschema( $subschema );
+				}
+			}
+		}
+
+		if ( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+			$schema['items'] = $this->close_subschema( $schema['items'] );
+		}
+
+		return $schema;
+	}
+
+	/**
+	 * Close one subschema, and everything below it, when it declares a contract.
+	 *
+	 * Closed only when it declares `properties`. A map that declares none is a
+	 * free-form bag by design — a block's `attributes`, an item's `meta` — with
+	 * no contract to hold it to. A schema stating its own value keeps it.
+	 *
+	 * @param array<string, mixed> $schema The subschema to close.
+	 *
+	 * @return array<string, mixed> The closed subschema.
+	 * @since 1.4.0
+	 */
+	private function close_subschema( array $schema ): array {
+		$schema = $this->walk_subschemas( $schema );
+
+		if ( ( $schema['type'] ?? null ) !== 'object' ) {
+			return $schema;
+		}
+
+		if ( empty( $schema['properties'] ) || ! is_array( $schema['properties'] ) ) {
+			return $schema;
+		}
+
+		if ( ! array_key_exists( 'additionalProperties', $schema ) ) {
+			$schema['additionalProperties'] = false;
 		}
 
 		return $schema;

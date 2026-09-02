@@ -51,6 +51,7 @@ require_once dirname( __DIR__, 2 ) . '/wp-function-stubs.php';
 require_once dirname( __DIR__ ) . '/stubs/function-exists-shadow.php';
 
 use Albert\MCP\SchemaPreparer;
+use Albert\MCP\Server;
 use WP\MCP\Core\McpServer;
 use WP\McpSchema\Server\Tools\DTO\Tool;
 use PHPUnit\Framework\TestCase;
@@ -85,6 +86,29 @@ class SchemaPreparerTest extends TestCase {
 	}
 
 	/**
+	 * Another plugin's MCP server is left alone.
+	 *
+	 * WooCommerce and others bundle the same adapter under the same namespace, so
+	 * every server is an `instanceof McpServer` and only the id tells them apart.
+	 * Matching on the class alone meant Albert rewrote their tool schemas.
+	 *
+	 * @return void
+	 */
+	public function test_another_plugins_server_is_untouched(): void {
+		$this->set_71( true );
+
+		$tool   = Tool::fromArray(
+			[
+				'name'        => 'wc-get-orders',
+				'inputSchema' => $this->schema_with_server_keys(),
+			]
+		);
+		$result = ( new SchemaPreparer() )->prepare_tools_list( [ $tool ], $this->server( 'woo' ) );
+
+		$this->assertSame( $tool, $result[0] );
+	}
+
+	/**
 	 * Make WpCompat report the 7.1 schema-prep capability as present/absent.
 	 *
 	 * @param bool $available Whether the 7.1 function should be seen.
@@ -100,8 +124,11 @@ class SchemaPreparerTest extends TestCase {
 	 *
 	 * @return McpServer
 	 */
-	private function server(): McpServer {
-		return $this->createMock( McpServer::class );
+	private function server( string $id = Server::SERVER_ID ): McpServer {
+		$server = $this->createMock( McpServer::class );
+		$server->method( 'get_server_id' )->willReturn( $id );
+
+		return $server;
 	}
 
 	/**
@@ -151,11 +178,11 @@ class SchemaPreparerTest extends TestCase {
 	}
 
 	/**
-	 * Below 7.1 the tools list is returned untouched.
+	 * Below 7.1 the server-only keys survive, because nothing can strip them.
 	 *
 	 * @return void
 	 */
-	public function test_tools_list_passthrough_below_71(): void {
+	public function test_tools_list_keeps_server_keys_below_71(): void {
 		$this->set_71( false );
 
 		$tool   = Tool::fromArray(
@@ -166,7 +193,9 @@ class SchemaPreparerTest extends TestCase {
 		);
 		$result = ( new SchemaPreparer() )->prepare_tools_list( [ $tool ], $this->server() );
 
-		$this->assertSame( $tool, $result[0] );
+		$title = json_decode( (string) wp_json_encode( $result[0]->toArray() ), true )['inputSchema']['properties']['title'];
+		$this->assertArrayHasKey( 'sanitize_callback', $title );
+		$this->assertSame( 'string', $title['type'] );
 	}
 
 	/**
@@ -229,17 +258,105 @@ class SchemaPreparerTest extends TestCase {
 	}
 
 	/**
-	 * Below 7.1 the get-ability-info result is returned untouched.
+	 * Below 7.1 the get-ability-info schemas keep their server-only keys.
 	 *
 	 * @return void
 	 */
-	public function test_ability_info_passthrough_below_71(): void {
+	public function test_ability_info_keeps_server_keys_below_71(): void {
 		$this->set_71( false );
 
 		$result   = [ 'input_schema' => $this->schema_with_server_keys() ];
-		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result( $result, [], 'mcp-adapter/get-ability-info', null, $this->server() );
+		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result( $result, [], 'mcp-adapter-get-ability-info', null, $this->server() );
 
-		$this->assertSame( $result, $prepared );
+		$this->assertArrayHasKey( 'sanitize_callback', $prepared['input_schema']['properties']['title'] );
+	}
+
+	/**
+	 * The get-ability-info tool is recognised by the name a client actually sends.
+	 *
+	 * A slash is not legal in an MCP tool name, so the adapter advertises the
+	 * meta-tool as `mcp-adapter-get-ability-info` and that is the name that
+	 * arrives on the filter. Matching only the slash spelling matched nothing.
+	 *
+	 * @return void
+	 */
+	public function test_ability_info_matches_the_sanitised_tool_name(): void {
+		$this->set_71( true );
+
+		$result   = [ 'input_schema' => $this->schema_with_server_keys() ];
+		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result( $result, [], 'mcp-adapter-get-ability-info', null, $this->server() );
+
+		$this->assertArrayNotHasKey( 'sanitize_callback', $prepared['input_schema']['properties']['title'] );
+	}
+
+	/**
+	 * An object schema's empty default is emitted as `{}`, not `[]`.
+	 *
+	 * BaseAbility gives every object-typed input schema a top-level default of
+	 * an empty PHP array so a no-argument call is rescued rather than rejected.
+	 * Encoded, that read as `"default": []` on a schema declaring
+	 * `"type": "object"` — a contradiction for a strict consumer.
+	 *
+	 * @return void
+	 */
+	public function test_object_default_is_emitted_as_an_object(): void {
+		$this->set_71( false );
+
+		$schema              = $this->schema_with_server_keys();
+		$schema['default']   = [];
+		$result              = [ 'input_schema' => $schema ];
+		$prepared            = ( new SchemaPreparer() )->prepare_ability_info_result( $result, [], 'mcp-adapter-get-ability-info', null, $this->server() );
+		$encoded             = json_decode( (string) wp_json_encode( $prepared['input_schema'] ), true );
+		$encoded_default_raw = json_decode( (string) wp_json_encode( $prepared['input_schema'] ) );
+
+		$this->assertSame( [], $encoded['default'] );
+		$this->assertInstanceOf( \stdClass::class, $encoded_default_raw->default );
+	}
+
+	/**
+	 * An array-typed default of `[]` is genuinely a list and is left alone.
+	 *
+	 * @return void
+	 */
+	public function test_array_default_stays_an_array(): void {
+		$this->set_71( false );
+
+		$result = [
+			'input_schema' => [
+				'type'       => 'object',
+				'properties' => [
+					'fields' => [
+						'type'    => 'array',
+						'default' => [],
+					],
+				],
+			],
+		];
+
+		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result( $result, [], 'mcp-adapter-get-ability-info', null, $this->server() );
+		$decoded  = json_decode( (string) wp_json_encode( $prepared['input_schema'] ) );
+
+		$this->assertIsArray( $decoded->properties->fields->default );
+	}
+
+	/**
+	 * A non-empty object default is left exactly as declared.
+	 *
+	 * @return void
+	 */
+	public function test_non_empty_object_default_is_untouched(): void {
+		$this->set_71( false );
+
+		$result = [
+			'input_schema' => [
+				'type'    => 'object',
+				'default' => [ 'taxonomy' => 'category' ],
+			],
+		];
+
+		$prepared = ( new SchemaPreparer() )->prepare_ability_info_result( $result, [], 'mcp-adapter-get-ability-info', null, $this->server() );
+
+		$this->assertSame( [ 'taxonomy' => 'category' ], $prepared['input_schema']['default'] );
 	}
 
 	/**

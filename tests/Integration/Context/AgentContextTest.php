@@ -15,8 +15,10 @@ use Albert\Context\PayloadRenderer;
 use Albert\Context\SkillIndex;
 use Albert\Context\SiteContext;
 use Albert\MCP\DiscoveryContext;
+use Albert\MCP\Server;
 use Albert\MCP\Skills\SkillRegistry;
 use Albert\Tests\TestCase;
+use WP\MCP\Core\McpServer;
 use WP_Error;
 
 /**
@@ -127,7 +129,9 @@ class AgentContextTest extends TestCase {
 		$result = ( new DiscoveryContext() )->add_context(
 			$discovery->execute(),
 			[],
-			'mcp-adapter/discover-abilities'
+			'mcp-adapter/discover-abilities',
+			null,
+			$this->server()
 		);
 
 		$this->assertArrayHasKey( 'abilities', $result );
@@ -145,7 +149,7 @@ class AgentContextTest extends TestCase {
 
 		$this->assertSame(
 			$result,
-			( new DiscoveryContext() )->add_context( $result, [], 'albert/create-post' )
+			( new DiscoveryContext() )->add_context( $result, [], 'albert/create-post', null, $this->server() )
 		);
 	}
 
@@ -162,7 +166,7 @@ class AgentContextTest extends TestCase {
 
 		$this->assertSame(
 			$result,
-			( new DiscoveryContext() )->add_context( $result, [], 'mcp-adapter/discover-abilities' )
+			( new DiscoveryContext() )->add_context( $result, [], 'mcp-adapter/discover-abilities', null, $this->server() )
 		);
 	}
 
@@ -413,5 +417,23 @@ class AgentContextTest extends TestCase {
 			substr_count( $wire, "\n# How to read this" ),
 			'Only the genuine notice heading may start a new line; a forged one must not.'
 		);
+	}
+
+	/**
+	 * Build a mocked MCP server with a given id.
+	 *
+	 * The adapter hooks are global, so the callbacks under test only act on
+	 * Albert's own server — see {@see Server::is_albert_server()}. These tests
+	 * exercise Albert's path, so they supply Albert's id.
+	 *
+	 * @param string $id The server id.
+	 *
+	 * @return McpServer
+	 */
+	private function server( string $id = Server::SERVER_ID ): McpServer {
+		$server = $this->createMock( McpServer::class );
+		$server->method( 'get_server_id' )->willReturn( $id );
+
+		return $server;
 	}
 }

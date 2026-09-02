@@ -102,6 +102,36 @@ class Server implements Hookable {
 	}
 
 	/**
+	 * Whether the server firing a global adapter hook is Albert's own.
+	 *
+	 * `instanceof McpServer` is not enough. WooCommerce and other plugins bundle
+	 * their own copy of the adapter under the same `WP\MCP\Core` namespace, so
+	 * whichever autoloads first defines the class for all of them and every
+	 * server is an instance of it. Only the server id tells them apart.
+	 *
+	 * `get_server_id()` is checked rather than assumed for the same reason: the
+	 * class that wins the race may come from an adapter version older than ours.
+	 * A copy without the method is treated as "not Albert's", which is the safe
+	 * direction — Albert leaves a server it cannot identify alone.
+	 *
+	 * @param mixed $server The server firing the hook.
+	 *
+	 * @return bool True when this is Albert's own server.
+	 * @phpstan-assert-if-true McpServer $server
+	 * @since 1.4.0
+	 */
+	public static function is_albert_server( $server ): bool {
+		// Checked before the instanceof narrows $server: the class that wins the
+		// autoload race may come from an adapter version older than ours, and
+		// method_exists() on our own copy would be a tautology.
+		if ( ! is_object( $server ) || ! method_exists( $server, 'get_server_id' ) ) {
+			return false;
+		}
+
+		return $server instanceof McpServer && $server->get_server_id() === self::SERVER_ID;
+	}
+
+	/**
 	 * Hide tools the connected user cannot execute from tools/list.
 	 *
 	 * The adapter lists every registered tool regardless of permission — only
@@ -112,9 +142,9 @@ class Server implements Hookable {
 	 * permission_callback), so it honours both the baseline capability and Albert
 	 * Premium's advanced permission rules without knowing about either.
 	 *
-	 * Bound to the global `mcp_adapter_tools_list` filter. Guarded by an instanceof
-	 * check so it only touches Albert's own server, never another plugin's (e.g.
-	 * WooCommerce's) MCP server that fires the same hook.
+	 * Bound to the global `mcp_adapter_tools_list` filter, so it is matched on the
+	 * server id — see {@see self::is_albert_server()} for why `instanceof` alone
+	 * is not enough.
 	 *
 	 * @param array<int, object> $tools  Tool DTOs about to be returned to the client.
 	 * @param object             $server The MCP server firing the filter.
@@ -123,7 +153,7 @@ class Server implements Hookable {
 	 * @since 1.3.0
 	 */
 	public function hide_unauthorized_tools( array $tools, object $server ): array {
-		if ( ! $server instanceof McpServer ) {
+		if ( ! self::is_albert_server( $server ) ) {
 			return $tools;
 		}
 
@@ -262,13 +292,16 @@ class Server implements Hookable {
 	/**
 	 * Create the MCP server.
 	 *
-	 * Bound to the global `mcp_adapter_init` action, which is fired by EVERY loaded
-	 * copy of the MCP adapter — including the unscoped `WP\MCP\…` copy WooCommerce
-	 * bundles. Mozart only rewrites class names, not the literal hook string, so
-	 * both our scoped adapter and a foreign one fire the same action. We must build
-	 * the Albert server only against our own Mozart-scoped adapter; any other
-	 * instance is ignored (otherwise a foreign copy triggers a TypeError here, or
-	 * we'd build our server against the wrong adapter).
+	 * Bound to the global `mcp_adapter_init` action. Every plugin that bundles the
+	 * adapter ships it unscoped under the same `WP\MCP\…` namespace, so whichever
+	 * copy autoloads first defines the classes for all of them and `McpAdapter` is
+	 * a single shared singleton — this action fires once, with that one instance.
+	 * The `instanceof` check is therefore a type guard, not a way of telling our
+	 * adapter from someone else's: there is only one, and it is shared.
+	 *
+	 * Telling servers apart is a different problem, and the shared adapter is
+	 * exactly why it exists — see {@see self::is_albert_server()}, which every
+	 * callback on a global adapter hook must use.
 	 *
 	 * @param object $adapter The MCP adapter instance fired on the global hook.
 	 *

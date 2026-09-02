@@ -676,3 +676,90 @@ if ( ! defined( 'DAY_IN_SECONDS' ) ) {
 }
 
 // phpcs:enable
+
+if ( ! function_exists( 'rest_validate_value_from_schema' ) ) {
+	/**
+	 * Stub of core's JSON Schema validator.
+	 *
+	 * Mirrors `rest_validate_value_from_schema()` for the subset Albert's own
+	 * code depends on — required properties, `additionalProperties: false`, and
+	 * scalar type checks — in core's order (required first, then each supplied
+	 * property, then undeclared ones) and with core's own message wording, so a
+	 * unit test sees the same reason a real request would.
+	 *
+	 * Parity with the real function is not assumed on the strength of this
+	 * stub: `tests/Integration/Abilities/InputValidationTest.php` exercises the
+	 * same paths against real WordPress.
+	 *
+	 * @param mixed  $value The value to validate.
+	 * @param array  $args  The schema to validate against.
+	 * @param string $param The parameter name used in messages.
+	 *
+	 * @return true|\WP_Error True when valid, WP_Error with core's reason otherwise.
+	 */
+	function rest_validate_value_from_schema( $value, $args, $param = '' ) {
+		$type = $args['type'] ?? null;
+		$type = is_array( $type ) ? ( $type[0] ?? null ) : $type;
+
+		if ( $type === 'object' ) {
+			if ( ! is_array( $value ) ) {
+				return new \WP_Error(
+					'rest_invalid_type',
+					sprintf( '%1$s is not of type %2$s.', $param, 'object' )
+				);
+			}
+
+			foreach ( (array) ( $args['required'] ?? [] ) as $name ) {
+				if ( ! array_key_exists( $name, $value ) ) {
+					return new \WP_Error(
+						'rest_property_required',
+						sprintf( '%1$s is a required property of %2$s.', $name, $param )
+					);
+				}
+			}
+
+			foreach ( $value as $property => $property_value ) {
+				if ( isset( $args['properties'][ $property ] ) ) {
+					$is_valid = rest_validate_value_from_schema(
+						$property_value,
+						$args['properties'][ $property ],
+						$param . '[' . $property . ']'
+					);
+
+					if ( is_wp_error( $is_valid ) ) {
+						return $is_valid;
+					}
+
+					continue;
+				}
+
+				if ( ( $args['additionalProperties'] ?? null ) === false ) {
+					return new \WP_Error(
+						'rest_additional_properties_forbidden',
+						sprintf( '%1$s is not a valid property of Object.', $property )
+					);
+				}
+			}
+
+			return true;
+		}
+
+		$matches = [
+			'integer' => static fn( $v ): bool => is_int( $v ),
+			'number'  => static fn( $v ): bool => is_int( $v ) || is_float( $v ),
+			'string'  => static fn( $v ): bool => is_string( $v ),
+			'boolean' => static fn( $v ): bool => is_bool( $v ),
+			'array'   => static fn( $v ): bool => is_array( $v ),
+			'null'    => static fn( $v ): bool => $v === null,
+		];
+
+		if ( is_string( $type ) && isset( $matches[ $type ] ) && ! $matches[ $type ]( $value ) ) {
+			return new \WP_Error(
+				'rest_invalid_type',
+				sprintf( '%1$s is not of type %2$s.', $param, $type )
+			);
+		}
+
+		return true;
+	}
+}
