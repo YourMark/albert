@@ -1,0 +1,64 @@
+Albert changelog
+
+The five most recent releases are listed in readme.txt.
+Everything before them is kept here.
+
+= 1.1.0 =
+A major admin redesign, new activity logging, and a stack of reliability fixes.
+
+**Features**
+
+* Unified abilities page — one filterable list of every registered ability from WordPress core, WooCommerce, and any other plugin. Search, filter by category or supplier, and see read/write/delete at a glance.
+* Instant save — toggle an ability on or off and it saves immediately. No more Save Changes button or lost progress.
+* Activity logging — a new dashboard widget shows the most recent ability execution, and every ability shows its "Last run" time in the expanded details.
+* Plain-language labels — each ability is tagged Read, Write, or Delete (replacing the developer-facing "Destructive / Idempotent / Readonly" terms). Hover or keyboard-focus a label for a full explanation.
+* Supplier filtering — the filter dropdown shows branded names like "WordPress core", "Albert", and "WooCommerce" instead of raw prefixes.
+* List / paginated view — switch between one long list and 25-per-page pagination. Your choice is persisted on the server, so there is no flash of the wrong view on load.
+
+**Fixes**
+
+* Ability categories now register at the default hook priority, preventing collisions with WordPress core's built-in categories on WP 6.9+.
+* Restored a missing 'user' category that Users abilities depend on, so abilities register reliably on fresh installs.
+* The `password` field on the Create User ability is now correctly flagged as required, so AI assistants get a clear validation error when it is missing instead of a vague failure.
+* OAuth endpoints, MCP, and discovery metadata now share one consistent REST namespace reference.
+
+**Improvements**
+
+* Accessibility — keyboard-reachable tooltips on every annotation chip, WCAG 2.2 AA contrast on all chip colours, debounced aria-live stats announcements during search, and visible focus indicators on pagination buttons and filter selects.
+
+**Developer**
+
+* New `albert/abilities/suppliers` filter so third-party plugins can register their own branded supplier name.
+* Comprehensive automated test suite covering input validation, output schema, permissions, and per-parameter behaviour on every ability.
+* Continuous integration now runs against PHP 8.1–8.4, WordPress 6.9 and latest, and WooCommerce 10.5 and latest.
+* Removed redundant manual input validation from every ability — WordPress core validates the schema before the ability runs.
+* Unified internal settings API for cleaner state management.
+
+= 1.0.1 =
+A bug-fix release.
+
+**Fixes**
+
+* OAuth endpoints used a different REST namespace (`albert-ai-butler/v1`) than the MCP server and discovery metadata (`albert/v1`), causing connection failures when clients followed the OAuth discovery spec. All endpoints now use `albert/v1` consistently.
+
+**Developer**
+
+* New `albert/rest_namespace` filter lets sites with a namespace collision override the REST namespace.
+
+= 1.0.0 =
+Initial release.
+
+**Features**
+
+* MCP server — turns your WordPress site into an MCP endpoint. Copy the URL, paste it into Claude Desktop, ChatGPT, or any MCP-compatible assistant, authorize, and you're connected. No configuration files or developer setup needed.
+* OAuth 2.0 server — a full authentication server with PKCE support, RSA-signed access tokens, automatic token refresh, and sessions that persist up to 30 days.
+* Abilities Manager — an admin interface to toggle read and write permissions per content type. Write abilities are disabled by default, and all actions respect WordPress capabilities.
+* 25+ WordPress abilities — Posts, Pages, Users, Media, and Taxonomies with find, view, create, update, and delete operations.
+* WooCommerce abilities — Products, Orders, and Customers when WooCommerce is active.
+* Connections management — control which users can connect AI assistants. View active connections, disconnect individual sessions, or end entire sessions with token revocation.
+* Dashboard — a setup checklist, status overview, active connection count, and recent activity feed.
+
+**Developer**
+
+* Register custom abilities with the WordPress Abilities API. Hookable architecture with filters and actions throughout.
+
