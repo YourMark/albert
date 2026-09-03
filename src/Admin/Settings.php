@@ -16,6 +16,7 @@ use Albert\Database\Tables;
 use Albert\Settings\Lock;
 use Albert\Settings\Schema;
 use Albert\Settings\Value;
+use Albert\OAuth\Repositories\RefreshTokenRepository;
 
 /**
  * Settings class
@@ -377,19 +378,7 @@ class Settings implements Hookable {
 			[ '%d' ]
 		);
 
-		// Revoke associated refresh tokens.
-		if ( ! empty( $token_ids ) ) {
-			$placeholders = implode( ', ', array_fill( 0, count( $token_ids ), '%s' ) );
-			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
-			$wpdb->query(
-				$wpdb->prepare(
-					"UPDATE %i SET revoked = 1 WHERE access_token_id IN ({$placeholders})",
-					$tables['refresh_tokens'],
-					...$token_ids
-				)
-			);
-			// phpcs:enable
-		}
+		( new RefreshTokenRepository() )->revokeForAccessTokens( (array) $token_ids );
 	}
 
 	/**

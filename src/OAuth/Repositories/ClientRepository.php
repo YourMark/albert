@@ -494,11 +494,7 @@ class ClientRepository implements ClientRepositoryInterface {
 			)
 		);
 
-		$refresh_repo = new RefreshTokenRepository();
-
-		foreach ( (array) $token_ids as $token_id ) {
-			$refresh_repo->revokeRefreshTokensByAccessToken( (string) $token_id );
-		}
+		( new RefreshTokenRepository() )->revokeForAccessTokens( (array) $token_ids );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
 		$wpdb->update(

@@ -284,41 +284,26 @@ class Connections implements Hookable {
 	 * @since 1.4.0
 	 */
 	private function revoke_client_tokens( string $client_id, bool $include_refresh ): void {
-		global $wpdb;
-
-		$tables = Tables::oauth();
-
+		/*
+		 * The full disconnect is ClientRepository::revokeAllTokens(), not a
+		 * copy of it. These two were byte-identical until now, which is exactly
+		 * why the refresh-token bug had to be fixed in both and why a review
+		 * caught it in only one of them.
+		 */
 		if ( $include_refresh ) {
-			/*
-			 * No `revoked = 0` filter here.
-			 *
-			 * Refresh tokens carry no client id, so an access-token row is the
-			 * only link back to the client holding one. Filtering that lookup
-			 * on unrevoked rows meant that once the access tokens had been
-			 * revoked, by a prior "sign it out" or by anything else, this found
-			 * nothing and revoked no refresh tokens at all, while the screen
-			 * said the assistant had to be approved again. It refreshed itself
-			 * back in within the hour.
-			 */
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
-			$token_ids = $wpdb->get_col(
-				$wpdb->prepare(
-					'SELECT token_id FROM %i WHERE client_id = %s',
-					$tables['access_tokens'],
-					$client_id
-				)
-			);
+			( new ClientRepository() )->revokeAllTokens( $client_id );
 
-			$refresh_repo = new RefreshTokenRepository();
-
-			foreach ( (array) $token_ids as $token_id ) {
-				$refresh_repo->revokeRefreshTokensByAccessToken( (string) $token_id );
-			}
+			return;
 		}
 
+		global $wpdb;
+
+		// Sign-out only: the access tokens go, the refresh tokens stay, and the
+		// assistant reconnects on its own. That is the difference this branch
+		// exists to express.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
 		$wpdb->update(
-			$tables['access_tokens'],
+			Tables::oauth()['access_tokens'],
 			[ 'revoked' => 1 ],
 			[ 'client_id' => $client_id ],
 			[ '%d' ],
@@ -523,9 +508,36 @@ class Connections implements Hookable {
 
 		global $wpdb;
 
+		$tables = Tables::oauth();
+
+		/*
+		 * Revoke what can revive it, before revoking it.
+		 *
+		 * Revoking the access token alone left the refresh token live, so the
+		 * assistant minted a replacement within the hour while the screen said
+		 * "Session revoked." That made revoking one session quietly weaker than
+		 * revoking all of them, which has always gone through
+		 * Settings::revoke_user_tokens() and does revoke both.
+		 *
+		 * The refresh row names the access token by its `token_id` string, not
+		 * by the row id the link carries, so it has to be read first.
+		 */
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
+		$access_token_id = $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT token_id FROM %i WHERE id = %d',
+				$tables['access_tokens'],
+				$token_id
+			)
+		);
+
+		if ( is_string( $access_token_id ) && $access_token_id !== '' ) {
+			( new RefreshTokenRepository() )->revokeForAccessTokens( [ $access_token_id ] );
+		}
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
 		$wpdb->update(
-			Tables::oauth()['access_tokens'],
+			$tables['access_tokens'],
 			[ 'revoked' => 1 ],
 			[ 'id' => $token_id ],
 			[ '%d' ],

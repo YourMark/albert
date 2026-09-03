@@ -163,4 +163,46 @@ class RefreshTokenRepository implements RefreshTokenRepositoryInterface {
 
 		return (int) $result;
 	}
+
+	/**
+	 * Revoke every refresh token anchored to any of these access tokens.
+	 *
+	 * The one place that answers "this connection is over, kill what can
+	 * revive it". A refresh token carries no client id and no user id, so the
+	 * access-token row it names is the only route to it; revoking access
+	 * tokens without this leaves the assistant able to mint a new one within
+	 * the hour, which is what "revoked" is supposed to prevent.
+	 *
+	 * Takes the whole set and issues one statement, rather than the caller
+	 * looping. A client that has been connected for a week owns an
+	 * access-token row per hourly refresh until the daily sweep collects them,
+	 * and "Disconnect all" multiplies that by every connection on the site.
+	 *
+	 * @param array<int, string> $access_token_ids `access_tokens.token_id` values, not row ids.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	public function revokeForAccessTokens( array $access_token_ids ): void {
+		$access_token_ids = array_values( array_filter( array_map( 'strval', $access_token_ids ) ) );
+
+		if ( $access_token_ids === [] ) {
+			return;
+		}
+
+		global $wpdb;
+
+		$tables       = Tables::oauth();
+		$placeholders = implode( ', ', array_fill( 0, count( $access_token_ids ), '%s' ) );
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+		$wpdb->query(
+			$wpdb->prepare(
+				"UPDATE %i SET revoked = 1 WHERE access_token_id IN ({$placeholders})",
+				$tables['refresh_tokens'],
+				...$access_token_ids
+			)
+		);
+		// phpcs:enable
+	}
 }
