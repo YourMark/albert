@@ -1180,7 +1180,7 @@ class Dashboard implements Hookable {
 							echo esc_html(
 								( $addon['state'] ?? '' ) === AddonState::INACTIVE
 									? __( 'Installed, but switched off', 'albert-ai-butler' )
-									: (string) $addon['because']
+									: (string) ( $addon['because'] ?? '' )
 							);
 							?>
 						</p>
@@ -1196,12 +1196,12 @@ class Dashboard implements Hookable {
 					// Premium came to be offered as a way to "work with your shop".
 					$inactive_detail = isset( $addon['inactive_detail'] ) && is_string( $addon['inactive_detail'] )
 						? $addon['inactive_detail']
-						: (string) $addon['detail'];
+						: (string) ( $addon['detail'] ?? '' );
 
 					echo esc_html(
 						( $addon['state'] ?? '' ) === AddonState::INACTIVE
 							? $inactive_detail
-							: (string) $addon['detail']
+							: (string) ( $addon['detail'] ?? '' )
 					);
 					?>
 				</p>
@@ -1211,7 +1211,7 @@ class Dashboard implements Hookable {
 							<?php esc_html_e( 'Switch it on', 'albert-ai-butler' ); ?>
 						</a>
 					<?php } else { ?>
-						<a class="button" href="<?php echo esc_url( (string) $addon['url'] ); ?>" target="_blank" rel="noopener noreferrer">
+						<a class="button" href="<?php echo esc_url( (string) ( $addon['url'] ?? '' ) ); ?>" target="_blank" rel="noopener noreferrer">
 							<?php esc_html_e( 'See what it adds', 'albert-ai-butler' ); ?>
 							<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'albert-ai-butler' ); ?></span>
 						</a>
