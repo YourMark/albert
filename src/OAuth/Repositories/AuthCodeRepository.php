@@ -12,6 +12,7 @@ namespace Albert\OAuth\Repositories;
 use Albert\Database\Tables;
 use Albert\OAuth\Entities\AuthCodeEntity;
 use League\OAuth2\Server\Entities\AuthCodeEntityInterface;
+use League\OAuth2\Server\Exception\OAuthServerException;
 use League\OAuth2\Server\Repositories\AuthCodeRepositoryInterface;
 
 /**
@@ -39,6 +40,7 @@ class AuthCodeRepository implements AuthCodeRepositoryInterface {
 	 * @param AuthCodeEntityInterface $auth_code_entity The auth code entity.
 	 *
 	 * @return void
+	 * @throws OAuthServerException When the row cannot be written.
 	 * @since 1.0.0
 	 */
 	public function persistNewAuthCode( AuthCodeEntityInterface $auth_code_entity ): void {
@@ -52,7 +54,7 @@ class AuthCodeRepository implements AuthCodeRepositoryInterface {
 		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table, no caching needed.
-		$wpdb->insert(
+		$inserted = $wpdb->insert(
 			$tables['auth_codes'],
 			[
 				'code_id'    => $auth_code_entity->getIdentifier(),
@@ -64,6 +66,14 @@ class AuthCodeRepository implements AuthCodeRepositoryInterface {
 			],
 			[ '%s', '%s', '%d', '%s', '%d', '%s' ]
 		);
+
+		// A silently-ignored failure here used to leave the browser redirecting
+		// with a code that could never be exchanged: isAuthCodeRevoked() treats a
+		// missing row as revoked, so the caller only ever saw an unexplained
+		// invalid_grant with no link back to the real cause.
+		if ( $inserted === false ) {
+			throw OAuthServerException::serverError( 'Failed to persist the authorization code.' );
+		}
 	}
 
 	/**

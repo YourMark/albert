@@ -17,6 +17,7 @@
 namespace Albert\Tests\Integration\Abilities;
 
 use Albert\Abstracts\BaseAbility;
+use Albert\Core\AbilitiesRegistry;
 use Albert\Tests\TestCase;
 use Albert\Tests\Traits\ProvidesAbilities;
 use WP_Error;
@@ -201,6 +202,39 @@ class AbilityContractTest extends TestCase {
 	}
 
 	/**
+	 * Every Albert built-in ability is exposed to MCP clients.
+	 *
+	 * The exposure decision now lives in the adapter (0.6.0+) via the
+	 * `meta.mcp.public ?? meta.public ?? false` precedence; this locks the
+	 * invariant that each of Albert's own abilities opts in, so a new ability
+	 * that forgets its exposure flag fails here rather than silently vanishing
+	 * from discovery. Reads the protected meta directly, so it does not depend on
+	 * registration (and holds for WooCommerce abilities even without WooCommerce).
+	 *
+	 * @dataProvider provideAbilities
+	 *
+	 * @param class-string<BaseAbility> $ability_class Ability class.
+	 *
+	 * @return void
+	 */
+	public function test_ability_is_exposed_to_mcp( string $ability_class ): void {
+		$ability = new $ability_class();
+
+		$reflection = new \ReflectionClass( $ability );
+		$prop       = $reflection->getProperty( 'meta' );
+		$prop->setAccessible( true );
+		$meta = (array) $prop->getValue( $ability );
+
+		$this->assertTrue(
+			AbilitiesRegistry::is_mcp_public( $meta ),
+			sprintf(
+				'%s is not exposed to MCP — set meta.mcp.public (or meta.public) so it is discoverable.',
+				$ability_class
+			)
+		);
+	}
+
+	/**
 	 * The input_schema is a valid JSON Schema object.
 	 *
 	 * @dataProvider provideAbilities
@@ -245,5 +279,95 @@ class AbilityContractTest extends TestCase {
 				);
 			}
 		}
+	}
+
+	/**
+	 * No ability schema relies on REST-style validation or sanitisation callbacks.
+	 *
+	 * The Abilities API validates input against the JSON Schema itself and never
+	 * invokes `validate_callback`, `sanitize_callback` or `arg_options` — those
+	 * are `register_rest_route()` conventions. A schema carrying one looks like it
+	 * validates and silently does not, which is the worst possible failure mode
+	 * for an ability an assistant can call. WordPress 7.1 makes this visible in a
+	 * second way: `wp_prepare_json_schema_for_client()` strips those keys as
+	 * server-only, so a schema that leans on them also emits differently to a
+	 * client than it does on 6.9.
+	 *
+	 * Real validation belongs in the execute callback (works on 6.9 and 7.1) or,
+	 * on 7.1 only, behind `wp_ability_validate_input` / `wp_ability_validate_output`.
+	 *
+	 * The audit that first established this found zero occurrences; this test is
+	 * what stops the next one being introduced. See doc 20 §2.
+	 *
+	 * @dataProvider provideAbilities
+	 *
+	 * @param class-string<BaseAbility> $ability_class Ability class.
+	 *
+	 * @return void
+	 */
+	public function test_schemas_declare_no_rest_style_callbacks( string $ability_class ): void {
+		$ability    = new $ability_class();
+		$reflection = new \ReflectionClass( $ability );
+
+		foreach ( [ 'input_schema', 'output_schema' ] as $property ) {
+			if ( ! $reflection->hasProperty( $property ) ) {
+				continue;
+			}
+
+			$prop = $reflection->getProperty( $property );
+			$prop->setAccessible( true );
+
+			$schema = $prop->getValue( $ability );
+
+			if ( ! is_array( $schema ) ) {
+				continue;
+			}
+
+			$found = self::find_server_only_keys( $schema );
+
+			$this->assertSame(
+				[],
+				$found,
+				sprintf(
+					'%s %s declares %s. The Abilities API never invokes these — move the logic into execute().',
+					$ability_class,
+					$property,
+					implode( ', ', $found )
+				)
+			);
+		}
+	}
+
+	/**
+	 * Collect REST-only schema keys found anywhere in a schema tree.
+	 *
+	 * Walks nested `properties` / `items` / composition keywords, so a callback
+	 * buried on a sub-property is caught as readily as one at the top level.
+	 *
+	 * @param array<string, mixed> $schema The schema to walk.
+	 * @param string               $path   Dot-path of the current node, for the failure message.
+	 *
+	 * @return array<int, string> Human-readable `path.key` entries; empty when clean.
+	 */
+	private static function find_server_only_keys( array $schema, string $path = '' ): array {
+		$server_only = [ 'validate_callback', 'sanitize_callback', 'arg_options' ];
+		$found       = [];
+
+		foreach ( $server_only as $key ) {
+			if ( array_key_exists( $key, $schema ) ) {
+				$found[] = ( $path === '' ? '' : $path . '.' ) . $key;
+			}
+		}
+
+		foreach ( $schema as $key => $value ) {
+			if ( ! is_array( $value ) ) {
+				continue;
+			}
+
+			$child_path = ( $path === '' ? (string) $key : $path . '.' . $key );
+			$found      = array_merge( $found, self::find_server_only_keys( $value, $child_path ) );
+		}
+
+		return $found;
 	}
 }

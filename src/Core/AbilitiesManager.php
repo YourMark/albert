@@ -32,6 +32,17 @@ class AbilitiesManager implements Hookable {
 	private array $abilities = [];
 
 	/**
+	 * How many abilities exist and how many are switched on, counted while the
+	 * registry was still whole.
+	 *
+	 * Null until {@see self::enforce_disabled()} has run.
+	 *
+	 * @since 1.4.0
+	 * @var array{total: int, enabled: int}|null
+	 */
+	private ?array $ability_counts = null;
+
+	/**
 	 * Register WordPress hooks.
 	 *
 	 * @return void
@@ -102,14 +113,21 @@ class AbilitiesManager implements Hookable {
 		// Albert's own categories. WP 6.9 ships 'site' and 'user' as
 		// built-ins on the same hook at default priority; the
 		// wp_has_ability_category() guard below skips slugs core (or any
-		// other plugin) has already registered. 'user' is kept here as a
+		// other plugin) has already registered. Both are kept here as a
 		// defensive fallback for environments where core's registration
-		// has not (yet) fired — without it, our Users abilities cannot
-		// register because their category does not exist.
+		// has not (yet) fired, without them, our Users and Skills abilities
+		// cannot register because their category does not exist. That is not
+		// hypothetical: the WordPress test suite reaches ability registration
+		// with neither built-in present, and `albert/get-skill` silently failed
+		// to register until 'site' was listed here.
 		$categories = [
 			'content'     => [
 				'label'       => __( 'Content', 'albert-ai-butler' ),
 				'description' => __( 'Posts, pages, and media management.', 'albert-ai-butler' ),
+			],
+			'site'        => [
+				'label'       => __( 'Site', 'albert-ai-butler' ),
+				'description' => __( 'Site-level information and guidance.', 'albert-ai-butler' ),
 			],
 			'user'        => [
 				'label'       => __( 'Users', 'albert-ai-butler' ),
@@ -228,7 +246,7 @@ class AbilitiesManager implements Hookable {
 	 * @since 1.2.0
 	 */
 	public function enforce_disabled(): void {
-		if ( ! function_exists( 'wp_get_abilities' ) || ! function_exists( 'wp_unregister_ability' ) ) {
+		if ( ! function_exists( 'wp_unregister_ability' ) ) {
 			return;
 		}
 
@@ -238,7 +256,18 @@ class AbilitiesManager implements Hookable {
 
 		$disabled_list = $this->get_effective_disabled_list();
 
-		foreach ( wp_get_abilities() as $ability ) {
+		// Count before unregistering anything. This is the only moment in a
+		// normal request when the registry still holds every ability, and it is
+		// what makes an honest "57 of 103" possible on screens that render
+		// later. Counting afterwards gave "57 of 57" on the Dashboard: the
+		// disabled ones were already gone, so the total and the enabled figure
+		// were the same number counted twice.
+		$this->ability_counts = $this->count_registry( $disabled_list );
+
+		// Raw registry, not wp_get_abilities(): an ability hidden from the filtered
+		// view is still registered and still executable, so it must still be
+		// unregistered here. See AbilitiesRegistry::get_all_raw().
+		foreach ( AbilitiesRegistry::get_all_raw() as $ability ) {
 			$id = $ability->get_name();
 
 			// The MCP transport meta-tools must always stay registered — protocol
@@ -349,15 +378,22 @@ class AbilitiesManager implements Hookable {
 			return;
 		}
 
-		if ( ! function_exists( 'wp_get_abilities' ) ) {
-			return;
-		}
-
+		// Raw registry, not wp_get_abilities(): if a filter narrowed the view, the
+		// abilities it removed would look "newly seen" the moment it stopped
+		// applying and be auto-disabled behind the admin's back.
 		$registered = [];
-		foreach ( wp_get_abilities() as $ability ) {
+		foreach ( AbilitiesRegistry::get_all_raw() as $ability ) {
 			$registered[] = $ability->get_name();
 		}
 		$registered = array_values( array_unique( array_map( 'strval', $registered ) ) );
+
+		// No registry (Abilities API absent, or filtered away by the host) means we
+		// cannot tell new abilities from missing ones. Stop before the baseline
+		// write below records an empty known-set that would later mark every real
+		// ability as newly seen.
+		if ( $registered === [] ) {
+			return;
+		}
 
 		$known = get_option( 'albert_known_abilities', null );
 
@@ -676,5 +712,108 @@ class AbilitiesManager implements Hookable {
 		};
 
 		return $args;
+	}
+
+	/**
+	 * How many abilities this site has, and how many are switched on.
+	 *
+	 * Prefer this over counting {@see AbilitiesRegistry::get_all_raw()} on an
+	 * admin screen. That registry is pruned by {@see self::enforce_disabled()}
+	 * on every request except the Abilities page, so a screen counting it
+	 * later sees only the enabled ones and reports every ability as enabled.
+	 *
+	 * The MCP transport meta-tools are excluded, matching
+	 * {@see \Albert\Admin\AbilitiesPayload::build()}. They cannot be switched
+	 * off and are hidden from the Abilities screen, so counting them here would
+	 * make two screens disagree about the same site by exactly three.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @return array{total: int, enabled: int}
+	 */
+	public function get_ability_counts(): array {
+		if ( $this->ability_counts !== null ) {
+			return $this->ability_counts;
+		}
+
+		$this->prime_registry();
+
+		if ( $this->ability_counts !== null ) {
+			return $this->ability_counts;
+		}
+
+		// Still nothing means enforcement did not prune (the Abilities page, or
+		// a WordPress without wp_unregister_ability), so the registry is whole
+		// and safe to count directly.
+		return $this->count_registry( $this->get_effective_disabled_list() );
+	}
+
+	/**
+	 * Make sure the abilities registry has been built for this request.
+	 *
+	 * Reading the registry is what fires `wp_abilities_api_init`, and
+	 * {@see self::enforce_disabled()} rides that action, so this call is also
+	 * what causes the count snapshot to be taken. Without it, the fallback in
+	 * {@see self::get_ability_counts()} triggers the pruning itself and then
+	 * counts what is left: every ability looks enabled, because the disabled
+	 * ones were unregistered a moment earlier by the very call meant to count
+	 * them.
+	 *
+	 * A method on `$this` rather than the static call it wraps, so the side
+	 * effect on `$this->ability_counts` is visible where it happens.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @return void
+	 */
+	private function prime_registry(): void {
+		AbilitiesRegistry::get_all_raw();
+	}
+
+	/**
+	 * Count the registry as it stands right now.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param array<int, string> $disabled_list Effective disabled ability ids.
+	 *
+	 * @return array{total: int, enabled: int}
+	 */
+	private function count_registry( array $disabled_list ): array {
+		$total   = 0;
+		$enabled = 0;
+
+		foreach ( AbilitiesRegistry::get_all_raw() as $ability ) {
+			$id = $ability->get_name();
+
+			if ( AbilitiesRegistry::is_transport_ability( $id ) ) {
+				continue;
+			}
+
+			++$total;
+
+			if ( in_array( $id, $disabled_list, true ) ) {
+				continue;
+			}
+
+			// enforce_disabled() unregisters on two grounds, not one: the
+			// disabled list, and an is_executable() refusal — the hook add-ons
+			// use for licence validity, plan tier and kill switches. Counting
+			// only the first over-reported "enabled" on any site whose Premium
+			// licence had lapsed: the ability was gone from the registry a few
+			// lines later, and the tile still claimed it was on.
+			$instance = $this->abilities[ $id ] ?? null;
+
+			if ( $instance instanceof BaseAbility && is_wp_error( $instance->is_executable() ) ) {
+				continue;
+			}
+
+			++$enabled;
+		}
+
+		return [
+			'total'   => $total,
+			'enabled' => $enabled,
+		];
 	}
 }

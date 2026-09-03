@@ -90,6 +90,21 @@ abstract class BaseAbility implements Ability {
 	protected array $meta = [];
 
 	/**
+	 * Top-level result keys holding a credential or other secret.
+	 *
+	 * The calling assistant receives these intact — it usually cannot do its
+	 * job without them — but every `after_execute` observer is handed a copy
+	 * with them masked. Observers are loggers: Albert's own writes rows to a
+	 * table an administrator can read months later, and add-ons capture the
+	 * whole success payload. A short-lived credential that is deliberately
+	 * hashed at rest has no business sitting in that table in the clear.
+	 *
+	 * @since 1.4.0
+	 * @var array<int, string>
+	 */
+	protected array $sensitive_output_keys = [];
+
+	/**
 	 * Constructor.
 	 *
 	 * Child classes should call parent::__construct() after setting their properties.
@@ -139,28 +154,103 @@ abstract class BaseAbility implements Ability {
 	/**
 	 * Prepare the input schema for registration.
 	 *
-	 * Ensures an object-typed root schema carries a `default` of an empty
-	 * object so WP_Ability::normalize_input() can rescue calls that arrive
-	 * with a null payload. The mcp-adapter ExecuteAbilityAbility coerces
-	 * empty `{}` parameters to null via `empty()` before invoking
-	 * `WP_Ability::execute()`; without a root default, validate_input(null)
-	 * fails with "input is not of type object" and the assistant sees an
-	 * unhelpful error for any tool call made without arguments.
+	 * Two things are added to an object-typed root schema, and a child class
+	 * that declares either of them keeps its own.
 	 *
-	 * Child classes that already declare a root `default` keep theirs.
+	 * A `default` of an empty object, so WP_Ability::normalize_input() can
+	 * rescue calls that arrive with a null payload. The core REST run route
+	 * passes null whenever `input` is omitted; without a root default,
+	 * validate_input(null) fails with "input is not of type object" and the
+	 * assistant sees an unhelpful error for any call made without arguments.
+	 *
+	 * And `additionalProperties => false`, so input the schema does not describe
+	 * is refused instead of silently carried. JSON Schema's permissive default
+	 * was the wrong one here: `fields` sent to an ability with no `fields` got a
+	 * successful, *unfiltered* answer and no way to know. A rejection costs one
+	 * round trip; a wrong answer the caller trusts costs more.
+	 * {@see \Albert\MCP\ToolCallObserver} makes that rejection legible.
+	 *
+	 * `additionalProperties` is not inherited, so this closes only the parameter
+	 * list; {@see self::walk_subschemas()} carries the rule down.
 	 *
 	 * @param array<string, mixed> $schema Input schema declared by the ability.
 	 *
 	 * @return array<string, mixed> Schema safe to pass through the registry.
 	 * @since 1.2.0
+	 * @since 1.4.0 Refuses input the schema does not describe, at every level.
 	 */
 	protected function prepare_input_schema( array $schema ): array {
-		if ( empty( $schema ) ) {
+		if ( empty( $schema ) || ( $schema['type'] ?? null ) !== 'object' ) {
 			return $schema;
 		}
 
-		if ( ( $schema['type'] ?? null ) === 'object' && ! array_key_exists( 'default', $schema ) ) {
+		if ( ! array_key_exists( 'default', $schema ) ) {
 			$schema['default'] = [];
+		}
+
+		if ( ! array_key_exists( 'additionalProperties', $schema ) ) {
+			$schema['additionalProperties'] = false;
+		}
+
+		return $this->walk_subschemas( $schema );
+	}
+
+	/**
+	 * Apply the same rule to every subschema under a prepared root.
+	 *
+	 * `additionalProperties` is not inherited, so every nested object has to be
+	 * closed in its own right for the contract to reach below the parameter list.
+	 *
+	 * @param array<string, mixed> $schema The schema whose subschemas to walk.
+	 *
+	 * @return array<string, mixed> The schema with nested object contracts closed.
+	 * @since 1.4.0
+	 */
+	private function walk_subschemas( array $schema ): array {
+		foreach ( [ 'properties', 'patternProperties' ] as $map ) {
+			if ( ! isset( $schema[ $map ] ) || ! is_array( $schema[ $map ] ) ) {
+				continue;
+			}
+
+			foreach ( $schema[ $map ] as $name => $subschema ) {
+				if ( is_array( $subschema ) ) {
+					$schema[ $map ][ $name ] = $this->close_subschema( $subschema );
+				}
+			}
+		}
+
+		if ( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+			$schema['items'] = $this->close_subschema( $schema['items'] );
+		}
+
+		return $schema;
+	}
+
+	/**
+	 * Close one subschema, and everything below it, when it declares a contract.
+	 *
+	 * Closed only when it declares `properties`. A map that declares none is a
+	 * free-form bag by design — a block's `attributes`, an item's `meta` — with
+	 * no contract to hold it to. A schema stating its own value keeps it.
+	 *
+	 * @param array<string, mixed> $schema The subschema to close.
+	 *
+	 * @return array<string, mixed> The closed subschema.
+	 * @since 1.4.0
+	 */
+	private function close_subschema( array $schema ): array {
+		$schema = $this->walk_subschemas( $schema );
+
+		if ( ( $schema['type'] ?? null ) !== 'object' ) {
+			return $schema;
+		}
+
+		if ( empty( $schema['properties'] ) || ! is_array( $schema['properties'] ) ) {
+			return $schema;
+		}
+
+		if ( ! array_key_exists( 'additionalProperties', $schema ) ) {
+			$schema['additionalProperties'] = false;
 		}
 
 		return $schema;
@@ -219,6 +309,31 @@ abstract class BaseAbility implements Ability {
 
 		$result = $this->execute( $args );
 
+		// Observers are loggers; the caller is the one that needs the secrets.
+		$observed = $this->redact_sensitive_output( $result );
+
+		self::fire_after_execute_hooks( $this->id, $args, $observed, $user_id );
+
+		return $result;
+	}
+
+	/**
+	 * Fire the `after_execute` hook pair for an ability execution result.
+	 *
+	 * Shared with {@see \Albert\Media\UploadLinks\UploadLinkController::log()},
+	 * which fires this same pair for the upload-link redemption endpoint — not
+	 * a WP_Ability, so {@see self::guarded_execute()} never runs for it.
+	 *
+	 * @param string                        $ability_id Ability identifier.
+	 * @param array<string, mixed>          $args       Input parameters.
+	 * @param array<string, mixed>|WP_Error $result     Execution result, with any keys the
+	 *                                                  ability declared sensitive masked.
+	 * @param int                           $user_id    Current user ID.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	public static function fire_after_execute_hooks( string $ability_id, array $args, array|WP_Error $result, int $user_id ): void {
 		try {
 			/**
 			 * Fires after any ability is executed.
@@ -227,26 +342,57 @@ abstract class BaseAbility implements Ability {
 			 *
 			 * @param string         $ability_id Ability identifier.
 			 * @param array          $args       Input parameters.
-			 * @param array|WP_Error $result     Execution result.
+			 * @param array|WP_Error $result     Execution result, with any keys the
+			 *                                   ability declared sensitive masked.
 			 * @param int            $user_id    Current user ID.
 			 */
-			do_action( 'albert/abilities/after_execute', $this->id, $args, $result, $user_id );
+			do_action( 'albert/abilities/after_execute', $ability_id, $args, $result, $user_id );
 
 			/**
 			 * Fires after a specific ability is executed.
 			 *
-			 * The dynamic portion of the hook name, `$this->id`, refers to the
+			 * The dynamic portion of the hook name, `$ability_id`, refers to the
 			 * ability identifier (e.g. 'core/posts/create', 'albert/woo-find-products').
 			 *
 			 * @since 1.1.0
 			 *
 			 * @param array          $args    Input parameters.
-			 * @param array|WP_Error $result  Execution result.
+			 * @param array|WP_Error $result  Execution result, with any keys the
+			 *                                ability declared sensitive masked.
 			 * @param int            $user_id Current user ID.
 			 */
-			do_action( "albert/abilities/after_execute/{$this->id}", $args, $result, $user_id );
+			do_action( "albert/abilities/after_execute/{$ability_id}", $args, $result, $user_id );
 		} catch ( \Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
 			// Log in debug mode but never break execution.
+		}
+	}
+
+	/**
+	 * Mask the keys named in {@see self::$sensitive_output_keys} for observers.
+	 *
+	 * Returns the result untouched when the ability declared nothing sensitive,
+	 * which is every ability but one, so this costs a single empty check on the
+	 * common path. Errors are passed through: a WP_Error carries a code and a
+	 * message, never a minted credential.
+	 *
+	 * Replaces rather than removes, so a log still records that the field was
+	 * returned. Only top-level keys are masked; an ability that buries a secret
+	 * inside a nested structure should flatten it or not return it at all.
+	 *
+	 * @param array<string, mixed>|WP_Error $result The real result.
+	 *
+	 * @return array<string, mixed>|WP_Error A copy safe to hand an observer.
+	 * @since 1.4.0
+	 */
+	protected function redact_sensitive_output( array|WP_Error $result ): array|WP_Error {
+		if ( empty( $this->sensitive_output_keys ) || is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		foreach ( $this->sensitive_output_keys as $key ) {
+			if ( array_key_exists( $key, $result ) ) {
+				$result[ $key ] = '[redacted]';
+			}
 		}
 
 		return $result;
@@ -469,18 +615,6 @@ abstract class BaseAbility implements Ability {
 		}
 
 		return true;
-	}
-
-	/**
-	 * Get the settings key for this ability.
-	 *
-	 * Returns the ability ID as-is for use as the settings key.
-	 *
-	 * @return string
-	 * @since 1.0.0
-	 */
-	protected function get_setting_key(): string {
-		return $this->id;
 	}
 
 	/**

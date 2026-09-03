@@ -29,6 +29,8 @@ use WP_REST_Request;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Blocks\BlockSpecSchema;
+
 /**
  * Base class for the four positional block operations on posts and pages.
  *
@@ -331,19 +333,10 @@ abstract class AbstractBlockEdit extends BaseAbility {
 	 * @since 1.2.0
 	 */
 	protected function block_property(): array {
-		return [
-			'type'        => 'object',
-			'description' => 'The complete intended block spec for this one block: { "name": "core/paragraph", "attributes": { ... }, "innerBlocks": [ ... ] }. innerBlocks is the same shape recursively for layout blocks (e.g. core/columns > core/column). Put text in attributes (content/text/value) or in "plaintext". The server regenerates this one block; untouched blocks are preserved byte-for-byte.',
-			'properties'  => [
-				'name'        => [
-					'type'        => 'string',
-					'description' => 'Block type, e.g. core/paragraph.',
-				],
-				'attributes'  => [ 'type' => 'object' ],
-				'innerBlocks' => [ 'type' => 'array' ],
-			],
-			'required'    => [ 'name' ],
-		];
+		$spec                = BlockSpecSchema::spec();
+		$spec['description'] = 'The complete intended block spec for this one block: { "name": "core/paragraph", "attributes": { ... }, "innerBlocks": [ ... ] }. innerBlocks is the same shape recursively for layout blocks (e.g. core/columns > core/column). Put text in attributes (content/text/value) or in "plaintext". The server regenerates this one block; untouched blocks are preserved byte-for-byte.';
+
+		return $spec;
 	}
 
 	/**

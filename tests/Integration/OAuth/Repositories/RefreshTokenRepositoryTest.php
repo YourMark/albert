@@ -18,6 +18,7 @@ use Albert\OAuth\Entities\RefreshTokenEntity;
 use Albert\OAuth\Repositories\RefreshTokenRepository;
 use Albert\Tests\TestCase;
 use DateTimeImmutable;
+use League\OAuth2\Server\Exception\OAuthServerException;
 
 /**
  * RefreshTokenRepository integration tests.
@@ -102,6 +103,32 @@ class RefreshTokenRepositoryTest extends TestCase {
 		$this->assertTrue( $this->repository->isRefreshTokenRevoked( 'rtk_a' ) );
 		$this->assertTrue( $this->repository->isRefreshTokenRevoked( 'rtk_b' ) );
 		$this->assertFalse( $this->repository->isRefreshTokenRevoked( 'rtk_c' ) );
+	}
+
+	/**
+	 * A failed insert must be loud, not silent.
+	 *
+	 * Forces a real insert failure via the token_id unique key rather than
+	 * mocking $wpdb, so this exercises the actual failure path.
+	 *
+	 * @return void
+	 */
+	public function test_persist_throws_when_insert_fails(): void {
+		global $wpdb;
+
+		$refresh = $this->build_refresh( 'rtk_dup', 'atk_dup' );
+		$this->repository->persistNewRefreshToken( $refresh );
+
+		$this->expectException( OAuthServerException::class );
+
+		// Suppressed: the resulting duplicate-entry error is expected, not a
+		// sign anything is wrong.
+		$wpdb->suppress_errors( true );
+		try {
+			$this->repository->persistNewRefreshToken( $refresh );
+		} finally {
+			$wpdb->suppress_errors( false );
+		}
 	}
 
 	/**

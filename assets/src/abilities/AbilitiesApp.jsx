@@ -24,15 +24,17 @@ import {
 	useRef,
 	useState,
 } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
+import { speak } from '@wordpress/a11y';
 import {
 	fetchAbilities,
 	setAbilityEnabled,
 	setAbilitiesEnabledBulk,
 } from './api';
 import { getFields } from './fields';
-import { viewFromUrl, syncViewToUrl } from './url';
+import { viewFromUrl, syncViewToUrl, openIdFromUrl } from './url';
 import Toolbar from './Toolbar';
+import useNarrowLayout from '../shared/useNarrowLayout';
 import FlyInPanel from './FlyInPanel';
 
 const DEFAULT_VIEW = {
@@ -42,18 +44,22 @@ const DEFAULT_VIEW = {
 	perPage: 20,
 	titleField: 'label',
 	showMedia: false,
-	fields: [ 'category', 'operation', 'supplier', 'lastUsed', 'status' ],
+	fields: [ 'category', 'operation', 'source', 'lastUsed', 'status' ],
 	sort: { field: 'label', direction: 'asc' },
 	filters: [],
 	layout: {
 		styles: {
-			// Let the Ability column shrink (small min) so the table fits more
-			// before scrolling; bound the others so they don't stretch.
+			// Advisory only: the table is `table-layout: auto`, so the browser
+			// sizes columns by content and treats these as hints. What actually
+			// keeps the table inside its container is the Ability cell's
+			// description wrapping rather than running on one line
+			// (admin-abilities.css). These stay as the intent for any column
+			// whose content leaves the browser a choice.
 			label: { minWidth: 200 },
 			category: { minWidth: 96, maxWidth: 150 },
 			operation: { width: 116 },
-			supplier: { minWidth: 100, maxWidth: 160 },
-			lastUsed: { minWidth: 110, maxWidth: 160 },
+			source: { minWidth: 100, maxWidth: 160 },
+			lastUsed: { minWidth: 110, maxWidth: 180 },
 			status: { width: 84 },
 		},
 	},
@@ -62,19 +68,27 @@ const DEFAULT_VIEW = {
 const DEFAULT_LAYOUTS = {
 	table: {},
 	grid: { layout: { badgeFields: [ 'operation' ] } },
+	list: {},
 };
+
 
 export default function AbilitiesApp() {
 	const [ items, setItems ] = useState( [] );
 	const [ categories, setCategories ] = useState( [] );
-	const [ suppliers, setSuppliers ] = useState( [] );
+	const [ sources, setSources ] = useState( [] );
 	const [ roles, setRoles ] = useState( [] );
 	// Initialise from the URL so a shared/bookmarked link opens pre-filtered.
 	const [ view, setView ] = useState( () => viewFromUrl( DEFAULT_VIEW ) );
+
+	const onChangeView = useNarrowLayout( view, setView );
 	const [ selection, setSelection ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ error, setError ] = useState( null );
-	const [ openId, setOpenId ] = useState( null );
+	// Seeded from the URL so something outside this screen can link at an
+	// ability rather than at the list. Cleared below if nothing matches, so a
+	// stale or hand-edited link degrades to the plain list rather than to a
+	// panel that never opens.
+	const [ openId, setOpenId ] = useState( () => openIdFromUrl() );
 	// 'enable' | 'disable' | null — drives the bulk "all" confirm dialog.
 	const [ bulkConfirm, setBulkConfirm ] = useState( null );
 
@@ -89,8 +103,8 @@ export default function AbilitiesApp() {
 	// Mirror the view (search, filters, sort, layout, page) into the URL so it
 	// can be shared and bookmarked. replaceState keeps history clean.
 	useEffect( () => {
-		syncViewToUrl( view );
-	}, [ view ] );
+		syncViewToUrl( view, openId );
+	}, [ view, openId ] );
 
 	useEffect( () => {
 		let active = true;
@@ -101,7 +115,7 @@ export default function AbilitiesApp() {
 				}
 				setItems( payload.abilities );
 				setCategories( payload.categories );
-				setSuppliers( payload.suppliers );
+				setSources( payload.sources );
 				setRoles( payload.roles || [] );
 			} )
 			.catch(
@@ -227,8 +241,8 @@ export default function AbilitiesApp() {
 	}, [ items ] );
 
 	const fields = useMemo(
-		() => getFields( { categories, suppliers, badges, onToggle } ),
-		[ categories, suppliers, badges, onToggle ]
+		() => getFields( { categories, sources, badges, onToggle } ),
+		[ categories, sources, badges, onToggle ]
 	);
 
 	const { data, paginationInfo } = useMemo(
@@ -236,7 +250,40 @@ export default function AbilitiesApp() {
 		[ items, view, fields ]
 	);
 
+	// Search/filter/sort change the table's content without a page reload or
+	// a focus change, so nothing tells a screen-reader user the result count
+	// changed unless something announces it. Skipped on the initial load
+	// (isFirstResult) since that isn't a filter changing.
+	const isFirstResult = useRef( true );
+	useEffect( () => {
+		if ( isLoading ) {
+			return;
+		}
+		if ( isFirstResult.current ) {
+			isFirstResult.current = false;
+			return;
+		}
+		speak(
+			sprintf(
+				/* translators: %d: number of matching abilities. */
+				_n(
+					'%d ability found.',
+					'%d abilities found.',
+					paginationInfo.totalItems,
+					'albert-ai-butler'
+				),
+				paginationInfo.totalItems
+			)
+		);
+	}, [ paginationInfo.totalItems, isLoading ] );
+
 	const getItemId = useCallback( ( item ) => item.id, [] );
+
+	useEffect( () => {
+		if ( ! isLoading && openId && ! items.some( ( item ) => item.id === openId ) ) {
+			setOpenId( null );
+		}
+	}, [ isLoading, items, openId ] );
 
 	const onClickItem = useCallback( ( item ) => setOpenId( item.id ), [] );
 
@@ -253,57 +300,97 @@ export default function AbilitiesApp() {
 	);
 
 	return (
-		<div className="albert-abilities">
+		<div className="albert-page albert-page--full albert-abilities">
+			{ /*
+			 * `inert` as well as `aria-hidden`, and the pair is the point.
+			 * `aria-hidden` only hides from assistive tech; it leaves the
+			 * content tabbable, which is a WCAG 4.1.2 failure the moment
+			 * anything can reach it. Today nothing can, because the fly-in traps
+			 * focus (verified: 30 tabs, focus never left the dialog), but that
+			 * makes correctness depend on a JS trap holding. `inert` is the
+			 * browser enforcing it, so the trap becomes belt rather than
+			 * load-bearing. Passed as a string because this is React 18, where
+			 * `inert` is not yet a known boolean prop.
+			 */ }
 			<header
-				className="albert-abilities__header"
+				className="albert-page__header albert-abilities__header"
 				aria-hidden={ openItem ? true : undefined }
+				inert={ openItem ? '' : undefined }
 			>
-				<h1 className="albert-abilities__title">
-					{ __( 'Abilities', 'albert-ai-butler' ) }
-				</h1>
-				<p className="albert-abilities__subtitle">
-					{ __(
-						'Capabilities exposed to apps and agents through the WordPress Abilities API. Enable an ability to make it callable, or open one to review its schema and permissions.',
-						'albert-ai-butler'
-					) }
-				</p>
-				{ ! isLoading && (
-					<div className="albert-abilities__summary-row">
-						<p
-							className="albert-abilities__summary"
-							aria-live="polite"
-						>
-							<span>
-								<strong>{ items.length }</strong>{ ' ' }
-								{ __( 'registered', 'albert-ai-butler' ) }
-							</span>
-							<span aria-hidden="true">·</span>
-							<span>
-								<strong>{ enabledCount }</strong>{ ' ' }
-								{ __( 'enabled', 'albert-ai-butler' ) }
-							</span>
-						</p>
-						<div className="albert-abilities__bulk-all">
-							<Button
-								variant="secondary"
-								size="compact"
-								disabled={ enabledCount === items.length }
-								onClick={ () => setAllEnabled( true ) }
-							>
-								{ __( 'Enable all', 'albert-ai-butler' ) }
-							</Button>
-							<Button
-								variant="secondary"
-								size="compact"
-								disabled={ enabledCount === 0 }
-								onClick={ () => setAllEnabled( false ) }
-							>
-								{ __( 'Disable all', 'albert-ai-butler' ) }
-							</Button>
-						</div>
-					</div>
-				) }
+				<div className="albert-page__text">
+					<h1 className="albert-page__title">
+						{ __( 'Abilities', 'albert-ai-butler' ) }
+					</h1>
+					<p className="albert-page__description">
+						{ __(
+							'Capabilities exposed to apps and agents through the WordPress Abilities API. Enable an ability to make it callable, or open one to review its schema and permissions.',
+							'albert-ai-butler'
+						) }
+					</p>
+				</div>
 			</header>
+
+			{ /*
+			 * Counts and the two bulk actions, on one full-width row directly
+			 * above the list.
+			 *
+			 * Not in `.albert-page__actions`. That slot is documented as
+			 * "primary control and/or save state" and is used for a Back link
+			 * and a save status elsewhere; WordPress puts the *create* action
+			 * beside a page title ("Add Plugin", "Add Post", "Add User", all
+			 * hugging the heading) and puts bulk operations in the tablenav
+			 * directly above the table. Enabling or disabling 118 abilities is
+			 * a bulk operation on the list below, so the header anchor is the
+			 * wrong home for it twice over: wrong kind of action, and far from
+			 * the data it changes.
+			 *
+			 * It also cannot live inside `.albert-page__text`, which is where it
+			 * started: that block is capped at the description's measure, so
+			 * the buttons right-aligned to 822px while the card, the toolbar and
+			 * the table all ended at 1380px. Aligning to an edge nothing draws
+			 * is what read as broken.
+			 *
+			 * Full width, `space-between`: the counts on the left and the
+			 * actions that change those counts on the right, sharing the list's
+			 * own measure.
+			 */ }
+			{ ! isLoading && (
+				<div
+					className="albert-abilities__summary-row"
+					aria-hidden={ openItem ? true : undefined }
+					inert={ openItem ? '' : undefined }
+				>
+					<p className="albert-abilities__summary" aria-live="polite">
+						<span>
+							<strong>{ items.length }</strong>{ ' ' }
+							{ __( 'registered', 'albert-ai-butler' ) }
+						</span>
+						<span aria-hidden="true">·</span>
+						<span>
+							<strong>{ enabledCount }</strong>{ ' ' }
+							{ __( 'enabled', 'albert-ai-butler' ) }
+						</span>
+					</p>
+					<div className="albert-abilities__bulk-all">
+						<Button
+							variant="secondary"
+							size="compact"
+							disabled={ enabledCount === items.length }
+							onClick={ () => setAllEnabled( true ) }
+						>
+							{ __( 'Enable all', 'albert-ai-butler' ) }
+						</Button>
+						<Button
+							variant="secondary"
+							size="compact"
+							disabled={ enabledCount === 0 }
+							onClick={ () => setAllEnabled( false ) }
+						>
+							{ __( 'Disable all', 'albert-ai-butler' ) }
+						</Button>
+					</div>
+				</div>
+			) }
 
 			{ error && (
 				<div
@@ -324,12 +411,13 @@ export default function AbilitiesApp() {
 				<div
 					className="albert-abilities__card"
 					aria-hidden={ openItem ? true : undefined }
+					inert={ openItem ? '' : undefined }
 				>
 					<DataViews
 						data={ data }
 						fields={ fields }
 						view={ view }
-						onChangeView={ setView }
+						onChangeView={ onChangeView }
 						actions={ actions }
 						defaultLayouts={ DEFAULT_LAYOUTS }
 						paginationInfo={ paginationInfo }
@@ -340,9 +428,9 @@ export default function AbilitiesApp() {
 					>
 						<Toolbar
 							view={ view }
-							onChangeView={ setView }
+							onChangeView={ onChangeView }
 							categories={ categories }
-							suppliers={ suppliers }
+							sources={ sources }
 							badges={ badges }
 						/>
 						{ selection.length > 0 && (

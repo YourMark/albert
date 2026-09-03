@@ -10,6 +10,7 @@
 namespace Albert\OAuth\Server;
 
 use DateInterval;
+use Exception;
 use Albert\OAuth\Repositories\AccessTokenRepository;
 use Albert\OAuth\Repositories\AuthCodeRepository;
 use Albert\OAuth\Repositories\ClientRepository;
@@ -96,26 +97,59 @@ class AuthorizationServerFactory {
 		$auth_code_grant = new AuthCodeGrant(
 			$auth_code_repository,
 			$refresh_token_repository,
-			new DateInterval( self::AUTH_CODE_TTL )
+			self::ttl( 'albert/oauth/auth_code_ttl', self::AUTH_CODE_TTL )
 		);
-		$auth_code_grant->setRefreshTokenTTL( new DateInterval( self::REFRESH_TOKEN_TTL ) );
+		$auth_code_grant->setRefreshTokenTTL( self::ttl( 'albert/oauth/refresh_token_ttl', self::REFRESH_TOKEN_TTL ) );
 
 		$server->enableGrantType(
 			$auth_code_grant,
-			new DateInterval( self::ACCESS_TOKEN_TTL )
+			self::ttl( 'albert/oauth/access_token_ttl', self::ACCESS_TOKEN_TTL )
 		);
 
 		// Enable Refresh Token Grant.
 		$refresh_token_grant = new RefreshTokenGrant( $refresh_token_repository );
-		$refresh_token_grant->setRefreshTokenTTL( new DateInterval( self::REFRESH_TOKEN_TTL ) );
+		$refresh_token_grant->setRefreshTokenTTL( self::ttl( 'albert/oauth/refresh_token_ttl', self::REFRESH_TOKEN_TTL ) );
 
 		$server->enableGrantType(
 			$refresh_token_grant,
-			new DateInterval( self::ACCESS_TOKEN_TTL )
+			self::ttl( 'albert/oauth/access_token_ttl', self::ACCESS_TOKEN_TTL )
 		);
 
 		self::$instance = $server;
 
 		return $server;
+	}
+
+	/**
+	 * Build a token TTL, honouring a site-supplied override.
+	 *
+	 * The one-hour access token default is deliberate, but it is currently the
+	 * only knob a site has: a client unable to complete the OAuth dance (no
+	 * browser to redirect through) has no way to use Albert except a bearer
+	 * token that expires every hour, with no way to tune that. These filters
+	 * don't solve that on their own — a revocable long-lived credential is the
+	 * real fix — but they at least make the TTLs configurable instead of hardcoded.
+	 *
+	 * @param non-empty-string $filter_name   The filter name.
+	 * @param string           $default_value The default ISO 8601 duration string.
+	 *
+	 * @return DateInterval
+	 * @since 1.4.0
+	 */
+	private static function ttl( string $filter_name, string $default_value ): DateInterval {
+		/**
+		 * Filters an OAuth token TTL.
+		 *
+		 * @since 1.4.0
+		 *
+		 * @param string $duration ISO 8601 duration string (e.g. `PT1H`). Default varies by filter.
+		 */
+		$duration = (string) apply_filters( $filter_name, $default_value );
+
+		try {
+			return new DateInterval( $duration );
+		} catch ( Exception $e ) {
+			return new DateInterval( $default_value );
+		}
 	}
 }

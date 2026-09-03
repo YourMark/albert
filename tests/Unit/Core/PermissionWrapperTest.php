@@ -16,6 +16,8 @@ use PHPUnit\Framework\TestCase;
 use WP_Error;
 
 /**
+ * Permission-callback wrapping tests.
+ *
  * @covers \Albert\Core\AbilitiesManager::wrap_permission_callback
  */
 class PermissionWrapperTest extends TestCase {

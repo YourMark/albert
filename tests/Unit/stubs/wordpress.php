@@ -18,6 +18,7 @@ require_once __DIR__ . '/WP_Error.php';
 require_once __DIR__ . '/WP_REST_Request.php';
 require_once __DIR__ . '/WP_REST_Response.php';
 require_once __DIR__ . '/WP.php';
+require_once __DIR__ . '/WP_Abilities_Registry.php';
 
 if ( ! function_exists( 'is_wp_error' ) ) {
 	/**
@@ -47,12 +48,46 @@ if ( ! function_exists( 'do_action' ) ) {
 	 *
 	 * @param string $hook_name Hook name.
 	 * @param mixed  ...$args   Hook arguments.
+	 *
+	 * @throws \RuntimeException When a test has armed `albert_test_throw_on_action` for this hook.
 	 */
 	function do_action( string $hook_name, ...$args ): void {
+		// Lets a test simulate a subscriber that throws, so guards around
+		// observer dispatch can be asserted rather than assumed.
+		if ( isset( $GLOBALS['albert_test_throw_on_action'] ) && $GLOBALS['albert_test_throw_on_action'] === $hook_name ) {
+			throw new \RuntimeException( 'observer exploded' );
+		}
+
 		$GLOBALS['albert_test_hooks'][] = [
 			'type' => 'action',
 			'hook' => $hook_name,
 			'args' => $args,
+		];
+	}
+}
+
+if ( ! function_exists( 'add_action' ) ) {
+	/**
+	 * Stub add_action that records the registration.
+	 *
+	 * Recorded under `type => registration` rather than `action`, so a test
+	 * asserting that a hook *fired* is never satisfied by a hook merely being
+	 * *registered*. The accepted-argument count is recorded because getting it
+	 * wrong is a silent failure: WordPress defaults to 1, which would hand a
+	 * three-argument callback only its first argument.
+	 *
+	 * @param string   $hook_name     Hook name.
+	 * @param callable $callback      Callback to register.
+	 * @param int      $priority      Hook priority.
+	 * @param int      $accepted_args Number of arguments the callback accepts.
+	 */
+	function add_action( string $hook_name, $callback, int $priority = 10, int $accepted_args = 1 ): void {
+		$GLOBALS['albert_test_hooks'][] = [
+			'type'          => 'registration',
+			'hook'          => $hook_name,
+			'callback'      => $callback,
+			'priority'      => $priority,
+			'accepted_args' => $accepted_args,
 		];
 	}
 }
@@ -82,7 +117,67 @@ if ( ! function_exists( 'apply_filters' ) ) {
 			return $GLOBALS['albert_test_filter_returns'][ $hook_name ];
 		}
 
+		// A callback, for filters whose result depends on the value they are
+		// handed. `albert/context/site` adds a section to whatever it receives,
+		// which a fixed return value cannot express.
+		if ( isset( $GLOBALS['albert_test_filter_callbacks'][ $hook_name ] ) ) {
+			return call_user_func_array(
+				$GLOBALS['albert_test_filter_callbacks'][ $hook_name ],
+				array_merge( [ $value ], $args )
+			);
+		}
+
 		return $value;
+	}
+}
+
+if ( ! function_exists( '_deprecated_hook' ) ) {
+	/**
+	 * Stub _deprecated_hook that records calls to $GLOBALS['albert_test_deprecated_hooks'].
+	 *
+	 * @param string $hook_name   Hook name being deprecated.
+	 * @param string $version     Version the hook was deprecated in.
+	 * @param string $replacement Replacement hook name.
+	 * @param string $message     Optional extra message.
+	 */
+	function _deprecated_hook( string $hook_name, string $version, string $replacement = '', string $message = '' ): void {
+		if ( ! isset( $GLOBALS['albert_test_deprecated_hooks'] ) ) {
+			$GLOBALS['albert_test_deprecated_hooks'] = [];
+		}
+
+		$GLOBALS['albert_test_deprecated_hooks'][] = [
+			'hook_name'   => $hook_name,
+			'version'     => $version,
+			'replacement' => $replacement,
+		];
+	}
+}
+
+if ( ! function_exists( 'apply_filters_deprecated' ) ) {
+	/**
+	 * Stub apply_filters_deprecated. Mirrors core closely enough for tests:
+	 * only records the deprecation (via _deprecated_hook) when the test has
+	 * actually configured something to hook the deprecated name — the same
+	 * has_filter() guard core applies before warning — then applies the value
+	 * through the same apply_filters() stub above, so hook-call recording and
+	 * override behaviour stay identical between the deprecated and the plain
+	 * path.
+	 *
+	 * @param string             $hook_name   Deprecated hook name.
+	 * @param array<int, mixed>  $args        Args passed to the hook; the first element is the value being filtered.
+	 * @param string             $version     Version the hook was deprecated in.
+	 * @param string             $replacement Replacement hook name.
+	 * @param string             $message     Optional extra message.
+	 *
+	 * @return mixed
+	 */
+	function apply_filters_deprecated( string $hook_name, array $args, string $version, string $replacement = '', string $message = '' ): mixed {
+		if ( isset( $GLOBALS['albert_test_filter_returns'][ $hook_name ] ) || isset( $GLOBALS['albert_test_filter_callbacks'][ $hook_name ] ) ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Test stub recording to an array, not real output; the sniff matches on the real function's name.
+			_deprecated_hook( $hook_name, $version, $replacement, $message );
+		}
+
+		return apply_filters( $hook_name, ...$args );
 	}
 }
 
@@ -119,11 +214,19 @@ if ( ! function_exists( 'current_user_can' ) ) {
 	 * do not set the global keep passing. When `$GLOBALS['albert_test_caps']`
 	 * is set (array of allowed capability names), only those return true.
 	 *
+	 * Variadic, like WordPress's own. A meta capability takes an object id,
+	 * Albert's read abilities call `current_user_can( 'read_post', $post_id )`,
+	 * and a single-argument stub would fatal the moment a unit test reached one
+	 * of those paths. The extra arguments are accepted and ignored: this stub
+	 * answers from a flat cap list, and pretending to resolve a meta capability
+	 * against it would be worse than plainly not doing so.
+	 *
 	 * @param string $capability Capability name.
+	 * @param mixed  ...$args    Object id and any further arguments, as WordPress accepts.
 	 *
 	 * @return bool
 	 */
-	function current_user_can( string $capability ): bool {
+	function current_user_can( string $capability, ...$args ): bool {
 		if ( ! isset( $GLOBALS['albert_test_caps'] ) ) {
 			return true;
 		}
@@ -180,6 +283,30 @@ if ( ! function_exists( 'wp_get_ability' ) ) {
 		}
 
 		return null;
+	}
+}
+
+if ( ! function_exists( 'wp_has_ability' ) ) {
+	/**
+	 * Stub wp_has_ability, core's silent existence check.
+	 *
+	 * Answers from the same doubles as the wp_get_ability() stub above, because
+	 * in WordPress the two read one registry and any code asking both in a row
+	 * is entitled to a consistent answer.
+	 *
+	 * It matters that this exists at all. Production code probes with
+	 * `wp_has_ability()` rather than `wp_get_ability()` because the real
+	 * `WP_Abilities_Registry::get_registered()` raises `_doing_it_wrong()` on a
+	 * miss. With no stub, `function_exists()` is false here and every such
+	 * probe takes its does-not-exist branch, which is how a controller test
+	 * ended up asserting a 404 for an ability that was right there.
+	 *
+	 * @param string $ability_id Ability ID.
+	 *
+	 * @return bool Whether a double of this name is registered.
+	 */
+	function wp_has_ability( string $ability_id ): bool {
+		return wp_get_ability( $ability_id ) !== null;
 	}
 }
 
@@ -382,6 +509,58 @@ if ( ! function_exists( 'esc_html_e' ) ) {
 	}
 }
 
+if ( ! function_exists( 'sanitize_text_field' ) ) {
+	/**
+	 * Stub sanitize_text_field: strips tags and collapses whitespace.
+	 *
+	 * @param string $value Value to sanitize.
+	 *
+	 * @return string
+	 */
+	function sanitize_text_field( string $value ): string {
+		$value = wp_strip_all_tags( $value );
+		$value = (string) preg_replace( '/[\r\n\t ]+/', ' ', $value );
+
+		return trim( $value );
+	}
+}
+
+if ( ! function_exists( 'wp_strip_all_tags' ) ) {
+	/**
+	 * Stub wp_strip_all_tags, mirroring core: <script>/<style> tags are removed
+	 * along with their content (not just the tags), unlike plain strip_tags().
+	 *
+	 * @param string $value         Value to strip tags from.
+	 * @param bool   $remove_breaks Whether to also collapse line breaks/whitespace.
+	 *
+	 * @return string
+	 */
+	function wp_strip_all_tags( string $value, bool $remove_breaks = false ): string {
+		$value = (string) preg_replace( '@<(script|style)[^>]*?>.*?</\1>@si', '', $value );
+		$value = strip_tags( $value );
+
+		if ( $remove_breaks ) {
+			$value = (string) preg_replace( '/[\r\n\t ]+/', ' ', $value );
+		}
+
+		return trim( $value );
+	}
+}
+
+if ( ! function_exists( 'esc_url_raw' ) ) {
+	/**
+	 * Stub esc_url_raw: unlike esc_url() this is meant for storage, not
+	 * display, but for stub purposes the same filtering is close enough.
+	 *
+	 * @param string $url URL to sanitize.
+	 *
+	 * @return string
+	 */
+	function esc_url_raw( string $url ): string {
+		return (string) filter_var( $url, FILTER_SANITIZE_URL );
+	}
+}
+
 if ( ! function_exists( 'esc_url' ) ) {
 	/**
 	 * Stub esc_url.
@@ -420,6 +599,22 @@ if ( ! function_exists( 'menu_page_url' ) ) {
 	 */
 	function menu_page_url( string $slug, bool $display = true ): string {
 		return 'http://example.test/wp-admin/admin.php?page=' . $slug;
+	}
+}
+
+if ( ! function_exists( 'home_url' ) ) {
+	/**
+	 * Stub home_url reading $GLOBALS['albert_test_home_url'], defaulting to a
+	 * fixed test domain.
+	 *
+	 * @param string $path Path relative to the home URL.
+	 *
+	 * @return string
+	 */
+	function home_url( string $path = '' ): string {
+		$base = $GLOBALS['albert_test_home_url'] ?? 'https://example.test';
+
+		return $path !== '' ? rtrim( $base, '/' ) . '/' . ltrim( $path, '/' ) : $base;
 	}
 }
 
@@ -481,3 +676,90 @@ if ( ! defined( 'DAY_IN_SECONDS' ) ) {
 }
 
 // phpcs:enable
+
+if ( ! function_exists( 'rest_validate_value_from_schema' ) ) {
+	/**
+	 * Stub of core's JSON Schema validator.
+	 *
+	 * Mirrors `rest_validate_value_from_schema()` for the subset Albert's own
+	 * code depends on — required properties, `additionalProperties: false`, and
+	 * scalar type checks — in core's order (required first, then each supplied
+	 * property, then undeclared ones) and with core's own message wording, so a
+	 * unit test sees the same reason a real request would.
+	 *
+	 * Parity with the real function is not assumed on the strength of this
+	 * stub: `tests/Integration/Abilities/InputValidationTest.php` exercises the
+	 * same paths against real WordPress.
+	 *
+	 * @param mixed  $value The value to validate.
+	 * @param array  $args  The schema to validate against.
+	 * @param string $param The parameter name used in messages.
+	 *
+	 * @return true|\WP_Error True when valid, WP_Error with core's reason otherwise.
+	 */
+	function rest_validate_value_from_schema( $value, $args, $param = '' ) {
+		$type = $args['type'] ?? null;
+		$type = is_array( $type ) ? ( $type[0] ?? null ) : $type;
+
+		if ( $type === 'object' ) {
+			if ( ! is_array( $value ) ) {
+				return new \WP_Error(
+					'rest_invalid_type',
+					sprintf( '%1$s is not of type %2$s.', $param, 'object' )
+				);
+			}
+
+			foreach ( (array) ( $args['required'] ?? [] ) as $name ) {
+				if ( ! array_key_exists( $name, $value ) ) {
+					return new \WP_Error(
+						'rest_property_required',
+						sprintf( '%1$s is a required property of %2$s.', $name, $param )
+					);
+				}
+			}
+
+			foreach ( $value as $property => $property_value ) {
+				if ( isset( $args['properties'][ $property ] ) ) {
+					$is_valid = rest_validate_value_from_schema(
+						$property_value,
+						$args['properties'][ $property ],
+						$param . '[' . $property . ']'
+					);
+
+					if ( is_wp_error( $is_valid ) ) {
+						return $is_valid;
+					}
+
+					continue;
+				}
+
+				if ( ( $args['additionalProperties'] ?? null ) === false ) {
+					return new \WP_Error(
+						'rest_additional_properties_forbidden',
+						sprintf( '%1$s is not a valid property of Object.', $property )
+					);
+				}
+			}
+
+			return true;
+		}
+
+		$matches = [
+			'integer' => static fn( $v ): bool => is_int( $v ),
+			'number'  => static fn( $v ): bool => is_int( $v ) || is_float( $v ),
+			'string'  => static fn( $v ): bool => is_string( $v ),
+			'boolean' => static fn( $v ): bool => is_bool( $v ),
+			'array'   => static fn( $v ): bool => is_array( $v ),
+			'null'    => static fn( $v ): bool => $v === null,
+		];
+
+		if ( is_string( $type ) && isset( $matches[ $type ] ) && ! $matches[ $type ]( $value ) ) {
+			return new \WP_Error(
+				'rest_invalid_type',
+				sprintf( '%1$s is not of type %2$s.', $param, $type )
+			);
+		}
+
+		return true;
+	}
+}

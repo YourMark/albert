@@ -51,14 +51,35 @@ class PrivacyModeTest extends TestCase {
 	}
 
 	/**
-	 * The filter overrides the stored option.
+	 * A filtered value overrides the stored option.
+	 *
+	 * Asserted through the generic settings chain rather than through
+	 * `albert/privacy/mode`. Both still work and both still take precedence
+	 * over the option, but since 1.4.0 the domain-specific filter reaches
+	 * resolution by way of {@see \Albert\Settings\Overrides}, a real
+	 * `add_filter()` callback — and this suite's `apply_filters` stub returns
+	 * configured values without running callbacks, so it cannot exercise that.
+	 * `AgentPrivacyOverrideTest` covers the legacy name against real hooks.
 	 *
 	 * @return void
 	 */
 	public function test_filter_overrides_option(): void {
-		$GLOBALS['albert_test_options']['albert_privacy_mode']        = 'strict';
-		$GLOBALS['albert_test_filter_returns']['albert/privacy/mode'] = 'off';
+		$GLOBALS['albert_test_options']['albert_privacy_mode']                              = 'strict';
+		$GLOBALS['albert_test_filter_returns']['albert/settings/value/albert_privacy_mode'] = 'off';
 		$this->assertSame( PrivacyMode::Off, PrivacyMode::resolve() );
+	}
+
+	/**
+	 * An override outside the three-mode vocabulary is skipped, not accepted:
+	 * resolution continues to the stored value rather than collapsing to the
+	 * default. A typo in code should not quietly relax the site's privacy.
+	 *
+	 * @return void
+	 */
+	public function test_an_unrecognised_filter_value_falls_through_to_the_option(): void {
+		$GLOBALS['albert_test_options']['albert_privacy_mode']                              = 'strict';
+		$GLOBALS['albert_test_filter_returns']['albert/settings/value/albert_privacy_mode'] = 'stcrit';
+		$this->assertSame( PrivacyMode::Strict, PrivacyMode::resolve() );
 	}
 
 	/**
@@ -71,8 +92,8 @@ class PrivacyModeTest extends TestCase {
 	 */
 	public function test_constant_overrides_all(): void {
 		define( 'ALBERT_PRIVACY_MODE', 'strict' );
-		$GLOBALS['albert_test_options']['albert_privacy_mode']        = 'balanced';
-		$GLOBALS['albert_test_filter_returns']['albert/privacy/mode'] = 'off';
+		$GLOBALS['albert_test_options']['albert_privacy_mode']                              = 'balanced';
+		$GLOBALS['albert_test_filter_returns']['albert/settings/value/albert_privacy_mode'] = 'off';
 
 		$this->assertSame( PrivacyMode::Strict, PrivacyMode::resolve() );
 	}
@@ -88,7 +109,7 @@ class PrivacyModeTest extends TestCase {
 	}
 
 	/**
-	 * sanitize() normalises casing and rejects unknown values.
+	 * The sanitiser normalises casing and rejects unknown values.
 	 *
 	 * @return void
 	 */

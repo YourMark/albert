@@ -1,133 +1,51 @@
-# WordPress.org Screenshots
+# WordPress.org listing assets
 
-This document tracks screenshots captured for the WordPress.org plugin submission.
+Everything in this folder is deployed to the plugin's SVN `assets/` directory by
+`.github/workflows/plugin-assets.yml` on a push to `main`, and by `release.yml`
+as part of a tagged release.
 
-## Requirements
-- **Format**: PNG or JPG
-- **Size**: 1280x800px or larger (recommended)
-- **Quantity**: 5-8 screenshots
-- **Naming**: screenshot-1.png, screenshot-2.png, etc.
+This is the only folder that is deployed. A second `.wordpress.org/` (with a
+dot) existed until 1.4.0, holding a stale copy of the same four screenshots. It
+was created before the deploy action was added, the action requires the
+hyphenated name, and nothing ever read the dotted one. It has been deleted.
 
-## Captured Screenshots
+## Files
 
-### Screenshot 1: Dashboard Page (Featured)
-- **File**: screenshot-1.png (to be saved)
-- **Browser ID**: ss_2624041x0
-- **Size**: 1590x773px
-- **URL**: https://wc2025.test/wp-admin/admin.php?page=albert
-- **Shows**:
-  - MCP endpoint URL with copy button
-  - Quick setup guide (4 steps)
-  - Status overview (OAuth Server, MCP Endpoint, Active Connections, Enabled Abilities)
-  - Recent activity section (empty state)
-  - Professional 2-column card layout
-  - WordPress admin sidebar showing Albert menu
+| File | Screen |
+|---|---|
+| `icon-256x256.png` | Plugin icon |
+| `screenshot-1.jpg` | Dashboard |
+| `screenshot-2.jpg` | Connections |
+| `screenshot-3.jpg` | Abilities |
+| `screenshot-4.jpg` | Context |
+| `screenshot-5.jpg` | Skills |
 
-### Screenshot 2: Abilities Page
-- **File**: screenshot-2.png (to be saved)
-- **Browser ID**: ss_6970ftezu
-- **Size**: 1590x773px
-- **URL**: https://wc2025.test/wp-admin/admin.php?page=albert-abilities
-- **Shows**:
-  - 19 core abilities organized by category
-  - Categories: Posts, Pages, Users, Media, Taxonomies, Terms
-  - Enable/disable toggles for each ability
-  - Ability descriptions
-  - Save Changes button
-  - Category tabs for easy navigation
+Captions live in `readme.txt` under `== Screenshots ==`, one line per file, in
+this order. WordPress.org pairs them by position, so adding a screenshot means
+adding a caption in the same place.
 
-### Screenshot 3: Connections Page (Empty State)
-- **File**: screenshot-3.png (to be saved)
-- **Browser ID**: ss_7082foi85
-- **Size**: 1590x773px
-- **URL**: https://wc2025.test/wp-admin/admin.php?page=albert-connections
-- **Shows**:
-  - Empty state with icon
-  - "No Active Connections" message
-  - Call-to-action: "View Setup Instructions" button
-  - Clean, professional card design
-  - Helpful messaging for first-time users
+## Conventions
 
-### Screenshot 4: Settings Page
-- **File**: screenshot-4.png (to be saved)
-- **Browser ID**: ss_8043paeje
-- **Size**: 1590x773px
-- **URL**: https://wc2025.test/wp-admin/admin.php?page=albert-settings
-- **Shows**:
-  - MCP Server section with Connection URL
-  - Authentication section with Allowed Users
-  - User selection dropdown
-  - Add User button
-  - Empty state message
-  - 2-column layout
+- **1280x960, 4:3, JPG at quality 85.** WordPress.org mandates no size. What it
+  does say is that wide, short screenshots are hard to read at the directory's
+  thumbnail size, which is why these are 4:3 rather than the 3840x1320 the
+  pre-1.4.0 set used. JPG keeps each file around 200KB against a 10MB cap.
+- **Lowercase filenames**, numbered from 1 with no gaps. Uppercase does not work.
+- **Full admin chrome included.** The WordPress sidebar shows where Albert lives,
+  which is worth more than the width it costs.
+- There is no retina or 2x convention for screenshots. That exists for icons and
+  banners only.
 
-## Additional Screenshots Needed
+## Retaking them
 
-### Screenshot 5: Active Connection (Optional)
-- **Status**: Not captured yet
-- **Requires**: Creating a test OAuth connection
-- **Shows**: Connections page with active AI assistant connections
-- **Content**: Connection cards showing app name, user, connected time, expiration
+Captured from a real site at a 1291x1145 browser window, which yields a
+1270x952 viewport, then resized to 1280x960.
 
-### Screenshot 6: OAuth Authorization Flow (Optional)
-- **Status**: Not captured yet
-- **Requires**: Initiating OAuth flow from AI assistant
-- **Shows**: WordPress authorization consent screen
-- **Content**: App requesting permissions, approve/deny buttons
+Before shooting, make sure the admin is in **English**, debug bars such as Query
+Monitor are off, and no admin notices are covering the page. Check that no Albert
+screen is showing a warning state: if `albert/get-skill` is switched off, the
+Skills screen carries a "No assistant can read these" banner and the Dashboard
+raises an attention item, and both make a working plugin look broken.
 
-### Screenshot 7: Admin Menu (Optional)
-- **Status**: Can be extracted from existing screenshots
-- **Shows**: WordPress admin sidebar with Albert menu expanded
-- **Content**: Top-level menu icon, submenu items (Dashboard, Abilities, Connections, Settings)
-
-## How to Save Screenshots
-
-### Option 1: From Browser (Manual)
-1. Open Chrome DevTools
-2. Find the screenshot IDs listed above
-3. Right-click and save each image
-
-### Option 2: Take New Screenshots (Recommended)
-```bash
-# Using macOS screencapture
-# 1. Open the page in browser
-# 2. Resize window to desired size
-# 3. Run:
-screencapture -w screenshot-1.png
-
-# Or use browser screenshot tool (Cmd+Shift+5 on macOS)
-```
-
-### Option 3: Automated with Screenshot Tool
-- Use browser automation to capture each page
-- Save directly to .wordpress.org/ directory
-- Ensure consistent sizing (1280x800px or larger)
-
-## Processing Checklist
-
-- [ ] Save all 4 captured screenshots as PNG files
-- [ ] Rename to screenshot-1.png through screenshot-4.png
-- [ ] Verify size is 1280x800px or larger
-- [ ] Optimize file size (use ImageOptim or similar)
-- [ ] Add captions to readme.txt
-- [ ] Consider adding 1-2 more screenshots (active connections, OAuth flow)
-
-## Screenshot Descriptions (for readme.txt)
-
-```
-== Screenshots ==
-
-1. Dashboard page showing MCP endpoint, quick setup guide, and status overview
-2. Abilities page with 19 toggleable WordPress operations organized by category
-3. Connections page showing empty state with helpful call-to-action
-4. Settings page for configuring MCP endpoint and allowed users
-```
-
-## Notes
-
-- All screenshots show the plugin in a clean WordPress 6.4+ environment
-- Dark admin sidebar provides good contrast
-- Professional design with card-based layouts
-- Consistent branding throughout
-- Screenshots demonstrate the complete admin interface
-- Empty states are included to show first-time user experience
+Last retaken for 1.4.0, when the admin was rebuilt on the shared design system
+and the Context and Skills screens were added.

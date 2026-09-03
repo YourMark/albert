@@ -41,7 +41,11 @@ class Delete extends BaseAbility {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::delete(),
+			'annotations' => Annotations::delete(
+				'This is not reversible through Albert. Confirm which page you have, with `albert/view-page` '
+				. 'on the id, before calling it, and check nothing links to it: deleting a page that is in '
+				. 'a navigation menu leaves the menu pointing at nothing.'
+			),
 		];
 
 		parent::__construct();

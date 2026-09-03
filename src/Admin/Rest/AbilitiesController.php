@@ -37,6 +37,8 @@ defined( 'ABSPATH' ) || exit;
  */
 class AbilitiesController implements Hookable {
 
+	use RequiresManageOptions;
+
 	/**
 	 * Register WordPress hooks.
 	 *
@@ -106,16 +108,6 @@ class AbilitiesController implements Hookable {
 	}
 
 	/**
-	 * Permission check for every route on this controller.
-	 *
-	 * @return bool
-	 * @since 1.3.0
-	 */
-	public function check_permission(): bool {
-		return current_user_can( 'manage_options' );
-	}
-
-	/**
 	 * GET /abilities — the full dataset for the screen.
 	 *
 	 * @return WP_REST_Response
@@ -139,7 +131,10 @@ class AbilitiesController implements Hookable {
 	public function update_ability( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$ability_id = $request['namespace'] . '/' . $request['name'];
 
-		if ( ! function_exists( 'wp_get_ability' ) || wp_get_ability( $ability_id ) === null ) {
+		// `wp_has_ability()`, not `wp_get_ability()`: the latter raises
+		// _doing_it_wrong() before returning null, so a request naming an id
+		// that does not exist would log a notice on its way to an honest 404.
+		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( $ability_id ) ) {
 			return new WP_Error(
 				'albert_ability_not_found',
 				__( 'Ability not found.', 'albert-ai-butler' ),
@@ -170,7 +165,7 @@ class AbilitiesController implements Hookable {
 	 * @since 1.3.0
 	 */
 	public function bulk_update( WP_REST_Request $request ): WP_REST_Response {
-		$has_registry = function_exists( 'wp_get_ability' );
+		$has_registry = function_exists( 'wp_has_ability' );
 		$protected    = AbilitiesRegistry::get_protected_abilities();
 		$ids          = array_values(
 			array_filter(
@@ -185,8 +180,11 @@ class AbilitiesController implements Hookable {
 						return false;
 					}
 					// Only act on abilities that actually exist, so phantom ids
-					// can't bloat the disabled-abilities option.
-					return ! $has_registry || wp_get_ability( $id ) !== null;
+					// can't bloat the disabled-abilities option. Asked with
+					// wp_has_ability(), which is silent; wp_get_ability()
+					// raises _doing_it_wrong() per miss, so a bulk request
+					// carrying phantom ids would print one notice each.
+					return ! $has_registry || wp_has_ability( $id );
 				}
 			)
 		);

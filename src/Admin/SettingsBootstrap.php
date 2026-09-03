@@ -10,12 +10,13 @@
  * @since      1.1.0
  */
 
-declare(strict_types=1);
-
 namespace Albert\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
+use Albert\Media\UploadLinks\UploadLinkService;
+use Albert\OAuth\AllowedUsers;
+use Albert\OAuth\ConnectionRetention;
 use Albert\Privacy\PrivacyMode;
 
 /**
@@ -43,20 +44,131 @@ class SettingsBootstrap {
 				'title'       => __( 'Privacy', 'albert-ai-butler' ),
 				'priority'    => 60,
 				'icon'        => 'privacy',
-				'description' => __( 'Control how customer and user personal data (names, emails, phone numbers, addresses) is shared with AI assistants. Payment and card data is always removed, regardless of this setting.', 'albert-ai-butler' ),
+				'description' => __( 'What AI assistants may see of your customers and users.', 'albert-ai-butler' ),
 				'fields'      => [
 					[
 						'id'                => 'mode',
-						'type'              => 'select',
+						'type'              => 'radio-cards',
 						'label'             => __( 'Privacy mode', 'albert-ai-butler' ),
-						'description'       => __( 'Strict: personal data is always anonymised. Balanced (recommended): anonymised by default, but an authorised request can reveal it. Off: personal data is not anonymised.', 'albert-ai-butler' ),
+						// Balanced, and deliberately not Strict, even though a
+						// new install is set to Strict on activation
+						// ({@see \Albert\Core\Plugin::activate()}). This is the
+						// value a site falls back to when nothing is stored, and
+						// the sites in that position are the ones that installed
+						// Albert before the option existed. Changing what *they*
+						// do without anybody choosing it is the thing
+						// docs/features/70-admin-design-system.md §4 forbids.
+						// A new install never reaches this: it has a stored value
+						// from its first request.
 						'default'           => PrivacyMode::Balanced->value,
 						'options'           => [
-							PrivacyMode::Strict->value   => __( 'Strict — always anonymise personal data', 'albert-ai-butler' ),
-							PrivacyMode::Balanced->value => __( 'Balanced — anonymise by default (recommended)', 'albert-ai-butler' ),
-							PrivacyMode::Off->value      => __( 'Off — do not anonymise personal data', 'albert-ai-butler' ),
+							PrivacyMode::Strict->value   => [
+								'label'       => __( 'Strict', 'albert-ai-butler' ),
+								'description' => __( 'Personal data is always anonymised, in every request.', 'albert-ai-butler' ),
+								'recommended' => true,
+							],
+							PrivacyMode::Balanced->value => [
+								'label'       => __( 'Balanced', 'albert-ai-butler' ),
+								'description' => __( 'Anonymised by default, but an authorised request can reveal it.', 'albert-ai-butler' ),
+							],
+							PrivacyMode::Off->value      => [
+								'label'       => __( 'Off', 'albert-ai-butler' ),
+								'description' => __( 'Personal data is passed through as-is. Payment data is still always removed.', 'albert-ai-butler' ),
+							],
 						],
 						'sanitize_callback' => [ PrivacyMode::class, 'sanitize' ],
+					],
+				],
+			],
+			[
+				'id'          => 'albert/connections',
+				'title'       => __( 'Connections', 'albert-ai-butler' ),
+				'priority'    => 65,
+				'icon'        => 'admin-users',
+				'description' => __( 'Standing invitations and unused connections.', 'albert-ai-butler' ),
+				'fields'      => [
+					[
+						'id'          => 'invitation_expiry_days',
+						'type'        => 'number',
+						'label'       => __( 'Invitation expiry', 'albert-ai-butler' ),
+						'suffix'      => __( 'days', 'albert-ai-butler' ),
+						'description' => __( 'How long someone has to approve their first assistant.', 'albert-ai-butler' ),
+						'info'        => __( 'Once they approve one, their access no longer expires. Set to 0 for no deadline.', 'albert-ai-butler' ),
+						'option_name' => AllowedUsers::EXPIRY_OPTION,
+						'default'     => AllowedUsers::DEFAULT_EXPIRY_DAYS,
+						'attributes'  => [
+							'min'  => 0,
+							'max'  => 3650,
+							'step' => 1,
+						],
+					],
+					[
+						'id'          => 'connection_never_used_days',
+						'type'        => 'number',
+						'label'       => __( 'Drop never-used connections', 'albert-ai-butler' ),
+						'suffix'      => __( 'days', 'albert-ai-butler' ),
+						'description' => __( 'Removes connections that were approved but never used.', 'albert-ai-butler' ),
+						'info'        => __( 'Once a connection has been used, this rule stops applying to it. Set to 0 to keep them.', 'albert-ai-butler' ),
+						'option_name' => ConnectionRetention::NEVER_USED_OPTION,
+						'default'     => ConnectionRetention::DEFAULT_NEVER_USED_DAYS,
+						'attributes'  => [
+							'min'  => 0,
+							'max'  => 3650,
+							'step' => 1,
+						],
+					],
+					[
+						'id'          => 'connection_idle_days',
+						'type'        => 'number',
+						'label'       => __( 'Expire idle connections', 'albert-ai-butler' ),
+						'suffix'      => __( 'days', 'albert-ai-butler' ),
+						'description' => __( 'Removes connections that have gone quiet.', 'albert-ai-butler' ),
+						'info'        => __( 'Off by default, because a quiet assistant is not always an abandoned one. Set to 0 to keep them.', 'albert-ai-butler' ),
+						'option_name' => ConnectionRetention::IDLE_OPTION,
+						'default'     => ConnectionRetention::DEFAULT_IDLE_DAYS,
+						'attributes'  => [
+							'min'  => 0,
+							'max'  => 3650,
+							'step' => 1,
+						],
+					],
+				],
+			],
+			[
+				'id'          => 'albert/media',
+				'title'       => __( 'Uploads', 'albert-ai-butler' ),
+				'priority'    => 68,
+				'icon'        => 'upload',
+				'description' => __( 'How assistants send files to your site.', 'albert-ai-butler' ),
+				'fields'      => [
+					[
+						// An ordinary number field. It used to be 'custom' purely
+						// because the renderer had no way to express "disabled,
+						// because a filter is overriding this". It now works that
+						// out itself from Settings\Value, so this field declares
+						// no `disabled` and no `display_value` at all. The `hint`
+						// stays: the generated one names the filter, but only this
+						// field can give the exact size in force, which matters
+						// because the control rounds up to whole megabytes.
+						'id'                => 'default_max_mb',
+						'type'              => 'number',
+						'label'             => __( 'Default upload size limit', 'albert-ai-butler' ),
+						'suffix'            => __( 'MB', 'albert-ai-butler' ),
+						'description'       => __( 'Used when an assistant does not ask for a specific limit.', 'albert-ai-butler' ),
+						'info'              => sprintf(
+							/* translators: %s: this server's own upload size ceiling, human-readable (e.g. "64 MB") */
+							__( 'An assistant can ask for a smaller or larger limit per upload. This server never accepts more than %s, whatever is set here.', 'albert-ai-butler' ),
+							self::server_upload_ceiling()
+						),
+						'option_name'       => UploadLinkService::MAX_BYTES_OPTION,
+						'default'           => UploadLinkService::DEFAULT_MAX_MB,
+						'attributes'        => [
+							'min'  => 1,
+							'max'  => UploadLinkService::MAX_SETTABLE_MB,
+							'step' => 1,
+						],
+						'hint'              => [ self::class, 'max_mb_hint' ],
+						'sanitize_callback' => [ self::class, 'sanitize_max_mb' ],
 					],
 				],
 			],
@@ -77,6 +189,124 @@ class SettingsBootstrap {
 				],
 			],
 		];
+	}
+
+	/**
+	 * This server's own upload ceiling, human-readable, for the Uploads field description.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @return string e.g. "64 MB".
+	 */
+	private static function server_upload_ceiling(): string {
+		// size_format() can return false; wp_max_upload_size() can't actually trigger that.
+		$formatted = size_format( wp_max_upload_size() );
+
+		return is_string( $formatted ) ? $formatted : '';
+	}
+
+	/**
+	 * What to say under the control when a filter is involved, if anything.
+	 *
+	 * Returns null in the ordinary case — most of the time there is no filter
+	 * and the field needs no hint at all.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @return array{text: string, tone: string}|null
+	 */
+	public static function max_mb_hint(): ?array {
+		$state = UploadLinkService::get_default_max_bytes_filter_state();
+
+		if ( $state['state'] !== 'active' ) {
+			return null;
+		}
+
+		if ( $state['requested'] > $state['value'] ) {
+			return [
+				'text' => sprintf(
+					/* translators: 1: opening <code>, 2: closing </code> wrapping the filter name, 3: the value the filter requested (MB), 4: the maximum allowed (MB) */
+					__( 'The %1$salbert/media/upload_link_max_bytes%2$s filter is requesting %3$d MB, above the %4$d MB maximum, so %4$d MB is being used instead.', 'albert-ai-butler' ),
+					'<code>',
+					'</code>',
+					(int) round( $state['requested'] / UploadLinkService::BYTES_PER_MB ),
+					UploadLinkService::MAX_SETTABLE_MB
+				),
+				'tone' => 'warning',
+			];
+		}
+
+		return [
+			'text' => sprintf(
+				/* translators: 1: opening <code>, 2: closing </code> wrapping the filter name, 3: the effective size, human-readable (e.g. "500 B") */
+				__( 'The %1$salbert/media/upload_link_max_bytes%2$s filter is overriding what\'s saved here. The limit in effect is %3$s.', 'albert-ai-butler' ),
+				'<code>',
+				'</code>',
+				size_format( $state['value'] )
+			),
+			'tone' => 'info',
+		];
+	}
+
+	/**
+	 * Sanitize the Settings-screen field for {@see UploadLinkService::MAX_BYTES_OPTION}.
+	 *
+	 * While the filter is active the field renders disabled, so it's never
+	 * submitted; return the stored value as a no-op rather than resetting it.
+	 *
+	 * @param mixed $value Raw value from the settings form.
+	 *
+	 * @return int MB, clamped to [1, UploadLinkService::MAX_SETTABLE_MB].
+	 * @since 1.4.0
+	 */
+	public static function sanitize_max_mb( $value ): int {
+		$stored = (int) get_option( UploadLinkService::MAX_BYTES_OPTION, UploadLinkService::DEFAULT_MAX_MB );
+
+		// null means the field was not submitted, which is what a disabled
+		// field does. Keyed on the value rather than only on the filter's
+		// state at save time: the filter can go inactive between the render
+		// that disabled the field and the save, and treating "absent" as
+		// "invalid" would then overwrite a stored value nobody touched.
+		if ( $value === null || UploadLinkService::get_default_max_bytes_filter_state()['state'] === 'active' ) {
+			return $stored;
+		}
+
+		// (int) cast, not absint(): a negative input must fall through to the default below.
+		$mb = is_scalar( $value ) ? (int) $value : 0;
+
+		if ( $mb < 1 ) {
+			// Say so, exactly as an over-range value does. Silently rewriting
+			// a 0 to 10 leaves somebody staring at a number they did not type.
+			add_settings_error(
+				'albert_settings',
+				'upload_link_max_mb_too_low',
+				sprintf(
+					/* translators: %d: the default that was saved instead (MB) */
+					__( 'The default upload size limit must be at least 1 MB, so %d MB was saved instead.', 'albert-ai-butler' ),
+					UploadLinkService::DEFAULT_MAX_MB
+				),
+				'warning'
+			);
+
+			return UploadLinkService::DEFAULT_MAX_MB;
+		}
+
+		if ( $mb > UploadLinkService::MAX_SETTABLE_MB ) {
+			// Reuses the page's own "Settings saved" notice mechanism.
+			add_settings_error(
+				'albert_settings',
+				'upload_link_max_mb_clamped',
+				sprintf(
+					/* translators: 1: the value that was requested (MB), 2: the maximum allowed (MB) */
+					__( 'The default upload size limit can\'t be set above %2$d MB. %1$d MB was requested, so %2$d MB was saved instead.', 'albert-ai-butler' ),
+					$mb,
+					UploadLinkService::MAX_SETTABLE_MB
+				),
+				'warning'
+			);
+		}
+
+		return min( $mb, UploadLinkService::MAX_SETTABLE_MB );
 	}
 
 	/**

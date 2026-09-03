@@ -46,13 +46,8 @@ phpunit-wp.xml
 
 /vendor/
 
-# Mozart-scoped dependencies — generated from vendor/ at install/build time
-# (composer post-install/post-update runs `mozart compose`). Not committed.
-/vendor-prefixed/
-
 # composer.lock IS committed (this is a deployable plugin, not a library) so
-# every environment — dev, CI, release — resolves identical versions, which
-# also pins what Mozart generates.
+# every environment — dev, CI, release — resolves identical versions.
 
 ############
 ## Node/NPM
@@ -120,3 +115,20 @@ temp/
 /src/generated/
 dependencies.json
 dependencies.md
+
+# Planning docs. Working notes, deliberately not shipped with the plugin.
+docs/features/
+docs/plans/
+docs/references/
+
+# Working artefacts. Design handoffs, UI-verification screenshots, per-agent
+# memory and local hooks: useful while building, not part of the plugin and not
+# worth ~6MB of binary history. Deliberately not deleted, just untracked.
+/cleanup/
+/design_handoff_*/
+.claude/agent-memory/
+.claude/hooks/
+
+# Session discussion notes. The tracked .claude/*-plan.md and *-summary.md docs
+# are kept on purpose; these are scratch.
+.claude/*-discussion.md

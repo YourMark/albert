@@ -22,6 +22,8 @@ use WP_REST_Request;
  * @since 1.0.0
  */
 class FindTerms extends BaseAbility {
+	use ResolvesTaxonomyRoute;
+
 	/**
 	 * Constructor.
 	 *
@@ -41,7 +43,11 @@ class FindTerms extends BaseAbility {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::read(),
+			'annotations' => Annotations::read(
+				'Terms are per-taxonomy, so pass the `taxonomy` you mean. `category` and `post_tag` are '
+				. 'the built-in ones, and this site may have others. Use `albert/find-taxonomies` first '
+				. 'when you are not sure which exist here.'
+			),
 		];
 
 		parent::__construct();
@@ -90,23 +96,42 @@ class FindTerms extends BaseAbility {
 	/**
 	 * Get the output schema for this ability.
 	 *
+	 * Describes the object {@see self::execute()} returns. Until 1.4.0 this
+	 * declared a bare `array` of term items while execute() returned
+	 * `{ terms: [...], total: int }`. WordPress 7.1 validates ability output, so
+	 * the mismatch was not cosmetic: every call came back as
+	 * `ability_invalid_output` — "output is not of type array" — and the
+	 * assistant never saw a term. The list moved under `terms`; the item shape
+	 * is unchanged.
+	 *
 	 * @return array<string, mixed> Output schema.
 	 * @since 1.0.0
+	 * @since 1.4.0 Describes the returned object rather than a bare array.
 	 */
 	protected function get_output_schema(): array {
 		return [
-			'type'  => 'array',
-			'items' => [
-				'type'       => 'object',
-				'properties' => [
-					'id'          => [ 'type' => 'integer' ],
-					'name'        => [ 'type' => 'string' ],
-					'slug'        => [ 'type' => 'string' ],
-					'description' => [ 'type' => 'string' ],
-					'parent'      => [ 'type' => 'integer' ],
-					'count'       => [ 'type' => 'integer' ],
+			'type'       => 'object',
+			'properties' => [
+				'terms' => [
+					'type'  => 'array',
+					'items' => [
+						'type'       => 'object',
+						'properties' => [
+							'id'          => [ 'type' => 'integer' ],
+							'name'        => [ 'type' => 'string' ],
+							'slug'        => [ 'type' => 'string' ],
+							'description' => [ 'type' => 'string' ],
+							'parent'      => [ 'type' => 'integer' ],
+							'count'       => [ 'type' => 'integer' ],
+						],
+					],
 				],
+				// How many are in `terms` — the size of this page, not the size of
+				// the whole taxonomy. This ability paginates, so a caller that wants
+				// the next page asks for it rather than comparing against a total.
+				'total' => [ 'type' => 'integer' ],
 			],
+			'required'   => [ 'terms', 'total' ],
 		];
 	}
 
@@ -138,14 +163,14 @@ class FindTerms extends BaseAbility {
 	public function execute( array $args ): array|WP_Error {
 		$taxonomy = $args['taxonomy'] ?? 'category';
 
-		// Determine REST base for taxonomy.
-		$rest_base = $this->get_taxonomy_rest_base( $taxonomy );
-		if ( is_wp_error( $rest_base ) ) {
-			return $rest_base;
+		// Determine the REST route WordPress serves this taxonomy's terms on.
+		$route = $this->get_taxonomy_route( $taxonomy );
+		if ( is_wp_error( $route ) ) {
+			return $route;
 		}
 
 		// Create REST request.
-		$request = new WP_REST_Request( 'GET', '/wp/v2/' . $rest_base );
+		$request = new WP_REST_Request( 'GET', $route );
 
 		// Set parameters.
 		$request->set_param( 'per_page', min( absint( $args['per_page'] ?? 10 ), 100 ) );
@@ -194,50 +219,5 @@ class FindTerms extends BaseAbility {
 			'terms' => $terms,
 			'total' => count( $terms ),
 		];
-	}
-
-	/**
-	 * Get the REST base for a taxonomy.
-	 *
-	 * @param string $taxonomy Taxonomy slug.
-	 * @return string|WP_Error REST base or error.
-	 * @since 1.0.0
-	 */
-	private function get_taxonomy_rest_base( string $taxonomy ): string|WP_Error {
-		// Map common taxonomies to their REST bases.
-		$rest_bases = [
-			'category'  => 'categories',
-			'post_tag'  => 'tags',
-			'post_tags' => 'tags',
-		];
-
-		if ( isset( $rest_bases[ $taxonomy ] ) ) {
-			return $rest_bases[ $taxonomy ];
-		}
-
-		// Get taxonomy object.
-		$taxonomy_obj = get_taxonomy( $taxonomy );
-		if ( ! $taxonomy_obj ) {
-			return new WP_Error(
-				'invalid_taxonomy',
-				__( 'Invalid taxonomy.', 'albert-ai-butler' ),
-				[ 'status' => 404 ]
-			);
-		}
-
-		if ( empty( $taxonomy_obj->rest_base ) ) {
-			return new WP_Error(
-				'taxonomy_not_rest_enabled',
-				__( 'This taxonomy is not available via REST API.', 'albert-ai-butler' ),
-				[ 'status' => 400 ]
-			);
-		}
-
-		// If rest_base is true, use the taxonomy name as the REST base.
-		if ( $taxonomy_obj->rest_base === true ) {
-			return $taxonomy_obj->name;
-		}
-
-		return $taxonomy_obj->rest_base;
 	}
 }

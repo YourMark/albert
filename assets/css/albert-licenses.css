@@ -9,7 +9,7 @@
 .albert-license-form {
 	display: flex;
 	align-items: center;
-	gap: var(--albert-spacing-sm);
+	gap: var(--albert-space-200);
 }
 
 .albert-license-form .albert-text-input {
@@ -22,30 +22,30 @@
 }
 
 .albert-license-hint {
-	margin-top: var(--albert-spacing-sm);
-	margin-bottom: var(--albert-spacing-lg);
+	margin-top: var(--albert-space-200);
+	margin-bottom: var(--albert-space-400);
 }
 
 /* Notice area */
 .albert-license-notice {
-	padding: var(--albert-spacing-sm) var(--albert-spacing-md);
-	border-radius: var(--albert-border-radius);
-	margin-bottom: var(--albert-spacing-md);
-	font-size: var(--albert-font-base);
+	padding: var(--albert-space-200) var(--albert-space-300);
+	border-radius: var(--albert-radius-md);
+	margin-bottom: var(--albert-space-300);
+	font-size: var(--albert-font-size-base);
 	line-height: 1.5;
 	animation: albert-fade-in 0.3s ease-out;
 }
 
 .albert-license-notice--success {
-	background: var(--albert-success-bg);
-	border-left: 4px solid var(--albert-success);
-	color: var(--albert-text-primary);
+	background: var(--albert-color-success-surface);
+	border-left: 4px solid var(--albert-color-success);
+	color: var(--albert-color-text);
 }
 
 .albert-license-notice--error {
 	background: oklch(0.97 0.03 25);
-	border-left: 4px solid var(--albert-error);
-	color: var(--albert-text-primary);
+	border-left: 4px solid var(--albert-color-danger);
+	color: var(--albert-color-text);
 }
 
 /* Licenses table */
@@ -57,13 +57,13 @@
 
 .albert-licenses-table th {
 	text-align: left;
-	font-size: var(--albert-font-xs);
+	font-size: var(--albert-font-size-micro);
 	font-weight: 600;
-	color: var(--albert-text-secondary);
+	color: var(--albert-color-text-muted);
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
-	padding: var(--albert-spacing-sm) var(--albert-spacing-md);
-	border-bottom: 2px solid var(--albert-border-light);
+	padding: var(--albert-space-200) var(--albert-space-300);
+	border-bottom: 2px solid var(--albert-color-border-subtle);
 }
 
 .albert-licenses-table th:nth-child(1) { width: 30%; }
@@ -73,10 +73,10 @@
 .albert-licenses-table th:nth-child(5) { width: 18%; }
 
 .albert-licenses-table td {
-	padding: var(--albert-spacing-md);
-	border-bottom: 1px solid var(--albert-border-light);
-	font-size: var(--albert-font-base);
-	color: var(--albert-text-primary);
+	padding: var(--albert-space-300);
+	border-bottom: 1px solid var(--albert-color-border-subtle);
+	font-size: var(--albert-font-size-base);
+	color: var(--albert-color-text);
 	vertical-align: middle;
 }
 
@@ -90,57 +90,63 @@
 }
 
 .albert-no-license {
-	color: var(--albert-text-secondary);
+	color: var(--albert-color-text-muted);
 }
 
 /* Status dot */
-.albert-status-dot {
+.albert-license-dot {
 	display: inline-block;
 	width: 10px;
 	height: 10px;
 	border-radius: 50%;
 }
 
-.albert-status-dot--valid {
-	background: var(--albert-success);
-	box-shadow: 0 0 0 2px var(--albert-success-10);
+.albert-license-dot--valid {
+	background: var(--albert-color-success);
+	box-shadow: 0 0 0 2px var(--albert-color-success-tint-10);
 }
 
-.albert-status-dot--expired {
-	background: var(--albert-warning);
-	box-shadow: 0 0 0 2px var(--albert-warning-10);
+.albert-license-dot--expired {
+	background: var(--albert-color-warning);
+	box-shadow: 0 0 0 2px var(--albert-color-warning-tint-10);
 }
 
-.albert-status-dot--invalid {
-	background: var(--albert-error);
+.albert-license-dot--invalid {
+	background: var(--albert-color-danger);
 	box-shadow: 0 0 0 2px oklch(0.52 0.18 25 / 0.1);
 }
 
-.albert-status-dot--none {
-	background: var(--albert-text-secondary);
+.albert-license-dot--none {
+	background: var(--albert-color-text-muted);
 	opacity: 0.4;
 }
 
 /* Deactivate button */
+/* Height from the shared token. It was 23px, from ad-hoc vertical padding, next
+   to a 32px field and a 40px Activate button. See albert-primitives.css. */
 .albert-deactivate-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-block-size: var(--albert-control-height);
 	background: none;
-	border: 1px solid var(--albert-error);
-	color: var(--albert-error);
-	padding: 3px 10px;
-	border-radius: var(--albert-border-radius);
-	font-size: var(--albert-font-sm);
+	border: 1px solid var(--albert-color-danger);
+	color: var(--albert-color-danger);
+	padding: 0 10px;
+	border-radius: var(--albert-radius-md);
+	font-size: var(--albert-font-size-sm);
 	font-weight: 500;
 	cursor: pointer;
-	transition: background-color var(--albert-transition), color var(--albert-transition);
+	transition: background-color var(--albert-duration-fast), color var(--albert-duration-fast);
 }
 
 .albert-deactivate-btn:hover {
-	background: var(--albert-error);
-	color: var(--albert-bg-white);
+	background: var(--albert-color-danger);
+	color: var(--albert-color-surface);
 }
 
 .albert-deactivate-btn:focus-visible {
-	outline: 2px solid var(--albert-primary);
+	outline: 2px solid var(--albert-color-accent);
 	outline-offset: 2px;
 }
 
@@ -178,20 +184,20 @@
 	}
 
 	.albert-licenses-table tr {
-		padding: var(--albert-spacing-md) 0;
-		border-bottom: 1px solid var(--albert-border-light);
+		padding: var(--albert-space-300) 0;
+		border-bottom: 1px solid var(--albert-color-border-subtle);
 	}
 
 	.albert-licenses-table td {
-		padding: 2px var(--albert-spacing-md);
+		padding: 2px var(--albert-space-300);
 		border-bottom: none;
 	}
 
 	.albert-licenses-table td:first-child {
-		padding-bottom: var(--albert-spacing-xs);
+		padding-bottom: var(--albert-space-100);
 	}
 
 	.albert-licenses-table td:last-child {
-		padding-top: var(--albert-spacing-xs);
+		padding-top: var(--albert-space-100);
 	}
 }

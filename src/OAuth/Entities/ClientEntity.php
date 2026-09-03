@@ -66,6 +66,50 @@ class ClientEntity implements ClientEntityInterface {
 	private ?string $origin = null;
 
 	/**
+	 * The site owner's own name for this connection ("Mark's laptop").
+	 *
+	 * Separate from `name`, which the client chooses for itself and Albert must
+	 * not overwrite: two people can both connect "Claude", and the only way to
+	 * tell those rows apart on the Connections screen is a name the owner wrote.
+	 *
+	 * @since 1.4.0
+	 * @var string|null
+	 */
+	private ?string $label = null;
+
+	/**
+	 * Who wrote the current label.
+	 *
+	 * A label is a display name one administrator writes onto somebody else's
+	 * connection, on the very screen an owner uses to decide what is
+	 * trustworthy. Recording the author is what keeps a misleading rename
+	 * traceable on sight rather than only in a log nobody reads.
+	 *
+	 * @since 1.4.0
+	 * @var int|null
+	 */
+	private ?int $label_set_by = null;
+
+	/**
+	 * When the current label was written.
+	 *
+	 * @since 1.4.0
+	 * @var \DateTimeImmutable|null
+	 */
+	private ?\DateTimeImmutable $label_set_at = null;
+
+	/**
+	 * The `home_url()` host this client was authorised against.
+	 *
+	 * Null on a client authorised before this was recorded, which is treated as
+	 * "never suspended". See {@see \Albert\OAuth\Server\DomainGuard}.
+	 *
+	 * @since 1.4.0
+	 * @var string|null
+	 */
+	private ?string $connect_host = null;
+
+	/**
 	 * Set the client's name.
 	 *
 	 * @param string $name The client name.
@@ -211,5 +255,93 @@ class ClientEntity implements ClientEntityInterface {
 	 */
 	public function getOrigin(): ?string {
 		return $this->origin;
+	}
+
+	/**
+	 * Set the site owner's own name for this connection.
+	 *
+	 * @param string|null $label The label, or null to clear it.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	public function setLabel( ?string $label ): void {
+		$this->label = $label;
+	}
+
+	/**
+	 * Get the site owner's own name for this connection.
+	 *
+	 * @return string|null The label, or null when none was set.
+	 * @since 1.4.0
+	 */
+	public function getLabel(): ?string {
+		return $this->label;
+	}
+
+	/**
+	 * Set who wrote the current label.
+	 *
+	 * @param int|null $user_id The author's user ID, or null when unrecorded.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	public function setLabelSetBy( ?int $user_id ): void {
+		$this->label_set_by = $user_id;
+	}
+
+	/**
+	 * Get who wrote the current label.
+	 *
+	 * @return int|null The author's user ID, or null when unrecorded.
+	 * @since 1.4.0
+	 */
+	public function getLabelSetBy(): ?int {
+		return $this->label_set_by;
+	}
+
+	/**
+	 * Set when the current label was written.
+	 *
+	 * @param \DateTimeImmutable|null $moment The moment, or null when unrecorded.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	public function setLabelSetAt( ?\DateTimeImmutable $moment ): void {
+		$this->label_set_at = $moment;
+	}
+
+	/**
+	 * Get when the current label was written.
+	 *
+	 * @return \DateTimeImmutable|null The moment, or null when unrecorded.
+	 * @since 1.4.0
+	 */
+	public function getLabelSetAt(): ?\DateTimeImmutable {
+		return $this->label_set_at;
+	}
+
+	/**
+	 * Set the host this client was authorised against.
+	 *
+	 * @param string|null $connect_host The host, or null when unrecorded.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	public function setConnectHost( ?string $connect_host ): void {
+		$this->connect_host = $connect_host;
+	}
+
+	/**
+	 * Get the host this client was authorised against.
+	 *
+	 * @return string|null The host, or null when unrecorded.
+	 * @since 1.4.0
+	 */
+	public function getConnectHost(): ?string {
+		return $this->connect_host;
 	}
 }

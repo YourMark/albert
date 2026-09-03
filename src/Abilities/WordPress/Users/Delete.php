@@ -41,7 +41,11 @@ class Delete extends BaseAbility {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::delete(),
+			'annotations' => Annotations::delete(
+				'This is not reversible, and it decides what happens to everything the user wrote. Pass '
+				. '`reassign` with another user\'s id to keep their posts; without it their content goes '
+				. 'too. Check what they own with `albert/find-posts` for that author before calling it.'
+			),
 		];
 
 		parent::__construct();

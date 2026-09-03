@@ -38,8 +38,10 @@ use Albert\Abilities\WordPress\Media\FindMedia;
 use Albert\Abilities\WordPress\Media\ViewMedia;
 use Albert\Abilities\WordPress\Media\SetFeaturedImage;
 use Albert\Abilities\WordPress\Media\UploadMedia;
+use Albert\Abilities\WordPress\Media\CreateUploadLink;
 use Albert\Abilities\WordPress\Blocks\GetBlockType;
 use Albert\Abilities\WordPress\Blocks\ListBlockTypes;
+use Albert\Abilities\WordPress\Skills\GetSkill;
 use Albert\Abilities\WordPress\Taxonomies\FindTaxonomies;
 use Albert\Abilities\WordPress\Taxonomies\FindTerms;
 use Albert\Abilities\WordPress\Taxonomies\ViewTerm;
@@ -53,19 +55,33 @@ use Albert\Abilities\WooCommerce\ViewCustomer;
 use Albert\Abilities\WooCommerce\ViewOrder;
 use Albert\Abilities\WooCommerce\ViewProduct;
 use Albert\Admin\AbilitiesPage;
+use Albert\Admin\Assets;
 use Albert\Admin\Connections;
+use Albert\Admin\ContextPage;
+use Albert\Admin\Menu;
 use Albert\Admin\Dashboard;
 use Albert\Admin\Settings;
+use Albert\Settings\Overrides as SettingsOverrides;
+use Albert\Settings\Storage as SettingsStorage;
+use Albert\Admin\SkillsPage;
+use Albert\Cron\AllowedUserExpiry;
+use Albert\Cron\ConnectionRetentionSweep;
+use Albert\Cron\TokenCleanup;
 use Albert\Database\Installer as DatabaseInstaller;
 use Albert\Logging\Logger;
 use Albert\Logging\Repository as LoggingRepository;
+use Albert\MCP\AdapterHealth as McpAdapterHealth;
 use Albert\MCP\Server as McpServer;
+use Albert\Media\UploadLinks\UploadLinkController;
 use Albert\OAuth\Endpoints\AuthorizationPage;
 use Albert\OAuth\Endpoints\ClientRegistration;
 use Albert\OAuth\Endpoints\OAuthController;
 use Albert\Admin\Rest\AbilitiesController;
+use Albert\Admin\Rest\ContextController;
+use Albert\Admin\Rest\SkillsController;
 use Albert\OAuth\Endpoints\OAuthDiscovery;
-use Albert\Vendor\WP\MCP\Core\McpAdapter;
+use Albert\Privacy\PrivacyMode;
+use WP\MCP\Core\McpAdapter;
 
 /**
  * Main Plugin Class
@@ -163,13 +179,52 @@ class Plugin {
 		$logger             = new Logger( $logging_repository );
 		$logger->register_hooks();
 
+		// Relay WP 7.1's wp_ability_invoked onto albert/abilities/invoked. No
+		// consumers in Free; this is the seam Premium's activity log binds to.
+		( new InvocationRelay() )->register_hooks();
+
+		// Daily sweep of never-authorised allowed-user invitations. schedule()
+		// is idempotent (guarded by wp_next_scheduled()), so calling it here
+		// too — not just from activate() — self-heals sites that already had
+		// Albert active before this cron was introduced and never re-activate.
+		( new AllowedUserExpiry() )->register_hooks();
+		AllowedUserExpiry::schedule();
+
+		// Daily cleanup of expired OAuth token rows. Same self-healing reason.
+		( new TokenCleanup() )->register_hooks();
+		TokenCleanup::schedule();
+
+		// Daily sweep of never-used and idle connections. Same self-healing reason.
+		( new ConnectionRetentionSweep() )->register_hooks();
+		ConnectionRetentionSweep::schedule();
+
+		// Bridges the domain-specific override filters onto the generic settings
+		// chain. Not admin-only: albert_get_setting() reads that chain on MCP
+		// and front-end requests too.
+		( new SettingsOverrides() )->register_hooks();
+
 		// Register admin components.
 		if ( is_admin() ) {
+			// Shared admin assets. Registers the design-token stylesheet every
+			// Albert screen (and every add-on screen) depends on, before any
+			// screen enqueues its own styles.
+			( new Assets() )->register_hooks();
+
+			// Page navigation above the screen content. Menu also owns the
+			// submenu ordering constants every screen below registers with.
+			( new Menu() )->register_hooks();
+
 			// Dashboard page (creates top-level menu and first submenu).
 			( new Dashboard( $logging_repository ) )->register_hooks();
 
 			// Unified abilities page (toggle abilities on/off).
 			( new AbilitiesPage() )->register_hooks();
+
+			// Skills page (read-only library of the skills Albert and add-ons ship).
+			( new SkillsPage() )->register_hooks();
+
+			// Context page (what connected assistants are told about this site).
+			( new ContextPage() )->register_hooks();
 
 			// Connections page (allowed users + active sessions).
 			( new Connections() )->register_hooks();
@@ -177,12 +232,26 @@ class Plugin {
 			// Settings page (MCP endpoint, developer options, licenses).
 			( new Settings() )->register_hooks();
 
-			// Addon submenu pages (registered via filter at priority 15).
-			add_action( 'admin_menu', [ $this, 'register_addon_admin_pages' ], 15 );
+			// Hands every registered setting to WordPress's register_setting(),
+			// so sanitisation and defaults belong to the option rather than to
+			// the form. Storage only; Albert still renders every control.
+			( new SettingsStorage() )->register_hooks();
+
+			// Addon submenu pages (registered via filter — see Menu for ordering).
+			add_action( 'admin_menu', [ $this, 'register_addon_admin_pages' ], Menu::POSITION_ADDONS );
 		}
 
 		// Register the abilities REST controller (data + toggles for the admin screen).
 		( new AbilitiesController() )->register_hooks();
+
+		// Register the context REST controller (data + instant save for the Context screen).
+		( new ContextController() )->register_hooks();
+
+		// Register the skills REST controller (read-only data for the Skills screen).
+		( new SkillsController() )->register_hooks();
+
+		// Register the media upload link redemption endpoint (doc 32, Path B).
+		( new UploadLinkController() )->register_hooks();
 
 		// Register OAuth controller (REST API endpoints for token exchange).
 		( new OAuthController() )->register_hooks();
@@ -198,6 +267,11 @@ class Plugin {
 
 		// Register MCP server (uses OAuth for authentication).
 		( new McpServer() )->register_hooks();
+
+		// Report, in the admin and in Site Health, when the MCP endpoint cannot
+		// work at all. Its failure mode is a 401 that looks exactly like an
+		// authentication problem, so it has to be stated somewhere else.
+		( new McpAdapterHealth() )->register_hooks();
 
 		// Initialize the MCP adapter, but not on admin pages.
 		//
@@ -264,6 +338,7 @@ class Plugin {
 		$this->abilities_manager->add_ability( new FindMedia() );
 		$this->abilities_manager->add_ability( new ViewMedia() );
 		$this->abilities_manager->add_ability( new UploadMedia() );
+		$this->abilities_manager->add_ability( new CreateUploadLink() );
 		$this->abilities_manager->add_ability( new SetFeaturedImage() );
 
 		// Taxonomy abilities.
@@ -277,6 +352,9 @@ class Plugin {
 		// Block abilities (block type discovery).
 		$this->abilities_manager->add_ability( new ListBlockTypes() );
 		$this->abilities_manager->add_ability( new GetBlockType() );
+
+		// Returns the full text of one task guide, by slug.
+		$this->abilities_manager->add_ability( new GetSkill() );
 
 		// WooCommerce abilities (only when WooCommerce is active).
 		if ( class_exists( 'WooCommerce' ) ) {
@@ -427,6 +505,37 @@ class Plugin {
 	}
 
 	/**
+	 * Default a genuinely new install to Strict privacy, without touching a
+	 * site that has run this plugin before.
+	 *
+	 * `albert_installed_version` is only ever absent the very first time this
+	 * plugin activates on a site — {@see self::maybe_cleanup_legacy_options()}
+	 * writes it on every subsequent request. That makes it the one reliable
+	 * "has this site ever run Albert before" signal available at activation
+	 * time; the privacy option's own absence is not, since a pre-1.3.0 site
+	 * that has simply never opened Settings would look identical to a new
+	 * install if that were the only check. See docs/features/70-admin-design-system.md
+	 * §4: "Never change the behaviour of an installed site silently."
+	 *
+	 * The registered default stays `balanced`, which is not a contradiction:
+	 * that is what a site with nothing stored falls back to, and the sites with
+	 * nothing stored are precisely the ones that predate the option. Writing a
+	 * value here is what makes Strict a *new install's* default without
+	 * reaching back and changing what an existing one does.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @return void
+	 */
+	private static function maybe_set_new_install_privacy_default(): void {
+		$is_new_install = get_option( 'albert_installed_version', false ) === false;
+
+		if ( $is_new_install && get_option( 'albert_privacy_mode', false ) === false ) {
+			update_option( 'albert_privacy_mode', PrivacyMode::Strict->value );
+		}
+	}
+
+	/**
 	 * Plugin activation hook callback.
 	 *
 	 * Runs when the plugin is activated.
@@ -435,11 +544,25 @@ class Plugin {
 	 * @since 1.0.0
 	 */
 	public static function activate(): void {
-		// Create/upgrade all database tables.
-		DatabaseInstaller::install();
+		self::maybe_set_new_install_privacy_default();
+
+		// maybe_upgrade(), not install(): install() stamps the schema version
+		// without running the version-keyed data migrations, so activating
+		// across a version boundary — deactivate, update the files, reactivate
+		// — recorded the site as up to date and skipped them permanently.
+		DatabaseInstaller::maybe_upgrade();
 
 		// Register OAuth discovery rewrite rules.
 		OAuthDiscovery::activate();
+
+		// Schedule the daily invitation-expiry sweep.
+		AllowedUserExpiry::schedule();
+
+		// Schedule the daily expired-token cleanup.
+		TokenCleanup::schedule();
+
+		// Schedule the daily never-used/idle connection sweep.
+		ConnectionRetentionSweep::schedule();
 
 		/**
 		 * Fires when the plugin is activated.
@@ -460,6 +583,15 @@ class Plugin {
 	public static function deactivate(): void {
 		// Clean up OAuth discovery rewrite rules.
 		OAuthDiscovery::deactivate();
+
+		// Unschedule the daily invitation-expiry sweep.
+		AllowedUserExpiry::unschedule();
+
+		// Unschedule the daily expired-token cleanup.
+		TokenCleanup::unschedule();
+
+		// Unschedule the daily never-used/idle connection sweep.
+		ConnectionRetentionSweep::unschedule();
 
 		/**
 		 * Fires when the plugin is deactivated.

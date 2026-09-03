@@ -15,8 +15,8 @@ use Exception;
 use Albert\Contracts\Interfaces\Hookable;
 use Albert\Core\Plugin;
 use Albert\OAuth\Server\AuthorizationServerFactory;
+use Albert\OAuth\ServerMetadata;
 use League\OAuth2\Server\Exception\OAuthServerException;
-use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
@@ -108,6 +108,8 @@ class OAuthController implements Hookable {
 
 			return Psr7Bridge::to_wp_response( $psr_response );
 		} catch ( OAuthServerException $e ) {
+			$this->log_token_request_failure( $e );
+
 			$response = Psr7Bridge::create_response();
 			$response = $e->generateHttpResponse( $response );
 
@@ -124,6 +126,48 @@ class OAuthController implements Hookable {
 	}
 
 	/**
+	 * Log the specific reason a token request was rejected.
+	 *
+	 * The client only ever sees the generic OAuth error code (e.g. `invalid_grant`
+	 * covers a decrypt failure, an expired code, a revoked code, a client ID
+	 * mismatch, a redirect URI mismatch, and a PKCE verifier mismatch alike, per
+	 * RFC 6749 §5.2's intentional collapsing of failure modes). Nothing server-side
+	 * previously recorded which of those it was, which turns any real failure into
+	 * a guessing game. This carries the library's specific message and hint out
+	 * so the true cause is diagnosable without exposing it to the client.
+	 *
+	 * @param OAuthServerException $e The rejection.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	private function log_token_request_failure( OAuthServerException $e ): void {
+		/**
+		 * Fires when the token endpoint rejects a request.
+		 *
+		 * @since 1.4.0
+		 *
+		 * @param string               $error_type The OAuth error type (e.g. `invalid_grant`).
+		 * @param string               $message    The library's specific failure message.
+		 * @param string|null          $hint       An optional hint from the library.
+		 * @param OAuthServerException $exception  The underlying exception.
+		 */
+		do_action( 'albert/oauth/token_request_failed', $e->getErrorType(), $e->getMessage(), $e->getHint(), $e );
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic aid, gated on WP_DEBUG; the client only ever sees the generic OAuth error code.
+			error_log(
+				sprintf(
+					'[Albert] Token request rejected (%s): %s%s',
+					$e->getErrorType(),
+					$e->getMessage(),
+					$e->getHint() !== null ? ' — ' . $e->getHint() : ''
+				)
+			);
+		}
+	}
+
+	/**
 	 * Handle OAuth Authorization Server Metadata request.
 	 *
 	 * Returns RFC 8414 metadata for OAuth clients to discover endpoints.
@@ -132,21 +176,7 @@ class OAuthController implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function handle_authorization_server_metadata(): WP_REST_Response {
-		$base_url = $this->get_base_url();
-
-		$metadata = [
-			'issuer'                                => $base_url,
-			'authorization_endpoint'                => $base_url . '/oauth/authorize',
-			'token_endpoint'                        => $this->get_rest_url( Plugin::rest_namespace() . '/oauth/token' ),
-			'registration_endpoint'                 => $this->get_rest_url( Plugin::rest_namespace() . '/oauth/register' ),
-			'response_types_supported'              => [ 'code' ],
-			'grant_types_supported'                 => [ 'authorization_code', 'refresh_token' ],
-			'token_endpoint_auth_methods_supported' => [ 'client_secret_post', 'client_secret_basic' ],
-			'code_challenge_methods_supported'      => [ 'S256' ],
-			'scopes_supported'                      => [ 'default' ],
-		];
-
-		$response = new WP_REST_Response( $metadata, 200 );
+		$response = new WP_REST_Response( ServerMetadata::authorization_server(), 200 );
 		$response->header( 'Cache-Control', 'public, max-age=3600' );
 
 		return $response;
@@ -161,11 +191,9 @@ class OAuthController implements Hookable {
 	 * @since 1.0.0
 	 */
 	public function handle_protected_resource_metadata(): WP_REST_Response {
-		$base_url = $this->get_base_url();
-
 		$metadata = [
-			'resource'              => $this->get_rest_url( Plugin::rest_namespace() . '/mcp' ),
-			'authorization_servers' => [ $this->get_rest_url( Plugin::rest_namespace() . '/oauth/metadata' ) ],
+			'resource'              => ServerMetadata::rest_url( Plugin::rest_namespace() . '/mcp' ),
+			'authorization_servers' => [ ServerMetadata::rest_url( Plugin::rest_namespace() . '/oauth/metadata' ) ],
 			'scopes_supported'      => [ 'default' ],
 		];
 
@@ -173,41 +201,5 @@ class OAuthController implements Hookable {
 		$response->header( 'Cache-Control', 'public, max-age=3600' );
 
 		return $response;
-	}
-
-	/**
-	 * Get the base URL for OAuth endpoints.
-	 *
-	 * Uses the external URL setting if configured and developer mode is enabled,
-	 * otherwise falls back to home_url().
-	 *
-	 * @return string The base URL.
-	 * @since 1.0.0
-	 */
-	private function get_base_url(): string {
-		$external_url = (string) apply_filters( 'albert/mcp/external_url', '' );
-		$external_url = rtrim( $external_url, '/' );
-
-		if ( $external_url !== '' ) {
-			$validated = wp_http_validate_url( $external_url );
-			if ( $validated !== false ) {
-				return $validated;
-			}
-		}
-
-		return home_url();
-	}
-
-	/**
-	 * Get a REST URL using the current base URL.
-	 *
-	 * @param string $path The REST route path.
-	 *
-	 * @return string The full REST URL.
-	 * @since 1.0.0
-	 */
-	private function get_rest_url( string $path ): string {
-		$base_url = $this->get_base_url();
-		return $base_url . '/wp-json/' . ltrim( $path, '/' );
 	}
 }

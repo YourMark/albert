@@ -10,6 +10,7 @@
 namespace Albert\Abilities\WordPress\Posts;
 
 use Albert\Abstracts\BaseAbility;
+use Albert\Blocks\BlockSpecSchema;
 use Albert\Blocks\WriteContentResolver;
 use Albert\Core\Annotations;
 use WP_Error;
@@ -42,7 +43,14 @@ class Update extends BaseAbility {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::update(),
+			'annotations' => Annotations::update(
+				'This replaces the whole post body. Read the post first with `albert/view-post` and '
+				. '`"format": ["blocks"]`, edit that tree, and send it back, writing without reading '
+				. 'silently discards everything you did not include. Keep every existing image block\'s `id` '
+				. 'and `url` exactly as they were unless you were asked to change the image. To change one '
+				. 'block, use `albert/edit-post-block` instead: it is cheaper and leaves every other block '
+				. 'byte-for-byte intact.'
+			),
 		];
 
 		parent::__construct();
@@ -76,7 +84,7 @@ class Update extends BaseAbility {
 				'blocks'     => [
 					'type'        => 'array',
 					'description' => 'Structured block specs (preferred over "content"). Replaces the entire post body. Each item is { "name": "core/paragraph", "attributes": { ... }, "innerBlocks": [ ... ] }; innerBlocks is the same shape recursively for layout blocks (e.g. core/columns > core/column). Put text in attributes (content/text/value) or in "plaintext". Example: [ { "name": "core/heading", "attributes": { "level": 2, "content": "Intro" } }, { "name": "core/paragraph", "attributes": { "content": "Hello world." } } ]',
-					'items'       => [ 'type' => 'object' ],
+					'items'       => BlockSpecSchema::spec(),
 				],
 				'status'     => [
 					'type'        => 'string',

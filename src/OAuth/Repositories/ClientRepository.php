@@ -230,6 +230,16 @@ class ClientRepository implements ClientRepositoryInterface {
 		$client->setClientSecret( $row['client_secret'] );
 		$client->setOrigin( isset( $row['origin'] ) && $row['origin'] !== '' ? (string) $row['origin'] : null );
 
+		// Guarded with isset() rather than assumed: these columns arrive by
+		// dbDelta on upgrade, and a row read before that ran simply has no key.
+		$client->setLabel( isset( $row['label'] ) && $row['label'] !== '' ? (string) $row['label'] : null );
+		$client->setLabelSetBy( ! empty( $row['label_set_by'] ) ? (int) $row['label_set_by'] : null );
+		$client->setConnectHost( isset( $row['connect_host'] ) && $row['connect_host'] !== '' ? (string) $row['connect_host'] : null );
+
+		if ( ! empty( $row['label_set_at'] ) ) {
+			$client->setLabelSetAt( new \DateTimeImmutable( (string) $row['label_set_at'] ) );
+		}
+
 		if ( ! empty( $row['created_at'] ) ) {
 			$client->setCreatedAt( new \DateTimeImmutable( $row['created_at'] ) );
 		}
@@ -239,6 +249,94 @@ class ClientRepository implements ClientRepositoryInterface {
 		}
 
 		return $client;
+	}
+
+	/**
+	 * Set (or clear) the site owner's own name for a connection.
+	 *
+	 * The client's own `name` is never touched: it is what the client called
+	 * itself at registration, and rewriting it would lose the only record of
+	 * that. The label sits beside it.
+	 *
+	 * The label carries its own attribution. Who wrote it and when are stored
+	 * with it and rendered on the row, because a label is a display name one
+	 * administrator writes onto another person's connection on the very screen
+	 * where an owner decides what looks trustworthy. Clearing the label clears
+	 * the attribution with it: there is nothing left to attribute.
+	 *
+	 * @param string      $client_identifier The client's identifier.
+	 * @param string|null $label             The label, or null/'' to clear it.
+	 * @param int|null    $author_id         Who wrote it. Null records no author.
+	 *
+	 * @return bool Whether the write succeeded.
+	 * @since 1.4.0
+	 */
+	public function updateClientLabel( string $client_identifier, ?string $label, ?int $author_id = null ): bool {
+		global $wpdb;
+
+		$tables = Tables::oauth();
+
+		$label   = $label === null ? null : trim( $label );
+		$cleared = ( $label === null || $label === '' );
+
+		$data = [
+			'label'        => $cleared ? null : $label,
+			'label_set_by' => ( $cleared || ! $author_id ) ? null : $author_id,
+			'label_set_at' => $cleared ? null : gmdate( 'Y-m-d H:i:s' ),
+		];
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
+		$result = $wpdb->update(
+			$tables['clients'],
+			$data,
+			[ 'client_id' => $client_identifier ],
+			[ '%s', '%d', '%s' ],
+			[ '%s' ]
+		);
+
+		return $result !== false;
+	}
+
+	/**
+	 * Record that a client just authenticated.
+	 *
+	 * "Last used" is the signal an owner scans for a connection they do not
+	 * recognise, so the column has to actually be written: a Never that is
+	 * always Never is worse than no column, because it reads as "this assistant
+	 * has done nothing".
+	 *
+	 * Written on the authenticated-request path, which is hot, so the staleness
+	 * check is in the SQL rather than in a read-then-write. The statement matches
+	 * no rows on all but the first request in each interval, which is cheaper
+	 * than the SELECT that deciding in PHP would cost.
+	 *
+	 * @param string $client_identifier The client's identifier.
+	 * @param int    $interval_minutes  How stale the stored value must be before it is rewritten.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	public function touchLastUsed( string $client_identifier, int $interval_minutes = 5 ): void {
+		global $wpdb;
+
+		if ( $client_identifier === '' ) {
+			return;
+		}
+
+		$tables = Tables::oauth();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, throttled write.
+		$wpdb->query(
+			$wpdb->prepare(
+				'UPDATE %i
+				SET last_used_at = UTC_TIMESTAMP()
+				WHERE client_id = %s
+					AND ( last_used_at IS NULL OR last_used_at < DATE_SUB( UTC_TIMESTAMP(), INTERVAL %d MINUTE ) )',
+				$tables['clients'],
+				$client_identifier,
+				$interval_minutes
+			)
+		);
 	}
 
 	/**
@@ -254,6 +352,158 @@ class ClientRepository implements ClientRepositoryInterface {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, count for cap enforcement.
 		return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $tables['clients'] ) );
+	}
+
+	/**
+	 * Every currently connected client, one entry each, most recently used
+	 * first. The single source of truth for "what counts as a connection":
+	 * used both by the Connections screen
+	 * ({@see \Albert\Admin\Connections::get_connections()}) and by
+	 * {@see \Albert\OAuth\ConnectionRetention}'s automatic sweeps, so a
+	 * client is never dropped as "never used" or "idle" while it is still
+	 * something an owner can see connected on screen.
+	 *
+	 * "Connected" is *either* a live access token *or* a live refresh token
+	 * behind one. Access tokens last an hour, so a client that has been idle
+	 * since lunchtime holds an expired one and would otherwise vanish from
+	 * this list, while still being able to come back, unprompted, at any
+	 * moment. A list that hides a connection which is about to make a
+	 * request is not telling the truth about what is connected.
+	 *
+	 * Sorted by last used rather than created, so the assistants somebody
+	 * actually relies on float to the top and the forgotten ones sink toward
+	 * the scroll boundary, which is where "spot one you don't recognise"
+	 * gets easier as the list grows rather than harder.
+	 *
+	 * Two queries rather than one join: the token aggregate, then each
+	 * client row through {@see self::getClientEntity()}, which hydrates the
+	 * newer columns defensively. The second query runs once per connected
+	 * client, and the number of connected clients is single digits on every
+	 * real site; a join would trade that for a `SELECT c.*` whose column
+	 * names collide with the token table's.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 * @since 1.4.0
+	 */
+	public function getLiveConnections(): array {
+		global $wpdb;
+
+		$tables = Tables::oauth();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table, admin screen / cron read.
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				'SELECT
+					t.client_id AS client_id,
+					COUNT( DISTINCT t.id ) AS token_count,
+					MAX( UNIX_TIMESTAMP( t.expires_at ) ) AS expires_ts,
+					MIN( UNIX_TIMESTAMP( t.created_at ) ) AS first_token_ts,
+					GROUP_CONCAT( DISTINCT t.user_id ) AS user_ids
+				FROM %i t
+				LEFT JOIN %i r
+					ON r.access_token_id = t.token_id
+					AND r.revoked = 0
+					AND r.expires_at > UTC_TIMESTAMP()
+				WHERE ( t.revoked = 0 AND t.expires_at > UTC_TIMESTAMP() )
+					OR r.id IS NOT NULL
+				GROUP BY t.client_id
+				ORDER BY first_token_ts DESC',
+				$tables['access_tokens'],
+				$tables['refresh_tokens']
+			),
+			ARRAY_A
+		);
+
+		if ( ! is_array( $rows ) || empty( $rows ) ) {
+			return [];
+		}
+
+		$connections = [];
+
+		foreach ( $rows as $row ) {
+			$client_id = (string) $row['client_id'];
+			$client    = $this->getClientEntity( $client_id );
+
+			$created      = $client ? $client->getCreatedAt() : null;
+			$last_used    = $client ? $client->getLastUsedAt() : null;
+			$label_set_at = $client ? $client->getLabelSetAt() : null;
+
+			$connections[] = [
+				'client_id'    => $client_id,
+				'name'         => $client && $client->getName() !== '' ? (string) $client->getName() : __( 'Unknown assistant', 'albert-ai-butler' ),
+				'label'        => $client ? (string) $client->getLabel() : '',
+				'label_set_by' => $client ? (int) $client->getLabelSetBy() : 0,
+				'label_set_at' => $label_set_at instanceof \DateTimeImmutable ? $label_set_at->getTimestamp() : 0,
+				'created_ts'   => $created instanceof \DateTimeImmutable ? $created->getTimestamp() : (int) $row['first_token_ts'],
+				'last_used_ts' => $last_used instanceof \DateTimeImmutable ? $last_used->getTimestamp() : 0,
+				'token_count'  => (int) $row['token_count'],
+				'user_ids'     => array_map( 'intval', array_filter( explode( ',', (string) $row['user_ids'] ) ) ),
+			];
+		}
+
+		usort(
+			$connections,
+			static function ( array $a, array $b ): int {
+				if ( $a['last_used_ts'] === $b['last_used_ts'] ) {
+					return $b['created_ts'] <=> $a['created_ts'];
+				}
+
+				return $b['last_used_ts'] <=> $a['last_used_ts'];
+			}
+		);
+
+		return $connections;
+	}
+
+	/**
+	 * Revoke every access and refresh token a client holds, in full.
+	 *
+	 * Unlike {@see \Albert\Admin\Connections::revoke_client_tokens()}, which
+	 * offers the owner a choice between signing a client out (access token
+	 * only) and disconnecting it completely, an automatic sweep only ever
+	 * means the latter: there is no "sign out and let it quietly come back
+	 * within the hour" reading of a connection nobody asked to keep.
+	 *
+	 * @param string $client_id The OAuth client identifier.
+	 *
+	 * @return void
+	 * @since 1.4.0
+	 */
+	public function revokeAllTokens( string $client_id ): void {
+		global $wpdb;
+
+		$tables = Tables::oauth();
+
+		/*
+		 * No `revoked = 0` filter here.
+		 *
+		 * Refresh tokens carry no client id, so an access-token row is the
+		 * only link back to the client holding one. Filtering that lookup
+		 * on unrevoked rows meant that once the access tokens had been
+		 * revoked, by a prior "sign it out" or by anything else, this found
+		 * nothing and revoked no refresh tokens at all, while the screen
+		 * said the assistant had to be approved again. It refreshed itself
+		 * back in within the hour.
+		 */
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
+		$token_ids = $wpdb->get_col(
+			$wpdb->prepare(
+				'SELECT token_id FROM %i WHERE client_id = %s',
+				$tables['access_tokens'],
+				$client_id
+			)
+		);
+
+		( new RefreshTokenRepository() )->revokeForAccessTokens( (array) $token_ids );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
+		$wpdb->update(
+			$tables['access_tokens'],
+			[ 'revoked' => 1 ],
+			[ 'client_id' => $client_id ],
+			[ '%d' ],
+			[ '%s' ]
+		);
 	}
 
 	/**

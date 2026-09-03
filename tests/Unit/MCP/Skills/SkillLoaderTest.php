@@ -8,7 +8,7 @@
 namespace Albert\Tests\Unit\MCP\Skills;
 
 use Albert\MCP\Skills\SkillLoader;
-use Albert\Vendor\WP\MCP\Domain\Prompts\McpPrompt;
+use WP\MCP\Domain\Prompts\McpPrompt;
 use PHPUnit\Framework\TestCase;
 
 // Load WordPress function/class stubs (apply_filters, WP_Error, __, etc.).

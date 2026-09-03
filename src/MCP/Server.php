@@ -17,15 +17,16 @@ use Albert\Core\Plugin;
 use Albert\Logging\ObservabilityHandler;
 use Albert\MCP\Skills\SkillLoader;
 use Albert\OAuth\Server\TokenValidator;
-use Albert\Vendor\WP\MCP\Core\McpAdapter;
-use Albert\Vendor\WP\MCP\Core\McpServer;
-use Albert\Vendor\WP\MCP\Domain\Prompts\McpPrompt;
-use Albert\Vendor\WP\MCP\Domain\Resources\McpResource;
-use Albert\Vendor\WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
-use Albert\Vendor\WP\MCP\Infrastructure\Observability\Contracts\McpObservabilityHandlerInterface;
-use Albert\Vendor\WP\MCP\Transport\HttpTransport;
+use WP\MCP\Core\McpAdapter;
+use WP\MCP\Core\McpServer;
+use WP\MCP\Domain\Prompts\McpPrompt;
+use WP\MCP\Domain\Resources\McpResource;
+use WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
+use WP\MCP\Infrastructure\Observability\Contracts\McpObservabilityHandlerInterface;
+use WP\MCP\Transport\HttpTransport;
 use WP_Error;
 use WP_REST_Request;
+use WP_REST_Response;
 
 /**
  * Server class
@@ -77,7 +78,10 @@ class Server implements Hookable {
 	 */
 	public function register_hooks(): void {
 		add_action( 'mcp_adapter_init', [ $this, 'create_server' ] );
-		add_filter( 'rest_request_before_callbacks', [ $this, 'add_oauth_discovery_headers' ], 10, 3 );
+		// Bound to *_after_ callbacks, not before: the header depends on whether
+		// authentication actually failed (and how), which is only known once the
+		// permission callback has run.
+		add_filter( 'rest_request_after_callbacks', [ $this, 'add_oauth_discovery_headers' ], 10, 3 );
 
 		// Hide tools the connected user can't execute from tools/list, so
 		// discovery matches what's actually callable (the adapter only enforces
@@ -87,6 +91,44 @@ class Server implements Hookable {
 		// Improve LLM-facing tool errors and log failures rejected before the
 		// ability runs (e.g. input-schema validation).
 		( new ToolCallObserver() )->register_hooks();
+
+		// Strip server-only keys from schemas before they reach the client
+		// (WordPress 7.1+); a no-op on older versions.
+		( new SchemaPreparer() )->register_hooks();
+
+		// Add `site` and `skills` to the discovery response, so an assistant
+		// knows what this site is before it starts guessing.
+		( new DiscoveryContext() )->register_hooks();
+	}
+
+	/**
+	 * Whether the server firing a global adapter hook is Albert's own.
+	 *
+	 * `instanceof McpServer` is not enough. WooCommerce and other plugins bundle
+	 * their own copy of the adapter under the same `WP\MCP\Core` namespace, so
+	 * whichever autoloads first defines the class for all of them and every
+	 * server is an instance of it. Only the server id tells them apart.
+	 *
+	 * `get_server_id()` is checked rather than assumed for the same reason: the
+	 * class that wins the race may come from an adapter version older than ours.
+	 * A copy without the method is treated as "not Albert's", which is the safe
+	 * direction — Albert leaves a server it cannot identify alone.
+	 *
+	 * @param mixed $server The server firing the hook.
+	 *
+	 * @return bool True when this is Albert's own server.
+	 * @phpstan-assert-if-true McpServer $server
+	 * @since 1.4.0
+	 */
+	public static function is_albert_server( $server ): bool {
+		// Checked before the instanceof narrows $server: the class that wins the
+		// autoload race may come from an adapter version older than ours, and
+		// method_exists() on our own copy would be a tautology.
+		if ( ! is_object( $server ) || ! method_exists( $server, 'get_server_id' ) ) {
+			return false;
+		}
+
+		return $server instanceof McpServer && $server->get_server_id() === self::SERVER_ID;
 	}
 
 	/**
@@ -100,9 +142,9 @@ class Server implements Hookable {
 	 * permission_callback), so it honours both the baseline capability and Albert
 	 * Premium's advanced permission rules without knowing about either.
 	 *
-	 * Bound to the global `mcp_adapter_tools_list` filter. Guarded by an instanceof
-	 * check so it only touches Albert's own server, never another plugin's (e.g.
-	 * WooCommerce's) MCP server that fires the same hook.
+	 * Bound to the global `mcp_adapter_tools_list` filter, so it is matched on the
+	 * server id — see {@see self::is_albert_server()} for why `instanceof` alone
+	 * is not enough.
 	 *
 	 * @param array<int, object> $tools  Tool DTOs about to be returned to the client.
 	 * @param object             $server The MCP server firing the filter.
@@ -111,7 +153,7 @@ class Server implements Hookable {
 	 * @since 1.3.0
 	 */
 	public function hide_unauthorized_tools( array $tools, object $server ): array {
-		if ( ! $server instanceof McpServer ) {
+		if ( ! self::is_albert_server( $server ) ) {
 			return $tools;
 		}
 
@@ -170,7 +212,12 @@ class Server implements Hookable {
 	 * Add OAuth discovery headers for unauthorized MCP requests.
 	 *
 	 * When a request to our MCP endpoint fails authentication, we need to tell
-	 * the client where to find OAuth authorization server metadata.
+	 * the client where to find OAuth authorization server metadata — on every
+	 * 401, not only when no token was sent. An expired or otherwise invalid
+	 * token (access tokens are 1 hour) previously skipped this entirely, so a
+	 * client mid-session got a bare 401 indistinguishable from "never
+	 * authorised", with no signal that refreshing would fix it. Per RFC 6750
+	 * §3, a token that was supplied but rejected also carries `error="invalid_token"`.
 	 *
 	 * @param mixed                                 $response The response.
 	 * @param array<string, mixed>                  $handler  The handler.
@@ -186,28 +233,75 @@ class Server implements Hookable {
 			return $response;
 		}
 
-		// Check if there's no Bearer token - add discovery headers.
-		$token = TokenValidator::get_bearer_token( $request );
-		if ( empty( $token ) ) {
-			// Send headers for OAuth discovery per MCP spec (RFC 6750).
-			// Point to REST API resource endpoint for OAuth discovery.
-			$resource_url = self::get_base_url() . '/wp-json/' . Plugin::rest_namespace() . '/oauth/resource';
-			header( 'WWW-Authenticate: Bearer realm="MCP", resource="' . $resource_url . '"' );
+		if ( $this->response_status( $response ) !== 401 ) {
+			return $response;
 		}
+
+		$resource_url = self::get_base_url() . '/wp-json/' . Plugin::rest_namespace() . '/oauth/resource';
+		$token_sent   = ! empty( TokenValidator::get_bearer_token( $request ) );
+
+		header( 'WWW-Authenticate: ' . $this->build_challenge( $resource_url, $token_sent ) );
 
 		return $response;
 	}
 
 	/**
+	 * Build the RFC 6750 §3 WWW-Authenticate challenge value.
+	 *
+	 * A token that was supplied but rejected carries `error="invalid_token"`;
+	 * one that was never supplied does not (that case isn't a rejection, just
+	 * missing credentials).
+	 *
+	 * @param string $resource_url The protected-resource metadata URL.
+	 * @param bool   $token_sent   Whether the request carried a Bearer token.
+	 *
+	 * @return string The header value (without the `WWW-Authenticate: ` prefix).
+	 * @since 1.4.0
+	 */
+	private function build_challenge( string $resource_url, bool $token_sent ): string {
+		$challenge = 'Bearer realm="MCP", resource="' . $resource_url . '"';
+
+		if ( $token_sent ) {
+			$challenge .= ', error="invalid_token"';
+		}
+
+		return $challenge;
+	}
+
+	/**
+	 * Resolve the HTTP status a REST response (success or error) carries.
+	 *
+	 * @param mixed $response The value `rest_request_after_callbacks` passed.
+	 *
+	 * @return int The HTTP status, or 200 when none can be determined.
+	 * @since 1.4.0
+	 */
+	private function response_status( $response ): int {
+		if ( is_wp_error( $response ) ) {
+			$data = $response->get_error_data();
+			return is_array( $data ) && isset( $data['status'] ) ? (int) $data['status'] : 500;
+		}
+
+		if ( $response instanceof WP_REST_Response ) {
+			return $response->get_status();
+		}
+
+		return 200;
+	}
+
+	/**
 	 * Create the MCP server.
 	 *
-	 * Bound to the global `mcp_adapter_init` action, which is fired by EVERY loaded
-	 * copy of the MCP adapter — including the unscoped `WP\MCP\…` copy WooCommerce
-	 * bundles. Mozart only rewrites class names, not the literal hook string, so
-	 * both our scoped adapter and a foreign one fire the same action. We must build
-	 * the Albert server only against our own Mozart-scoped adapter; any other
-	 * instance is ignored (otherwise a foreign copy triggers a TypeError here, or
-	 * we'd build our server against the wrong adapter).
+	 * Bound to the global `mcp_adapter_init` action. Every plugin that bundles the
+	 * adapter ships it unscoped under the same `WP\MCP\…` namespace, so whichever
+	 * copy autoloads first defines the classes for all of them and `McpAdapter` is
+	 * a single shared singleton — this action fires once, with that one instance.
+	 * The `instanceof` check is therefore a type guard, not a way of telling our
+	 * adapter from someone else's: there is only one, and it is shared.
+	 *
+	 * Telling servers apart is a different problem, and the shared adapter is
+	 * exactly why it exists — see {@see self::is_albert_server()}, which every
+	 * callback on a global adapter hook must use.
 	 *
 	 * @param object $adapter The MCP adapter instance fired on the global hook.
 	 *

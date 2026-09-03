@@ -14,7 +14,6 @@ use Albert\Blocks\ContentFormatter;
 use Albert\Blocks\EditorMode;
 use Albert\Core\Annotations;
 use WP_Error;
-use WP_REST_Request;
 
 /**
  * View Post Ability class
@@ -43,7 +42,15 @@ class ViewPost extends BaseAbility {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::read(),
+			'annotations' => Annotations::read(
+				'`format` must be an array, even for one format: `"format": ["blocks"]`. A bare string '
+				. 'is ignored and you get the default instead, which is the most common reason a read looks '
+				. 'wrong. Ask for `["blocks"]` when you intend to edit, `["plaintext"]` to summarise. Check '
+				. '`editor` on the result before writing: `classic` means send HTML in `content`, not '
+				. 'blocks. A large post comes back as a window of top-level blocks, when `_meta.truncated` '
+				. 'is true and `_meta.next_offset` is present, request the next window before concluding '
+				. 'anything about the whole post.'
+			),
 		];
 
 		parent::__construct();

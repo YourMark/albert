@@ -28,6 +28,13 @@ if ( ! class_exists( 'WP_REST_Response' ) ) {
 		protected int $status;
 
 		/**
+		 * Response headers.
+		 *
+		 * @var array<string, mixed>
+		 */
+		protected array $headers = [];
+
+		/**
 		 * Constructor.
 		 *
 		 * @param mixed $data   Response data.
@@ -36,6 +43,28 @@ if ( ! class_exists( 'WP_REST_Response' ) ) {
 		public function __construct( $data = null, int $status = 200 ) {
 			$this->data   = $data;
 			$this->status = $status;
+		}
+
+		/**
+		 * Set a response header.
+		 *
+		 * @param string $key     Header name.
+		 * @param mixed  $value   Header value.
+		 * @param bool   $replace Whether to replace an existing header of the same name (ignored by the stub).
+		 *
+		 * @return void
+		 */
+		public function header( string $key, $value, bool $replace = true ): void {
+			$this->headers[ $key ] = $value;
+		}
+
+		/**
+		 * Get the response headers.
+		 *
+		 * @return array<string, mixed>
+		 */
+		public function get_headers(): array {
+			return $this->headers;
 		}
 
 		/**

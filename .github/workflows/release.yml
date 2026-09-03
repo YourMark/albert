@@ -59,14 +59,10 @@ jobs:
           tools: composer:v2
           coverage: none
 
-      - name: Generate Mozart-scoped dependencies
-        # Install WITH dev deps so Mozart is present; its post-install hook runs
-        # `mozart compose`, producing vendor-prefixed/ (scoped under Albert\Vendor\).
-        run: composer install --prefer-dist --no-progress
-
       - name: Install production dependencies
-        # Strip dev deps (incl. mozart + the unscoped wordpress/* packages) and
-        # rebuild the optimized prod autoloader. vendor-prefixed/ persists.
+        # One install, no build step. The MCP library is an ordinary runtime
+        # requirement now, and Jetpack Autoloader writes its manifests from
+        # Composer's own hook — nothing to generate first, nothing to strip after.
         run: composer install --no-dev --prefer-dist --optimize-autoloader --no-progress
 
       - name: Setup Node
@@ -84,31 +80,81 @@ jobs:
       - name: Create plugin directory
         run: mkdir -p build/albert-ai-butler
 
+      # Built from the working tree minus .distignore, which is the same rule
+      # the WordPress.org deploy step below applies. It used to be a hand-kept
+      # allowlist of `cp` commands, which failed closed and silently: `skills/`
+      # was added in 1.2.0, never appeared in that list, and so was absent from
+      # every zip from 1.2.0 to 1.4.0-beta1 while being present in the repo and
+      # on every developer's checkout. Nothing failed; the feature was simply
+      # not there. One list now governs both paths, and a new directory ships
+      # unless it is deliberately excluded.
       - name: Copy plugin files
         run: |
-          # Core plugin files
-          cp albert-ai-butler.php build/albert-ai-butler/
-          cp composer.json build/albert-ai-butler/
-          cp readme.txt build/albert-ai-butler/
-          cp LICENSE build/albert-ai-butler/
+          # Both excludes are anchored with a leading slash. An unanchored
+          # `build/` matches at any depth and would take `assets/build/` with
+          # it, shipping a plugin whose admin screens have no JavaScript.
+          rsync -a \
+            --exclude='/.git/' \
+            --exclude='/build/' \
+            --exclude-from='.distignore' \
+            ./ build/albert-ai-butler/
 
-          # Directories
-          cp -r src build/albert-ai-butler/
-          cp -r vendor build/albert-ai-butler/
-          cp -r vendor-prefixed build/albert-ai-butler/
-
-          # Optional directories (copy if they exist)
-          [ -d "assets" ] && cp -r assets build/albert-ai-butler/ || true
-          [ -d "languages" ] && cp -r languages build/albert-ai-butler/ || true
-
-      - name: Strip build-only and disallowed vendor files
+      - name: Verify the package carries what it claims
         run: |
-          # wordpress/mcp-adapter + wordpress/php-mcp-schema are bundled into
-          # src/Dependencies/ (Mozart-scoped under Albert\Vendor\). They must
-          # NEVER ship unscoped in vendor/ — that would re-introduce the
-          # WP\MCP\ namespace collision with WooCommerce's bundled copy.
-          rm -rf build/albert-ai-butler/vendor/wordpress
+          # A missing runtime file is invisible at build time and only shows up
+          # as an empty screen on somebody's site, which is exactly how the
+          # skills omission survived three releases.
+          missing=0
+          for required in \
+            albert-ai-butler.php \
+            readme.txt \
+            changelog.txt \
+            composer.json \
+            LICENSE \
+            src \
+            vendor \
+            assets/build/js \
+            skills/block-editor.md
+          do
+            if [ ! -e "build/albert-ai-butler/$required" ]; then
+              echo "::error::missing from the package: $required"
+              missing=1
+            fi
+          done
+
+          for forbidden in tests .github node_modules assets/src docs
+          do
+            if [ -e "build/albert-ai-butler/$forbidden" ]; then
+              echo "::error::should not be packaged: $forbidden"
+              missing=1
+            fi
+          done
+
+          exit $missing
+
+      - name: Strip non-permitted vendor files
+        run: |
+          # vendor/wordpress/ deliberately DOES ship now. Albert loads it through
+          # Jetpack Autoloader, which resolves one newest copy of WP\MCP\ across
+          # every plugin bundling it, so shipping ours is what lets Albert take
+          # part rather than what breaks other plugins.
           find build/albert-ai-butler/vendor -name "*.sh" -type f -delete
+
+          # The adapter also ships as a standalone plugin; nothing here loads
+          # its bootstrap or its readme, and .distignore excludes both so the
+          # copy above never brings them across.
+          #
+          # Both halves are asserted rather than assumed. Checking only the
+          # package would pass just as well if upstream renamed the files and
+          # .distignore silently stopped matching anything, which is the same
+          # class of quiet failure that kept skills/ out of every release.
+          for f in mcp-adapter.php readme.txt; do
+            test -f "vendor/wordpress/mcp-adapter/$f" \
+              || { echo "::error::vendor/wordpress/mcp-adapter/$f is gone; upstream layout changed and .distignore now matches nothing"; exit 1; }
+
+            test ! -e "build/albert-ai-butler/vendor/wordpress/mcp-adapter/$f" \
+              || { echo "::error::$f reached the package; .distignore no longer excludes it"; exit 1; }
+          done
 
       - name: Create zip file
         working-directory: build
@@ -146,6 +192,18 @@ jobs:
               NOTES=$(git log --pretty=format:"- %s" --no-merges -20)
             fi
           fi
+
+          # readme.txt is WordPress.org's format, where HTML entities render.
+          # GitHub release notes are Markdown, where they do not, so "Albert
+          # &rarr; Context" reaches a reader verbatim. Translate the ones the
+          # changelog actually uses rather than every entity in existence.
+          NOTES=$(printf '%s\n' "$NOTES" | sed \
+            -e 's/&rarr;/→/g' \
+            -e 's/&larr;/←/g' \
+            -e 's/&mdash;/—/g' \
+            -e 's/&ndash;/–/g' \
+            -e 's/&hellip;/…/g' \
+            -e 's/&amp;/\&/g')
 
           # For pre-releases, note the build identifier above the section notes.
           if [ "${{ steps.prerelease.outputs.is_prerelease }}" = "true" ]; then
@@ -191,9 +249,6 @@ jobs:
           php-version: '8.2'
           tools: composer:v2
           coverage: none
-
-      - name: Generate Mozart-scoped dependencies
-        run: composer install --prefer-dist --no-progress
 
       - name: Install production dependencies
         run: composer install --no-dev --prefer-dist --optimize-autoloader --no-progress

@@ -12,7 +12,6 @@ namespace Albert\Abilities\WordPress\Media;
 use Albert\Abstracts\BaseAbility;
 use Albert\Core\Annotations;
 use WP_Error;
-use WP_REST_Request;
 use WP_Query;
 
 /**
@@ -42,7 +41,12 @@ class FindMedia extends BaseAbility {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::read(),
+			'annotations' => Annotations::read(
+				'Search by title, filename, caption or description. A `core/image` block is a reference '
+				. 'to the media library, not a URL, so take both the `id` and the `url` from the result '
+				. 'here and put both in the block, an image with a `url` and no `id` is not linked to the '
+				. 'library.'
+			),
 		];
 
 		parent::__construct();

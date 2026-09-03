@@ -50,7 +50,7 @@ class AbilitiesStateTest extends TestCase {
 	}
 
 	/**
-	 * is_enabled() is false for a blocklisted ability, true otherwise.
+	 * A blocklisted ability reports disabled; everything else reports enabled.
 	 *
 	 * @return void
 	 */

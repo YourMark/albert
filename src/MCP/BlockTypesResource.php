@@ -15,7 +15,7 @@
 namespace Albert\MCP;
 
 use Albert\Blocks\BlockCatalog;
-use Albert\Vendor\WP\MCP\Domain\Resources\McpResource;
+use WP\MCP\Domain\Resources\McpResource;
 use WP_Error;
 
 defined( 'ABSPATH' ) || exit;

@@ -10,6 +10,7 @@
 namespace Albert\Abilities\WordPress\Posts;
 
 use Albert\Abstracts\BaseAbility;
+use Albert\Blocks\BlockSpecSchema;
 use Albert\Blocks\WriteContentResolver;
 use Albert\Core\Annotations;
 use WP_Error;
@@ -42,7 +43,12 @@ class Create extends BaseAbility {
 			'mcp'         => [
 				'public' => true,
 			],
-			'annotations' => Annotations::create(),
+			'annotations' => Annotations::create(
+				'Call `albert/list-block-types` first and compose only from what it returns, an unlisted '
+				. 'block fails validation and nothing is saved. Send block specs in `blocks`, never '
+				. 'hand-written `<!-- wp:… -->` markup, and put child blocks in `innerBlocks` rather than '
+				. 'in attributes. For a classic-editor post type, send HTML in `content` instead.'
+			),
 		];
 
 		parent::__construct();
@@ -73,7 +79,7 @@ class Create extends BaseAbility {
 				'blocks'     => [
 					'type'        => 'array',
 					'description' => 'Structured block specs (preferred over "content"). Each item is { "name": "core/paragraph", "attributes": { ... }, "innerBlocks": [ ... ] }; innerBlocks is the same shape recursively for layout blocks (e.g. core/columns > core/column). Put text in attributes (content/text/value) or in "plaintext". Example: [ { "name": "core/heading", "attributes": { "level": 2, "content": "Intro" } }, { "name": "core/paragraph", "attributes": { "content": "Hello world." } } ]',
-					'items'       => [ 'type' => 'object' ],
+					'items'       => BlockSpecSchema::spec(),
 					'default'     => [],
 				],
 				'status'     => [

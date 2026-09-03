@@ -1,0 +1,319 @@
+/**
+ * Albert admin design tokens.
+ *
+ * The single source of colour, spacing, type, radius and motion for every
+ * Albert admin screen, in this plugin and in every add-on. Registered as the
+ * `albert-tokens` stylesheet handle and declared as a dependency of every other
+ * Albert admin stylesheet, so it always loads first. Add-ons depend on the same
+ * handle rather than restating values.
+ *
+ * Two rules keep this file honest:
+ *
+ * 1. Every other Albert stylesheet consumes tokens and declares no raw colour.
+ * 2. Every value here is measured, not asserted. `docs/design-system.md` records
+ *    each contrast ratio and the exact pair it was measured against. Six values
+ *    in the source design failed WCAG and were corrected; they are marked
+ *    CORRECTED below with the measurement that condemned them.
+ *
+ * These names replace the 56 value-named properties `admin-settings.css` used to
+ * declare (`--albert-primary`, `--albert-font-lg`). There is no alias layer: the
+ * old names described values, the new ones describe roles, and carrying both
+ * would mean shipping two vocabularies for one palette. Add-ons migrate to these
+ * names in the release that adopts them.
+ *
+ * Colour space: oklch() throughout, so a lightness change is a lightness change
+ * and hues stay put. Values converted from the design handoff's hex round-trip
+ * exactly; the source hex is recorded in docs/design-system.md.
+ *
+ * One palette, not two. An earlier draft carried a full dark set behind a
+ * `[data-albert-color-scheme="dark"]` selector that nothing ever set, so ~64
+ * values shipped that no browser could render and no test or screenshot could
+ * check, three real dark-only bugs got through review on exactly that basis.
+ * WordPress ships no dark admin scheme, so the honest position is to have one
+ * palette that is verified. See docs/design-system.md, "One palette".
+ *
+ * @package Albert
+ * @since 1.4.0
+ */
+
+:root {
+	/* ---------------------------------------------------------------------
+	 * Colour — light (the shipped palette)
+	 * ------------------------------------------------------------------ */
+
+	/* Surfaces */
+	--albert-color-canvas: oklch(0.955 0.0013 286.4);           /* #f0f0f1 — page background */
+	--albert-color-surface: oklch(1 0 0);                       /* #ffffff — cards, inputs */
+	--albert-color-surface-sunken: oklch(0.988 0.0013 286.4);   /* #fbfbfc — table heads, code */
+
+	/* Borders */
+	--albert-color-border: oklch(0.907 0 0);                    /* #e0e0e0 — card + control borders */
+	--albert-color-border-subtle: oklch(0.955 0.0013 286.4);    /* #f0f0f1 — row dividers */
+	/* CORRECTED: the handoff's #dcdcde measured 1.37:1 on surface and fails SC
+	   1.4.11 (3:1 for control boundaries). This is core's own input border,
+	   wp-admin/css/forms.css, chosen for exactly that threshold. */
+	--albert-color-border-input: oklch(0.655 0 0);              /* #909090 — 3.17:1 on surface, 3.06:1 on surface-sunken */
+
+	/* Text */
+	--albert-color-text: oklch(0.235 0 0);                      /* #1e1e1e — titles, values */
+	--albert-color-text-muted: oklch(0.519 0.0126 256.7);       /* #646970 — descriptions */
+	--albert-color-text-faint: oklch(0.546 0.0111 252.9);       /* #6c7177 — micro labels, ids */
+
+	/* Accent — see the `body` rule below. Declared there, not here, and
+	   deliberately absent from this block. */
+	/* NEW: the handoff specified "accent surface, white text" but shipped no
+	   token for the label, so every filled control hardcoded white. This names
+	   the role instead, which is what lets a component follow rule 1 and
+	   declare no raw colour of its own. */
+	--albert-color-accent-contrast: oklch(1 0 0);               /* white — 5.60:1 on the default accent */
+
+	--albert-color-link: oklch(0.534 0.1249 247.7);             /* #2271b1 */
+
+	/* Status */
+	--albert-color-success: oklch(0.508 0.1332 151.1);          /* #0a7a3b */
+	--albert-color-success-surface: oklch(0.954 0.0199 154.9);  /* #e6f4ea */
+	/* Status lights, not status text. A dot carries no glyph, so it reads as a
+	   colour and needs to stay bright enough to register as one: the text
+	   tokens above are tuned for 4.5:1 as type and go muddy at 10px, which is
+	   why the warning dot read brown when it reused --albert-color-warning.
+	   All three clear the 3:1 that SC 1.4.11 asks of a non-text indicator, with
+	   headroom, and sit in one brightness band so a row of them looks level. */
+	--albert-color-success-dot: oklch(0.615 0.1538 152.2);      /* #1a9e54 — 3.46:1 on surface, 3.35:1 on surface-sunken */
+	--albert-color-success-contrast: oklch(1 0 0);              /* NEW, 5.45:1 on success */
+
+	--albert-color-warning: oklch(0.531 0.119 65.1);            /* #9a5b00 */
+	--albert-color-warning-surface: oklch(0.961 0.0261 82.4);   /* #fbf1df */
+	--albert-color-warning-dot: oklch(0.6075 0.1469 57.1);      /* #c26700 — 4.01:1 on surface, 3.88:1 on surface-sunken */
+
+	--albert-color-danger: oklch(0.509 0.1708 25.4);            /* #b32d2e */
+	--albert-color-danger-surface: oklch(0.956 0.0187 25.6);    /* #fdecea */
+	--albert-color-danger-dot: oklch(0.5801 0.1967 25.3);       /* #d63638 — 4.73:1 on surface, 4.57:1 on surface-sunken */
+	--albert-color-danger-contrast: oklch(1 0 0);               /* NEW, 6.31:1 on danger */
+
+	/* Core's blue-60. The obvious choice was blue-50 (#2271b1, the same blue as
+	   --albert-color-link), but it measures 4.49:1 on the info surface below and
+	   misses 1.4.3 by a hundredth. Blue-60 is the next step down core's own
+	   ramp, so the pill stays a WordPress blue without inventing a value. */
+	--albert-color-info: oklch(0.468 0.1138 247);               /* #135e96 — 5.95:1 on info-surface */
+	--albert-color-info-surface: oklch(0.952 0.0177 253.3);     /* #e7f0fb */
+
+	--albert-color-neutral: oklch(0.453 0.0145 248.1);          /* #50575e */
+	--albert-color-neutral-surface: oklch(0.954 0.0034 247.9);  /* #eef0f2 */
+
+
+	/* Controls */
+	/* CORRECTED: the handoff's #a7aaad measured 2.33:1 on surface.
+	   An off switch carries no text, so the track IS the state indicator and
+	   owes 3:1 under SC 1.4.11. Same hue and chroma, lightness moved the least
+	   distance that clears the threshold. */
+	--albert-color-switch-off: oklch(0.66 0.01 265);            /* 3.11:1 */
+
+	/* ---------------------------------------------------------------------
+	 * Overlays and tints
+	 *
+	 * Derived with color-mix() rather than declared as a second set of
+	 * literals, so a tint can never drift from the colour it tints — change
+	 * the semantic token and every tint of it follows. The source design had
+	 * no tint scale; these cover what the existing screens actually use.
+	 *
+	 * Mixed in oklab: mixing in sRGB darkens and desaturates through the
+	 * middle of the range, which is what makes hand-picked tint ramps look
+	 * muddy.
+	 *
+	 * Tints are backgrounds only. None of them is ever a text colour, so
+	 * they carry no contrast obligation of their own — the text that sits on
+	 * them does, and those pairs are measured in docs/design-system.md.
+	 * ------------------------------------------------------------------ */
+
+	/* Interaction and chrome */
+	--albert-color-overlay: oklch(0 0 0 / 0.7);   /* modal backdrop */
+
+	/* ---------------------------------------------------------------------
+	 * Page width — three tiers, and a screen picks one.
+	 *
+	 * A screen never invents a number. It names a tier, and the tier is what
+	 * this file defines:
+	 *
+	 *   narrow   Settings, Context      one column of form or prose, where a
+	 *                                   wide container puts a canyon between a
+	 *                                   label and its control
+	 *   wide     Dashboard, Connections multi-column content that has something
+	 *                                   to put in the extra room
+	 *   full     Abilities, Skills      DataViews tables, which take whatever
+	 *                                   the viewport gives them
+	 *
+	 * "full" has no token, because it is the absence of a cap rather than a
+	 * value; `.albert-page--full` sets `max-inline-size: none`.
+	 *
+	 * In `rem`, so a container grows with the reader's font size. A cap in px
+	 * stays put when someone raises their base size, which is exactly when the
+	 * measure needs to grow with the type.
+	 * ------------------------------------------------------------------ */
+	--albert-page-width-narrow: 54rem;
+	--albert-page-width: 72rem;
+
+	/* Measures — how wide a run of text is allowed to get, by role.
+	   Named here rather than repeated per screen: the page-description measure
+	   was previously written out three times, in three stylesheets, as the same
+	   literal, which is how a "shared" value quietly becomes three values. */
+	--albert-measure-description: 40rem;  /* 640px — page and screen descriptions */
+	--albert-measure-prose: 90ch;         /* owner-authored prose in a textarea */
+	--albert-measure-field: 26rem;        /* 416px — text and URL inputs */
+	--albert-measure-field-label: 16.25rem; /* 260px — the label column of a field row */
+
+	/* Control height — 2rem (32px), the height @wordpress/components gives a
+	   compact control. Albert's own inputs and core's DataViews controls sit
+	   side by side across these screens, so they share one height. */
+	--albert-control-height: 2rem;
+
+	/* The DataViews toolbar: one width for every filter select, and a wider one
+	   for search so the row reads as "search, then filters" rather than as six
+	   identical boxes. A native <select> sizes to its widest option, so without
+	   a width declared the filters vary with whatever happens to be in their
+	   lists and the row looks broken. Wide enough for the longest "All …"
+	   label at the toolbar's own type size, with room for the chevron. */
+	--albert-toolbar-select-width: 11rem;   /* 176px */
+	--albert-toolbar-search-width: 14.5rem; /* 232px */
+
+	/* Card padding: the inline edge every card, row and card-aligned element
+	   shares, so a row list lines up with the header above it. Named because
+	   the literal was previously repeated in four stylesheets, and anything
+	   sitting flush to a card edge has to match it or the column looks bent. */
+	--albert-card-padding: 1.125rem;        /* 18px — card body and inline edge */
+	--albert-card-padding-block: 0.875rem;  /* 14px — card header block padding */
+
+	/* ---------------------------------------------------------------------
+	 * Spacing — 0.25rem base (4px at the default root size)
+	 * ------------------------------------------------------------------ */
+	--albert-space-100: 0.25rem;
+	--albert-space-200: 0.5rem;
+	--albert-space-300: 0.75rem;
+	--albert-space-400: 1rem;
+	--albert-space-500: 1.25rem;
+	--albert-space-600: 1.5rem;
+
+	/* ---------------------------------------------------------------------
+	 * Radius — core's 4px. There is deliberately no 6px or 8px step.
+	 *
+	 * These stay in px on purpose. A corner radius is a fixed optical detail,
+	 * not a measure: scaling it with the root font size makes a "4px corner"
+	 * into an 6px one for a reader at 150%, which reads as a different shape
+	 * rather than as larger text. Same reasoning for hairline borders below.
+	 * ------------------------------------------------------------------ */
+	--albert-radius-sm: 3px;
+	--albert-radius-md: 4px;
+	--albert-radius-pill: 11px;
+
+	/* ---------------------------------------------------------------------
+	 * Type — the wp-admin system stack. Never a webfont.
+	 * ------------------------------------------------------------------ */
+	--albert-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	--albert-font-family-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+	/* In rem, so every size scales with the reader's own base size rather than
+	   pinning Albert's text at whatever 13px happens to mean on their display.
+	   The px each was derived from is noted for traceability to the handoff. */
+	--albert-font-size-micro: 0.6875rem;      /* 11px — uppercase micro labels, table heads */
+	--albert-font-size-mono-sm: 0.71875rem;   /* 11.5px — ids, counts */
+	--albert-font-size-sm: 0.78125rem;        /* 12.5px — secondary, mono endpoint/capability */
+	--albert-font-size-base: 0.8125rem;       /* 13px — buttons */
+	--albert-font-size-body: 0.84375rem;      /* 13.5px — body, row titles, page description */
+	--albert-font-size-card-title: 0.875rem;  /* 14px */
+	--albert-font-size-section-title: 0.9375rem; /* 15px */
+	--albert-font-size-page-title: 1.4375rem; /* 23px */
+	--albert-font-size-stat: 1.75rem;         /* 28px */
+
+	/* Icon sizes. Separate from the type scale on purpose: a dashicon's
+	   font-size IS its box, so it has to match the width/height it is given,
+	   and the role-named type steps do not line up with those boxes. */
+	--albert-icon-size-sm: 1.125rem;  /* 18px */
+	--albert-icon-size-lg: 2rem;      /* 32px */
+
+	--albert-font-weight-normal: 400;
+	--albert-font-weight-medium: 500;
+	--albert-font-weight-semibold: 600;
+
+	--albert-line-height-tight: 1.2;     /* page title */
+	--albert-line-height-snug: 1.5;      /* secondary, page description */
+	--albert-line-height-body: 1.55;
+	--albert-line-height-mono: 1.7;      /* payload preview */
+
+	--albert-letter-spacing-micro: 0.04em;
+	--albert-letter-spacing-stat: -0.01em;
+
+	/* ---------------------------------------------------------------------
+	 * Motion — every consumer wraps these in
+	 * @media (prefers-reduced-motion: no-preference).
+	 * ------------------------------------------------------------------ */
+	--albert-duration-fast: 150ms;
+	--albert-easing-fast: ease;
+	--albert-duration-panel: 220ms;
+	--albert-easing-panel: cubic-bezier(0.2, 0.7, 0.3, 1);
+
+	/* ---------------------------------------------------------------------
+	 * Focus — one ring, every interactive element, switches and expandable
+	 * rows included.
+	 * ------------------------------------------------------------------ */
+	--albert-focus-width: 2px;
+	--albert-focus-offset: 1px;
+
+	/* ---------------------------------------------------------------------
+	 * Elevation
+	 * ------------------------------------------------------------------ */
+	--albert-shadow-sm: 0 1px 2px oklch(0 0 0 / 0.05);
+	--albert-shadow-md: 0 1px 3px oklch(0 0 0 / 0.1);
+	--albert-shadow-panel: -4px 0 16px oklch(0 0 0 / 0.1);
+}
+
+/**
+ * Accent — the site's own admin colour scheme.
+ *
+ * This has to be declared on `body`, not on `:root`, and the reason is easy to
+ * get wrong: WordPress sets `--wp-admin-theme-color` per scheme on the body
+ * class (`body.admin-color-modern { --wp-admin-theme-color: #3858e9 }`), while
+ * `:root` carries only a base default (#007cba). Resolving `var()` at `:root`
+ * therefore captures the *default* rather than the scheme the user picked, and
+ * because custom properties inherit, that wrong value then propagates to every
+ * element. The symptom is subtle: Albert's accent silently disagrees with the
+ * admin around it on every scheme except "light".
+ *
+ * Declaring it here means the lookup happens at or below the element that
+ * carries the scheme class, so the user's real accent is what inherits.
+ *
+ * All nine schemes WordPress ships clear 4.5:1 against
+ * `--albert-color-accent-contrast`; the tightest is "light" at 4.57:1. A custom
+ * scheme registered by another plugin is not covered by that guarantee.
+ */
+body {
+	--albert-color-accent: var(--wp-admin-theme-color, oklch(0.531 0.221 268));
+
+	/* Everything derived from the accent lives here too. A token declared on
+	   `:root` cannot see a value declared on `body`, so an accent tint left up
+	   there would resolve against nothing and silently compute to an invalid
+	   value — a transparent focus ring rather than an obvious error. */
+	--albert-color-accent-tint-8: color-mix(in oklab, var(--albert-color-accent) 8%, transparent);
+	--albert-color-accent-tint-10: color-mix(in oklab, var(--albert-color-accent) 10%, transparent);
+	--albert-color-accent-tint-20: color-mix(in oklab, var(--albert-color-accent) 20%, transparent);
+	--albert-focus-color: var(--albert-color-accent);
+
+	/* Derived, not hardcoded, so they follow the admin colour scheme. These were
+	   fixed blues: on a non-blue scheme (Sunrise, Ectoplasm, Coffee) the accent
+	   went red or green while its own hover state and highlight surface stayed
+	   blue. */
+	--albert-color-accent-hover: color-mix(in oklab, var(--albert-color-accent) 82%, black);
+	--albert-color-accent-surface: color-mix(in oklab, var(--albert-color-accent) 8%, white);
+
+	/* Tints live beside the tokens they mix, because a custom property
+	   substitutes var() on the element that DECLARES it, a tint declared on a
+	   different element than its source would freeze that source's value. */
+	--albert-color-success-tint-10: color-mix(in oklab, var(--albert-color-success) 10%, transparent);
+	--albert-color-success-tint-20: color-mix(in oklab, var(--albert-color-success) 20%, transparent);
+	--albert-color-warning-tint-10: color-mix(in oklab, var(--albert-color-warning) 10%, transparent);
+	--albert-color-warning-tint-20: color-mix(in oklab, var(--albert-color-warning) 20%, transparent);
+	--albert-color-danger-tint-10: color-mix(in oklab, var(--albert-color-danger) 10%, transparent);
+	--albert-color-danger-tint-20: color-mix(in oklab, var(--albert-color-danger) 20%, transparent);
+	--albert-color-info-tint-10: color-mix(in oklab, var(--albert-color-info) 10%, transparent);
+	--albert-color-info-tint-20: color-mix(in oklab, var(--albert-color-info) 20%, transparent);
+	--albert-color-surface-hover: color-mix(in oklab, var(--albert-color-text) 8%, transparent);
+	--albert-color-danger-hover: color-mix(in oklab, var(--albert-color-danger) 80%, black);
+}

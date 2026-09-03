@@ -18,7 +18,7 @@ require_once dirname( __DIR__ ) . '/stubs/WP_Block_Type_Registry.php';
 
 use Albert\MCP\BlockTypesResource;
 use Albert\MCP\ResourceLoader;
-use Albert\Vendor\WP\MCP\Domain\Resources\McpResource;
+use WP\MCP\Domain\Resources\McpResource;
 use PHPUnit\Framework\TestCase;
 
 /**

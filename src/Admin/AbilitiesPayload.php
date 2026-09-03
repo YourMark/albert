@@ -23,7 +23,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * Pure data assembler that turns the live Abilities API registry into the shape
  * the React screen expects: a flat list of ability rows plus the category and
- * supplier filter options and headline counts. Reused by the REST controller so
+ * source filter options and headline counts. Reused by the REST controller so
  * the screen has a single source for its data.
  *
  * @since 1.3.0
@@ -36,7 +36,7 @@ class AbilitiesPayload {
 	 * @return array{
 	 *     abilities: array<int, array<string, mixed>>,
 	 *     categories: array<int, array{value: string, label: string}>,
-	 *     suppliers: array<int, array{value: string, label: string}>,
+	 *     sources: array<int, array{value: string, label: string}>,
 	 *     counts: array{total: int, enabled: int}
 	 * }
 	 * @since 1.3.0
@@ -45,7 +45,10 @@ class AbilitiesPayload {
 		$categories = function_exists( 'wp_get_ability_categories' ) ? wp_get_ability_categories() : [];
 		$disabled   = AbilitiesState::disabled();
 		$roles      = self::roles();
-		$all        = wp_get_abilities();
+		// Raw registry, not wp_get_abilities(): the management screen must show every
+		// ability the site has, including any a third-party filter hides from the
+		// filtered view — otherwise a row the admin can still toggle goes missing.
+		$all = AbilitiesRegistry::get_all_raw();
 
 		// The MCP adapter's own tools (discover / get-info / execute) are protocol
 		// infrastructure, not user-manageable abilities — never surface them on the
@@ -65,7 +68,7 @@ class AbilitiesPayload {
 
 		$abilities     = [];
 		$category_opts = [];
-		$supplier_opts = [];
+		$source_opts   = [];
 		$enabled_count = 0;
 
 		foreach ( $all as $ability ) {
@@ -78,8 +81,8 @@ class AbilitiesPayload {
 			if ( $row['category'] !== '' && ! isset( $category_opts[ $row['category'] ] ) ) {
 				$category_opts[ $row['category'] ] = $row['categoryLabel'];
 			}
-			if ( $row['supplier'] !== '' && ! isset( $supplier_opts[ $row['supplier'] ] ) ) {
-				$supplier_opts[ $row['supplier'] ] = $row['supplierLabel'];
+			if ( $row['source'] !== '' && ! isset( $source_opts[ $row['source'] ] ) ) {
+				$source_opts[ $row['source'] ] = $row['sourceLabel'];
 			}
 		}
 
@@ -91,12 +94,12 @@ class AbilitiesPayload {
 			}
 		);
 		asort( $category_opts, SORT_NATURAL | SORT_FLAG_CASE );
-		asort( $supplier_opts, SORT_NATURAL | SORT_FLAG_CASE );
+		asort( $source_opts, SORT_NATURAL | SORT_FLAG_CASE );
 
 		return [
 			'abilities'  => $abilities,
 			'categories' => self::to_options( $category_opts ),
-			'suppliers'  => self::to_options( $supplier_opts ),
+			'sources'    => self::to_options( $source_opts ),
 			'roles'      => self::role_options( $roles ),
 			'counts'     => [
 				'total'   => count( $abilities ),
@@ -116,7 +119,11 @@ class AbilitiesPayload {
 	 * @since 1.3.0
 	 */
 	public static function row( string $ability_id ): ?array {
-		if ( ! function_exists( 'wp_get_ability' ) ) {
+		// `wp_has_ability()` is the quiet existence check; `wp_get_ability()`
+		// raises _doing_it_wrong() before returning null for anything the
+		// registry does not hold, so probing with it turns "no such row" into a
+		// notice.
+		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( $ability_id ) ) {
 			return null;
 		}
 
@@ -157,6 +164,12 @@ class AbilitiesPayload {
 			'description'     => $ability->get_description(),
 			'category'        => $ability->get_category(),
 			'categoryLabel'   => self::category_label( $ability->get_category(), $categories ),
+			'source'          => $source['slug'],
+			'sourceLabel'     => $source['label'],
+			// Deprecated: use `source`/`sourceLabel` above. Kept, unchanged,
+			// because docs/extending-the-abilities-screen.md documents these
+			// two as part of the `albert/abilities/payload_row` row contract;
+			// an add-on already reading them must keep working.
 			'supplier'        => $source['slug'],
 			'supplierLabel'   => $source['label'],
 			'operation'       => $chips[0]['key'] ?? 'read',

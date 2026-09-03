@@ -3,7 +3,7 @@
  * Plugin Name: Albert - The AI Butler
  * Plugin URI: https://wordpress.org/plugins/albert/
  * Description: At your service — Albert connects AI assistants to your WordPress site so they can manage content, handle tasks, and keep things running smoothly.
- * Version: 1.3.1
+ * Version: 1.4.0
  * Author: Albert
  * Author URI: https://yourmark.nl
  * Text Domain: albert-ai-butler
@@ -24,18 +24,37 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-define( 'ALBERT_VERSION', '1.3.1' );
+define( 'ALBERT_VERSION', '1.4.0' );
 define( 'ALBERT_PLUGIN_FILE', __FILE__ );
 define( 'ALBERT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ALBERT_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'ALBERT_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 
-// Load Composer autoloader if available.
-if ( ! file_exists( ALBERT_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
+/*
+ * Load through Jetpack Autoloader, not Composer's own autoloader.
+ *
+ * `wordpress/mcp-adapter` coordinates through global WordPress hook names, a
+ * fixed default-server id and a fixed REST route. None of those can be made
+ * unique per copy, so two copies of the library in one request collide — which
+ * is why upstream does not support namespace-prefixing it (WordPress/mcp-adapter#172)
+ * and requires this autoloader instead.
+ *
+ * Jetpack Autoloader publishes each plugin's copy with its version and loads a
+ * single newest copy site-wide, so Albert, WooCommerce and the standalone MCP
+ * Adapter plugin all resolve the same `WP\MCP\` classes. One class, one
+ * singleton, one `mcp_adapter_init` — the collision cannot occur rather than
+ * being worked around.
+ *
+ * `autoload_packages.php` is Jetpack's entry point; it calls WordPress
+ * functions, which is safe here because a plugin file only runs once core is
+ * loaded. Composer's `vendor/autoload.php` still exists and is what the test
+ * bootstraps use, since they load before WordPress does.
+ */
+if ( ! file_exists( ALBERT_PLUGIN_DIR . 'vendor/autoload_packages.php' ) ) {
 	return;
 }
 
-require_once ALBERT_PLUGIN_DIR . 'vendor/autoload.php';
+require_once ALBERT_PLUGIN_DIR . 'vendor/autoload_packages.php';
 
 /**
  * Initialize the plugin.

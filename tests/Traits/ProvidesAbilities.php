@@ -34,6 +34,7 @@ trait ProvidesAbilities {
 	 *
 	 * @return array<string, array{0: class-string<BaseAbility>}>
 	 */
+	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- PHPUnit data providers are camelCase by convention; renaming this would break every @dataProvider that names it.
 	public static function provideAbilities(): array {
 		$abilities = [];
 		$base_dir  = dirname( __DIR__, 2 ) . '/src/Abilities';

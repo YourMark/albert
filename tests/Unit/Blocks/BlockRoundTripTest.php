@@ -208,4 +208,96 @@ class BlockRoundTripTest extends TestCase {
 		$this->assertCount( 1, $tree );
 		$this->assertSame( 'core/html', $tree[0]['name'] );
 	}
+
+	/**
+	 * Classic content survives the read -> write -> read loop.
+	 *
+	 * A post never opened in the block editor parses as one freeform block with a
+	 * null name. BlockReader preserves it deliberately, so the write side has to
+	 * take it back: refusing it left the assistant with a block it could not send
+	 * and no legal name it could invent to fix it.
+	 *
+	 * @return void
+	 */
+	public function test_classic_content_round_trips(): void {
+		$original = ( new BlockReader() )->read( '<p>An old post written in the classic editor.</p>' );
+
+		$this->assertSame( [ null ], array_column( $original, 'name' ) );
+
+		$serialized = $this->serializer->serialize_with_issues( $original );
+
+		$this->assertSame( [], $serialized['issues'], 'Classic content must not be an error.' );
+
+		$reread = $this->reader->read( $serialized['markup'] );
+
+		$this->assertSame( [ null ], array_column( $reread, 'name' ) );
+		$this->assertSame(
+			'An old post written in the classic editor.',
+			$reread[0]['plaintext']
+		);
+	}
+
+	/**
+	 * An empty freeform separator is dropped rather than re-emitted.
+	 *
+	 * The parser puts these between blocks and the reader already filters them
+	 * out, so writing one back would only add noise to the stored markup.
+	 *
+	 * @return void
+	 */
+	public function test_an_empty_classic_block_is_dropped(): void {
+		$serialized = $this->serializer->serialize_with_issues(
+			[
+				[
+					'name'      => null,
+					'plaintext' => '   ',
+				],
+				[
+					'name'       => 'core/paragraph',
+					'attributes' => [ 'content' => 'Kept' ],
+				],
+			]
+		);
+
+		$this->assertSame( [], $serialized['issues'] );
+		$this->assertSame( [ 'core/paragraph' ], array_column( $this->reader->read( $serialized['markup'] ), 'name' ) );
+	}
+
+	/**
+	 * A block named only with the `blockName` spelling is accepted.
+	 *
+	 * The spec documents it as an alias of `name`, and the serializer has always
+	 * read both, so it must not be refused before it gets there.
+	 *
+	 * @return void
+	 */
+	public function test_the_blockName_alias_is_accepted(): void {
+		$serialized = $this->serializer->serialize_with_issues(
+			[
+				[
+					'blockName' => 'core/paragraph',
+					'attrs'     => [ 'content' => 'Aliased' ],
+				],
+			]
+		);
+
+		$this->assertSame( [], $serialized['issues'] );
+		$this->assertSame( [ 'core/paragraph' ], array_column( $this->reader->read( $serialized['markup'] ), 'name' ) );
+	}
+
+	/**
+	 * A forgotten name is still an error — only an explicit null is classic.
+	 *
+	 * @return void
+	 */
+	public function test_a_missing_name_is_still_an_error(): void {
+		$serialized = $this->serializer->serialize_with_issues(
+			[
+				[ 'plaintext' => 'No name at all' ],
+			]
+		);
+
+		$this->assertNotSame( [], $serialized['issues'] );
+		$this->assertStringContainsString( 'name is required', $serialized['issues'][0]['message'] );
+	}
 }

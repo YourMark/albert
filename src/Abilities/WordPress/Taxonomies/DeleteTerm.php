@@ -22,6 +22,8 @@ use WP_REST_Request;
  * @since 1.0.0
  */
 class DeleteTerm extends BaseAbility {
+	use ResolvesTaxonomyRoute;
+
 	/**
 	 * Constructor.
 	 *
@@ -127,14 +129,14 @@ class DeleteTerm extends BaseAbility {
 		$taxonomy = $args['taxonomy'] ?? 'category';
 		$term_id  = absint( $args['id'] );
 
-		// Determine REST base for taxonomy.
-		$rest_base = $this->get_taxonomy_rest_base( $taxonomy );
-		if ( is_wp_error( $rest_base ) ) {
-			return $rest_base;
+		// Determine the REST route WordPress serves this taxonomy's terms on.
+		$route = $this->get_taxonomy_route( $taxonomy );
+		if ( is_wp_error( $route ) ) {
+			return $route;
 		}
 
 		// Create REST request.
-		$request = new WP_REST_Request( 'DELETE', '/wp/v2/' . $rest_base . '/' . $term_id );
+		$request = new WP_REST_Request( 'DELETE', $route . '/' . $term_id );
 
 		// Set force parameter if provided.
 		if ( ! empty( $args['force'] ) ) {
@@ -168,50 +170,5 @@ class DeleteTerm extends BaseAbility {
 				'slug' => $data['previous']['slug'] ?? '',
 			],
 		];
-	}
-
-	/**
-	 * Get the REST base for a taxonomy.
-	 *
-	 * @param string $taxonomy Taxonomy slug.
-	 * @return string|WP_Error REST base or error.
-	 * @since 1.0.0
-	 */
-	private function get_taxonomy_rest_base( string $taxonomy ): string|WP_Error {
-		// Map common taxonomies to their REST bases.
-		$rest_bases = [
-			'category'  => 'categories',
-			'post_tag'  => 'tags',
-			'post_tags' => 'tags',
-		];
-
-		if ( isset( $rest_bases[ $taxonomy ] ) ) {
-			return $rest_bases[ $taxonomy ];
-		}
-
-		// Get taxonomy object.
-		$taxonomy_obj = get_taxonomy( $taxonomy );
-		if ( ! $taxonomy_obj ) {
-			return new WP_Error(
-				'invalid_taxonomy',
-				__( 'Invalid taxonomy.', 'albert-ai-butler' ),
-				[ 'status' => 404 ]
-			);
-		}
-
-		if ( empty( $taxonomy_obj->rest_base ) ) {
-			return new WP_Error(
-				'taxonomy_not_rest_enabled',
-				__( 'This taxonomy is not available via REST API.', 'albert-ai-butler' ),
-				[ 'status' => 400 ]
-			);
-		}
-
-		// If rest_base is true, use the taxonomy name as the REST base.
-		if ( $taxonomy_obj->rest_base === true ) {
-			return $taxonomy_obj->name;
-		}
-
-		return $taxonomy_obj->rest_base;
 	}
 }
