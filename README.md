@@ -135,6 +135,7 @@ Albert 1.4.0 tells connected assistants what your site actually is, so they stop
 
 **Bugfixes**
 
+- Fixes the block editor guide never reaching your site. It has been in the source since 1.2.0 but was left out of every release package, so assistants have been writing blocks without the guidance the 1.2.0 release described. The Skills screen is what made it visible, by counting the guides out loud.
 - Fixes the Abilities table scrolling sideways on smaller screens. Below roughly 1450px the columns overflowed, and the on/off switch sits at the right-hand end, so the one control the screen exists for was the first thing to disappear.
 - Fixes assistants being unable to read product categories, or any category or tag set without an explicit REST base. Albert asked the wrong question and reported them as unavailable.
 - Fixes `albert/find-taxonomies` and `albert/find-terms` failing every call on WordPress 7.1, which made taxonomy discovery impossible.

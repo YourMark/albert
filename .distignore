@@ -40,6 +40,14 @@ tests/
 CLAUDE.md
 DEVELOPER_GUIDE.md
 plan.md
+README.md
+docs/
+phpstan-stubs/
+
+# Local working directories, untracked but present in a dev checkout
+cleanup/
+plans/
+design_handoff_*/
 
 # The MCP adapter also ships as a standalone plugin, so the package carries its
 # own bootstrap and its own wordpress.org readme. Albert autoloads PSR-4 from

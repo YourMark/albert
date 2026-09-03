@@ -80,21 +80,57 @@ jobs:
       - name: Create plugin directory
         run: mkdir -p build/albert-ai-butler
 
+      # Built from the working tree minus .distignore, which is the same rule
+      # the WordPress.org deploy step below applies. It used to be a hand-kept
+      # allowlist of `cp` commands, which failed closed and silently: `skills/`
+      # was added in 1.2.0, never appeared in that list, and so was absent from
+      # every zip from 1.2.0 to 1.4.0-beta1 while being present in the repo and
+      # on every developer's checkout. Nothing failed; the feature was simply
+      # not there. One list now governs both paths, and a new directory ships
+      # unless it is deliberately excluded.
       - name: Copy plugin files
         run: |
-          # Core plugin files
-          cp albert-ai-butler.php build/albert-ai-butler/
-          cp composer.json build/albert-ai-butler/
-          cp readme.txt build/albert-ai-butler/
-          cp LICENSE build/albert-ai-butler/
+          # Both excludes are anchored with a leading slash. An unanchored
+          # `build/` matches at any depth and would take `assets/build/` with
+          # it, shipping a plugin whose admin screens have no JavaScript.
+          rsync -a \
+            --exclude='/.git/' \
+            --exclude='/build/' \
+            --exclude-from='.distignore' \
+            ./ build/albert-ai-butler/
 
-          # Directories
-          cp -r src build/albert-ai-butler/
-          cp -r vendor build/albert-ai-butler/
+      - name: Verify the package carries what it claims
+        run: |
+          # A missing runtime file is invisible at build time and only shows up
+          # as an empty screen on somebody's site, which is exactly how the
+          # skills omission survived three releases.
+          missing=0
+          for required in \
+            albert-ai-butler.php \
+            readme.txt \
+            changelog.txt \
+            composer.json \
+            LICENSE \
+            src \
+            vendor \
+            assets/build/js \
+            skills/block-editor.md
+          do
+            if [ ! -e "build/albert-ai-butler/$required" ]; then
+              echo "::error::missing from the package: $required"
+              missing=1
+            fi
+          done
 
-          # Optional directories (copy if they exist)
-          [ -d "assets" ] && cp -r assets build/albert-ai-butler/ || true
-          [ -d "languages" ] && cp -r languages build/albert-ai-butler/ || true
+          for forbidden in tests .github node_modules assets/src docs
+          do
+            if [ -e "build/albert-ai-butler/$forbidden" ]; then
+              echo "::error::should not be packaged: $forbidden"
+              missing=1
+            fi
+          done
+
+          exit $missing
 
       - name: Strip non-permitted vendor files
         run: |
