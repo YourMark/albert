@@ -184,12 +184,11 @@ Documentation at [albertwp.com/docs](https://albertwp.com/docs/), or the [WordPr
 
 == Screenshots ==
 
-1. The Albert dashboard: connection status, recent AI assistant activity, and anything that needs your attention
-2. The Abilities screen: every action your AI assistant can take, labelled Read, Write or Delete, each with its own instant-save switch
-3. The Connections screen: your connection URL, who is connected, and step-by-step setup for Claude, ChatGPT and other assistants
-4. An AI assistant connected to WordPress through Albert, writing a post in real blocks
-
-<!-- TODO: add screenshot-5.png (the Context screen, showing what your assistant is told about your site) and screenshot-6.png (the Skills screen) to .wordpress.org/, then caption them here. Note: both .wordpress.org/ and .wordpress-org/ exist in this repo with the same four files; only one is read by WordPress.org. -->
+1. The Albert dashboard: setup status, how many abilities are switched on, recent AI assistant activity, and anything that needs a decision from you
+2. The Connections screen: your MCP endpoint, who is connected, who may connect, and step-by-step setup for Claude, ChatGPT, Cursor and the rest
+3. The Abilities screen: every action an AI assistant can take, labelled Read, Write or Delete, each with its own instant-save switch
+4. The Context screen: write instructions for your assistant and see exactly what Albert tells it about your site, section by section
+5. The Skills screen: the task guides Albert ships, so you can read the exact guidance a connected assistant follows
 
 == Changelog ==
 
@@ -227,11 +226,13 @@ Albert 1.4.0 tells connected assistants what your site actually is, so they stop
 * New installs start on Strict privacy. Existing sites keep their setting.
 * Settings are now sanitised on the way into the database, so a value written by code or WP-CLI is checked exactly like one typed into the form.
 * A setting fixed in code shows as read-only and names what owns it, rather than appearing editable and being silently overwritten.
+* The Abilities and Skills screens switch to a stacked list on narrower screens, so nothing is hidden behind a sideways scrollbar on a laptop or tablet. Pick a layout yourself and it stays picked.
 * Accessibility pass across the admin: contrast on faint borders and switches, keyboard reachability, focus after dismissing an item, touch target sizes and screen reader announcements.
 * On WordPress 7.1, server-only details are stripped from tool descriptions before they reach an assistant. This covers tools added by other plugins too.
 
 #### Bugfixes
 
+* Fixes the Abilities table scrolling sideways on smaller screens. Below roughly 1450px the columns overflowed, and the on/off switch sits at the right-hand end, so the one control the screen exists for was the first thing to disappear.
 * Fixes assistants being unable to read product categories, or any category or tag set without an explicit REST base. Albert asked the wrong question and reported them as unavailable.
 * Fixes `albert/find-taxonomies` and `albert/find-terms` failing every call on WordPress 7.1, which made taxonomy discovery impossible.
 * Fixes Albert's MCP endpoint failing to register when another plugin bundles its own copy of the MCP library. Albert now shares one copy, so both endpoints work.
@@ -249,6 +250,7 @@ Albert 1.4.0 tells connected assistants what your site actually is, so they stop
 
 #### Security
 
+* Revoking a single session now revokes that session's refresh token. It previously ended only the access token, so the assistant reconnected on its own within the hour while the screen said the session had been revoked. Revoking all sessions was never affected.
 * `albert/upload-media` now checks file types against the current user's own allowed types instead of the site-wide default. An `unfiltered_upload` capability can no longer widen what it accepts.
 * Failed database writes when issuing OAuth authorisation codes, access tokens and refresh tokens are no longer ignored. All three now fail immediately instead of surfacing later as an unrelated error.
 * `WWW-Authenticate` is now sent on every 401 from the MCP endpoint. Previously an expired token skipped the header entirely.

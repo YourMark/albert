@@ -7,6 +7,7 @@
 
 namespace Albert\Tests\Integration\OAuth;
 
+use Albert\Admin\Settings;
 use Albert\Database\Tables;
 use Albert\OAuth\Entities\AccessTokenEntity;
 use Albert\OAuth\Entities\ClientEntity;
@@ -31,6 +32,7 @@ use DateTimeImmutable;
  * later full disconnect matched no rows, revoked no refresh token, and still
  * told the owner the assistant had to be approved again.
  *
+ * @covers \Albert\Admin\Settings::revoke_user_tokens
  * @covers \Albert\OAuth\Repositories\ClientRepository::revokeAllTokens
  * @covers \Albert\OAuth\Repositories\RefreshTokenRepository::revokeForAccessTokens
  */
@@ -142,6 +144,52 @@ class ConnectionRevocationTest extends TestCase {
 		( new RefreshTokenRepository() )->revokeForAccessTokens( [] );
 
 		$this->assertSame( 1, $this->live_refresh_tokens( $client_id ) );
+	}
+
+
+	/**
+	 * Revoking a user's access revokes their refresh tokens too.
+	 *
+	 * This is what "Remove" on the allowed-users list and "revoke all sessions"
+	 * both call. It had no test at all, and its body was rewritten to share
+	 * revokeForAccessTokens(), so the behaviour is pinned here rather than
+	 * assumed from the fact that nothing else went red.
+	 *
+	 * @return void
+	 */
+	public function test_revoking_a_users_access_revokes_their_refresh_tokens(): void {
+		$client_id = $this->create_connection( 'User to be removed' );
+
+		Settings::revoke_user_tokens( 1 );
+
+		$this->assertSame( 1, $this->revoked_refresh_tokens( $client_id ) );
+		$this->assertSame( 0, $this->live_refresh_tokens( $client_id ) );
+	}
+
+	/**
+	 * It revokes that user's tokens and nobody else's.
+	 *
+	 * @return void
+	 */
+	public function test_revoking_one_users_access_leaves_another_users_alone(): void {
+		$mine     = $this->create_connection( 'Mine' );
+		$somebody = $this->create_connection( 'Somebody else' );
+
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Test setup.
+		$wpdb->update(
+			Tables::oauth()['access_tokens'],
+			[ 'user_id' => 2 ],
+			[ 'client_id' => $somebody ],
+			[ '%d' ],
+			[ '%s' ]
+		);
+
+		Settings::revoke_user_tokens( 1 );
+
+		$this->assertSame( 1, $this->revoked_refresh_tokens( $mine ), "The removed user's token must go." );
+		$this->assertSame( 1, $this->live_refresh_tokens( $somebody ), "Another user's must not." );
 	}
 
 	/**
