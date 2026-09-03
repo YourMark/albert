@@ -296,8 +296,16 @@ if ( document.readyState === 'loading' ) {
 			.catch( () => {
 				// Put it back exactly where it was, so the page still describes
 				// the site truthfully.
+				//
+				// `next` was captured before the removal and may itself have
+				// been dismissed since, in which case it is no longer a child
+				// of the list and insertBefore throws NotFoundError — inside
+				// the catch, so the rest of the rollback would never run and
+				// the item would stay gone from a page the server still has it
+				// on. Falling back to the end of the list is the wrong order
+				// but the right content.
 				button.disabled = false;
-				list.insertBefore( item, next );
+				list.insertBefore( item, next?.isConnected ? next : null );
 				setEmpty( false );
 				syncCount();
 			} );

@@ -67,6 +67,10 @@ class Installer {
 		'albert_oauth_private_key',
 		'albert_oauth_public_key',
 		'albert_upload_link_max_mb',
+		// Written by install_defaults() on every new install.
+		'albert_privacy_mode',
+		// The Context screen's instructions and section toggles.
+		'albert_context',
 		// Legacy options retired in earlier releases, cleared here for completeness.
 		'albert_logging_db_version',
 		'albert_oauth_db_version',
@@ -81,7 +85,17 @@ class Installer {
 	 * @var array<int, string>
 	 */
 	const USER_META = [
-		'albert_dismissed_domain_host',
+
+		/*
+		 * Per-user dismissals of "Needs your attention" items, the literal
+		 * value of Attention::DISMISSED_META. Spelled out rather than
+		 * imported: uninstall runs without the admin bootstrapped, so this
+		 * class must not depend on one loading.
+		 *
+		 * `albert_dismissed_domain_host` used to be listed here and is gone.
+		 * Nothing in the plugin ever read or wrote it.
+		 */
+		'albert_dismissed_attention',
 	];
 
 	/**
