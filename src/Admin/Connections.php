@@ -289,10 +289,21 @@ class Connections implements Hookable {
 		$tables = Tables::oauth();
 
 		if ( $include_refresh ) {
+			/*
+			 * No `revoked = 0` filter here.
+			 *
+			 * Refresh tokens carry no client id, so an access-token row is the
+			 * only link back to the client holding one. Filtering that lookup
+			 * on unrevoked rows meant that once the access tokens had been
+			 * revoked, by a prior "sign it out" or by anything else, this found
+			 * nothing and revoked no refresh tokens at all, while the screen
+			 * said the assistant had to be approved again. It refreshed itself
+			 * back in within the hour.
+			 */
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
 			$token_ids = $wpdb->get_col(
 				$wpdb->prepare(
-					'SELECT token_id FROM %i WHERE client_id = %s AND revoked = 0',
+					'SELECT token_id FROM %i WHERE client_id = %s',
 					$tables['access_tokens'],
 					$client_id
 				)
@@ -1747,7 +1758,18 @@ class Connections implements Hookable {
 	 * @since 1.4.0
 	 */
 	private function normalise( string $value ): string {
-		return trim( (string) preg_replace( '/\s+/', ' ', strtolower( $value ) ) );
+		/*
+		 * `mb_strtolower`, not `strtolower`. The value this produces is matched
+		 * in the browser against `term.toLowerCase()`, which is Unicode-aware,
+		 * while PHP's `strtolower` is byte-based and leaves anything outside
+		 * ASCII alone. "Émile" indexed as "Émile" never matches a typed
+		 * "émile", so the person disappears from a list they are plainly on.
+		 */
+		$lower = function_exists( 'mb_strtolower' )
+			? mb_strtolower( $value, 'UTF-8' )
+			: strtolower( $value );
+
+		return trim( (string) preg_replace( '/\s+/', ' ', $lower ) );
 	}
 
 	/**

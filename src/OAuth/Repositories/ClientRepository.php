@@ -474,10 +474,21 @@ class ClientRepository implements ClientRepositoryInterface {
 
 		$tables = Tables::oauth();
 
+		/*
+		 * No `revoked = 0` filter here.
+		 *
+		 * Refresh tokens carry no client id, so an access-token row is the
+		 * only link back to the client holding one. Filtering that lookup
+		 * on unrevoked rows meant that once the access tokens had been
+		 * revoked, by a prior "sign it out" or by anything else, this found
+		 * nothing and revoked no refresh tokens at all, while the screen
+		 * said the assistant had to be approved again. It refreshed itself
+		 * back in within the hour.
+		 */
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table.
 		$token_ids = $wpdb->get_col(
 			$wpdb->prepare(
-				'SELECT token_id FROM %i WHERE client_id = %s AND revoked = 0',
+				'SELECT token_id FROM %i WHERE client_id = %s',
 				$tables['access_tokens'],
 				$client_id
 			)
