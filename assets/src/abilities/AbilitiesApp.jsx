@@ -34,6 +34,7 @@ import {
 import { getFields } from './fields';
 import { viewFromUrl, syncViewToUrl, openIdFromUrl } from './url';
 import Toolbar from './Toolbar';
+import useNarrowLayout from '../shared/useNarrowLayout';
 import FlyInPanel from './FlyInPanel';
 
 const DEFAULT_VIEW = {
@@ -48,8 +49,12 @@ const DEFAULT_VIEW = {
 	filters: [],
 	layout: {
 		styles: {
-			// Let the Ability column shrink (small min) so the table fits more
-			// before scrolling; bound the others so they don't stretch.
+			// Advisory only: the table is `table-layout: auto`, so the browser
+			// sizes columns by content and treats these as hints. What actually
+			// keeps the table inside its container is the Ability cell's
+			// description wrapping rather than running on one line
+			// (admin-abilities.css). These stay as the intent for any column
+			// whose content leaves the browser a choice.
 			label: { minWidth: 200 },
 			category: { minWidth: 96, maxWidth: 150 },
 			operation: { width: 116 },
@@ -63,7 +68,9 @@ const DEFAULT_VIEW = {
 const DEFAULT_LAYOUTS = {
 	table: {},
 	grid: { layout: { badgeFields: [ 'operation' ] } },
+	list: {},
 };
+
 
 export default function AbilitiesApp() {
 	const [ items, setItems ] = useState( [] );
@@ -72,6 +79,8 @@ export default function AbilitiesApp() {
 	const [ roles, setRoles ] = useState( [] );
 	// Initialise from the URL so a shared/bookmarked link opens pre-filtered.
 	const [ view, setView ] = useState( () => viewFromUrl( DEFAULT_VIEW ) );
+
+	const onChangeView = useNarrowLayout( view, setView );
 	const [ selection, setSelection ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ error, setError ] = useState( null );
@@ -408,7 +417,7 @@ export default function AbilitiesApp() {
 						data={ data }
 						fields={ fields }
 						view={ view }
-						onChangeView={ setView }
+						onChangeView={ onChangeView }
 						actions={ actions }
 						defaultLayouts={ DEFAULT_LAYOUTS }
 						paginationInfo={ paginationInfo }
@@ -419,7 +428,7 @@ export default function AbilitiesApp() {
 					>
 						<Toolbar
 							view={ view }
-							onChangeView={ setView }
+							onChangeView={ onChangeView }
 							categories={ categories }
 							sources={ sources }
 							badges={ badges }

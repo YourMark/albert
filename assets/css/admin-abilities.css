@@ -79,7 +79,7 @@
 /* .albert-toolbar, .albert-toolbar__group[--end] moved to albert-primitives.css:
    Skills' DataViews toolbar is the same shape. */
 
-/* The "Ability" cell: label, monospace id, one-line description. */
+/* The "Ability" cell: label, monospace id, wrapping description. */
 .albert-ability-cell {
 	display: flex;
 	flex-direction: column;
@@ -110,21 +110,25 @@
 	white-space: nowrap;
 }
 
-/* Description: single line + ellipsis in the table. Full text lives in the fly-in. */
+/* Description: wraps to at most two lines, then clips. Full text is in the fly-in.
+
+   Wrapping is what keeps the column narrow. A nowrap line still asks the table
+   for its full unbroken width before the ellipsis is ever applied, so the old
+   single-line rule is what made this column 679px wide. */
 .albert-ability-cell__desc {
 	color: var(--albert-color-text-muted);
 	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-/* In the grid, allow up to two clamped lines instead of one. */
-.dataviews-view-grid .albert-ability-cell__desc {
 	white-space: normal;
 	display: -webkit-box;
 	-webkit-line-clamp: 2;
 	line-clamp: 2;
 	-webkit-box-orient: vertical;
+}
+
+/* The grid has more room per card, so it clamps at three. */
+.dataviews-view-grid .albert-ability-cell__desc {
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
 }
 
 /* Operation badge — read (green) / write (amber) / delete (red). */
@@ -447,16 +451,28 @@ code.albert-flyin__card-value {
 	margin: 0;
 }
 
-/* "Last used" cell. */
+/* "Last used" cell: outcome on the first line, time on the second.
+
+   Stacked rather than wrapped. Wrapping only breaks when the text happens not
+   to fit, so the same column reads as one line on some rows and two on others,
+   and the eye loses the timestamps when scanning down. */
 .albert-lastused {
-	display: inline-flex;
-	align-items: center;
-	/* Wraps rather than overflows: the column is narrow and the cell now
-	   carries a status word as well as a relative time. */
-	flex-wrap: wrap;
-	gap: 2px 6px;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 2px;
 	font-size: 12.5px;
 	color: var(--albert-color-neutral);
+}
+
+.albert-lastused__outcome {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.albert-lastused__time {
+	color: var(--albert-color-text-faint);
 }
 
 .albert-lastused--never {
@@ -510,8 +526,9 @@ code.albert-flyin__card-value {
 
 /* Bulk selection is exposed via the checkbox column + the selection toolbar.
    The per-row actions (Enable/Disable) would just duplicate the row toggle, so
-   hide the per-row actions column (table) and per-card actions (grid). The
-   checkbox column and selection toolbar are separate and stay. */
+   hide them in every layout: the actions column (table), the per-card actions
+   (grid) and the per-row kebab (list). The checkbox column and the selection
+   toolbar are separate and stay. */
 .dataviews-view-table__actions-column {
 	display: none;
 }
@@ -521,6 +538,21 @@ code.albert-flyin__card-value {
 }
 
 .dataviews-view-grid__media-actions {
+	display: none;
+}
+
+/* DataViews sets this to `flex` from
+   `.dataviews-view-list div[role="row"] .dataviews-view-list__item-actions`,
+   so a bare class selector loses on specificity. Scoping to the screen's own
+   card beats it without reaching for !important. */
+.albert-abilities__card
+	.dataviews-view-list
+	div[role="row"]
+	.dataviews-view-list__item-actions,
+.albert-abilities__card
+	.dataviews-view-list
+	div[role="article"]
+	.dataviews-view-list__item-actions {
 	display: none;
 }
 
@@ -763,4 +795,42 @@ code.albert-flyin__card-value {
 	inset-block-end: 14px;
 	z-index: 1;
 	text-align: center;
+}
+
+/* ---------------------------------------------------------------------------
+   List layout, Abilities-only parts. The generic shape lives in
+   albert-primitives.css, because Skills renders the same layout.
+   --------------------------------------------------------------------------- */
+
+/* Enabled is a control, not a value. It goes to the far end, away from the
+   metadata, and loses the separator that would read it as one more data point.
+
+   Scoped to this screen on purpose. Skills' last field is Source, an ordinary
+   value that belongs beside the others, so this cannot sit in the primitives
+   with the rest of the list styling. */
+.albert-abilities__card
+	.dataviews-view-list__fields
+	.dataviews-view-list__field:last-child {
+	margin-inline-start: auto;
+}
+
+.albert-abilities__card
+	.dataviews-view-list__fields
+	.dataviews-view-list__field:last-child::before {
+	content: none;
+}
+
+/* "Last used" stacks in the table, where it has a column to itself. Here it is
+   one item in a single horizontal line, and a two-line cell would set the
+   height of every row. */
+.dataviews-view-list .albert-lastused {
+	flex-direction: row;
+	align-items: center;
+	gap: 6px;
+}
+
+/* The description has the full row width here, so it can afford a third line. */
+.dataviews-view-list .albert-ability-cell__desc {
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
 }

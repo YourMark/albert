@@ -81,19 +81,28 @@
 	text-decoration: underline;
 }
 
+/* Wraps to two lines rather than running on one.
+
+   A nowrap line asks the table for its full unbroken width before the ellipsis
+   is ever applied, which is what made the equivalent column on Abilities 679px
+   wide and pushed that table into a horizontal scroll. Same shape here, same
+   fix, before it has the content to show it. */
 .albert-skill-cell__desc {
 	color: var(--albert-color-text-muted);
 	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.dataviews-view-grid .albert-skill-cell__desc {
 	white-space: normal;
 	display: -webkit-box;
 	-webkit-line-clamp: 2;
 	line-clamp: 2;
 	-webkit-box-orient: vertical;
+}
+
+/* The grid card and the list row both have the full width, so both afford a
+   third line. */
+.dataviews-view-grid .albert-skill-cell__desc,
+.dataviews-view-list .albert-skill-cell__desc {
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
 }
 
 /* ==========================================================================

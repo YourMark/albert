@@ -53,7 +53,7 @@ export function Badges( { badges } ) {
 }
 
 /**
- * The "Ability" cell: label, monospace id, a one-line description, and any
+ * The "Ability" cell: label, monospace id, a wrapping description, and any
  * add-on badges.
  *
  * @param {Object} props      Render props.
@@ -121,7 +121,12 @@ function outcomeMeta() {
 }
 
 /**
- * The "Last used" cell: status dot + word + relative time, or "Never".
+ * The "Last used" cell: status dot + word on one line, the time on the next,
+ * or "Never".
+ *
+ * The time always takes its own line rather than wrapping only when it has to.
+ * A cell that reflows at some widths and not others makes the column read as
+ * two different things down a single scan.
  *
  * @param {Object} props      Render props.
  * @param {Object} props.item The ability row.
@@ -130,9 +135,12 @@ function outcomeMeta() {
 function LastUsed( { item } ) {
 	const last = item.lastUsed;
 	if ( ! last ) {
+		// "Never used", not "Never". The list layout renders field labels
+		// visually hidden, so a bare "Never" sits in a run of metadata with
+		// nothing on screen saying what it is answering.
 		return (
 			<span className="albert-lastused albert-lastused--never">
-				{ __( 'Never', 'albert-ai-butler' ) }
+				{ __( 'Never used', 'albert-ai-butler' ) }
 			</span>
 		);
 	}
@@ -141,20 +149,22 @@ function LastUsed( { item } ) {
 	const meta = outcomeMeta()[ last.status ];
 	return (
 		<span className="albert-lastused">
-			<span
-				className={ `albert-lastused__dot albert-lastused__dot--${
-					meta ? meta.modifier : 'neutral'
-				}` }
-				aria-hidden="true"
-			/>
-			{ meta && (
+			<span className="albert-lastused__outcome">
 				<span
-					className={ `albert-lastused__status albert-lastused__status--${ meta.modifier }` }
-				>
-					{ meta.word }
-				</span>
-			) }
-			{ last.human }
+					className={ `albert-lastused__dot albert-lastused__dot--${
+						meta ? meta.modifier : 'neutral'
+					}` }
+					aria-hidden="true"
+				/>
+				{ meta && (
+					<span
+						className={ `albert-lastused__status albert-lastused__status--${ meta.modifier }` }
+					>
+						{ meta.word }
+					</span>
+				) }
+			</span>
+			<span className="albert-lastused__time">{ last.human }</span>
 		</span>
 	);
 }

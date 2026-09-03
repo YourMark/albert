@@ -2025,3 +2025,41 @@ input.albert-endpoint__field {
 	font-size: var(--albert-font-size-sm);
 	color: var(--albert-color-text-muted);
 }
+
+/* ---------------------------------------------------------------------------
+   List layout: the shape the screen takes below 1200px.
+
+   The table cannot shrink past roughly 980px, because a column will not go
+   narrower than its own header text. Under that width the only remaining
+   behaviour is a sideways scrollbar, and what sits at the right-hand end is the
+   Enabled toggle, so the control the screen exists for is the first thing to
+   disappear. DataViews' list layout stacks each row instead: title, id and
+   description, then the same fields as a meta line underneath.
+
+   Shared: Abilities and Skills both render it.
+   --------------------------------------------------------------------------- */
+
+/* DataViews hides the field labels visually. Without them the values run
+   together into one sentence — "Content Write Albert Never" — so a separator
+   has to carry the boundary the label used to. */
+.dataviews-view-list__fields {
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 10px;
+	font-size: 12.5px;
+	color: var(--albert-color-text-muted);
+}
+
+/* Each field is a column flex by default (label above value), which would put
+   the separator on a line of its own. */
+.dataviews-view-list__field {
+	display: inline-flex;
+	align-items: center;
+	flex-direction: row;
+}
+
+.dataviews-view-list__field + .dataviews-view-list__field::before {
+	content: "·";
+	margin-inline-end: 10px;
+	color: var(--albert-color-text-faint);
+}

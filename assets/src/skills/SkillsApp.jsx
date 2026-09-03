@@ -26,6 +26,7 @@ import { getFields } from './fields';
 import { viewFromUrl, syncViewToUrl } from './url';
 import Toolbar from './Toolbar';
 import SkillFlyIn from './SkillFlyIn';
+import useNarrowLayout from '../shared/useNarrowLayout';
 
 const DEFAULT_VIEW = {
 	type: 'table',
@@ -48,12 +49,17 @@ const DEFAULT_VIEW = {
 const DEFAULT_LAYOUTS = {
 	table: {},
 	grid: {},
+	list: {},
 };
 
 export default function SkillsApp() {
 	const [ items, setItems ] = useState( [] );
 	// Initialise from the URL so a shared/bookmarked link opens pre-filtered.
 	const [ view, setView ] = useState( () => viewFromUrl( DEFAULT_VIEW ) );
+
+	// Same table/list switch as Abilities, so the two screens in the same menu
+	// do not behave differently at the same window width.
+	const onChangeView = useNarrowLayout( view, setView );
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ error, setError ] = useState( null );
 
@@ -231,7 +237,7 @@ export default function SkillsApp() {
 						data={ data }
 						fields={ fields }
 						view={ view }
-						onChangeView={ setView }
+						onChangeView={ onChangeView }
 						defaultLayouts={ DEFAULT_LAYOUTS }
 						paginationInfo={ paginationInfo }
 						getItemId={ getItemId }
@@ -239,7 +245,7 @@ export default function SkillsApp() {
 					>
 						<Toolbar
 							view={ view }
-							onChangeView={ setView }
+							onChangeView={ onChangeView }
 							sources={ sources }
 						/>
 						<DataViews.Layout />
