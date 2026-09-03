@@ -141,13 +141,19 @@ jobs:
           find build/albert-ai-butler/vendor -name "*.sh" -type f -delete
 
           # The adapter also ships as a standalone plugin; nothing here loads
-          # its bootstrap or its readme. Asserted rather than assumed, so the
-          # build fails loudly if upstream moves them instead of silently
-          # shipping them again.
+          # its bootstrap or its readme, and .distignore excludes both so the
+          # copy above never brings them across.
+          #
+          # Both halves are asserted rather than assumed. Checking only the
+          # package would pass just as well if upstream renamed the files and
+          # .distignore silently stopped matching anything, which is the same
+          # class of quiet failure that kept skills/ out of every release.
           for f in mcp-adapter.php readme.txt; do
-            path="build/albert-ai-butler/vendor/wordpress/mcp-adapter/$f"
-            test -f "$path" || { echo "::error::expected $path to exist; upstream layout changed"; exit 1; }
-            rm "$path"
+            test -f "vendor/wordpress/mcp-adapter/$f" \
+              || { echo "::error::vendor/wordpress/mcp-adapter/$f is gone; upstream layout changed and .distignore now matches nothing"; exit 1; }
+
+            test ! -e "build/albert-ai-butler/vendor/wordpress/mcp-adapter/$f" \
+              || { echo "::error::$f reached the package; .distignore no longer excludes it"; exit 1; }
           done
 
       - name: Create zip file
