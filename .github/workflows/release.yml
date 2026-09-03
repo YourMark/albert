@@ -151,6 +151,18 @@ jobs:
             fi
           fi
 
+          # readme.txt is WordPress.org's format, where HTML entities render.
+          # GitHub release notes are Markdown, where they do not, so "Albert
+          # &rarr; Context" reaches a reader verbatim. Translate the ones the
+          # changelog actually uses rather than every entity in existence.
+          NOTES=$(printf '%s\n' "$NOTES" | sed \
+            -e 's/&rarr;/→/g' \
+            -e 's/&larr;/←/g' \
+            -e 's/&mdash;/—/g' \
+            -e 's/&ndash;/–/g' \
+            -e 's/&hellip;/…/g' \
+            -e 's/&amp;/\&/g')
+
           # For pre-releases, note the build identifier above the section notes.
           if [ "${{ steps.prerelease.outputs.is_prerelease }}" = "true" ]; then
             printf 'Pre-release build (%s) of %s for testing.\n\n%s\n' "$VERSION" "$BASE_VERSION" "$NOTES" > changelog.txt
