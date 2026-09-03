@@ -466,6 +466,8 @@ class AuthorizationPage implements Hookable {
 		<form method="post">
 			<input type="hidden" name="client_id" value="<?php echo esc_attr( $client->getIdentifier() ); ?>">
 			<input type="hidden" name="redirect_uri" value="<?php echo esc_attr( $redirect_uri ); ?>">
+			<?php /* Required: the POST branch reads every OAuth parameter from $_POST, and the handler rejects anything whose response_type is not "code". */ ?>
+			<input type="hidden" name="response_type" value="code">
 			<input type="hidden" name="state" value="<?php echo esc_attr( $state ); ?>">
 			<input type="hidden" name="scope" value="<?php echo esc_attr( $scope ); ?>">
 			<input type="hidden" name="code_challenge" value="<?php echo esc_attr( $code_challenge ); ?>">
