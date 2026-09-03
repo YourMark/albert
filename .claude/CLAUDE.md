@@ -124,10 +124,15 @@ Never rename the legacy IDs: they are part of the public API.
 - **Branch names are `feature/` or `fix/`. Nothing else.** Not `chore/`, not
   `feat/`, not `refactor/`, not `docs/`. A tidy-up, a CI change, a docs change:
   if it corrects something that is wrong, it is `fix/`; if it adds something
-  that was not there, it is `feature/`. Commit-message *types* are a separate
-  convention and `chore:` is fine there — this rule is about branch names only.
+  that was not there, it is `feature/`.
   Renaming a branch on GitHub closes its PR rather than retargeting it, so get
   it right when the branch is created.
+- **NEVER use `chore`. Anywhere.** Not in a branch name, not in a commit
+  message, not in a PR title. Mark has said this repeatedly and dislikes the
+  word. A previous session wrote "`chore:` is fine there" into this file on
+  2026-09-01; it was never Mark's instruction and it has been removed. If a
+  commit does not fit `fix:` or `feat:`, write a plain sentence instead:
+  "Set the release version to 1.4.0".
 - **NEVER bump version without approval.**
 - **Version bumps only happen in release branches**, never on `development`, feature branches, or `main`.
 - **PR titles are plain, human-readable sentences**: NEVER use conventional-commit prefixes like `chore(deps):`, `feat(logging):`, `fix:`. Those belong in commit messages, not PR titles. Example: "Upgrade MCP adapter to 0.5.0", not "chore(deps): upgrade...".
